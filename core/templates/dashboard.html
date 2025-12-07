@@ -1,107 +1,82 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard Financeira</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background: #f7f7f7;
-        }
-        .card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-        h2 {
-            margin-top: 0;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: #efefef;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
 
-    <h1>Dashboard Financeira</h1>
+{% block content %}
 
-    <div class="grid">
-        <div class="card">
-            <h2>Receitas do mês</h2>
-            <p><strong>R$ {{ total_receitas|floatformat:2 }}</strong></p>
-        </div>
+<h1 class="text-2xl font-bold mb-6">Dashboard Financeira</h1>
 
-        <div class="card">
-            <h2>Despesas do mês</h2>
-            <p><strong>R$ {{ total_despesas|floatformat:2 }}</strong></p>
-        </div>
+<!-- Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
-        <div class="card">
-            <h2>Saldo do mês</h2>
-            <p><strong>R$ {{ saldo_mes|floatformat:2 }}</strong></p>
-        </div>
+    <div class="bg-white shadow p-4 rounded">
+        <h2 class="text-lg font-semibold">Receitas do mês</h2>
+        <p class="text-green-600 text-2xl font-bold">R$ {{ total_receitas|floatformat:2 }}</p>
     </div>
 
+    <div class="bg-white shadow p-4 rounded">
+        <h2 class="text-lg font-semibold">Despesas do mês</h2>
+        <p class="text-red-600 text-2xl font-bold">R$ {{ total_despesas|floatformat:2 }}</p>
+    </div>
 
-    <div class="card">
-        <h2>Últimas transações</h2>
-        <table>
-            <tr>
-                <th>Data</th>
-                <th>Tipo</th>
-                <th>Valor</th>
-                <th>Descrição</th>
+    <div class="bg-white shadow p-4 rounded">
+        <h2 class="text-lg font-semibold">Saldo do mês</h2>
+        <p class="text-blue-600 text-2xl font-bold">R$ {{ saldo_mes|floatformat:2 }}</p>
+    </div>
+
+</div>
+
+<!-- Últimas transações -->
+<div class="bg-white shadow p-6 rounded mb-6">
+    <h2 class="text-xl font-semibold mb-3">Últimas transações</h2>
+
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="border-b">
+                <th class="py-2">Data</th>
+                <th class="py-2">Tipo</th>
+                <th class="py-2">Valor</th>
+                <th class="py-2">Descrição</th>
             </tr>
+        </thead>
+        <tbody>
             {% for t in ultimas_transacoes %}
-            <tr>
-                <td>{{ t.data }}</td>
+            <tr class="border-b">
+                <td class="py-2">{{ t.data }}</td>
                 <td>{{ t.get_tipo_display }}</td>
                 <td>R$ {{ t.valor|floatformat:2 }}</td>
                 <td>{{ t.descricao }}</td>
             </tr>
             {% endfor %}
-        </table>
-    </div>
+        </tbody>
+    </table>
+</div>
 
+<!-- Resumo 3 meses -->
+<div class="bg-white shadow p-6 rounded">
+    <h2 class="text-xl font-semibold mb-3">Resumo dos últimos 3 meses</h2>
 
-    <div class="card">
-        <h2>Resumo dos últimos 3 meses</h2>
-        <table>
-            <tr>
-                <th>Mês</th>
-                <th>Receita</th>
-                <th>Outras receitas</th>
-                <th>Gastos</th>
-                <th>Total</th>
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="border-b">
+                <th class="py-2">Mês</th>
+                <th class="py-2">Receita</th>
+                <th class="py-2">Outras receitas</th>
+                <th class="py-2">Gastos</th>
+                <th class="py-2">Total</th>
             </tr>
-
+        </thead>
+        <tbody>
             {% for r in resumo_3_meses %}
-            <tr>
-                <td>{{ r.mes }}/{{ r.ano }}</td>
+            <tr class="border-b">
+                <td class="py-2">{{ r.mes }}/{{ r.ano }}</td>
                 <td>R$ {{ r.receita|floatformat:2 }}</td>
                 <td>R$ {{ r.outras_receitas|floatformat:2 }}</td>
                 <td>R$ {{ r.gastos|floatformat:2 }}</td>
                 <td>R$ {{ r.total|floatformat:2 }}</td>
             </tr>
             {% endfor %}
-        </table>
-    </div>
+        </tbody>
+    </table>
+</div>
 
-</body>
-</html>
+{% endblock %}

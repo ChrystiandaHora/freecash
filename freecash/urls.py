@@ -18,6 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from core.views.dashboard import DashboardView
+from core.views.importar import ImportarView
 from core.views.logout_export import LogoutComExportacaoView
 
 urlpatterns = [
@@ -29,4 +30,5 @@ urlpatterns += [
     # ... outras rotas ...
     path("logout/", LogoutComExportacaoView.as_view(), name="logout"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("importar/", ImportarView.as_view(), name="importar"),
 ]

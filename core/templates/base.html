@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Meu Financeiro{% endblock %}</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100">
+
+    <!-- HEADER -->
+    <header class="bg-blue-600 text-white p-4 text-lg font-semibold shadow">
+        Meu Financeiro Pessoal
+    </header>
+
+    <div class="flex min-h-screen">
+
+        <!-- MENU LATERAL -->
+        <aside class="w-60 bg-white shadow-lg p-4">
+
+            <nav class="space-y-2">
+
+                <a href="{% url 'dashboard' %}"
+                    class="block px-3 py-2 rounded hover:bg-blue-100 transition">
+                    Dashboard
+                </a>
+
+                <a href="{% url 'importar' %}"
+                    class="block px-3 py-2 rounded hover:bg-blue-100 transition">
+                    Importar Dados
+                </a>
+
+                <a href="{% url 'logout' %}"
+                    class="block px-3 py-2 rounded hover:bg-red-100 text-red-600 transition">
+                    Exportar e Sair
+                </a>
+
+            </nav>
+
+        </aside>
+
+        <!-- ÁREA PRINCIPAL -->
+        <main class="flex-1 p-6">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+    </div>
+
+</body>
+</html>
