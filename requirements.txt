@@ -1,0 +1,7 @@
+asgiref==3.11.0
+Django==4.2.27
+et_xmlfile==2.0.0
+openpyxl==3.1.5
+psycopg==3.2.13
+sqlparse==0.5.4
+typing_extensions==4.15.0
