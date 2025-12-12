@@ -1,23 +1,139 @@
 {% extends "base.html" %}
-
 {% block title %}Importar Dados{% endblock %}
 
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-4">Importar Planilha</h1>
+<div class="max-w-3xl mx-auto mt-10">
 
-<form method="post" enctype="multipart/form-data" class="bg-white p-6 rounded shadow w-full max-w-lg">
-    {% csrf_token %}
+    <!-- MENSAGENS DO DJANGO -->
+    {% if messages %}
+        <div class="space-y-4 mb-8">
+            {% for msg in messages %}
+                <div class="
+                    p-4 rounded-xl
+                    {% if msg.tags == 'success' %}
+                        bg-emerald-600 text-white
+                    {% elif msg.tags == 'error' %}
+                        bg-red-600 text-white
+                    {% else %}
+                        bg-slate-700 text-white
+                    {% endif %}
+                ">
+                    {{ msg }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
-    <label class="block mb-3">
-        <span class="text-gray-700 font-medium">Selecione o arquivo Excel</span>
-        <input type="file" name="arquivo" class="mt-2 block w-full border border-gray-300 rounded p-2">
-    </label>
+    <!-- CARD PRINCIPAL -->
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl">
 
-    <button type="submit"
-        class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
-        Importar
-    </button>
-</form>
+        <h1 class="text-2xl font-bold mb-4">Importar dados financeiros</h1>
+
+        <p class="text-slate-300 mb-6 leading-relaxed">
+            Envie um arquivo de backup (.xlsx) gerado pelo FreeCash ou uma planilha
+            antiga no formato legado. Todos os dados atuais serão <strong>sobrescritos</strong>
+            pelos dados do arquivo importado.
+        </p>
+
+        <!-- DROPZONE -->
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+
+            <div id="dropzone"
+                 class="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer
+                        hover:border-emerald-500 transition">
+
+                <p class="text-slate-300">Arraste o arquivo aqui ou clique para selecionar</p>
+
+                <input id="fileInput" type="file" name="arquivo" accept=".xlsx"
+                       class="hidden" required>
+            </div>
+
+            <!-- Preview -->
+            <div id="filePreview"
+                 class="hidden mt-4 bg-slate-700 p-4 rounded-lg text-slate-200">
+                Arquivo selecionado:
+                <span id="fileName" class="font-semibold"></span>
+            </div>
+
+            <button type="submit"
+                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-lg transition">
+                Importar dados
+            </button>
+        </form>
+
+    </div>
+
+    <!-- LOGS DE IMPORTAÇÃO -->
+    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl mt-10">
+        <h2 class="text-xl font-bold mb-4">Histórico de importações</h2>
+
+        {% if logs %}
+            <ul class="space-y-3">
+                {% for log in logs %}
+                    <li class="p-4 rounded-lg 
+                        {% if log.sucesso %}
+                            bg-emerald-600/20 border border-emerald-500
+                        {% else %}
+                            bg-red-600/20 border border-red-500
+                        {% endif %}
+                    ">
+                        <p class="text-white font-semibold">
+                            {{ log.get_tipo_display }} — 
+                            {% if log.sucesso %}Sucesso{% else %}Erro{% endif %}
+                        </p>
+                        <p class="text-slate-300 text-sm">
+                            {{ log.mensagem }}
+                        </p>
+                        <p class="text-slate-400 text-xs mt-1">
+                            {{ log.criado_em|date:"d/m/Y H:i" }}
+                        </p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-slate-400">Nenhuma importação registrada.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- SCRIPT DROPZONE -->
+<script>
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const preview = document.getElementById("filePreview");
+const fileName = document.getElementById("fileName");
+
+dropzone.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+    if (fileInput.files.length > 0) {
+        fileName.textContent = fileInput.files[0].name;
+        preview.classList.remove("hidden");
+    }
+});
+
+dropzone.addEventListener("dragover", event => {
+    event.preventDefault();
+    dropzone.classList.add("border-emerald-500");
+});
+
+dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("border-emerald-500");
+});
+
+dropzone.addEventListener("drop", event => {
+    event.preventDefault();
+    dropzone.classList.remove("border-emerald-500");
+
+    const file = event.dataTransfer.files[0];
+    fileInput.files = event.dataTransfer.files;
+
+    fileName.textContent = file.name;
+    preview.classList.remove("hidden");
+});
+</script>
 
 {% endblock %}

@@ -9,6 +9,7 @@ from core.models import (
     FormaPagamento,
     ResumoMensal,
     ConfigUsuario,
+    ContaPagar,
 )
 
 
@@ -62,20 +63,21 @@ def gerar_backup_excel(usuario):
             [
                 c.id,
                 c.nome,
-                c.get_tipo_display(),
+                c.get_tipo_display(),  # mantém exibição amigável
                 c.is_default,
             ]
         )
 
     # Aba 3: Formas de pagamento
     ws_fp = wb.create_sheet("formas_pagamento")
-    ws_fp.append(["id", "nome"])
+    ws_fp.append(["id", "nome", "ativa"])
 
     for fp in FormaPagamento.objects.filter(usuario=usuario).order_by("id"):
         ws_fp.append(
             [
                 fp.id,
                 fp.nome,
+                fp.ativa,
             ]
         )
 
@@ -102,13 +104,41 @@ def gerar_backup_excel(usuario):
     ws_conf.append(["moeda_padrao", "ultimo_export_em"])
 
     config = ConfigUsuario.objects.filter(usuario=usuario).first()
-    if config:
-        ws_conf.append(
+    ws_conf.append(
+        [
+            config.moeda_padrao if config else "BRL",
+            config.ultimo_export_em.strftime("%Y-%m-%d %H:%M:%S")
+            if config and config.ultimo_export_em
+            else "",
+        ]
+    )
+
+    # Aba 6: Contas a pagar (NOVO MODELO)
+    ws_cp = wb.create_sheet("contas_pagar")
+    ws_cp.append(
+        [
+            "id",
+            "descricao",
+            "valor",
+            "data_vencimento",
+            "status",
+            "categoria",
+            "forma_pagamento",
+        ]
+    )
+
+    contas = ContaPagar.objects.filter(usuario=usuario).order_by("data_vencimento")
+
+    for c in contas:
+        ws_cp.append(
             [
-                config.moeda_padrao,
-                config.ultimo_export_em.strftime("%Y-%m-%d %H:%M:%S")
-                if config.ultimo_export_em
-                else "",
+                c.id,
+                c.descricao,
+                float(c.valor),
+                c.data_vencimento.strftime("%Y-%m-%d"),
+                c.status,
+                c.categoria.nome if c.categoria else "",
+                c.forma_pagamento.nome if c.forma_pagamento else "",
             ]
         )
 
@@ -117,11 +147,12 @@ def gerar_backup_excel(usuario):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    nome_arquivo = f"backup_financeiro_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    nome_arquivo = f"backup_financeiro_{usuario.username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     response["Content-Disposition"] = f'attachment; filename="{nome_arquivo}"'
 
     wb.save(response)
 
+    # Atualiza config
     if config:
         config.ultimo_export_em = datetime.now()
         config.save()

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Transações{% endblock %}
+
+{% block content %}
+
+<h1 class="text-2xl font-bold mb-6">Transações</h1>
+
+<!-- FILTROS -->
+<form method="get" class="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-800 p-4 rounded-xl mb-6">
+
+    <select name="ano" class="bg-slate-700 text-white p-3 rounded-lg">
+        <option value="">Ano</option>
+        {% for a in 2020|to:ano_atual %}
+            <option value="{{ a }}">{{ a }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="mes" class="bg-slate-700 text-white p-3 rounded-lg">
+        <option value="">Mês</option>
+        {% for m in 1|to:12 %}
+            <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="tipo" class="bg-slate-700 text-white p-3 rounded-lg">
+        <option value="">Tipo</option>
+        <option value="receita">Receita</option>
+        <option value="despesa">Despesa</option>
+    </select>
+
+    <select name="categoria" class="bg-slate-700 text-white p-3 rounded-lg">
+        <option value="">Categoria</option>
+        {% for c in categorias %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+        {% endfor %}
+    </select>
+
+    <select name="forma_pagamento" class="bg-slate-700 text-white p-3 rounded-lg">
+        <option value="">Forma Pagamento</option>
+        {% for f in formas_pagamento %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+        {% endfor %}
+    </select>
+
+    <button class="col-span-full bg-emerald-500 hover:bg-emerald-600 p-3 rounded-lg text-white font-semibold">
+        Filtrar
+    </button>
+
+</form>
+
+
+<!-- LISTAGEM DE TRANSACOES -->
+<div class="space-y-4">
+    {% for t in transacoes %}
+        <div class="bg-slate-800 p-4 rounded-xl flex justify-between items-center">
+
+            <div>
+                <p class="text-white font-semibold text-lg">
+                    {{ t.descricao }}
+                </p>
+
+                <p class="text-slate-400 text-sm">
+                    {{ t.data|date:"d/m/Y" }} • 
+                    {{ t.get_tipo_display }} • 
+                    {{ t.categoria.nome if t.categoria }}
+                </p>
+            </div>
+
+            <div class="text-right">
+                <p class="text-emerald-400 font-bold text-xl">
+                    R$ {{ t.valor }}
+                </p>
+
+                <p class="text-slate-500 text-sm">
+                    {{ t.forma_pagamento.nome if t.forma_pagamento }}
+                </p>
+            </div>
+
+        </div>
+    {% empty %}
+        <p class="text-slate-400 text-center">Nenhuma transação encontrada.</p>
+    {% endfor %}
+</div>
+
+{% endblock %}

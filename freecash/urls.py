@@ -17,18 +17,40 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
+from core.views.auth import login_view, registrar_view
+from core.views.contas import (
+    CadastrarContaPagarView,
+    ContasPagarView,
+    MarcarContaPagaView,
+)
 from core.views.dashboard import DashboardView
 from core.views.importar import ImportarView
+from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutComExportacaoView
+from core.views.transacoes import TransacoesView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
-
+2
 urlpatterns += [
-    # ... outras rotas ...
+    path("", LadingPageView.as_view(), name="lading"),
     path("logout/", LogoutComExportacaoView.as_view(), name="logout"),
+    path("login/", login_view, name="login"),
+    path("registrar/", registrar_view, name="registrar"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
+    path("contas/", ContasPagarView.as_view(), name="contas_pagar"),
+    path(
+        "contas/cadastrar/",
+        CadastrarContaPagarView.as_view(),
+        name="cadastrar_conta_pagar",
+    ),
+    path(
+        "contas/pagar/<int:conta_id>/",
+        MarcarContaPagaView.as_view(),
+        name="marcar_conta_paga",
+    ),
+    path("transacoes/", TransacoesView.as_view(), name="transacoes"),
 ]

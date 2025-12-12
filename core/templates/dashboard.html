@@ -25,6 +25,23 @@
 
 </div>
 
+<!-- SEÇÃO DE GRÁFICOS -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+
+    <!-- GRÁFICO DE STATUS DAS CONTAS -->
+    <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-lg font-semibold mb-4">Status das contas</h2>
+        <canvas id="graficoContas"></canvas>
+    </div>
+
+    <!-- GRÁFICO DE DESPESAS POR MÊS -->
+    <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-lg font-semibold mb-4">Despesas dos últimos meses</h2>
+        <canvas id="graficoMeses"></canvas>
+    </div>
+
+</div>
+
 <!-- Últimas transações -->
 <div class="bg-white shadow p-6 rounded mb-6">
     <h2 class="text-xl font-semibold mb-3">Últimas transações</h2>
@@ -78,5 +95,55 @@
         </tbody>
     </table>
 </div>
+
+
+
+<!-- SCRIPTS DOS GRÁFICOS -->
+<script>
+    // ------------ GRÁFICO DE PIZZA (DOUGHNUT) ------------
+    const ctx1 = document.getElementById('graficoContas');
+
+    new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pagas', 'Pendentes', 'Atrasadas'],
+            datasets: [{
+                data: [
+                    {{ contas_pagas }},
+                    {{ contas_pendentes }},
+                    {{ contas_atrasadas }}
+                ],
+                backgroundColor: [
+                    '#22c55e', // verde
+                    '#3b82f6', // azul
+                    '#ef4444'  // vermelho
+                ],
+            }]
+        },
+    });
+
+
+    // ------------ GRÁFICO DE BARRAS (MENSAL) ------------
+    const ctx2 = document.getElementById('graficoMeses');
+
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: {{ meses_labels|safe }},
+            datasets: [{
+                label: 'Total pago no mês (R$)',
+                data: {{ meses_totais|safe }},
+                backgroundColor: '#3b82f6',
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
 
 {% endblock %}

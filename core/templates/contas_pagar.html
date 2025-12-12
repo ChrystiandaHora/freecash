@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contas a pagar{% endblock %}
+
+{% block content %}
+
+<h1 class="text-2xl font-semibold mb-6">Contas a pagar</h1>
+
+<!-- FORMULÁRIO -->
+<div class="bg-white shadow p-6 mb-8 rounded max-w-xl">
+    <h2 class="text-xl font-semibold mb-4">Cadastrar nova conta</h2>
+
+    <form method="post" action="{% url 'cadastrar_conta_pagar' %}">
+        {% csrf_token %}
+
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">Descrição *</label>
+            <input type="text" name="descricao" class="w-full border p-2 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">Valor *</label>
+            <input type="number" step="0.01" name="valor" class="w-full border p-2 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">Data de vencimento *</label>
+            <input type="date" name="data_vencimento" class="w-full border p-2 rounded">
+        </div>
+
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">Categoria</label>
+            <select name="categoria" class="w-full border p-2 rounded">
+                <option value="">Selecione...</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">Forma de pagamento</label>
+            <select name="forma_pagamento" class="w-full border p-2 rounded">
+                <option value="">Selecione...</option>
+                {% for f in formas %}
+                <option value="{{ f.id }}">{{ f.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            Registrar conta
+        </button>
+    </form>
+</div>
+
+
+<!-- LISTA DE CONTAS PENDENTES -->
+<div class="bg-white shadow p-6 rounded mb-8">
+    <h2 class="text-xl font-semibold mb-4">Pendentes</h2>
+
+    <table class="w-full">
+        <thead>
+            <tr class="border-b">
+                <th class="py-2 text-left">Descrição</th>
+                <th class="py-2 text-left">Vencimento</th>
+                <th class="py-2 text-left">Valor</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in contas_pendentes %}
+            <tr class="border-b">
+                <td class="py-2">{{ c.descricao }}</td>
+                <td>{{ c.data_vencimento }}</td>
+                <td>R$ {{ c.valor }}</td>
+                <td>
+                    <a href="{% url 'marcar_conta_paga' c.id %}"
+                       class="text-green-600 font-medium hover:underline">
+                        Marcar como paga
+                    </a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4" class="py-4 italic text-gray-600">Nenhuma conta pendente.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+<!-- ÚLTIMAS CONTAS PAGAS -->
+<div class="bg-white shadow p-6 rounded mb-8">
+    <h2 class="text-xl font-semibold mb-4">Últimas contas pagas</h2>
+
+    <table class="w-full">
+        <thead>
+            <tr class="border-b">
+                <th class="py-2 text-left">Descrição</th>
+                <th class="py-2 text-left">Vencimento</th>
+                <th class="py-2 text-left">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in contas_pagas %}
+            <tr class="border-b">
+                <td class="py-2">{{ c.descricao }}</td>
+                <td>{{ c.data_vencimento }}</td>
+                <td>R$ {{ c.valor }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3" class="py-4 italic text-gray-600">Nenhuma conta paga.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeCash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-slate-900 text-white h-screen w-screen overflow-hidden flex items-center justify-center">
+    <div class="relative w-full h-full flex items-center justify-center">
+
+      <div class="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black opacity-80"></div>
+
+      <section class="relative z-10 max-w-xl px-12">
+        <h1 class="text-5xl font-extrabold tracking-tight mb-6">
+          FreeCash
+        </h1>
+
+        <p class="text-lg text-slate-300 leading-relaxed">
+          Um ponto único para organizar sua vida financeira. O FreeCash simplifica seu dia e traz clareza para suas decisões.
+        </p>
+      </section>
+
+      <div id="authCard" class="relative z-10 ml-20 bg-slate-800/60 p-10 rounded-2xl backdrop-blur-lg shadow-xl w-96 transition-all duration-300">
+        
+        <h2 id="formTitle" class="text-2xl font-semibold mb-6 text-center">
+          Entrar
+        </h2>
+
+        <form id="authForm" method="post" class="flex flex-col gap-5">
+          {% csrf_token %}
+
+          <input
+            id="usernameField"
+            type="text"
+            name="username"
+            placeholder="Usuário"
+            class="px-4 py-3 rounded-xl bg-slate-700 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          />
+
+          <input
+            id="passwordField"
+            type="password"
+            name="password"
+            placeholder="Senha"
+            class="px-4 py-3 rounded-xl bg-slate-700 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          />
+
+          <input
+            id="confirmField"
+            type="password"
+            name="confirm"
+            placeholder="Confirmar senha"
+            class="px-4 py-3 rounded-xl bg-slate-700 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 hidden"
+          />
+
+          <button
+            id="submitButton"
+            type="submit"
+            class="mt-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 transition rounded-xl text-lg font-semibold shadow-lg shadow-emerald-700/30"
+          >
+            Acessar conta
+          </button>
+        </form>
+
+        <button
+          id="toggleButton"
+          class="block text-center mt-6 text-emerald-400 hover:text-emerald-300 transition duration-150 w-full"
+        >
+          Criar nova conta
+        </button>
+      </div>
+
+      <div class="absolute top-10 left-10 w-28 h-28 rounded-full bg-emerald-500/20 blur-2xl"></div>
+      <div class="absolute bottom-10 right-10 w-40 h-40 rounded-full bg-emerald-400/20 blur-3xl"></div>
+    </div>
+
+    <script>
+      const toggleButton = document.getElementById("toggleButton");
+      const formTitle = document.getElementById("formTitle");
+      const confirmField = document.getElementById("confirmField");
+      const submitButton = document.getElementById("submitButton");
+
+      let isRegister = false;
+
+      toggleButton.addEventListener("click", () => {
+        isRegister = !isRegister;
+
+        if (isRegister) {
+          formTitle.textContent = "Criar conta";
+          confirmField.classList.remove("hidden");
+          submitButton.textContent = "Registrar";
+          toggleButton.textContent = "Voltar ao login";
+        } else {
+          formTitle.textContent = "Entrar";
+          confirmField.classList.add("hidden");
+          submitButton.textContent = "Acessar conta";
+          toggleButton.textContent = "Criar nova conta";
+        }
+      });
+    </script>
+
+  </body>
+</html>

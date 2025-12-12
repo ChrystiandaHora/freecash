@@ -7,6 +7,8 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-100">
@@ -19,26 +21,82 @@
     <div class="flex min-h-screen">
 
         <!-- MENU LATERAL -->
-        <aside class="w-60 bg-white shadow-lg p-4">
+        <aside class="w-64 h-screen bg-slate-900 text-slate-200 px-6 py-8 flex flex-col shadow-xl">
 
-            <nav class="space-y-2">
+            <!-- Logo -->
+            <div class="mb-10">
+                <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">
+                    FreeCash
+                </h1>
+                <p class="text-slate-500 text-sm mt-1">
+                    Controle financeiro pessoal
+                </p>
+            </div>
 
-                <a href="{% url 'dashboard' %}"
-                    class="block px-3 py-2 rounded hover:bg-blue-100 transition">
+            <!-- MENU -->
+            <nav class="flex-1 space-y-3">
+                <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
                     Dashboard
                 </a>
 
-                <a href="{% url 'importar' %}"
-                    class="block px-3 py-2 rounded hover:bg-blue-100 transition">
-                    Importar Dados
+                <a href="{% url 'contas_pagar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                    Contas a pagar
                 </a>
 
-                <a href="{% url 'logout' %}"
-                    class="block px-3 py-2 rounded hover:bg-red-100 text-red-600 transition">
-                    Exportar e Sair
+                <a href="{% url 'transacoes' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                    Transações
                 </a>
 
+                <a href="{% url 'importar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                    Importar dados
+                </a>
+
+                <a href="#" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                    Exportar backup
+                </a>
             </nav>
+
+            <!-- RODAPÉ -->
+            <div class="mt-10 pt-6 border-t border-slate-700">
+                
+                <!-- Última atualização -->
+                <div>
+                    <p class="text-xs text-slate-500 mb-1">Última atualização</p>
+
+                    <div class="flex items-center space-x-2">
+                        <span 
+                            id="atualizacao-dot"
+                            class="w-2.5 h-2.5 rounded-full bg-slate-500 transition"></span>
+
+                        <span class="text-sm text-slate-300">
+                            {% if request.user.configusuario.atualizada_em %}
+                                {{ request.user.configusuario.atualizada_em|date:"d/m/Y H:i" }}
+                            {% else %}
+                                Nunca
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Último backup -->
+                <div class="mt-4">
+                    <p class="text-xs text-slate-500 mb-1">Último backup</p>
+
+                    <span class="text-sm text-slate-300">
+                        {% if request.user.configusuario.ultimo_export_em %}
+                            {{ request.user.configusuario.ultimo_export_em|date:"d/m/Y H:i" }}
+                        {% else %}
+                            Nunca
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Logout -->
+                <a href="{% url 'logout' %}" 
+                class="mt-6 block w-full text-center py-2 rounded-lg bg-red-600 hover:bg-red-700 transition text-white font-semibold">
+                    Sair
+                </a>
+            </div>
 
         </aside>
 
@@ -49,6 +107,36 @@
         </main>
 
     </div>
+
+    <script>
+        const ultimaAtualizacao = "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!ultimaAtualizacao) return;
+
+            const dot = document.getElementById("atualizacao-dot");
+            if (!dot) return;
+
+            const agora = new Date();
+            const ultima = new Date(ultimaAtualizacao);
+            const diffMs = agora - ultima;
+            const diffMin = diffMs / 60000;
+
+            if (diffMin <= 5) {
+                dot.classList.remove("bg-slate-500");
+                dot.classList.add("bg-emerald-400");
+            } else if (diffMin <= 1440) {
+                dot.classList.remove("bg-slate-500");
+                dot.classList.add("bg-yellow-400");
+            } else {
+                dot.classList.remove("bg-slate-500");
+                dot.classList.add("bg-red-500");
+            }
+        });
+    </script>
+
+
 
 </body>
 </html>
