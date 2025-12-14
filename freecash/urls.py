@@ -25,7 +25,7 @@ from core.views.contas import (
 from core.views.dashboard import DashboardView
 from core.views.importar import ImportarView
 from core.views.lading import LadingPageView
-from core.views.logout_export import LogoutComExportacaoView
+from core.views.logout_export import LogoutView
 from core.views.transacoes import TransacoesView
 
 urlpatterns = [
@@ -35,7 +35,7 @@ urlpatterns = [
 
 urlpatterns += [
     path("", LadingPageView.as_view(), name="landing"),
-    path("logout/", LogoutComExportacaoView.as_view(), name="logout"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
     path("contas/", ContasPagarView.as_view(), name="contas_pagar"),

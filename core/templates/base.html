@@ -12,10 +12,10 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-100">
-    <div class="flex min-h-screen">
+    <div class="flex h-screen">
 
         <!-- MENU LATERAL -->
-        <aside class="w-64 h-screen bg-slate-900 text-slate-200 px-6 py-8 flex flex-col shadow-xl">
+        <aside class="w-64 bg-slate-900 text-slate-200 px-6 py-8 flex flex-col shadow-xl">
 
             <!-- Logo -->
             <div class="mb-10">
@@ -34,11 +34,15 @@
                 </a>
 
                 <a href="{% url 'contas_pagar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Contas a pagar
+                    Contas
                 </a>
 
                 <a href="{% url 'transacoes' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
                     Transações
+                </a>
+
+                <a href="#" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                    Formas de Pagamento
                 </a>
 
                 <a href="{% url 'importar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
@@ -56,15 +60,14 @@
                 <!-- Última atualização -->
                 <div>
                     <p class="text-xs text-slate-500 mb-1">Última atualização</p>
-
                     <div class="flex items-center space-x-2">
                         <span 
                             id="atualizacao-dot"
                             class="w-2.5 h-2.5 rounded-full bg-slate-500 transition"></span>
 
                         <span class="text-sm text-slate-300">
-                            {% if request.user.configusuario.atualizada_em %}
-                                {{ request.user.configusuario.atualizada_em|date:"d/m/Y H:i" }}
+                            {% if request.user.config.atualizada_em %}
+                                {{ request.user.config.atualizada_em|date:"d/m/Y H:i" }}
                             {% else %}
                                 Nunca
                             {% endif %}
@@ -77,8 +80,8 @@
                     <p class="text-xs text-slate-500 mb-1">Último backup</p>
 
                     <span class="text-sm text-slate-300">
-                        {% if request.user.configusuario.ultimo_export_em %}
-                            {{ request.user.configusuario.ultimo_export_em|date:"d/m/Y H:i" }}
+                        {% if request.user.config.ultimo_export_em %}
+                            {{ request.user.config.ultimo_export_em|date:"d/m/Y H:i" }}
                         {% else %}
                             Nunca
                         {% endif %}
@@ -95,7 +98,7 @@
         </aside>
 
         <!-- ÁREA PRINCIPAL -->
-        <main class="flex-1 p-6">
+        <main class="flex-1 p-6 overflow-y-auto">
             {% block content %}
             {% endblock %}
         </main>

@@ -12,21 +12,21 @@ def criar_usuario_com_ecosistema(username, senha):
     # Categorias padrão
     Categoria.objects.create(
         usuario=usuario,
-        nome="Receita agregada",
+        nome="Receita",
         tipo=Categoria.TIPO_RECEITA,
         is_default=True,
     )
 
     Categoria.objects.create(
         usuario=usuario,
-        nome="Outras receitas agregadas",
+        nome="Outras Receitas",
         tipo=Categoria.TIPO_RECEITA,
         is_default=True,
     )
 
     Categoria.objects.create(
         usuario=usuario,
-        nome="Gastos agregados",
+        nome="Gastos",
         tipo=Categoria.TIPO_DESPESA,
         is_default=True,
     )

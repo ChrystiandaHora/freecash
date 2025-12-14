@@ -98,4 +98,8 @@ class DashboardView(View):
             "meses_totais": meses_totais,
         }
 
+        print(
+            f"/n/nrequest.user.config.atualizada_em :{request.user.config.atualizada_em}"
+        )
+
         return render(request, self.template_name, contexto)

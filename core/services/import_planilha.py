@@ -42,19 +42,19 @@ def get_or_create_categorias_legado(usuario):
 
     categorias["RECEITA"], _ = Categoria.objects.get_or_create(
         usuario=usuario,
-        nome="Receita agregada",
+        nome="Receita",
         defaults={"tipo": Categoria.TIPO_RECEITA, "is_default": True},
     )
 
     categorias["OUTRAS RECEITAS"], _ = Categoria.objects.get_or_create(
         usuario=usuario,
-        nome="Outras receitas agregadas",
+        nome="Outras Receitas",
         defaults={"tipo": Categoria.TIPO_RECEITA, "is_default": True},
     )
 
     categorias["GASTOS"], _ = Categoria.objects.get_or_create(
         usuario=usuario,
-        nome="Gastos agregados",
+        nome="Gastos",
         defaults={"tipo": Categoria.TIPO_DESPESA, "is_default": True},
     )
 
@@ -125,7 +125,7 @@ def importar_planilha_excel(caminho_arquivo, usuario):
                     tipo=Transacao.TIPO_RECEITA,
                     data=date(ano, numero_mes, 1),
                     valor=receita,
-                    descricao="Receita agregada",
+                    descricao="Receita",
                     categoria=categorias["RECEITA"],
                     is_legacy=True,
                     origem_ano=ano,
@@ -139,7 +139,7 @@ def importar_planilha_excel(caminho_arquivo, usuario):
                     tipo=Transacao.TIPO_RECEITA,
                     data=date(ano, numero_mes, 1),
                     valor=outras,
-                    descricao="Outras receitas agregadas",
+                    descricao="Outras Receitas",
                     categoria=categorias["OUTRAS RECEITAS"],
                     is_legacy=True,
                     origem_ano=ano,
@@ -153,7 +153,7 @@ def importar_planilha_excel(caminho_arquivo, usuario):
                     tipo=Transacao.TIPO_DESPESA,
                     data=date(ano, numero_mes, 1),
                     valor=gastos,
-                    descricao="Gastos agregados",
+                    descricao="Gastos",
                     categoria=categorias["GASTOS"],
                     is_legacy=True,
                     origem_ano=ano,
