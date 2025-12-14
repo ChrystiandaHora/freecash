@@ -1,82 +1,86 @@
 # FreeCash
 
-Aplicação Django para controle financeiro pessoal. O projeto oferece um painel simples para acompanhar receitas, despesas e saldo do mês, além de ferramentas para importar dados históricos provenientes de planilhas legadas e exportar um backup completo em Excel no momento do logout.
+FreeCash é uma aplicação em Django para controle financeiro pessoal. O sistema traz onboarding direto na landing page, painel com gráficos alimentados por dados reais, fluxo de contas a pagar e ferramentas de importação/exportação em planilhas Excel.
 
-## Tecnologias e dependências principais
-- Python 3.11+
-- Django 4.2.27
-- PostgreSQL 13+ (configurado em `freecash/settings.py`)
-- Pandas (importação de planilhas legadas)
-- OpenPyXL (geração de planilhas de backup)
-- `psycopg2-binary` ou equivalente para conectar no PostgreSQL
+## Principais recursos
+- **Landing page com login e registro** (`core/views/lading.py` + `core/templates/ladingPage.html`): cria usuários e automaticamente provisiona configurações/categorias padrão via `core/services/criar_usuario.py`.
+- **Dashboard financeiro responsivo** (`core/views/dashboard.py`): consolida receitas, despesas e saldo do mês, últimas transações, resumo trimestral e gráficos (doughnut + barras) com Chart.js.
+- **Gestão de contas a pagar** (`core/views/contas.py`): cadastro, listagem de pendentes/pagas e botão para "marcar como paga", que gera a transação de despesa correspondente.
+- **Listagem e filtros de transações** (`core/views/transacoes.py`): filtros por ano, mês, tipo, categoria e forma de pagamento com resultados ordenados por data.
+- **Importação unificada** (`core/views/importar.py` + `core/services/importar_unificado.py`): aceita backups modernos (`core/services/exportar_planilha.py`) ou planilhas legadas por ano, salvando logs em `LogImportacao`.
+- **Exportação/backup completo** (`core/services/exportar_planilha.py`): gera XLSX com transações, categorias, formas de pagamento, resumos mensais, contas a pagar e configurações do usuário.
 
-## Funcionalidades em destaque
-- **Dashboard financeiro** (`/dashboard/`): mostra totais de receitas e despesas do mês atual, saldo consolidado, últimas transações e um resumo dos três últimos meses (`core/views/dashboard.py` + `core/templates/dashboard.html`).
-- **Modelagem financeira** (`core/models.py`): categorias por tipo (receita/despesa), formas de pagamento, transações detalhadas, resumos mensais herdados de planilhas e configurações do usuário.
-- **Importação de planilhas legadas** (`core/services/import_planilha.py`): converte abas com anos (ex.: 2024, 2025) para registros de resumo e transações artificiais, preservando a origem (linha/mês) nos campos `origem_*`.
-- **Exportação automatizada** (`core/services/exportar_planilha.py` + `core/views/logout_export.py`): gera um XLSX com transações, categorias, formas de pagamento, resumos e configurações, enviado como download ao fazer logout.
-- **Autenticação padrão Django**: todas as rotas protegidas usam `login_required`, e o `LOGIN_REDIRECT_URL` foi definido para o dashboard.
+## Stack e dependências
+- Python 3.11 e Django 4.2
+- PostgreSQL (configurado em `freecash/settings.py`)
+- `pandas`, `openpyxl`, `xlrd` para importação/exportação
+- `python-dotenv` para carregar o `.env`
+- Tailwind CDN e Chart.js nos templates
 
-## Estrutura do projeto
+As versões exatas estão em `requirements.txt`.
+
+## Estrutura
 ```text
 freecash/
 ├── core/
-│   ├── models.py            # Modelos financeiros (Categorias, Transações, etc.)
-│   ├── services/            # Importação/exportação de planilhas
-│   ├── templates/           # Dashboard HTML
-│   └── views/               # Dashboard e logout com exportação
-├── freecash/                # Configurações e roteamento do Django
+│   ├── models.py             # Categorias, transações, contas a pagar, resumos, configs e logs
+│   ├── services/             # Importar/exportar planilhas e criação de usuário padrão
+│   ├── templates/            # Landing page, dashboard e telas internas
+│   └── views/                # Views baseadas em classe para cada fluxo
+├── freecash/                 # Configurações e roteamento do Django
+├── docker-compose.yml        # Ambiente Docker (web + PostgreSQL)
+├── Dockerfile.web / .postgres
+├── requirements.txt
 └── manage.py
 ```
 
-## Pré-requisitos
-1. Python 3.11 ou superior instalado e disponível no PATH.
-2. PostgreSQL em execução local com um banco criado (`freecash_db`) e usuário com permissão (padrão: `postgres/postgres`).
-3. Virtualenv recomendado para isolar dependências.
+## Variáveis de ambiente
+Use o modelo e adapte conforme o ambiente:
+```bash
+cp .env_example .env
+```
+Campos disponíveis:
 
-## Configuração e execução local
+| Variável | Função |
+| --- | --- |
+| `DB_NAME`, `DB_USER`, `DB_PASS` | Credenciais do PostgreSQL |
+| `DB_HOST`, `DB_PORT` | Host/porta (ex.: `postgres` quando usa Docker) |
+
+O `python-dotenv` é carregado no `settings.py`, logo `.env` na raiz já é lido.
+
+## Executando localmente (sem Docker)
 ```bash
 python -m venv .venv
-source .venv/bin/activate           # Windows: .venv\Scripts\activate
-pip install django==4.2.27 pandas openpyxl psycopg2-binary
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-# Ajuste DATABASES se necessário em freecash/settings.py
+cp .env_example .env               # ajuste valores para seu banco
 python manage.py migrate
-python manage.py createsuperuser    # cria credenciais para acessar /admin e o dashboard
 python manage.py runserver
 ```
-Depois de logado, acesse `http://127.0.0.1:8000/dashboard/` para visualizar os indicadores financeiros.
+Acesse `http://127.0.0.1:8000/`. A landing page permite criar um usuário (que já recebe categorias padrão) ou fazer login. Para acessar o Django Admin crie um superusuário com `python manage.py createsuperuser`.
 
-## Importação de planilhas legadas
-O serviço `importar_planilha_excel` lê planilhas em que cada aba representa um ano e as linhas "Receita", "Outras Receitas" e "Gastos" contêm os valores mensais. Para importar:
+## Executando com Docker Compose
 ```bash
-python manage.py shell
+cp .env_example .env               # personalize usuário/senha do banco
+docker compose up --build
 ```
-```python
-from core.services.import_planilha import importar_planilha_excel
-from django.contrib.auth import get_user_model
-usuario = get_user_model().objects.get(email="seu-email@example.com")
-importar_planilha_excel("/caminho/planilha.xlsx", usuario)
-exit()
-```
-As transações criadas são marcadas com `is_legacy=True` e campos `origem_*`, facilitando filtros e exclusões futuras.
+O container `web` executa `makemigrations`, `migrate` e sobe o servidor em `http://localhost:8000`, enquanto `postgres` mantém os dados em `postgres_data`.
 
-## Exportação e backup
-Ao acessar `/logout/`, a view `LogoutComExportacaoView` gera automaticamente um XLSX com:
-1. Transações ordenadas cronologicamente;
-2. Categorias, formas de pagamento e resumos mensais;
-3. Configurações do usuário.
-O arquivo já vem nomeado com timestamp e o campo `ConfigUsuario.ultimo_export_em` é atualizado para auditoria.
+## Importação e exportação
+- **Exportar:** acesse `/exportar/` autenticado ou envie `POST /exportar/`. O arquivo recebe timestamp no nome e atualiza `ConfigUsuario.ultimo_export_em`.
+- **Importar:** em `/importar/` faça upload de um `.xlsx`. O serviço `importar_planilha_unificada` detecta se o arquivo é um backup moderno (abas `transacoes`, `categorias`, etc.) ou planilha legado (abas nomeadas pelo ano com linhas "Receita/Outras Receitas/Gastos"). Toda tentativa gera registro em `LogImportacao`.
+- **Uso direto via shell:** também é possível chamar `importar_backup_excel`, `importar_planilha_excel` ou `importar_planilha_unificada` pelo `python manage.py shell`.
 
 ## Testes
-Ainda não há testes automatizados implementados, mas o comando padrão está pronto:
+Ainda não há cobertura total, mas o comando já está disponível:
 ```bash
 python manage.py test core
 ```
-Priorize a criação de testes para serviços de importação/exportação e para a view do dashboard.
+Priorize cenários para importação/exportação e fluxos críticos de contas a pagar.
 
 ## Próximos passos sugeridos
-1. Criar um `requirements.txt` ou `pyproject.toml` para padronizar dependências.
-2. Adicionar rotas CRUD para categorias, formas de pagamento e transações (ou expor via Django Admin).
-3. Substituir a configuração de banco hard-coded por variáveis de ambiente.
-4. Criar testes unitários para garantir que importações/exportações mantenham integridade dos dados.
+1. Completar o CRUD de formas de pagamento (atualmente a página exibe apenas o layout).
+2. Persistir e exibir o histórico de importações na tela `importar.html`.
+3. Adicionar paginação/estado selecionado aos filtros de transações.
+4. Automatizar a exportação durante o logout (a view `LogoutView` hoje apenas redireciona para a landing page).
