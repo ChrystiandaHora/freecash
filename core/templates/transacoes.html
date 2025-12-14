@@ -10,14 +10,14 @@
 
     <select name="ano" class="bg-slate-700 text-white p-3 rounded-lg">
         <option value="">Ano</option>
-        {% for a in 2020|to:ano_atual %}
+        {% for a in anos %}
             <option value="{{ a }}">{{ a }}</option>
         {% endfor %}
     </select>
 
     <select name="mes" class="bg-slate-700 text-white p-3 rounded-lg">
         <option value="">Mês</option>
-        {% for m in 1|to:12 %}
+        {% for m in meses %}
             <option value="{{ m }}">{{ m }}</option>
         {% endfor %}
     </select>
@@ -62,7 +62,11 @@
                 <p class="text-slate-400 text-sm">
                     {{ t.data|date:"d/m/Y" }} • 
                     {{ t.get_tipo_display }} • 
-                    {{ t.categoria.nome if t.categoria }}
+                    {% if t.categoria %}
+                        {{ t.categoria.nome }}
+                    {% else %}
+                        —
+                    {% endif %}
                 </p>
             </div>
 
@@ -72,7 +76,11 @@
                 </p>
 
                 <p class="text-slate-500 text-sm">
-                    {{ t.forma_pagamento.nome if t.forma_pagamento }}
+                    {% if t.forma_pagamento %}
+                        {{ t.forma_pagamento.nome }}
+                    {% else %}
+                        —
+                    {% endif %}
                 </p>
             </div>
 

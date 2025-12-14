@@ -17,7 +17,6 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from core.views.auth import login_view, registrar_view
 from core.views.contas import (
     CadastrarContaPagarView,
     ContasPagarView,
@@ -33,12 +32,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
-2
+
 urlpatterns += [
-    path("", LadingPageView.as_view(), name="lading"),
+    path("", LadingPageView.as_view(), name="landing"),
     path("logout/", LogoutComExportacaoView.as_view(), name="logout"),
-    path("login/", login_view, name="login"),
-    path("registrar/", registrar_view, name="registrar"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
     path("contas/", ContasPagarView.as_view(), name="contas_pagar"),

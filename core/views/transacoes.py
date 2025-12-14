@@ -40,13 +40,26 @@ class TransacoesView(View):
         if forma_pagamento:
             transacoes = transacoes.filter(forma_pagamento_id=forma_pagamento)
 
+        # ---- Dados para os filtros (SELECTs) ----
+        ano_atual = date.today().year
+
+        anos = list(range(2020, ano_atual + 1))
+        meses = list(range(1, 13))
+
         contexto = {
             "transacoes": transacoes,
-            # para preencher selects nos filtros:
+            # filtros
             "categorias": Categoria.objects.filter(usuario=usuario),
             "formas_pagamento": FormaPagamento.objects.filter(usuario=usuario),
-            "ano_atual": date.today().year,
-            "mes_atual": date.today().month,
+            # selects
+            "anos": anos,
+            "meses": meses,
+            # manter valores atuais (opcional, para selected)
+            "ano_selecionado": ano,
+            "mes_selecionado": mes,
+            "tipo_selecionado": tipo,
+            "categoria_selecionada": categoria,
+            "forma_selecionada": forma_pagamento,
         }
 
         return render(request, self.template_name, contexto)

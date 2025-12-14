@@ -22,6 +22,8 @@ class LadingPageView(View):
         # ----- Detecta se é login ou registro -----
         is_register = bool(confirm)  # se confirm veio preenchido, é registro
 
+        print(f"is_register: {is_register}")
+
         if not username or not password:
             messages.error(request, "Preencha usuário e senha.")
             return redirect("landing")
@@ -55,10 +57,12 @@ class LadingPageView(View):
         # LOGIN NORMAL
         # ------------------------------------------
         user = authenticate(request, username=username, password=password)
+        print(f"Usuário autenticado: {user}")
 
         if user is None:
             messages.error(request, "Usuário ou senha incorretos.")
             return redirect("landing")
 
+        print(f"Usuário {username} autenticado com sucesso.")
         login(request, user)
         return redirect("dashboard")

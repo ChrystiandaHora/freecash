@@ -1,0 +1,51 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    image: freecash/postgres:1.0
+    container_name: freecash_postgres
+    restart: always
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+      build:
+        context: .
+        dockerfile: Dockerfile.web
+      image: freecash/django:1.0
+      container_name: freecash_web
+
+      env_file:
+        - .env
+
+      ports:
+        - "8000:8000"
+
+      volumes:
+        - .:/app
+
+      depends_on:
+        - postgres
+
+      command: >
+        sh -c "
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+        "
+
+volumes:
+  postgres_data:
