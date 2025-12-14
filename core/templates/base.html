@@ -1,8 +1,7 @@
-<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Meu Financeiro{% endblock %}</title>
+    <title>{% block title %}FreeCash{% endblock %}</title>
 
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -41,7 +40,7 @@
                     Transações
                 </a>
 
-                <a href="#" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
+                <a href="{% url 'formas_pagamento' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
                     Formas de Pagamento
                 </a>
 

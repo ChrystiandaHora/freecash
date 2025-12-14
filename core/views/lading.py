@@ -18,6 +18,7 @@ class LadingPageView(View):
         username = request.POST.get("username")
         password = request.POST.get("password")
         confirm = request.POST.get("confirm")
+        request.session["last_username"] = username
 
         # ----- Detecta se é login ou registro -----
         is_register = bool(confirm)  # se confirm veio preenchido, é registro
