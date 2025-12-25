@@ -23,7 +23,7 @@ from core.views.contas import (
     MarcarContaPagaView,
 )
 from core.views.dashboard import DashboardView
-from core.views.formas_pagamento import FormasPagamentoView
+from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagamentoView
 from core.views.importar import ImportarView
 from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutView
@@ -42,6 +42,11 @@ urlpatterns += [
     path("contas/", ContasPagarView.as_view(), name="contas_pagar"),
     path(
         "formas-de-pagamento/", FormasPagamentoView.as_view(), name="formas_pagamento"
+    ),
+    path(
+        "formas-de-pagamento/<int:pk>/editar/",
+        EditarFormaPagamentoView.as_view(),
+        name="editar_forma_pagamento",
     ),
     path(
         "contas/cadastrar/",

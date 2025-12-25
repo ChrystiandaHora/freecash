@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Editar forma de pagamento</h1>
+      <p class="text-sm text-gray-500">Atualize o nome e o status da forma de pagamento.</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="{% url 'formas_pagamento' %}"
+         class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        Voltar
+      </a>
+    </div>
+  </div>
+
+  {% if messages %}
+    <div class="space-y-3">
+      {% for msg in messages %}
+        {% if msg.tags == "success" %}
+          <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ msg }}</div>
+        {% elif msg.tags == "error" %}
+          <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ msg }}</div>
+        {% else %}
+          <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">{{ msg }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Nome *</label>
+        <input type="text"
+               name="nome"
+               value="{{ forma.nome }}"
+               required
+               class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+      </div>
+
+      <div class="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+        <div>
+          <p class="text-sm font-semibold text-gray-900">Ativa</p>
+          <p class="text-xs text-gray-500">Se desativar, ela não aparece para seleção em novos lançamentos.</p>
+        </div>
+
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="ativa" class="h-4 w-4" {% if forma.ativa %}checked{% endif %}>
+          <span class="text-sm text-gray-700">Sim</span>
+        </label>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+        <a href="{% url 'formas_pagamento' %}"
+           class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          Cancelar
+        </a>
+
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+          Salvar alterações
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -196,5 +196,5 @@ class DashboardView(View):
             "contas_atrasadas": total_atrasadas,
             "upcoming_bills": upcoming_bills,
         }
-        print(f"Contexto: {contexto}")
+
         return render(request, self.template_name, contexto)
