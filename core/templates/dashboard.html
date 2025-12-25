@@ -1,147 +1,481 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1 class="text-2xl font-bold mb-6">Dashboard Financeira</h1>
+{# JSON seguro #}
+{{ meses_labels|json_script:"mesesLabels" }}
+{{ receitas_6m|json_script:"receitas6m" }}
+{{ despesas_6m|json_script:"despesas6m" }}
 
-<!-- Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<div class="space-y-6">
 
-    <div class="bg-white shadow p-4 rounded">
-        <h2 class="text-lg font-semibold">Receitas do mês</h2>
-        <p class="text-green-600 text-2xl font-bold">R$ {{ total_receitas|floatformat:2 }}</p>
+  <!-- Top 3 small cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+      <p class="text-sm text-gray-500">Receitas do mês</p>
+      <p class="mt-1 text-2xl font-bold text-gray-900">R$ {{ total_receitas|floatformat:2 }}</p>
+      <div class="mt-2">
+        {% if receitas_pct != None %}
+          {% if receitas_pct >= 0 %}
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+              +{{ receitas_pct|floatformat:1 }}% vs mês anterior
+            </span>
+          {% else %}
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">
+              {{ receitas_pct|floatformat:1 }}% vs mês anterior
+            </span>
+          {% endif %}
+        {% else %}
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+            sem base para comparação
+          </span>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="bg-white shadow p-4 rounded">
-        <h2 class="text-lg font-semibold">Despesas do mês</h2>
-        <p class="text-red-600 text-2xl font-bold">R$ {{ total_despesas|floatformat:2 }}</p>
+    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+      <p class="text-sm text-gray-500">Despesas do mês</p>
+      <p class="mt-1 text-2xl font-bold text-gray-900">R$ {{ total_despesas|floatformat:2 }}</p>
+      <div class="mt-2">
+        {% if despesas_pct != None %}
+          {% if despesas_pct <= 0 %}
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+              {{ despesas_pct|floatformat:1 }}% vs mês anterior
+            </span>
+          {% else %}
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">
+              +{{ despesas_pct|floatformat:1 }}% vs mês anterior
+            </span>
+          {% endif %}
+        {% else %}
+          <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+            sem base para comparação
+          </span>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="bg-white shadow p-4 rounded">
-        <h2 class="text-lg font-semibold">Saldo do mês</h2>
-        <p class="text-blue-600 text-2xl font-bold">R$ {{ saldo_mes|floatformat:2 }}</p>
+    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+      <p class="text-sm text-gray-500">Saldo do mês</p>
+      <p class="mt-1 text-2xl font-bold text-gray-900">R$ {{ saldo_mes|floatformat:2 }}</p>
+      <p class="mt-2 text-xs text-gray-500">Receitas menos despesas (mês atual)</p>
     </div>
 
+  </div>
+
+  <!-- Main grid like the print -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left: main content -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Row 1: two overview cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Visão geral dos ganhos -->
+        <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-semibold text-gray-800">Visão geral dos ganhos</h2>
+              <span class="text-gray-400 cursor-help" title="Receitas ao longo dos últimos 6 meses">ⓘ</span>
+            </div>
+            <select class="text-sm border border-gray-200 rounded-lg px-3 py-1 bg-white">
+              <option>Este mês</option>
+            </select>
+          </div>
+
+          <div class="mt-3 flex items-center gap-3">
+            <p class="text-3xl font-bold text-gray-900">R$ {{ total_receitas|floatformat:2 }}</p>
+            {% if receitas_pct != None %}
+              {% if receitas_pct >= 0 %}
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  +{{ receitas_pct|floatformat:1 }}%
+                </span>
+              {% else %}
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                  {{ receitas_pct|floatformat:1 }}%
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">sem base</span>
+            {% endif %}
+          </div>
+
+          <div class="mt-4 h-40">
+            <canvas id="chartReceitas"></canvas>
+          </div>
+        </div>
+
+        <!-- Visão geral dos gastos -->
+        <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-semibold text-gray-800">Visão geral dos gastos</h2>
+              <span class="text-gray-400 cursor-help" title="Despesas e distribuição por categoria no mês">ⓘ</span>
+            </div>
+            <select class="text-sm border border-gray-200 rounded-lg px-3 py-1 bg-white">
+              <option>Este mês</option>
+            </select>
+          </div>
+
+          <div class="mt-3 flex items-center gap-3">
+            <p class="text-3xl font-bold text-gray-900">R$ {{ total_despesas|floatformat:2 }}</p>
+            {% if despesas_pct != None %}
+              {% if despesas_pct <= 0 %}
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  {{ despesas_pct|floatformat:1 }}%
+                </span>
+              {% else %}
+                <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                  +{{ despesas_pct|floatformat:1 }}%
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">sem base</span>
+            {% endif %}
+          </div>
+
+          <div class="mt-5">
+            <p class="text-sm font-semibold text-gray-700 mb-3">Discriminação das despesas</p>
+
+            <div class="flex flex-wrap gap-4 text-xs text-gray-700">
+              {% for item in breakdown_items|slice:":3" %}
+                <div class="flex items-center gap-2">
+                  <span class="inline-block w-2 h-2 rounded-full bg-orange-500"></span>
+                  <span class="font-semibold">{{ item.nome }}</span>
+                  <span class="text-gray-500">R$ {{ item.valor|floatformat:2 }}</span>
+                </div>
+              {% empty %}
+                <span class="text-gray-500">Sem dados de categorias no mês.</span>
+              {% endfor %}
+            </div>
+
+            <div class="mt-3 h-8 rounded-lg bg-gray-100 overflow-hidden flex">
+              {% for item in breakdown_items %}
+                <div
+                  class="{% if forloop.counter0 == 0 %}bg-orange-600{% elif forloop.counter0 == 1 %}bg-orange-400{% elif forloop.counter0 == 2 %}bg-orange-300{% else %}bg-gray-300{% endif %}"
+                  style="width: {{ item.pct|floatformat:2 }}%">
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="mt-4 h-24">
+              <canvas id="chartDespesasMini"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 2: Fluxo de caixa -->
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-gray-800">Fluxo de caixa</h2>
+            <span class="text-gray-400 cursor-help" title="Comparação mensal nos últimos 6 meses">ⓘ</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnIncome" class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-900 text-white">Renda</button>
+            <button id="btnExpense" class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">Despesa</button>
+            <button id="btnSavings" class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">Poupança</button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <p class="text-3xl font-bold text-gray-900">R$ {{ saldo_mes|floatformat:2 }}</p>
+          <p class="text-xs text-gray-500">Saldo do mês atual</p>
+        </div>
+
+        <div class="mt-4 h-56">
+          <canvas id="graficoMeses"></canvas>
+        </div>
+      </div>
+
+      <!-- Row 3: Transação recentes -->
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-800">Transação recente</h2>
+          <button class="text-xs font-semibold px-3 py-1 rounded-lg border border-gray-200 text-gray-700">Filtro</button>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b text-xs text-gray-500">
+                <th class="py-2 font-semibold">Data</th>
+                <th class="py-2 font-semibold">Tipo</th>
+                <th class="py-2 font-semibold">Valor</th>
+                <th class="py-2 font-semibold">Descrição</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm">
+              {% for t in ultimas_transacoes %}
+              <tr class="border-b">
+                <td class="py-3 text-gray-700">{{ t.data|date:"d/m/Y" }}</td>
+                <td class="py-3 text-gray-700">{{ t.get_tipo_display }}</td>
+                <td class="py-3 font-semibold text-gray-900">R$ {{ t.valor|floatformat:2 }}</td>
+                <td class="py-3 text-gray-700">{{ t.descricao }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td class="py-3 text-gray-500" colspan="4">Sem transações recentes.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: side content -->
+    <div class="space-y-6">
+
+      <!-- Próximas contas e pagamentos -->
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-800">Próximas contas e pagamentos</h2>
+          <button class="w-9 h-9 rounded-xl border border-gray-200 text-gray-700 text-lg leading-none">+</button>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          {% for c in upcoming_bills %}
+            <div class="border border-gray-100 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-semibold text-gray-900">{{ c.descricao }}</p>
+                <p class="text-xs text-gray-500">{{ c.data_vencimento|date:"d/m/Y" }}</p>
+                {% if c.categoria %}
+                  <p class="text-xs text-gray-500">{{ c.categoria.nome }}</p>
+                {% endif %}
+              </div>
+
+              <div class="text-right">
+                <p class="text-sm font-bold text-gray-900">R$ {{ c.valor|floatformat:2 }}</p>
+                <span class="inline-block mt-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                  Programado
+                </span>
+              </div>
+            </div>
+          {% empty %}
+            <p class="text-sm text-gray-500">Nenhuma conta pendente futura.</p>
+          {% endfor %}
+        </div>
+
+        <button class="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold py-2 rounded-xl">
+          Ver tudo
+        </button>
+      </div>
+
+      <!-- Status das contas -->
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+        <h2 class="text-sm font-semibold text-gray-800 mb-4">Status das contas</h2>
+        <div class="h-56">
+          <canvas id="graficoContas"></canvas>
+        </div>
+      </div>
+
+      <!-- Resumo 3 meses -->
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+        <h2 class="text-sm font-semibold text-gray-800 mb-4">Resumo dos últimos 3 meses</h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b text-xs text-gray-500">
+                <th class="py-2 font-semibold">Mês</th>
+                <th class="py-2 font-semibold">Receita</th>
+                <th class="py-2 font-semibold">Outras</th>
+                <th class="py-2 font-semibold">Gastos</th>
+                <th class="py-2 font-semibold">Total</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm">
+              {% for r in resumo_3_meses %}
+              <tr class="border-b">
+                <td class="py-3 text-gray-700">{{ r.mes }}/{{ r.ano }}</td>
+                <td class="py-3 text-gray-700">R$ {{ r.receita|floatformat:2 }}</td>
+                <td class="py-3 text-gray-700">R$ {{ r.outras_receitas|floatformat:2 }}</td>
+                <td class="py-3 text-gray-700">R$ {{ r.gastos|floatformat:2 }}</td>
+                <td class="py-3 font-semibold text-gray-900">R$ {{ r.total|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td class="py-3 text-gray-500" colspan="5">Sem resumo.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
 </div>
 
-<!-- SEÇÃO DE GRÁFICOS -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-
-    <!-- GRÁFICO DE STATUS DAS CONTAS -->
-    <div class="bg-white p-6 rounded shadow">
-        <h2 class="text-lg font-semibold mb-4">Status das contas</h2>
-        <canvas id="graficoContas"></canvas>
-    </div>
-
-    <!-- GRÁFICO DE DESPESAS POR MÊS -->
-    <div class="bg-white p-6 rounded shadow">
-        <h2 class="text-lg font-semibold mb-4">Despesas dos últimos meses</h2>
-        <canvas id="graficoMeses"></canvas>
-    </div>
-
-</div>
-
-<!-- Últimas transações -->
-<div class="bg-white shadow p-6 rounded mb-6">
-    <h2 class="text-xl font-semibold mb-3">Últimas transações</h2>
-
-    <table class="w-full text-left border-collapse">
-        <thead>
-            <tr class="border-b">
-                <th class="py-2">Data</th>
-                <th class="py-2">Tipo</th>
-                <th class="py-2">Valor</th>
-                <th class="py-2">Descrição</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t in ultimas_transacoes %}
-            <tr class="border-b">
-                <td class="py-2">{{ t.data }}</td>
-                <td>{{ t.get_tipo_display }}</td>
-                <td>R$ {{ t.valor|floatformat:2 }}</td>
-                <td>{{ t.descricao }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<!-- Resumo 3 meses -->
-<div class="bg-white shadow p-6 rounded">
-    <h2 class="text-xl font-semibold mb-3">Resumo dos últimos 3 meses</h2>
-
-    <table class="w-full text-left border-collapse">
-        <thead>
-            <tr class="border-b">
-                <th class="py-2">Mês</th>
-                <th class="py-2">Receita</th>
-                <th class="py-2">Outras receitas</th>
-                <th class="py-2">Gastos</th>
-                <th class="py-2">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in resumo_3_meses %}
-            <tr class="border-b">
-                <td class="py-2">{{ r.mes }}/{{ r.ano }}</td>
-                <td>R$ {{ r.receita|floatformat:2 }}</td>
-                <td>R$ {{ r.outras_receitas|floatformat:2 }}</td>
-                <td>R$ {{ r.gastos|floatformat:2 }}</td>
-                <td>R$ {{ r.total|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-
-
-<!-- SCRIPTS DOS GRÁFICOS -->
 <script>
-    // ------------ GRÁFICO DE PIZZA (DOUGHNUT) ------------
-    const ctx1 = document.getElementById('graficoContas');
+  const mesesLabels = JSON.parse(document.getElementById("mesesLabels").textContent);
+  const receitas6m = JSON.parse(document.getElementById("receitas6m").textContent);
+  const despesas6m = JSON.parse(document.getElementById("despesas6m").textContent);
 
-    new Chart(ctx1, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pagas', 'Pendentes', 'Atrasadas'],
-            datasets: [{
-                data: [
-                    {{ contas_pagas }},
-                    {{ contas_pendentes }},
-                    {{ contas_atrasadas }}
-                ],
-                backgroundColor: [
-                    '#22c55e', // verde
-                    '#3b82f6', // azul
-                    '#ef4444'  // vermelho
-                ],
-            }]
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+  function makeGradient(ctx, rgbaTop, rgbaBottom) {
+    const g = ctx.createLinearGradient(0, 0, 0, 180);
+    g.addColorStop(0, rgbaTop);
+    g.addColorStop(1, rgbaBottom);
+    return g;
+  }
+
+  function makeMiniLine(canvasId, dataArr, borderColor, fillTop, fillBottom) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    const bg = makeGradient(ctx, fillTop, fillBottom);
+
+    return new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: mesesLabels,
+        datasets: [{
+          data: dataArr,
+          tension: 0.35,
+          borderColor,
+          backgroundColor: bg,
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => brl.format(ctx.parsed.y || 0)
+            }
+          }
         },
+        scales: {
+          x: { display: false, grid: { display: false } },
+          y: { display: false, grid: { display: false } }
+        }
+      }
     });
+  }
 
+  // Mini charts (overview)
+  makeMiniLine("chartReceitas", receitas6m, "#16a34a", "rgba(34,197,94,0.22)", "rgba(34,197,94,0)");
+  makeMiniLine("chartDespesasMini", despesas6m, "#f97316", "rgba(249,115,22,0.20)", "rgba(249,115,22,0)");
 
-    // ------------ GRÁFICO DE BARRAS (MENSAL) ------------
-    const ctx2 = document.getElementById('graficoMeses');
+  // Donut status contas
+  new Chart(document.getElementById("graficoContas"), {
+    type: "doughnut",
+    data: {
+      labels: ["Pagas", "Pendentes", "Atrasadas"],
+      datasets: [{
+        data: [{{ contas_pagas }}, {{ contas_pendentes }}, {{ contas_atrasadas }}],
+        backgroundColor: ["#22c55e", "#3b82f6", "#ef4444"],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" }
+      },
+      cutout: "70%"
+    }
+  });
 
-    new Chart(ctx2, {
-        type: 'bar',
+  // Fluxo de caixa chart with toggle (Income / Expense / Savings)
+  const savings6m = receitas6m.map((v, i) => (v || 0) - (despesas6m[i] || 0));
+
+    const cashFlowChart = new Chart(document.getElementById("graficoMeses"), {
+    type: "bar",
         data: {
-            labels: {{ meses_labels|safe }},
-            datasets: [{
-                label: 'Total pago no mês (R$)',
-                data: {{ meses_totais|safe }},
-                backgroundColor: '#3b82f6',
-            }]
+            labels: mesesLabels,
+            datasets: [
+            {
+                label: "Receita",
+                data: receitas6m,
+                backgroundColor: "#16a34a",
+                borderWidth: 0
+            },
+            {
+                label: "Gasto",
+                data: despesas6m,
+                backgroundColor: "#ef4444",
+                borderWidth: 0
+            },
+            {
+                label: "Poupança",
+                data: savings6m,
+                backgroundColor: "#3b82f6",
+                borderWidth: 0
+            }
+            ]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+            legend: { position: "top" },
+            tooltip: {
+                callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${brl.format(ctx.parsed.y || 0)}`
+                }
+            }
+            },
             scales: {
-                y: { beginAtZero: true }
+            x: {
+                grid: { display: false },
+                ticks: { maxRotation: 0 }
+            },
+            y: {
+                beginAtZero: true,
+                ticks: { callback: (v) => brl.format(v) }
+            }
             }
         }
     });
-</script>
 
+  function setActive(btn) {
+    [btnIncome, btnExpense, btnSavings].forEach(b => {
+      b.classList.remove("bg-gray-900", "text-white");
+      b.classList.add("bg-gray-100", "text-gray-700");
+    });
+    btn.classList.remove("bg-gray-100", "text-gray-700");
+    btn.classList.add("bg-gray-900", "text-white");
+  }
+
+  const btnIncome = document.getElementById("btnIncome");
+  const btnExpense = document.getElementById("btnExpense");
+  const btnSavings = document.getElementById("btnSavings");
+
+  btnIncome.addEventListener("click", () => {
+    setActive(btnIncome);
+    cashFlowChart.data.datasets[0].label = "Income";
+    cashFlowChart.data.datasets[0].data = receitas6m;
+    cashFlowChart.update();
+  });
+
+  btnExpense.addEventListener("click", () => {
+    setActive(btnExpense);
+    cashFlowChart.data.datasets[0].label = "Expense";
+    cashFlowChart.data.datasets[0].data = despesas6m;
+    cashFlowChart.update();
+  });
+
+  btnSavings.addEventListener("click", () => {
+    setActive(btnSavings);
+    cashFlowChart.data.datasets[0].label = "Savings";
+    cashFlowChart.data.datasets[0].data = savings6m;
+    cashFlowChart.update();
+  });
+</script>
 
 {% endblock %}

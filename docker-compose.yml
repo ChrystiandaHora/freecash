@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile.postgres
     image: freecash/postgres:1.0
     container_name: freecash_postgres
-    restart: always
+    restart: no
 
     env_file:
       - .env
