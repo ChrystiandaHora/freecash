@@ -27,6 +27,7 @@ from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagament
 from core.views.importar import ImportarView
 from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutView
+from core.views.receitas import ReceitasView
 from core.views.transacoes import TransacoesView
 
 urlpatterns = [
@@ -59,4 +60,5 @@ urlpatterns += [
         name="marcar_conta_paga",
     ),
     path("transacoes/", TransacoesView.as_view(), name="transacoes"),
+    path("receitas/", ReceitasView.as_view(), name="receitas"),
 ]
