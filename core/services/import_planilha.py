@@ -1,16 +1,12 @@
-import pandas as pd
+import re
+import calendar
 from datetime import date
-from django.db import transaction
-from django.conf import settings
+from decimal import Decimal, InvalidOperation
+import pandas as pd
 
-from core.models import (
-    Categoria,
-    ConfigUsuario,
-    ContaPagar,
-    FormaPagamento,
-    ResumoMensal,
-    Transacao,
-)
+from django.db import transaction
+
+from core.models import ContaPagar, ResumoMensal, Transacao, FormaPagamento, Categoria
 
 
 MESES_MAP = {
@@ -29,259 +25,372 @@ MESES_MAP = {
     "DEZEMBRO": 12,
 }
 
+SECOES = {"FIXOS EU", "FIXOS CASA", "CARTAO"}
+IGNORAR_LINHAS = {"SUB-TOTAL", "TOTAL", "", None}
 
-LINHAS_MAP = {
-    "RECEITA": "receita",
-    "OUTRAS RECEITAS": "outras_receitas",
-    "GASTOS": "gastos",
-}
+# ---- Formas padrão (padronização do legado) ----
+FP_PIX = "PIX"
+FP_BOLETO = "Boleto"
+FP_CREDITO = "Cartão de Crédito"
+FP_DEBITO = "Cartão de Débito"
 
 
-def get_or_create_categorias_legado(usuario):
-    categorias = {}
+def get_or_create_formas_padrao(usuario):
+    """
+    Garante que existam as 4 formas padrões.
+    Retorna dict com os objetos.
+    """
+    formas = {}
+    for nome in [FP_PIX, FP_BOLETO, FP_CREDITO, FP_DEBITO]:
+        obj, _ = FormaPagamento.objects.get_or_create(
+            usuario=usuario,
+            nome=nome,
+            defaults={"ativa": True},
+        )
+        if not obj.ativa:
+            obj.ativa = True
+            obj.save(update_fields=["ativa"])
+        formas[nome] = obj
+    return formas
 
-    categorias["RECEITA"], _ = Categoria.objects.get_or_create(
+
+def inferir_forma_pagamento(desc: str, secao: str, is_receita: bool, formas_padrao):
+    """
+    Decide a forma de pagamento baseada em:
+    - secao do excel
+    - palavras-chave no texto
+    - fallback diferente para receita vs conta
+    """
+    texto = (desc or "").strip().upper()
+    sec = (secao or "").strip().upper()
+
+    # regra forte pela seção
+    if sec == "CARTAO":
+        return formas_padrao[FP_CREDITO]
+
+    # palavras-chave no texto
+    if "PIX" in texto:
+        return formas_padrao[FP_PIX]
+    if "BOLETO" in texto:
+        return formas_padrao[FP_BOLETO]
+    if "DEBITO" in texto or "DÉBITO" in texto:
+        return formas_padrao[FP_DEBITO]
+    if "CREDITO" in texto or "CRÉDITO" in texto:
+        return formas_padrao[FP_CREDITO]
+
+    # fallback
+    if is_receita:
+        return formas_padrao[FP_PIX]
+    return formas_padrao[FP_BOLETO]
+
+
+# ---- helpers de parsing ----
+def parse_brl(value) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    try:
+        if pd.isna(value):
+            return Decimal("0")
+    except Exception:
+        pass
+
+    if isinstance(value, (int, float, Decimal)):
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return Decimal("0")
+
+    s = str(value).strip()
+    if not s:
+        return Decimal("0")
+
+    s = s.replace("R$", "").strip()
+    s = s.replace(".", "").replace(",", ".")
+    s = re.sub(r"[^0-9\.\-]", "", s)
+
+    if s in {"", ".", "-"}:
+        return Decimal("0")
+
+    try:
+        return Decimal(s)
+    except InvalidOperation:
+        return Decimal("0")
+
+
+def detectar_header_meses(row_values) -> dict[int, int]:
+    col_map = {}
+    for idx, cell in enumerate(row_values):
+        if cell is None:
+            continue
+        nome = str(cell).strip().upper()
+        if nome in MESES_MAP:
+            col_map[idx] = MESES_MAP[nome]
+    return col_map if len(col_map) >= 6 else {}
+
+
+def extrair_dia_vencimento(texto: str) -> int | None:
+    if not texto:
+        return None
+    m = re.search(r"\bd\s*/\s*(\d{1,2})\b", texto, flags=re.IGNORECASE)
+    if not m:
+        return None
+    d = int(m.group(1))
+    return d if 1 <= d <= 31 else None
+
+
+def limpar_descricao(texto: str) -> str:
+    if not texto:
+        return ""
+    return re.sub(
+        r"\s*\bd\s*/\s*\d{1,2}\b", "", str(texto), flags=re.IGNORECASE
+    ).strip()
+
+
+def ajustar_dia(ano: int, mes: int, dia: int) -> int:
+    ultimo = calendar.monthrange(ano, mes)[1]
+    return min(max(dia, 1), ultimo)
+
+
+# ---- categorias padrão ----
+def get_or_create_categorias_padrao(usuario):
+    cat_receita, _ = Categoria.objects.get_or_create(
         usuario=usuario,
         nome="Receita",
         defaults={"tipo": Categoria.TIPO_RECEITA, "is_default": True},
     )
-
-    categorias["OUTRAS RECEITAS"], _ = Categoria.objects.get_or_create(
-        usuario=usuario,
-        nome="Outras Receitas",
-        defaults={"tipo": Categoria.TIPO_RECEITA, "is_default": True},
-    )
-
-    categorias["GASTOS"], _ = Categoria.objects.get_or_create(
+    cat_gastos, _ = Categoria.objects.get_or_create(
         usuario=usuario,
         nome="Gastos",
         defaults={"tipo": Categoria.TIPO_DESPESA, "is_default": True},
     )
+    cat_invest, _ = Categoria.objects.get_or_create(
+        usuario=usuario,
+        nome="Investimento",
+        defaults={"tipo": Categoria.TIPO_DESPESA, "is_default": True},
+    )
+    return {"RECEITA": cat_receita, "GASTOS": cat_gastos, "INVESTIMENTO": cat_invest}
 
-    return categorias
+
+def escolher_categoria_despesa(desc_limpa: str, categorias_padrao):
+    s = (desc_limpa or "").strip().upper()
+    if "INVEST" in s:
+        return categorias_padrao["INVESTIMENTO"]
+    return categorias_padrao["GASTOS"]
 
 
 @transaction.atomic
-def importar_planilha_excel(caminho_arquivo, usuario):
-    xls = pd.ExcelFile(caminho_arquivo)
+def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
+    """
+    Regras:
+    1) Importa linhas 'RECEITA' do topo como Transacao (tipo Receita)
+    2) Ignora linha 'GASTOS' do topo
+    3) Cada linha em FIXOS EU/CASA/CARTAO vira ContaPagar
+    4) Se a ContaPagar estiver paga (vencimento no passado), cria Transacao (tipo Despesa)
+    5) Categoria sempre uma de: Receita, Gastos, Investimento
+    6) FormaPagamento padronizada: PIX, Boleto, Cartão de Crédito, Cartão de Débito
+    """
 
-    categorias = get_or_create_categorias_legado(usuario)
+    if sobrescrever:
+        Transacao.objects.filter(usuario=usuario).delete()
+        ContaPagar.objects.filter(usuario=usuario).delete()
+        ResumoMensal.objects.filter(usuario=usuario).delete()
+        # opcional: não apago as formas/categorias, porque são "padrão" do usuário
+
+    cats = get_or_create_categorias_padrao(usuario)
+    formas_padrao = get_or_create_formas_padrao(usuario)
+
+    xls = pd.ExcelFile(arquivo)
+    hoje = date.today()
 
     for aba in xls.sheet_names:
-        ano = int(aba)  # abas são 2024 e 2025
-        df = pd.read_excel(caminho_arquivo, sheet_name=aba)
+        if not str(aba).strip().isdigit():
+            continue
+        ano = int(str(aba).strip())
 
-        # Renomeia a primeira coluna
-        df = df.rename(columns={df.columns[0]: "linha"})
+        df = pd.read_excel(arquivo, sheet_name=aba, header=None, dtype=object)
+        df = (
+            df.dropna(axis=1, how="all")
+            .dropna(axis=0, how="all")
+            .reset_index(drop=True)
+        )
 
-        # Garante remoção de colunas vazias herdadas do Excel
-        df = df.dropna(axis=1, how="all")
+        secao = "RESUMO"
+        meses_col_map = {}
 
-        # Garante remoção de linhas vazias
-        df = df.dropna(subset=["linha"], how="all")
+        # para o ResumoMensal
+        receita_por_mes = {m: Decimal("0") for m in range(1, 13)}
+        gasto_por_mes = {m: Decimal("0") for m in range(1, 13)}
 
-        # Normaliza nome das linhas
-        df["linha"] = df["linha"].str.strip().str.upper()
+        receita_idx = 0
 
-        # Agora precisamos pegar RECEITA, OUTRAS RECEITAS, GASTOS
-        dados_linhas = {
-            "RECEITA": df[df["linha"] == "RECEITA"].iloc[0],
-            "OUTRAS RECEITAS": df[df["linha"] == "OUTRAS RECEITAS"].iloc[0],
-            "GASTOS": df[df["linha"] == "GASTOS"].iloc[0],
-        }
+        for i in range(len(df)):
+            row = df.iloc[i].tolist()
+            primeira = row[0] if row else None
+            linha = str(primeira).strip().upper() if primeira is not None else ""
 
-        # Para cada mês existente nas colunas
-        for col in df.columns[1:]:
-            nome_mes = str(col).strip().upper()
-
-            if nome_mes not in MESES_MAP:
+            header = detectar_header_meses(row)
+            if header:
+                meses_col_map = header
+                if linha in SECOES:
+                    secao = linha
                 continue
 
-            numero_mes = MESES_MAP[nome_mes]
+            if not meses_col_map:
+                continue
 
-            receita = float(dados_linhas["RECEITA"][col] or 0)
-            outras = float(dados_linhas["OUTRAS RECEITAS"][col] or 0)
-            gastos = float(dados_linhas["GASTOS"][col] or 0)
-            total = receita + outras - gastos
+            if linha in IGNORAR_LINHAS:
+                continue
+            if linha in SECOES:
+                secao = linha
+                continue
+            if "SUB-TOTAL" in linha or linha == "TOTAL":
+                continue
 
-            # Salva resumo mensal
-            resumo, created = ResumoMensal.objects.update_or_create(
+            # -------------- TOPO: RECEITAS --------------
+            if secao == "RESUMO":
+                if linha == "RECEITA":
+                    receita_idx += 1
+                    desc = f"Receita {receita_idx}"
+
+                    # forma padrão para receita: inferência + fallback PIX
+                    forma_receita = inferir_forma_pagamento(
+                        desc=desc,
+                        secao=secao,
+                        is_receita=True,
+                        formas_padrao=formas_padrao,
+                    )
+
+                    for col_idx, mes_num in meses_col_map.items():
+                        valor = parse_brl(row[col_idx] if col_idx < len(row) else None)
+                        if valor <= 0:
+                            continue
+
+                        # evita duplicar transação legado pela origem
+                        origem = f"RECEITA_{receita_idx}"
+                        existe = Transacao.objects.filter(
+                            usuario=usuario,
+                            is_legacy=True,
+                            origem_ano=ano,
+                            origem_mes=mes_num,
+                            origem_linha=origem,
+                        ).exists()
+                        if existe:
+                            receita_por_mes[mes_num] += valor
+                            continue
+
+                        Transacao.objects.create(
+                            usuario=usuario,
+                            tipo=Transacao.TIPO_RECEITA,
+                            data=date(ano, mes_num, 1),
+                            valor=valor,
+                            descricao=desc,
+                            categoria=cats["RECEITA"],
+                            forma_pagamento=forma_receita,
+                            is_legacy=True,
+                            origem_ano=ano,
+                            origem_mes=mes_num,
+                            origem_linha=origem,
+                        )
+
+                        receita_por_mes[mes_num] += valor
+
+                # Ignora completamente 'GASTOS' do topo e qualquer outro no resumo
+                continue
+
+            # -------------- SEÇÕES: CONTAS --------------
+            desc_original = str(primeira).strip()
+            desc_limpa = limpar_descricao(desc_original)
+            dia_venc = extrair_dia_vencimento(desc_original) or 1
+
+            # categoria padronizada
+            categoria = escolher_categoria_despesa(desc_limpa, cats)
+
+            # forma de pagamento PADRONIZADA (PIX/Boleto/Crédito/Débito)
+            forma_pagamento = inferir_forma_pagamento(
+                desc=desc_limpa,
+                secao=secao,
+                is_receita=False,
+                formas_padrao=formas_padrao,
+            )
+
+            for col_idx, mes_num in meses_col_map.items():
+                valor = parse_brl(row[col_idx] if col_idx < len(row) else None)
+                if valor <= 0:
+                    continue
+
+                dia_ok = ajustar_dia(ano, mes_num, dia_venc)
+                venc = date(ano, mes_num, dia_ok)
+
+                status = (
+                    ContaPagar.STATUS_PAGO
+                    if venc < hoje
+                    else ContaPagar.STATUS_PENDENTE
+                )
+
+                # evita duplicar contas
+                conta, created = ContaPagar.objects.get_or_create(
+                    usuario=usuario,
+                    descricao=desc_limpa,
+                    data_vencimento=venc,
+                    valor=valor,
+                    defaults={
+                        "status": status,
+                        "categoria": categoria,
+                        "forma_pagamento": forma_pagamento,
+                    },
+                )
+                if not created:
+                    conta.status = status
+                    conta.categoria = categoria
+                    conta.forma_pagamento = forma_pagamento
+                    conta.save()
+
+                gasto_por_mes[mes_num] += valor
+
+                # Se está pago, cria Transacao (Despesa) correspondente
+                if status == ContaPagar.STATUS_PAGO:
+                    origem = f"CONTA:{secao}:{desc_limpa}"
+                    existe = Transacao.objects.filter(
+                        usuario=usuario,
+                        is_legacy=True,
+                        origem_ano=ano,
+                        origem_mes=mes_num,
+                        origem_linha=origem,
+                    ).exists()
+
+                    if not existe:
+                        Transacao.objects.create(
+                            usuario=usuario,
+                            tipo=Transacao.TIPO_DESPESA,
+                            data=venc,
+                            valor=valor,
+                            descricao=desc_limpa,
+                            categoria=categoria,
+                            forma_pagamento=forma_pagamento,
+                            is_legacy=True,
+                            origem_ano=ano,
+                            origem_mes=mes_num,
+                            origem_linha=origem,
+                        )
+
+        # -------------- ResumoMensal --------------
+        for mes_num in range(1, 13):
+            rec = receita_por_mes[mes_num]
+            gas = gasto_por_mes[mes_num]
+            if rec == 0 and gas == 0:
+                continue
+
+            ResumoMensal.objects.update_or_create(
                 usuario=usuario,
                 ano=ano,
-                mes=numero_mes,
+                mes=mes_num,
                 defaults={
-                    "receita": receita,
-                    "outras_receitas": outras,
-                    "gastos": gastos,
-                    "total": total,
+                    "receita": rec,
+                    "outras_receitas": Decimal("0"),
+                    "gastos": gas,
+                    "total": rec - gas,
                     "is_legacy": True,
                 },
             )
-
-            # Cria transações artificiais por linha
-            if receita > 0:
-                Transacao.objects.create(
-                    usuario=usuario,
-                    tipo=Transacao.TIPO_RECEITA,
-                    data=date(ano, numero_mes, 1),
-                    valor=receita,
-                    descricao="Receita",
-                    categoria=categorias["RECEITA"],
-                    is_legacy=True,
-                    origem_ano=ano,
-                    origem_mes=numero_mes,
-                    origem_linha="RECEITA",
-                )
-
-            if outras > 0:
-                Transacao.objects.create(
-                    usuario=usuario,
-                    tipo=Transacao.TIPO_RECEITA,
-                    data=date(ano, numero_mes, 1),
-                    valor=outras,
-                    descricao="Outras Receitas",
-                    categoria=categorias["OUTRAS RECEITAS"],
-                    is_legacy=True,
-                    origem_ano=ano,
-                    origem_mes=numero_mes,
-                    origem_linha="OUTRAS RECEITAS",
-                )
-
-            if gastos > 0:
-                Transacao.objects.create(
-                    usuario=usuario,
-                    tipo=Transacao.TIPO_DESPESA,
-                    data=date(ano, numero_mes, 1),
-                    valor=gastos,
-                    descricao="Gastos",
-                    categoria=categorias["GASTOS"],
-                    is_legacy=True,
-                    origem_ano=ano,
-                    origem_mes=numero_mes,
-                    origem_linha="GASTOS",
-                )
-
-    return True
-
-
-@transaction.atomic
-def importar_backup_excel(arquivo, usuario):
-    xls = pd.ExcelFile(arquivo)
-
-    # ---------- Aba: categorias ----------
-    if "categorias" in xls.sheet_names:
-        df_cat = pd.read_excel(arquivo, sheet_name="categorias")
-        for _, row in df_cat.iterrows():
-            Categoria.objects.update_or_create(
-                usuario=usuario,
-                nome=row["nome"],
-                defaults={
-                    "tipo": row.get("tipo", Categoria.TIPO_AMBOS),
-                    "is_default": bool(row.get("is_default", False)),
-                },
-            )
-
-    # ---------- Aba: formas_pagamento ----------
-    if "formas_pagamento" in xls.sheet_names:
-        df_fp = pd.read_excel(arquivo, sheet_name="formas_pagamento")
-        for _, row in df_fp.iterrows():
-            FormaPagamento.objects.update_or_create(
-                usuario=usuario,
-                nome=row["nome"],
-                defaults={
-                    "ativa": bool(row.get("ativa", True)),
-                },
-            )
-
-    # ---------- Aba: transacoes ----------
-    if "transacoes" in xls.sheet_names:
-        df_trans = pd.read_excel(arquivo, sheet_name="transacoes")
-        for _, row in df_trans.iterrows():
-            categoria = None
-            forma = None
-
-            if row.get("categoria"):
-                categoria = Categoria.objects.filter(
-                    usuario=usuario, nome=row["categoria"]
-                ).first()
-
-            if row.get("forma_pagamento"):
-                forma = FormaPagamento.objects.filter(
-                    usuario=usuario, nome=row["forma_pagamento"]
-                ).first()
-
-            Transacao.objects.create(
-                usuario=usuario,
-                data=pd.to_datetime(row["data"]).date(),
-                tipo=Transacao.TIPO_RECEITA
-                if row["tipo"] == "Receita"
-                else Transacao.TIPO_DESPESA,
-                valor=float(row["valor"]),
-                descricao=row.get("descricao", ""),
-                categoria=categoria,
-                forma_pagamento=forma,
-                is_legacy=bool(row.get("is_legacy", False)),
-                origem_ano=row.get("origem_ano"),
-                origem_mes=row.get("origem_mes"),
-                origem_linha=row.get("origem_linha"),
-            )
-
-    # ---------- Aba: contas_pagar ----------
-    if "contas_pagar" in xls.sheet_names:
-        df_cp = pd.read_excel(arquivo, sheet_name="contas_pagar")
-        for _, row in df_cp.iterrows():
-            categoria = None
-            forma = None
-
-            if row.get("categoria"):
-                categoria = Categoria.objects.filter(
-                    usuario=usuario, nome=row["categoria"]
-                ).first()
-
-            if row.get("forma_pagamento"):
-                forma = FormaPagamento.objects.filter(
-                    usuario=usuario, nome=row["forma_pagamento"]
-                ).first()
-
-            ContaPagar.objects.create(
-                usuario=usuario,
-                descricao=row["descricao"],
-                valor=float(row["valor"]),
-                data_vencimento=pd.to_datetime(row["data_vencimento"]).date(),
-                status=row["status"],
-                categoria=categoria,
-                forma_pagamento=forma,
-            )
-
-    # ---------- Aba: resumo_mensal ----------
-    if "resumo_mensal" in xls.sheet_names:
-        df_rm = pd.read_excel(arquivo, sheet_name="resumo_mensal")
-        for _, row in df_rm.iterrows():
-            ResumoMensal.objects.update_or_create(
-                usuario=usuario,
-                ano=int(row["ano"]),
-                mes=int(row["mes"]),
-                defaults={
-                    "receita": float(row["receita"]),
-                    "outras_receitas": float(row["outras_receitas"]),
-                    "gastos": float(row["gastos"]),
-                    "total": float(row["total"]),
-                    "is_legacy": False,
-                },
-            )
-
-    # ---------- Aba: config_usuario ----------
-    if "config_usuario" in xls.sheet_names:
-        df_conf = pd.read_excel(arquivo, sheet_name="config_usuario")
-        if not df_conf.empty:
-            row = df_conf.iloc[0]
-            config, _ = ConfigUsuario.objects.get_or_create(usuario=usuario)
-            config.moeda_padrao = row.get("moeda_padrao", "BRL")
-            config.ultimo_export_em = (
-                pd.to_datetime(row.get("ultimo_export_em"))
-                if row.get("ultimo_export_em")
-                else None
-            )
-            config.save()
 
     return True

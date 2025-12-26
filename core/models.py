@@ -7,20 +7,19 @@ from django.contrib.auth.models import User
 class Categoria(models.Model):
     TIPO_RECEITA = "R"
     TIPO_DESPESA = "D"
-    TIPO_AMBOS = "A"
+    TIPO_INVESTIMENTO = "I"
 
     TIPO_CHOICES = (
         (TIPO_RECEITA, "Receita"),
         (TIPO_DESPESA, "Despesa"),
-        (TIPO_AMBOS, "Ambos"),
+        (TIPO_INVESTIMENTO, "Investimento"),
     )
-
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="categorias"
     )
 
     nome = models.CharField(max_length=100)
-    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES, default=TIPO_AMBOS)
+    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES)
     is_default = models.BooleanField(default=False)
 
     criada_em = models.DateTimeField(auto_now_add=True)
@@ -57,12 +56,13 @@ class FormaPagamento(models.Model):
 class Transacao(models.Model):
     TIPO_RECEITA = "R"
     TIPO_DESPESA = "D"
+    TIPO_INVESTIMENTO = "I"
 
     TIPO_CHOICES = (
         (TIPO_RECEITA, "Receita"),
         (TIPO_DESPESA, "Despesa"),
+        (TIPO_INVESTIMENTO, "Investimento"),
     )
-
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transacoes"
     )

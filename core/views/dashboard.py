@@ -20,6 +20,9 @@ class DashboardView(View):
         hoje = date.today()
 
         inicio_mes = hoje.replace(day=1)
+        inicio_proximo_mes = (
+            inicio_mes.replace(day=28) + relativedelta(days=4)
+        ).replace(day=1)
         inicio_janela = inicio_mes - relativedelta(
             months=5
         )  # 6 meses incluindo o atual
@@ -154,7 +157,11 @@ class DashboardView(View):
             breakdown_items.append({"nome": "Outros", "valor": 0, "pct": 0})
 
         # Donut de contas a pagar (seu atual)
-        contas = ContaPagar.objects.filter(usuario=usuario)
+        contas = ContaPagar.objects.filter(
+            usuario=usuario,
+            data_vencimento__gte=inicio_mes,
+            data_vencimento__lt=inicio_proximo_mes,
+        )
         total_pendentes = contas.filter(status=ContaPagar.STATUS_PENDENTE).count()
         total_pagas = contas.filter(status=ContaPagar.STATUS_PAGO).count()
         total_atrasadas = contas.filter(

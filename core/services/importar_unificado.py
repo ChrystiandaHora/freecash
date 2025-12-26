@@ -1,7 +1,9 @@
 import pandas as pd
 from django.db import transaction
 from core.models import LogImportacao
-from core.services.import_planilha import importar_backup_excel, importar_planilha_excel
+from core.services.import_planilha import (
+    importar_planilha_legado_padrao,
+)
 
 
 def eh_backup_moderno(xls: pd.ExcelFile) -> bool:
@@ -34,21 +36,9 @@ def importar_planilha_unificada(arquivo, usuario):
     xls = pd.ExcelFile(arquivo)
 
     try:
-        # É backup moderno?
-        if eh_backup_moderno(xls):
-            importar_backup_excel(arquivo, usuario)
-
-            LogImportacao.objects.create(
-                usuario=usuario,
-                tipo=LogImportacao.TIPO_BACKUP,
-                sucesso=True,
-                mensagem="Backup restaurado com sucesso.",
-            )
-            return True
-
         # É planilha legado?
         if eh_planilha_legado(xls):
-            importar_planilha_excel(arquivo, usuario)
+            importar_planilha_legado_padrao(arquivo, usuario)
 
             LogImportacao.objects.create(
                 usuario=usuario,
