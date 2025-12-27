@@ -6,6 +6,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     {% load static %}
     <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css" >
 
   </head>
 
@@ -45,21 +46,13 @@
               "
               >
               {% if msg.tags == "success" %}
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 01.006 1.414l-7.2 7.28a1 1 0 01-1.42.005L3.29 9.18a1 1 0 011.42-1.41l3.09 3.11 6.49-6.56a1 1 0 011.414-.006z" clip-rule="evenodd"/>
-                  </svg>
+                  <i class="fa-solid fa-circle-check text-emerald-400 text-[20px]" aria-hidden="true"></i>
               {% elif msg.tags == "error" %}
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm2.707-10.707a1 1 0 00-1.414-1.414L10 7.172 8.707 5.879A1 1 0 007.293 7.293L8.586 8.586 7.293 9.879a1 1 0 101.414 1.414L10 10l1.293 1.293a1 1 0 001.414-1.414L11.414 8.586l1.293-1.293z" clip-rule="evenodd"/>
-                  </svg>
+                  <i class="fa-solid fa-circle-xmark text-red-400 text-[20px]" aria-hidden="true"></i>
               {% elif msg.tags == "warning" %}
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l6.518 11.59c.75 1.334-.214 2.99-1.742 2.99H3.48c-1.528 0-2.492-1.656-1.742-2.99l6.519-11.59zM11 14a1 1 0 10-2 0 1 1 0 002 0zm-1-8a1 1 0 00-1 1v4a1 1 0 102 0V7a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                  </svg>
+                  <i class="fa-solid fa-triangle-exclamation text-yellow-400 text-[20px]" aria-hidden="true"></i>
               {% else %}
-                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-1 1v1a1 1 0 102 0V8a1 1 0 00-1-1zm0 4a1 1 0 00-1 1v1a1 1 0 102 0v-1a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                  </svg>
+                  <i class="fa-solid fa-circle-info text-sky-400 text-[20px]" aria-hidden="true"></i>
               {% endif %}
               </div>
 
@@ -96,9 +89,7 @@
               class="toast-close -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
               aria-label="Fechar"
               >
-              <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-              </svg>
+                <i class="fa-solid fa-xmark text-[20px]" aria-hidden="true"></i>
               </button>
           </div>
           {% endfor %}
