@@ -45,7 +45,9 @@ class ReceitasView(View):
         # combos para selects
         categorias = (
             Categoria.objects.filter(usuario=usuario)
-            .filter(Q(tipo=Categoria.TIPO_RECEITA) | Q(tipo=Categoria.TIPO_DESPESA))
+            .filter(
+                Q(tipo=Categoria.TIPO_RECEITA) | Q(tipo=Categoria.TIPO_INVESTIMENTO)
+            )
             .order_by("nome")
         )
 
