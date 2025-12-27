@@ -24,7 +24,11 @@ class ContasPagarView(View):
             usuario=usuario, status=ContaPagar.STATUS_PAGO
         ).order_by("-data_vencimento")[:10]
 
-        categorias = Categoria.objects.filter(usuario=usuario).order_by("nome")
+        categorias = (
+            Categoria.objects.filter(usuario=usuario)
+            .exclude(tipo=Categoria.TIPO_RECEITA)
+            .order_by("nome")
+        )
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
 
         contexto = {
@@ -101,7 +105,7 @@ class MarcarContaPagaView(View):
         # 2. Cria a transação real
         Transacao.objects.create(
             usuario=usuario,
-            tipo=Transacao.TIPO_DESPESA,
+            tipo=conta.categoria.tipo,
             valor=conta.valor,
             data=date.today(),
             categoria=conta.categoria,

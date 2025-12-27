@@ -24,6 +24,13 @@ def criar_usuario_com_ecosistema(username, senha):
         is_default=True,
     )
 
+    Categoria.objects.create(
+        usuario=usuario,
+        nome="Investimento",
+        tipo=Categoria.TIPO_INVESTIMENTO,
+        is_default=True,
+    )
+
     FormaPagamento.objects.create(
         usuario=usuario,
         nome="PIX",
