@@ -17,20 +17,6 @@
     </div>
   </div>
 
-  {% if messages %}
-    <div class="space-y-3">
-      {% for msg in messages %}
-        {% if msg.tags == "success" %}
-          <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ msg }}</div>
-        {% elif msg.tags == "error" %}
-          <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ msg }}</div>
-        {% else %}
-          <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">{{ msg }}</div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  {% endif %}
-
   <!-- Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
