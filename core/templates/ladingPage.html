@@ -4,6 +4,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FreeCash</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    {% load static %}
+    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}">
+
   </head>
 
   <body class="bg-slate-900 text-white h-screen w-screen overflow-hidden flex items-center justify-center">
@@ -12,9 +15,17 @@
       <div class="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-900 to-black opacity-80"></div>
 
       <section class="relative z-10 max-w-xl px-12">
-        <h1 class="text-5xl font-extrabold text-emerald-400 tracking-tight mb-6">
-          FreeCash
-        </h1>
+        <div class="flex items-center gap-5">
+          <h1 class="text-5xl font-extrabold text-emerald-400 tracking-tight">
+            FreeCash
+          </h1>
+
+          <img
+            src="{% static 'freecash/Icon.png' %}"
+            alt="FreeCash"
+            class="w-[128px] h-[128px]"
+          >
+        </div>
 
         <p class="text-lg text-slate-300 leading-relaxed">
           Um ponto único para organizar sua vida financeira. O FreeCash simplifica seu dia e traz clareza para suas decisões.

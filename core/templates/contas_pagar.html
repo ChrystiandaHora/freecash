@@ -7,7 +7,7 @@
   <!-- Header -->
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <h1 class="text-2xl font-semibold text-gray-900">Contas a pagar</h1>
+      <h1 class="text-2xl font-semibold text-gray-900">Contas</h1>
       <p class="text-sm text-gray-500">Cadastre contas, acompanhe vencimentos e marque pagamentos.</p>
     </div>
 
@@ -108,7 +108,7 @@
     <div class="lg:col-span-2 space-y-6">
 
       <!-- Pendentes -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div id="pendentes" class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100">
           <div class="flex items-center justify-between gap-4">
             <div>
@@ -117,7 +117,7 @@
             </div>
 
             <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-              {{ contas_pendentes|length }} em aberto
+              {{ pendentes_page.paginator.count }} em aberto
             </span>
           </div>
         </div>
@@ -135,7 +135,7 @@
             </thead>
 
             <tbody class="divide-y divide-gray-100 text-sm">
-              {% for c in contas_pendentes %}
+              {% for c in pendentes_page %}
                 <tr class="hover:bg-gray-50">
                   <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900">{{ c.descricao }}</div>
@@ -174,10 +174,104 @@
             </tbody>
           </table>
         </div>
+
+        {% if pendentes_page.paginator.num_pages > 1 %}
+        <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <div class="flex flex-1 justify-between sm:hidden">
+            {% if pendentes_page.has_previous %}
+              <a href="?{% if pendentes_qs %}{{ pendentes_qs }}&{% endif %}page_pendentes={{ pendentes_page.previous_page_number }}#pendentes"
+                 class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Anterior
+              </a>
+            {% else %}
+              <span class="relative inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400">
+                Anterior
+              </span>
+            {% endif %}
+
+            {% if pendentes_page.has_next %}
+              <a href="?{% if pendentes_qs %}{{ pendentes_qs }}&{% endif %}page_pendentes={{ pendentes_page.next_page_number }}#pendentes"
+                 class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Próxima
+              </a>
+            {% else %}
+              <span class="relative ml-3 inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400">
+                Próxima
+              </span>
+            {% endif %}
+          </div>
+
+          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Mostrando
+                <span class="font-medium">{{ pendentes_page.start_index }}</span>
+                até
+                <span class="font-medium">{{ pendentes_page.end_index }}</span>
+                de
+                <span class="font-medium">{{ pendentes_page.paginator.count }}</span>
+                resultados
+              </p>
+            </div>
+
+            <div>
+              <nav aria-label="Paginação pendentes" class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                {% if pendentes_page.has_previous %}
+                  <a href="?{% if pendentes_qs %}{{ pendentes_qs }}&{% endif %}page_pendentes={{ pendentes_page.previous_page_number }}#pendentes"
+                     class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-500 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                    <span class="sr-only">Anterior</span>
+                    ‹
+                  </a>
+                {% else %}
+                  <span class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200">
+                    ‹
+                  </span>
+                {% endif %}
+
+                {% for num in pendentes_page.paginator.page_range %}
+                  {% if num == 1 or num == pendentes_page.paginator.num_pages or num >= pendentes_page.number|add:"-1" and num <= pendentes_page.number|add:"1" %}
+                    {% if num == pendentes_page.number %}
+                      <span aria-current="page"
+                            class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-gray-900">
+                        {{ num }}
+                      </span>
+                    {% else %}
+                      <a href="?{% if pendentes_qs %}{{ pendentes_qs }}&{% endif %}page_pendentes={{ num }}#pendentes"
+                         class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                        {{ num }}
+                      </a>
+                    {% endif %}
+                  {% elif num == 2 and pendentes_page.number > 3 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                      ...
+                    </span>
+                  {% elif num == pendentes_page.paginator.num_pages|add:"-1" and pendentes_page.number < pendentes_page.paginator.num_pages|add:"-2" %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                      ...
+                    </span>
+                  {% endif %}
+                {% endfor %}
+
+                {% if pendentes_page.has_next %}
+                  <a href="?{% if pendentes_qs %}{{ pendentes_qs }}&{% endif %}page_pendentes={{ pendentes_page.next_page_number }}#pendentes"
+                     class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-500 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                    <span class="sr-only">Próxima</span>
+                    ›
+                  </a>
+                {% else %}
+                  <span class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200">
+                    ›
+                  </span>
+                {% endif %}
+              </nav>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       </div>
 
       <!-- Últimas pagas -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div id="pagas" class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100">
           <div class="flex items-center justify-between gap-4">
             <div>
@@ -186,7 +280,7 @@
             </div>
 
             <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-              {{ contas_pagas|length }} pagas
+              {{ pagas_page.paginator.count }} pagas
             </span>
           </div>
         </div>
@@ -203,7 +297,7 @@
             </thead>
 
             <tbody class="divide-y divide-gray-100 text-sm">
-              {% for c in contas_pagas %}
+              {% for c in pagas_page %}
                 <tr class="hover:bg-gray-50">
                   <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900">{{ c.descricao }}</div>
@@ -235,6 +329,100 @@
             </tbody>
           </table>
         </div>
+
+        {% if pagas_page.paginator.num_pages > 1 %}
+        <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <div class="flex flex-1 justify-between sm:hidden">
+            {% if pagas_page.has_previous %}
+              <a href="?{% if pagas_qs %}{{ pagas_qs }}&{% endif %}page_pagas={{ pagas_page.previous_page_number }}#pagas"
+                 class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Anterior
+              </a>
+            {% else %}
+              <span class="relative inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400">
+                Anterior
+              </span>
+            {% endif %}
+
+            {% if pagas_page.has_next %}
+              <a href="?{% if pagas_qs %}{{ pagas_qs }}&{% endif %}page_pagas={{ pagas_page.next_page_number }}#pagas"
+                 class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Próxima
+              </a>
+            {% else %}
+              <span class="relative ml-3 inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400">
+                Próxima
+              </span>
+            {% endif %}
+          </div>
+
+          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Mostrando
+                <span class="font-medium">{{ pagas_page.start_index }}</span>
+                até
+                <span class="font-medium">{{ pagas_page.end_index }}</span>
+                de
+                <span class="font-medium">{{ pagas_page.paginator.count }}</span>
+                resultados
+              </p>
+            </div>
+
+            <div>
+              <nav aria-label="Paginação pagas" class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                {% if pagas_page.has_previous %}
+                  <a href="?{% if pagas_qs %}{{ pagas_qs }}&{% endif %}page_pagas={{ pagas_page.previous_page_number }}#pagas"
+                     class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-500 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                    <span class="sr-only">Anterior</span>
+                    ‹
+                  </a>
+                {% else %}
+                  <span class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200">
+                    ‹
+                  </span>
+                {% endif %}
+
+                {% for num in pagas_page.paginator.page_range %}
+                  {% if num == 1 or num == pagas_page.paginator.num_pages or num >= pagas_page.number|add:"-1" and num <= pagas_page.number|add:"1" %}
+                    {% if num == pagas_page.number %}
+                      <span aria-current="page"
+                            class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-gray-900">
+                        {{ num }}
+                      </span>
+                    {% else %}
+                      <a href="?{% if pagas_qs %}{{ pagas_qs }}&{% endif %}page_pagas={{ num }}#pagas"
+                         class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                        {{ num }}
+                      </a>
+                    {% endif %}
+                  {% elif num == 2 and pagas_page.number > 3 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                      ...
+                    </span>
+                  {% elif num == pagas_page.paginator.num_pages|add:"-1" and pagas_page.number < pagas_page.paginator.num_pages|add:"-2" %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                      ...
+                    </span>
+                  {% endif %}
+                {% endfor %}
+
+                {% if pagas_page.has_next %}
+                  <a href="?{% if pagas_qs %}{{ pagas_qs }}&{% endif %}page_pagas={{ pagas_page.next_page_number }}#pagas"
+                     class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-500 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                    <span class="sr-only">Próxima</span>
+                    ›
+                  </a>
+                {% else %}
+                  <span class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200">
+                    ›
+                  </span>
+                {% endif %}
+              </nav>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       </div>
 
     </div>

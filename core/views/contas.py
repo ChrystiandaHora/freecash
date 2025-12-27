@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.core.paginator import Paginator
 from datetime import date
 
 from core.models import ContaPagar, Categoria, FormaPagamento, Transacao
@@ -16,13 +17,45 @@ class ContasPagarView(View):
         usuario = request.user
         hoje = date.today()
 
-        contas_pendentes = ContaPagar.objects.filter(
+        qs_pendentes = ContaPagar.objects.filter(
             usuario=usuario, status=ContaPagar.STATUS_PENDENTE
         ).order_by("data_vencimento")
 
-        contas_pagas = ContaPagar.objects.filter(
+        qs_pagas = ContaPagar.objects.filter(
             usuario=usuario, status=ContaPagar.STATUS_PAGO
-        ).order_by("-data_vencimento")[:10]
+        ).order_by("-data_vencimento", "-id")
+
+        # Quantidade por página (opcional)
+        try:
+            per_page_pendentes = int(request.GET.get("per_page_pendentes", 5))
+        except ValueError:
+            per_page_pendentes = 5
+
+        try:
+            per_page_pagas = int(request.GET.get("per_page_pagas", 5))
+        except ValueError:
+            per_page_pagas = 5
+
+        per_page_pendentes = max(5, min(per_page_pendentes, 50))
+        per_page_pagas = max(5, min(per_page_pagas, 50))
+
+        paginator_pendentes = Paginator(qs_pendentes, per_page_pendentes)
+        paginator_pagas = Paginator(qs_pagas, per_page_pagas)
+
+        page_pendentes = request.GET.get("page_pendentes") or 1
+        page_pagas = request.GET.get("page_pagas") or 1
+
+        pendentes_page = paginator_pendentes.get_page(page_pendentes)
+        pagas_page = paginator_pagas.get_page(page_pagas)
+
+        # Querystring para preservar estado (mantém os params, remove só o page da tabela)
+        params_pendentes = request.GET.copy()
+        params_pendentes.pop("page_pendentes", None)
+        pendentes_qs = params_pendentes.urlencode()
+
+        params_pagas = request.GET.copy()
+        params_pagas.pop("page_pagas", None)
+        pagas_qs = params_pagas.urlencode()
 
         categorias = (
             Categoria.objects.filter(usuario=usuario)
@@ -32,13 +65,14 @@ class ContasPagarView(View):
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
 
         contexto = {
-            "contas_pendentes": contas_pendentes,
-            "contas_pagas": contas_pagas,
+            "pendentes_page": pendentes_page,
+            "pagas_page": pagas_page,
+            "pendentes_qs": pendentes_qs,
+            "pagas_qs": pagas_qs,
             "categorias": categorias,
             "formas": formas,
             "hoje": hoje,
         }
-
         return render(request, self.template_name, contexto)
 
 
@@ -87,25 +121,20 @@ class CadastrarContaPagarView(View):
 class MarcarContaPagaView(View):
     def get(self, request, conta_id):
         usuario = request.user
-
-        # garante segurança: só encontra conta do user
         conta = get_object_or_404(ContaPagar, id=conta_id, usuario=usuario)
 
-        # só marca se estiver pendente
         if conta.status != ContaPagar.STATUS_PENDENTE:
             messages.warning(
                 request, "Esta conta já está paga ou não pode ser alterada."
             )
             return redirect("contas_pagar")
 
-        # 1. Atualiza status
         conta.status = ContaPagar.STATUS_PAGO
-        conta.save()
+        conta.save(update_fields=["status"])
 
-        # 2. Cria a transação real
         Transacao.objects.create(
             usuario=usuario,
-            tipo=conta.categoria.tipo,
+            tipo=Transacao.TIPO_DESPESA,
             valor=conta.valor,
             data=date.today(),
             categoria=conta.categoria,
