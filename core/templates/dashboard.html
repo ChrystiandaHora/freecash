@@ -263,9 +263,13 @@
           {% endfor %}
         </div>
 
-        <button class="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold py-2 rounded-xl">
+        <a href="{% url 'contas_pagar' %}"
+          class="mt-4 inline-flex w-full items-center justify-center rounded-xl
+                  bg-gray-100 hover:bg-gray-200
+                  text-gray-800 text-sm font-semibold py-2">
           Ver tudo
-        </button>
+        </a>
+
       </div>
 
       <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">

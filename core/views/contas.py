@@ -101,7 +101,6 @@ class CadastrarContaPagarView(View):
         data_prevista = (
             request.POST.get("data_prevista") or ""
         ).strip()  # mantém o name do form
-        categoria_id = (request.POST.get("categoria") or "").strip()
         forma_pagamento_id = (request.POST.get("forma_pagamento") or "").strip()
 
         if not descricao or not valor_raw or not data_prevista:
@@ -120,11 +119,6 @@ class CadastrarContaPagarView(View):
             messages.error(request, "Valor inválido.")
             return redirect("contas_pagar")
 
-        categoria = (
-            Categoria.objects.filter(id=categoria_id, usuario=usuario).first()
-            if categoria_id.isdigit()
-            else None
-        )
         forma_pagamento = (
             FormaPagamento.objects.filter(
                 id=forma_pagamento_id, usuario=usuario
@@ -141,7 +135,9 @@ class CadastrarContaPagarView(View):
             data_prevista=data_prevista,
             transacao_realizada=False,
             data_realizacao=None,
-            categoria=categoria,
+            categoria=Categoria.objects.filter(
+                usuario=usuario, tipo=Categoria.TIPO_DESPESA
+            ).first(),
             forma_pagamento=forma_pagamento,
         )
 
