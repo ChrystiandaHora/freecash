@@ -74,11 +74,9 @@ class ContasPagarView(View):
         pagas_qs = params_pagas.urlencode()
 
         # selects
-        categorias = (
-            Categoria.objects.filter(usuario=usuario)
-            .exclude(tipo=Categoria.TIPO_RECEITA)
-            .order_by("nome")
-        )
+        categorias = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
+        ).order_by("nome")
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
 
         contexto = {
@@ -101,7 +99,7 @@ class CadastrarContaPagarView(View):
         descricao = (request.POST.get("descricao") or "").strip()
         valor_raw = (request.POST.get("valor") or "").strip()
         data_prevista = (
-            request.POST.get("data_vencimento") or ""
+            request.POST.get("data_prevista") or ""
         ).strip()  # mantém o name do form
         categoria_id = (request.POST.get("categoria") or "").strip()
         forma_pagamento_id = (request.POST.get("forma_pagamento") or "").strip()

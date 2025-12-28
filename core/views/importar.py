@@ -16,23 +16,27 @@ class ImportarView(View):
         logs = LogImportacao.objects.filter(usuario=request.user).order_by(
             "-criado_em"
         )[:20]
-
         return render(request, self.template_name, {"logs": logs})
 
     def post(self, request):
         arquivo = request.FILES.get("arquivo")
-
         if not arquivo:
             messages.error(request, "Selecione um arquivo para importar.")
             return redirect("importar")
 
-        try:
-            importar_planilha_unificada(arquivo, request.user)
-            messages.success(request, "Importação concluída com sucesso!")
-            return redirect(
-                "importar"
-            )  # melhor voltar pra tela de importação pra ver o log
+        nome = (arquivo.name or "").lower()
+        if not (nome.endswith(".xlsx") or nome.endswith(".csv")):
+            messages.error(request, "Formato inválido. Envie um arquivo .xlsx ou .csv.")
+            return redirect("importar")
 
-        except Exception as erro:
-            messages.error(request, f"Falha na importação: {erro}")
+        try:
+            resultado = importar_planilha_unificada(
+                arquivo, request.user, sobrescrever=True
+            )
+            messages.success(
+                request, resultado.get("msg") or "Importação concluída com sucesso!"
+            )
+            return redirect("importar")
+        except Exception as e:
+            messages.error(request, f"Falha na importação: {e}")
             return redirect("importar")

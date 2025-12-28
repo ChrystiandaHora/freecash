@@ -51,7 +51,7 @@
 
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Vencimento *</label>
-              <input type="date" name="data_vencimento" required
+              <input type="date" name="data_prevista" required
                      class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
             </div>
           </div>
@@ -131,7 +131,7 @@
                   </td>
 
                   <td class="px-6 py-4 whitespace-nowrap text-gray-700">
-                    {{ c.data_vencimento|date:"d/m/Y" }}
+                    {{ c.data_prevista|date:"d/m/Y" }}
                   </td>
 
                   <td class="px-6 py-4 text-gray-700">
@@ -296,7 +296,7 @@
                   </td>
 
                   <td class="px-6 py-4 whitespace-nowrap text-gray-700">
-                    {{ c.data_vencimento|date:"d/m/Y" }}
+                    {{ c.data_prevista|date:"d/m/Y" }}
                   </td>
 
                   <td class="px-6 py-4 text-gray-700">
