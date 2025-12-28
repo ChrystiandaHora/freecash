@@ -53,7 +53,8 @@ class ReceitasView(View):
         qs = qs.order_by("-data_realizacao", "-id")
 
         categorias = Categoria.objects.filter(
-            usuario=usuario, tipo=Categoria.TIPO_RECEITA
+            usuario=usuario,
+            tipo__in=[Categoria.TIPO_RECEITA, Categoria.TIPO_INVESTIMENTO],
         ).order_by("nome")
         formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
             "nome"
