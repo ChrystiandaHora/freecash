@@ -1,32 +1,100 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <h1 class="text-2xl font-bold mb-4">Exportar dados financeiros</h1>
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="max-w-3xl">
 
-    <p class="text-slate-300 mb-6 leading-relaxed">
-        Gere um arquivo de backup completo contendo todas as suas transações, categorias,
-        contas a pagar, resumos e configurações.
-    </p>
-
-    <div class="mb-6 p-4 bg-slate-700 rounded-lg">
-        Último backup gerado:
-        <span class="text-emerald-400 font-semibold">
-            {% if config and config.ultimo_export_em %}
-                {{ config.ultimo_export_em|date:"d/m/Y H:i" }}
-            {% else %}
-                Nunca
-            {% endif %}
-        </span>
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">
+          Exportar backup
+        </h1>
+        <p class="mt-2 text-sm sm:text-base text-gray-500 leading-relaxed">
+          Gere um arquivo completo com seus dados e configurações do FreeCash.
+        </p>
+      </div>
     </div>
 
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit"
-                class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-lg transition">
-            Gerar backup agora
-        </button>
-    </form>
+    <!-- Card -->
+    <div class="mt-6 rounded-2xl bg-white ring-1 ring-white/10 shadow-sm overflow-hidden">
 
+      <!-- Top info -->
+      <div class="p-6">
+        <div class="flex items-start gap-4">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+            <i class="fa-solid fa-file-arrow-down"></i>
+
+          </div>
+
+          <div class="flex-1">
+            <h2 class="text-sm font-semibold text-gray-900">
+              Backup completo (XLSX)
+            </h2>
+            <p class="mt-1 text-sm text-gray-500">
+              Inclui contas, categorias, formas de pagamento, resumos e configurações.
+            </p>
+
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
+                <p class="text-xs text-slate-400">Último backup</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">
+                  {% if config and config.ultimo_export_em %}
+                    {{ config.ultimo_export_em|date:"d/m/Y H:i" }}
+                  {% else %}
+                    Nunca gerado
+                  {% endif %}
+                </p>
+              </div>
+
+              <div class="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
+                <p class="text-xs text-slate-400">Formato</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">.xlsx</p>
+              </div>
+
+              <div class="rounded-xl bg-white/5 ring-1 ring-white/10 p-4">
+                <p class="text-xs text-slate-400">Recomendação</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">1x por mês</p>
+              </div>
+            </div>
+
+
+            <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p class="text-sm font-semibold text-amber-900">Atenção</p>
+                <p class="mt-1 text-sm text-amber-800">
+                O backup pode conter informações sensíveis. Guarde o arquivo em um local seguro.
+                </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="border-t border-white/10 p-6">
+        <form method="post" class="space-y-3" onsubmit="this.querySelector('button').disabled = true; this.querySelector('[data-loading]').classList.remove('hidden');">
+          {% csrf_token %}
+
+          <button type="submit"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-emerald-600 active:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-file-arrow-down"></i>
+
+            Gerar backup agora
+          </button>
+
+          <div data-loading class="hidden text-center text-xs text-slate-400">
+            Gerando arquivo... isso pode levar alguns segundos.
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Ao gerar o backup, você fará o download automático do arquivo.
+          </p>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
 </div>
+
 {% endblock %}
