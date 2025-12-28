@@ -3,8 +3,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from core.models import (
-    Transacao,
-    ContaPagar,
+    Conta,
     Categoria,
     FormaPagamento,
     ResumoMensal,
@@ -12,8 +11,7 @@ from core.models import (
 )
 
 MODELOS_MONITORADOS = (
-    Transacao,
-    ContaPagar,
+    Conta,
     Categoria,
     FormaPagamento,
     ResumoMensal,

@@ -214,7 +214,7 @@
             <tbody class="text-sm">
               {% for t in ultimas_transacoes %}
               <tr class="border-b">
-                <td class="py-3 text-gray-700">{{ t.data|date:"d/m/Y" }}</td>
+                <td class="py-3 text-gray-700">{{ t.data_realizacao|date:"d/m/Y" }}</td>
                 <td class="py-3 text-gray-700">{{ t.get_tipo_display }}</td>
                 <td class="py-3 font-semibold text-gray-900">R$ {{ t.valor|floatformat:2 }}</td>
                 <td class="py-3 text-gray-700">{{ t.descricao }}</td>
@@ -284,7 +284,6 @@
               <tr class="border-b text-xs text-gray-500">
                 <th class="py-2 font-semibold">Mês</th>
                 <th class="py-2 font-semibold">Receita</th>
-                <th class="py-2 font-semibold">Outras</th>
                 <th class="py-2 font-semibold">Gastos</th>
                 <th class="py-2 font-semibold">Total</th>
               </tr>
@@ -294,7 +293,6 @@
               <tr class="border-b">
                 <td class="py-3 text-gray-700">{{ r.mes }}/{{ r.ano }}</td>
                 <td class="py-3 text-gray-700">R$ {{ r.receita|floatformat:2 }}</td>
-                <td class="py-3 text-gray-700">R$ {{ r.outras_receitas|floatformat:2 }}</td>
                 <td class="py-3 text-gray-700">R$ {{ r.gastos|floatformat:2 }}</td>
                 <td class="py-3 font-semibold text-gray-900">R$ {{ r.total|floatformat:2 }}</td>
               </tr>

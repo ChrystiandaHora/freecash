@@ -50,7 +50,7 @@
 
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Data *</label>
-            <input type="date" name="data" required
+            <input type="date" name="data_realizacao" required
                    class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
           </div>
 
@@ -183,7 +183,7 @@
             <tbody class="divide-y divide-gray-100 text-sm">
               {% for r in receitas %}
                 <tr class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">{{ r.data|date:"d/m/Y" }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-gray-700">{{ r.data_realizacao|date:"d/m/Y" }}</td>
 
                   <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900">{{ r.descricao|default:"(sem descrição)" }}</div>
@@ -212,6 +212,204 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+          <div class="flex items-center justify-between border-t border-gray-100 bg-white px-5 py-4">
+
+            <!-- Mobile -->
+            <div class="flex flex-1 justify-between sm:hidden">
+              {% if page_obj.has_previous %}
+                <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                  class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  Anterior
+                </a>
+              {% else %}
+                <span class="relative inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
+                  Anterior
+                </span>
+              {% endif %}
+
+              {% if page_obj.has_next %}
+                <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
+                  class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  Próxima
+                </a>
+              {% else %}
+                <span class="relative inline-flex items-center rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-400 cursor-not-allowed">
+                  Próxima
+                </span>
+              {% endif %}
+            </div>
+
+            <!-- Desktop -->
+            <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm text-gray-700">
+                  Mostrando
+                  <span class="font-semibold">{{ page_obj.start_index }}</span>
+                  até
+                  <span class="font-semibold">{{ page_obj.end_index }}</span>
+                  de
+                  <span class="font-semibold">{{ page_obj.paginator.count }}</span>
+                  resultados
+                </p>
+              </div>
+
+              <div>
+                {% with current=page_obj.number total=page_obj.paginator.num_pages last=page_obj.paginator.num_pages last1=page_obj.paginator.num_pages|add:"-1" last2=page_obj.paginator.num_pages|add:"-2" %}
+                  <nav aria-label="Paginação" class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+
+                    <!-- Previous arrow -->
+                    {% if page_obj.has_previous %}
+                      <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                        class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                        <span class="sr-only">Anterior</span>
+                        <i class="fa-solid fa-chevron-left text-[20px]" aria-hidden="true"></i>
+
+                      </a>
+                    {% else %}
+                      <span class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200 bg-gray-50 cursor-not-allowed">
+                        <span class="sr-only">Anterior</span>
+                        <i class="fa-solid fa-chevron-left text-[20px]" aria-hidden="true"></i>
+                      </span>
+                    {% endif %}
+
+                    <!-- Start chunk: 1,2,3 -->
+                    {% if 1 == current %}
+                      <span aria-current="page"
+                            class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">1</span>
+                    {% else %}
+                      <a href="?{% if querystring %}{{ querystring }}&{% endif %}page=1"
+                        class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">1</a>
+                    {% endif %}
+
+                    {% if total >= 2 %}
+                      {% if 2 == current %}
+                        <span aria-current="page"
+                              class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">2</span>
+                      {% else %}
+                        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page=2"
+                          class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">2</a>
+                      {% endif %}
+                    {% endif %}
+
+                    {% if total >= 3 %}
+                      {% if 3 == current %}
+                        <span aria-current="page"
+                              class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">3</span>
+                      {% else %}
+                        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page=3"
+                          class="relative hidden md:inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">3</a>
+                      {% endif %}
+                    {% endif %}
+
+                    <!-- Ellipsis after start chunk -->
+                    {% if total > 6 and current > 4 %}
+                      <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                        ...
+                      </span>
+                    {% endif %}
+
+                    <!-- Middle chunk: current-1, current, current+1 (sem colidir com começo/fim) -->
+                    {% with p_prev=current|add:"-1" p_next=current|add:"1" %}
+                      {% if total > 6 %}
+                        {% if p_prev > 3 and p_prev < last2 %}
+                          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ p_prev }}"
+                            class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            {{ p_prev }}
+                          </a>
+                        {% endif %}
+
+                        {% if current > 3 and current < last2 %}
+                          <span aria-current="page"
+                                class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
+                            {{ current }}
+                          </span>
+                        {% endif %}
+
+                        {% if p_next > 3 and p_next < last2 %}
+                          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ p_next }}"
+                            class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            {{ p_next }}
+                          </a>
+                        {% endif %}
+                      {% endif %}
+                    {% endwith %}
+
+                    <!-- Ellipsis before end chunk -->
+                    {% if total > 6 and current < total|add:"-3" %}
+                      <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                        ...
+                      </span>
+                    {% endif %}
+
+                    <!-- End chunk: last-2, last-1, last -->
+                    {% if total > 3 %}
+                      {% if last2 > 3 %}
+                        {% if last2 == current %}
+                          <span aria-current="page"
+                                class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
+                            {{ last2 }}
+                          </span>
+                        {% else %}
+                          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ last2 }}"
+                            class="relative hidden md:inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            {{ last2 }}
+                          </a>
+                        {% endif %}
+                      {% endif %}
+
+                      {% if last1 > 3 %}
+                        {% if last1 == current %}
+                          <span aria-current="page"
+                                class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
+                            {{ last1 }}
+                          </span>
+                        {% else %}
+                          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ last1 }}"
+                            class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            {{ last1 }}
+                          </a>
+                        {% endif %}
+                      {% endif %}
+
+                      {% if last > 3 %}
+                        {% if last == current %}
+                          <span aria-current="page"
+                                class="relative z-10 inline-flex items-center bg-gray-900 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
+                            {{ last }}
+                          </span>
+                        {% else %}
+                          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ last }}"
+                            class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                            {{ last }}
+                          </a>
+                        {% endif %}
+                      {% endif %}
+                    {% endif %}
+
+                    <!-- Next arrow -->
+                    {% if page_obj.has_next %}
+                      <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
+                        class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                        <span class="sr-only">Próxima</span>
+                        <i class="fa-solid fa-chevron-right text-[20px]" aria-hidden="true"></i>
+                      </a>
+                    {% else %}
+                      <span class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-200 bg-gray-50 cursor-not-allowed">
+                        <span class="sr-only">Próxima</span>
+                        <i class="fa-solid fa-chevron-right text-[20px]" aria-hidden="true"></i>
+                      </span>
+                    {% endif %}
+
+                  </nav>
+                {% endwith %}
+              </div>
+            </div>
+
+          </div>
+        {% endif %}
 
       </div>
     </div>

@@ -1,12 +1,23 @@
+from datetime import date
+from decimal import Decimal, InvalidOperation
+
 from django.views import View
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.core.paginator import Paginator
-from datetime import date
+from django.utils import timezone
 
-from core.models import ContaPagar, Categoria, FormaPagamento, Transacao
+from core.models import Conta, Categoria, FormaPagamento
+
+
+def clamp_per_page(raw, default=5, min_v=5, max_v=50):
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        v = default
+    return max(min_v, min(v, max_v))
 
 
 @method_decorator(login_required, name="dispatch")
@@ -15,40 +26,45 @@ class ContasPagarView(View):
 
     def get(self, request):
         usuario = request.user
-        hoje = date.today()
+        hoje = timezone.localdate()
 
-        qs_pendentes = ContaPagar.objects.filter(
-            usuario=usuario, status=ContaPagar.STATUS_PENDENTE
-        ).order_by("data_vencimento")
+        # Pendentes: despesas ainda não realizadas
+        qs_pendentes = (
+            Conta.objects.filter(
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                transacao_realizada=False,
+            )
+            .select_related("categoria", "forma_pagamento")
+            .order_by("data_prevista", "id")
+        )
 
-        qs_pagas = ContaPagar.objects.filter(
-            usuario=usuario, status=ContaPagar.STATUS_PAGO
-        ).order_by("-data_vencimento", "-id")
+        # Pagas: despesas realizadas
+        qs_pagas = (
+            Conta.objects.filter(
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                transacao_realizada=True,
+            )
+            .select_related("categoria", "forma_pagamento")
+            .order_by("-data_realizacao", "-id")
+        )
 
-        # Quantidade por página (opcional)
-        try:
-            per_page_pendentes = int(request.GET.get("per_page_pendentes", 5))
-        except ValueError:
-            per_page_pendentes = 5
+        per_page_pendentes = clamp_per_page(
+            request.GET.get("per_page_pendentes"), default=5, max_v=50
+        )
+        per_page_pagas = clamp_per_page(
+            request.GET.get("per_page_pagas"), default=5, max_v=50
+        )
 
-        try:
-            per_page_pagas = int(request.GET.get("per_page_pagas", 5))
-        except ValueError:
-            per_page_pagas = 5
+        pendentes_page = Paginator(qs_pendentes, per_page_pendentes).get_page(
+            request.GET.get("page_pendentes") or 1
+        )
+        pagas_page = Paginator(qs_pagas, per_page_pagas).get_page(
+            request.GET.get("page_pagas") or 1
+        )
 
-        per_page_pendentes = max(5, min(per_page_pendentes, 50))
-        per_page_pagas = max(5, min(per_page_pagas, 50))
-
-        paginator_pendentes = Paginator(qs_pendentes, per_page_pendentes)
-        paginator_pagas = Paginator(qs_pagas, per_page_pagas)
-
-        page_pendentes = request.GET.get("page_pendentes") or 1
-        page_pagas = request.GET.get("page_pagas") or 1
-
-        pendentes_page = paginator_pendentes.get_page(page_pendentes)
-        pagas_page = paginator_pagas.get_page(page_pagas)
-
-        # Querystring para preservar estado (mantém os params, remove só o page da tabela)
+        # Querystring preservando estado
         params_pendentes = request.GET.copy()
         params_pendentes.pop("page_pendentes", None)
         pendentes_qs = params_pendentes.urlencode()
@@ -57,6 +73,7 @@ class ContasPagarView(View):
         params_pagas.pop("page_pagas", None)
         pagas_qs = params_pagas.urlencode()
 
+        # selects
         categorias = (
             Categoria.objects.filter(usuario=usuario)
             .exclude(tipo=Categoria.TIPO_RECEITA)
@@ -81,34 +98,51 @@ class CadastrarContaPagarView(View):
     def post(self, request):
         usuario = request.user
 
-        descricao = request.POST.get("descricao")
-        valor = request.POST.get("valor")
-        data_vencimento = request.POST.get("data_vencimento")
-        categoria_id = request.POST.get("categoria")
-        forma_pagamento_id = request.POST.get("forma_pagamento")
+        descricao = (request.POST.get("descricao") or "").strip()
+        valor_raw = (request.POST.get("valor") or "").strip()
+        data_prevista = (
+            request.POST.get("data_vencimento") or ""
+        ).strip()  # mantém o name do form
+        categoria_id = (request.POST.get("categoria") or "").strip()
+        forma_pagamento_id = (request.POST.get("forma_pagamento") or "").strip()
 
-        if not descricao or not valor or not data_vencimento:
+        if not descricao or not valor_raw or not data_prevista:
             messages.error(request, "Preencha todos os campos obrigatórios.")
+            return redirect("contas_pagar")
+
+        try:
+            # aceita "10,50" ou "10.50"
+            valor_raw = (
+                valor_raw.replace(".", "").replace(",", ".")
+                if "," in valor_raw
+                else valor_raw
+            )
+            valor = Decimal(valor_raw)
+        except (InvalidOperation, ValueError):
+            messages.error(request, "Valor inválido.")
             return redirect("contas_pagar")
 
         categoria = (
             Categoria.objects.filter(id=categoria_id, usuario=usuario).first()
-            if categoria_id
+            if categoria_id.isdigit()
             else None
         )
         forma_pagamento = (
             FormaPagamento.objects.filter(
                 id=forma_pagamento_id, usuario=usuario
             ).first()
-            if forma_pagamento_id
+            if forma_pagamento_id.isdigit()
             else None
         )
 
-        ContaPagar.objects.create(
+        Conta.objects.create(
             usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
             descricao=descricao,
             valor=valor,
-            data_vencimento=data_vencimento,
+            data_prevista=data_prevista,
+            transacao_realizada=False,
+            data_realizacao=None,
             categoria=categoria,
             forma_pagamento=forma_pagamento,
         )
@@ -119,27 +153,27 @@ class CadastrarContaPagarView(View):
 
 @method_decorator(login_required, name="dispatch")
 class MarcarContaPagaView(View):
-    def get(self, request, conta_id):
+    def post(self, request, conta_id):
         usuario = request.user
-        conta = get_object_or_404(ContaPagar, id=conta_id, usuario=usuario)
+        hoje = timezone.localdate()
 
-        if conta.status != ContaPagar.STATUS_PENDENTE:
-            messages.warning(
-                request, "Esta conta já está paga ou não pode ser alterada."
-            )
+        conta = get_object_or_404(
+            Conta,
+            id=conta_id,
+            usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
+        )
+
+        if conta.transacao_realizada:
+            messages.warning(request, "Esta conta já está marcada como paga.")
             return redirect("contas_pagar")
 
-        conta.status = ContaPagar.STATUS_PAGO
-        conta.save(update_fields=["status"])
-
-        Transacao.objects.create(
-            usuario=usuario,
-            tipo=Transacao.TIPO_DESPESA,
-            valor=conta.valor,
-            data=date.today(),
-            categoria=conta.categoria,
-            forma_pagamento=conta.forma_pagamento,
-            descricao=f"Pagamento da conta: {conta.descricao}",
+        # permite escolher a data de pagamento, se você quiser no form
+        data_pagamento = (request.POST.get("data_pagamento") or "").strip()
+        conta.transacao_realizada = True
+        conta.data_realizacao = data_pagamento or hoje
+        conta.save(
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
 
         messages.success(request, "Conta marcada como paga com sucesso.")

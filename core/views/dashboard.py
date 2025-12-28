@@ -7,10 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.db.models.functions import TruncDay, TruncMonth
 from django.shortcuts import render
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from core.models import ContaPagar, ResumoMensal, Transacao
+from core.models import Conta, ResumoMensal
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ def next_month_start(d: date) -> date:
 
 def make_periodo(hoje: date, periodo_idx: int) -> Periodo:
     labels = {0: "Mês atual", 1: "Mês passado", 2: "Mês retrasado"}
+
     inicio = month_start(hoje) - relativedelta(months=periodo_idx)
     fim = next_month_start(inicio)
     inicio_prev = inicio - relativedelta(months=1)
@@ -65,25 +67,40 @@ def pct_change(atual: float, anterior: float):
     return float(((atual - anterior) / anterior) * 100.0)
 
 
-def totals_for_range(usuario, inicio: date, fim: date):
-    qs = Transacao.objects.filter(usuario=usuario, data__gte=inicio, data__lt=fim)
+def totals_for_range_realizadas(usuario, inicio: date, fim: date):
+    """
+    Totais por tipo considerando somente contas REALIZADAS,
+    usando data_realizacao dentro do range.
+    """
+    qs = Conta.objects.filter(
+        usuario=usuario,
+        transacao_realizada=True,
+        data_realizacao__gte=inicio,
+        data_realizacao__lt=fim,
+    )
+
     receitas = (
-        qs.filter(tipo=Transacao.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"]
-        or 0
+        qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"] or 0
     )
     despesas = (
-        qs.filter(tipo=Transacao.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"]
-        or 0
+        qs.filter(tipo=Conta.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"] or 0
     )
     return float(receitas), float(despesas)
 
 
-def serie_por_dia(usuario, tipo, inicio: date, fim: date, ultimo_dia: int):
+def serie_por_dia_realizadas(usuario, tipo, inicio: date, fim: date, ultimo_dia: int):
+    """
+    Série diária de contas REALIZADAS no mês (data_realizacao).
+    """
     qs = (
-        Transacao.objects.filter(
-            usuario=usuario, tipo=tipo, data__gte=inicio, data__lt=fim
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            transacao_realizada=True,
+            data_realizacao__gte=inicio,
+            data_realizacao__lt=fim,
         )
-        .annotate(dia=TruncDay("data"))
+        .annotate(dia=TruncDay("data_realizacao"))
         .values("dia")
         .annotate(total=Sum("valor"))
         .order_by("dia")
@@ -102,14 +119,21 @@ def serie_por_dia(usuario, tipo, inicio: date, fim: date, ultimo_dia: int):
     return labels, valores
 
 
-def serie_6m(usuario, tipo, inicio_ref: date, fim_ref: date):
+def serie_6m_realizadas(usuario, tipo, inicio_ref: date, fim_ref: date):
+    """
+    Série mensal (6 meses) de contas REALIZADAS (data_realizacao).
+    """
     inicio_janela = inicio_ref - relativedelta(months=5)
 
     qs = (
-        Transacao.objects.filter(
-            usuario=usuario, tipo=tipo, data__gte=inicio_janela, data__lt=fim_ref
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            transacao_realizada=True,
+            data_realizacao__gte=inicio_janela,
+            data_realizacao__lt=fim_ref,
         )
-        .annotate(mes=TruncMonth("data"))
+        .annotate(mes=TruncMonth("data_realizacao"))
         .values("mes")
         .annotate(total=Sum("valor"))
         .order_by("mes")
@@ -128,23 +152,32 @@ def serie_6m(usuario, tipo, inicio_ref: date, fim_ref: date):
     return labels, values
 
 
-def breakdown_despesas(
+def breakdown_despesas_realizadas(
     usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4
 ):
+    """
+    Breakdown por categoria considerando somente despesas REALIZADAS no range.
+    """
     qs = (
-        Transacao.objects.filter(
-            usuario=usuario, tipo=Transacao.TIPO_DESPESA, data__gte=inicio, data__lt=fim
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
+            transacao_realizada=True,
+            data_realizacao__gte=inicio,
+            data_realizacao__lt=fim,
         )
         .values("categoria__nome")
         .annotate(total=Sum("valor"))
         .order_by("-total")
     )
 
-    itens = []
-    for row in qs:
-        nome = row["categoria__nome"] or "Sem categoria"
-        valor = float(row["total"] or 0)
-        itens.append({"nome": nome, "valor": valor})
+    itens = [
+        {
+            "nome": (row["categoria__nome"] or "Sem categoria"),
+            "valor": float(row["total"] or 0),
+        }
+        for row in qs
+    ]
 
     if not itens or total_despesas <= 0:
         return [], {"nome": "Sem dados", "valor": 0.0, "pct": 0.0}
@@ -155,8 +188,13 @@ def breakdown_despesas(
 
     out = []
     for i in top:
-        pct = (i["valor"] / total_despesas) * 100.0
-        out.append({"nome": i["nome"], "valor": i["valor"], "pct": pct})
+        out.append(
+            {
+                "nome": i["nome"],
+                "valor": i["valor"],
+                "pct": (i["valor"] / total_despesas) * 100.0,
+            }
+        )
 
     if outros > 0:
         out.append(
@@ -167,7 +205,6 @@ def breakdown_despesas(
             }
         )
 
-    # Ajuste fino para fechar 100% (evita 99.99 ou 100.01 por arredondamento)
     if out:
         total_pct = sum(x["pct"] for x in out)
         out[-1]["pct"] = max(0.0, out[-1]["pct"] - (total_pct - 100.0))
@@ -182,50 +219,42 @@ class DashboardView(View):
 
     def get(self, request):
         usuario = request.user
-        hoje = date.today()
+        hoje = timezone.localdate()
 
         periodo_idx = clamp_int(request.GET.get("periodo"), default=0, min_v=0, max_v=2)
         periodo = make_periodo(hoje, periodo_idx)
 
-        # Totais do período e do período anterior
-        total_receitas, total_despesas = totals_for_range(
+        # Totais (somente realizadas)
+        total_receitas, total_despesas = totals_for_range_realizadas(
             usuario, periodo.inicio, periodo.fim
         )
         saldo_mes = total_receitas - total_despesas
 
-        receitas_prev, despesas_prev = totals_for_range(
+        receitas_prev, despesas_prev = totals_for_range_realizadas(
             usuario, periodo.inicio_prev, periodo.inicio
         )
         receitas_pct = pct_change(total_receitas, receitas_prev)
         despesas_pct = pct_change(total_despesas, despesas_prev)
 
-        # Séries diárias
-        dias_labels, receitas_dias = serie_por_dia(
-            usuario,
-            Transacao.TIPO_RECEITA,
-            periodo.inicio,
-            periodo.fim,
-            periodo.ultimo_dia,
+        # Séries diárias (somente realizadas)
+        dias_labels, receitas_dias = serie_por_dia_realizadas(
+            usuario, Conta.TIPO_RECEITA, periodo.inicio, periodo.fim, periodo.ultimo_dia
         )
-        _, despesas_dias = serie_por_dia(
-            usuario,
-            Transacao.TIPO_DESPESA,
-            periodo.inicio,
-            periodo.fim,
-            periodo.ultimo_dia,
+        _, despesas_dias = serie_por_dia_realizadas(
+            usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim, periodo.ultimo_dia
         )
 
-        # Séries 6 meses
-        meses_labels, receitas_6m = serie_6m(
-            usuario, Transacao.TIPO_RECEITA, periodo.inicio, periodo.fim
+        # Séries 6 meses (somente realizadas)
+        meses_labels, receitas_6m = serie_6m_realizadas(
+            usuario, Conta.TIPO_RECEITA, periodo.inicio, periodo.fim
         )
-        _, despesas_6m = serie_6m(
-            usuario, Transacao.TIPO_DESPESA, periodo.inicio, periodo.fim
+        _, despesas_6m = serie_6m_realizadas(
+            usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim
         )
         saldos_6m = [r - d for r, d in zip(receitas_6m, despesas_6m)]
 
-        # Breakdown e insights
-        breakdown_items, top_categoria = breakdown_despesas(
+        # Breakdown e insights (somente realizadas)
+        breakdown_items, top_categoria = breakdown_despesas_realizadas(
             usuario, periodo.inicio, periodo.fim, total_despesas, top_n=4
         )
 
@@ -236,27 +265,38 @@ class DashboardView(View):
             (saldo_mes / total_receitas * 100.0) if total_receitas > 0 else None
         )
 
-        # Contas
-        contas = ContaPagar.objects.filter(
+        # Contas do mês (previstas/pendentes) para o card de contas
+        contas_mes = Conta.objects.filter(
             usuario=usuario,
-            data_vencimento__gte=periodo.inicio,
-            data_vencimento__lt=periodo.fim,
+            tipo=Conta.TIPO_DESPESA,
+            data_prevista__gte=periodo.inicio,
+            data_prevista__lt=periodo.fim,
         )
-        contas_pendentes = contas.filter(status=ContaPagar.STATUS_PENDENTE).count()
-        contas_pagas = contas.filter(status=ContaPagar.STATUS_PAGO).count()
-        contas_atrasadas = contas.filter(
-            status=ContaPagar.STATUS_PENDENTE, data_vencimento__lt=hoje
+
+        contas_pendentes = contas_mes.filter(transacao_realizada=False).count()
+        contas_pagas = contas_mes.filter(transacao_realizada=True).count()
+        contas_atrasadas = contas_mes.filter(
+            transacao_realizada=False, data_prevista__lt=hoje
         ).count()
 
-        upcoming_bills = ContaPagar.objects.filter(
-            usuario=usuario,
-            status=ContaPagar.STATUS_PENDENTE,
-            data_vencimento__gte=hoje,
-        ).order_by("data_vencimento")[:5]
+        upcoming_bills = (
+            Conta.objects.filter(
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                transacao_realizada=False,
+                data_prevista__gte=hoje,
+            )
+            .select_related("categoria", "forma_pagamento")
+            .order_by("data_prevista")[:5]
+        )
 
-        ultimas_transacoes = Transacao.objects.filter(usuario=usuario).order_by(
-            "-data", "-id"
-        )[:7]
+        # Últimas transações (realizadas)
+        ultimas_transacoes = (
+            Conta.objects.filter(usuario=usuario, transacao_realizada=True)
+            .select_related("categoria", "forma_pagamento")
+            .order_by("-data_realizacao", "-id")[:7]
+        )
+
         resumo_3_meses = ResumoMensal.objects.filter(usuario=usuario).order_by(
             "-ano", "-mes"
         )[:3]

@@ -2,11 +2,13 @@ import re
 import calendar
 from datetime import date
 from decimal import Decimal, InvalidOperation
+
 import pandas as pd
 
 from django.db import transaction
+from django.utils import timezone
 
-from core.models import ContaPagar, ResumoMensal, Transacao, FormaPagamento, Categoria
+from core.models import Conta, ResumoMensal, FormaPagamento, Categoria
 
 
 MESES_MAP = {
@@ -151,6 +153,26 @@ def ajustar_dia(ano: int, mes: int, dia: int) -> int:
     return min(max(dia, 1), ultimo)
 
 
+def is_dia_util(d: date) -> bool:
+    # segunda=0 ... domingo=6
+    return d.weekday() < 5
+
+
+def quinto_dia_util(ano: int, mes: int) -> date:
+    """
+    Retorna o 5º dia útil (considera apenas fim de semana; não considera feriados).
+    """
+    count = 0
+    for dia in range(1, calendar.monthrange(ano, mes)[1] + 1):
+        dt = date(ano, mes, dia)
+        if is_dia_util(dt):
+            count += 1
+            if count == 5:
+                return dt
+    # fallback improvável
+    return date(ano, mes, 1)
+
+
 # ---- categorias padrão ----
 def get_or_create_categorias_padrao(usuario):
     cat_receita, _ = Categoria.objects.get_or_create(
@@ -171,36 +193,118 @@ def get_or_create_categorias_padrao(usuario):
     return {"RECEITA": cat_receita, "GASTOS": cat_gastos, "INVESTIMENTO": cat_invest}
 
 
-def escolher_categoria_despesa(desc_limpa: str, categorias_padrao):
+def classificar_tipo_e_categoria(desc_limpa: str, categorias_padrao):
+    """
+    Decide se é investimento (tipo I) ou despesa normal (tipo D),
+    e define a categoria padrão correspondente.
+    """
     s = (desc_limpa or "").strip().upper()
     if "INVEST" in s:
-        return categorias_padrao["INVESTIMENTO"]
-    return categorias_padrao["GASTOS"]
+        return Conta.TIPO_INVESTIMENTO, categorias_padrao["INVESTIMENTO"]
+    return Conta.TIPO_DESPESA, categorias_padrao["GASTOS"]
+
+
+def upsert_conta_legado(
+    *,
+    usuario,
+    tipo,
+    descricao,
+    valor,
+    data_prevista,
+    transacao_realizada,
+    data_realizacao,
+    categoria,
+    forma_pagamento,
+    is_legacy,
+    origem_ano,
+    origem_mes,
+    origem_linha,
+):
+    """
+    Dedupe por chave forte + mantém rastreio legado.
+    Se existir, atualiza campos principais conforme sua resposta (7).
+    """
+    # chave forte
+    conta = Conta.objects.filter(
+        usuario=usuario,
+        tipo=tipo,
+        descricao=descricao,
+        valor=valor,
+        data_prevista=data_prevista,
+    ).first()
+
+    if not conta:
+        # fallback pelo rastreio legado (caso o valor/descricao mude mas origem seja igual)
+        conta = Conta.objects.filter(
+            usuario=usuario,
+            is_legacy=True,
+            origem_ano=origem_ano,
+            origem_mes=origem_mes,
+            origem_linha=origem_linha,
+        ).first()
+
+    if not conta:
+        return Conta.objects.create(
+            usuario=usuario,
+            tipo=tipo,
+            descricao=descricao,
+            valor=valor,
+            data_prevista=data_prevista,
+            transacao_realizada=transacao_realizada,
+            data_realizacao=data_realizacao,
+            categoria=categoria,
+            forma_pagamento=forma_pagamento,
+            is_legacy=is_legacy,
+            origem_ano=origem_ano,
+            origem_mes=origem_mes,
+            origem_linha=origem_linha,
+        )
+
+    # atualiza conforme sua regra (7)
+    conta.tipo = tipo
+    conta.descricao = descricao
+    conta.valor = valor
+    conta.data_prevista = data_prevista
+    conta.transacao_realizada = transacao_realizada
+    conta.data_realizacao = data_realizacao
+    conta.categoria = categoria
+    conta.forma_pagamento = forma_pagamento
+    conta.is_legacy = is_legacy
+    conta.origem_ano = origem_ano
+    conta.origem_mes = origem_mes
+    conta.origem_linha = origem_linha
+    conta.save()
+    return conta
 
 
 @transaction.atomic
 def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
     """
-    Regras:
-    1) Importa linhas 'RECEITA' do topo como Transacao (tipo Receita)
+    Regras (baseadas nas suas respostas):
+    1) Importa linhas 'RECEITA' do topo como Conta (tipo Receita) REALIZADA
+       com data_prevista = 5º dia útil do mês e data_realizacao = data_prevista
     2) Ignora linha 'GASTOS' do topo
-    3) Cada linha em FIXOS EU/CASA/CARTAO vira ContaPagar
-    4) Se a ContaPagar estiver paga (vencimento no passado), cria Transacao (tipo Despesa)
+    3) Cada linha em FIXOS EU/CASA/CARTAO vira Conta (despesa/investimento), data_prevista = vencimento
+    4) Se vencimento no passado, já marca transacao_realizada=True e data_realizacao=vencimento
     5) Categoria sempre uma de: Receita, Gastos, Investimento
     6) FormaPagamento padronizada: PIX, Boleto, Cartão de Crédito, Cartão de Débito
+    7) Se já existir, atualiza categoria/forma e também transacao_realizada/data_realizacao
+    8) Dedupe por chave forte + rastreio legado
+    9) Atualiza ResumoMensal
+       Observação: como seu ResumoMensal só tem um campo "gastos", aqui ele refletirá o planejado da planilha.
+       O "realizado" você obtém filtrando Conta(transacao_realizada=True).
+    16) sobrescrever=True apaga tudo do usuário (Conta + ResumoMensal)
+    18) Receita do mês entra no 5º dia útil do mês
     """
-
     if sobrescrever:
-        Transacao.objects.filter(usuario=usuario).delete()
-        ContaPagar.objects.filter(usuario=usuario).delete()
+        Conta.objects.filter(usuario=usuario).delete()
         ResumoMensal.objects.filter(usuario=usuario).delete()
-        # opcional: não apago as formas/categorias, porque são "padrão" do usuário
 
     cats = get_or_create_categorias_padrao(usuario)
     formas_padrao = get_or_create_formas_padrao(usuario)
 
     xls = pd.ExcelFile(arquivo)
-    hoje = date.today()
+    hoje = timezone.localdate()
 
     for aba in xls.sheet_names:
         if not str(aba).strip().isdigit():
@@ -217,7 +321,7 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
         secao = "RESUMO"
         meses_col_map = {}
 
-        # para o ResumoMensal
+        # para o ResumoMensal (planejado do excel)
         receita_por_mes = {m: Decimal("0") for m in range(1, 13)}
         gasto_por_mes = {m: Decimal("0") for m in range(1, 13)}
 
@@ -252,7 +356,6 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                     receita_idx += 1
                     desc = f"Receita {receita_idx}"
 
-                    # forma padrão para receita: inferência + fallback PIX
                     forma_receita = inferir_forma_pagamento(
                         desc=desc,
                         secao=secao,
@@ -265,25 +368,17 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                         if valor <= 0:
                             continue
 
-                        # evita duplicar transação legado pela origem
+                        dt = quinto_dia_util(ano, mes_num)
                         origem = f"RECEITA_{receita_idx}"
-                        existe = Transacao.objects.filter(
-                            usuario=usuario,
-                            is_legacy=True,
-                            origem_ano=ano,
-                            origem_mes=mes_num,
-                            origem_linha=origem,
-                        ).exists()
-                        if existe:
-                            receita_por_mes[mes_num] += valor
-                            continue
 
-                        Transacao.objects.create(
+                        upsert_conta_legado(
                             usuario=usuario,
-                            tipo=Transacao.TIPO_RECEITA,
-                            data=date(ano, mes_num, 1),
-                            valor=valor,
+                            tipo=Conta.TIPO_RECEITA,
                             descricao=desc,
+                            valor=valor,
+                            data_prevista=dt,
+                            transacao_realizada=True,
+                            data_realizacao=dt,
                             categoria=cats["RECEITA"],
                             forma_pagamento=forma_receita,
                             is_legacy=True,
@@ -297,15 +392,13 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                 # Ignora completamente 'GASTOS' do topo e qualquer outro no resumo
                 continue
 
-            # -------------- SEÇÕES: CONTAS --------------
+            # -------------- SEÇÕES: DESPESAS / INVESTIMENTOS --------------
             desc_original = str(primeira).strip()
             desc_limpa = limpar_descricao(desc_original)
             dia_venc = extrair_dia_vencimento(desc_original) or 1
 
-            # categoria padronizada
-            categoria = escolher_categoria_despesa(desc_limpa, cats)
+            tipo_conta, categoria = classificar_tipo_e_categoria(desc_limpa, cats)
 
-            # forma de pagamento PADRONIZADA (PIX/Boleto/Crédito/Débito)
             forma_pagamento = inferir_forma_pagamento(
                 desc=desc_limpa,
                 secao=secao,
@@ -321,57 +414,28 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                 dia_ok = ajustar_dia(ano, mes_num, dia_venc)
                 venc = date(ano, mes_num, dia_ok)
 
-                status = (
-                    ContaPagar.STATUS_PAGO
-                    if venc < hoje
-                    else ContaPagar.STATUS_PENDENTE
-                )
+                realizada = venc < hoje
+                data_realizacao = venc if realizada else None
 
-                # evita duplicar contas
-                conta, created = ContaPagar.objects.get_or_create(
+                origem = f"CONTA:{secao}:{desc_limpa}"
+
+                upsert_conta_legado(
                     usuario=usuario,
+                    tipo=tipo_conta,
                     descricao=desc_limpa,
-                    data_vencimento=venc,
                     valor=valor,
-                    defaults={
-                        "status": status,
-                        "categoria": categoria,
-                        "forma_pagamento": forma_pagamento,
-                    },
+                    data_prevista=venc,
+                    transacao_realizada=realizada,
+                    data_realizacao=data_realizacao,
+                    categoria=categoria,
+                    forma_pagamento=forma_pagamento,
+                    is_legacy=True,
+                    origem_ano=ano,
+                    origem_mes=mes_num,
+                    origem_linha=origem,
                 )
-                if not created:
-                    conta.status = status
-                    conta.categoria = categoria
-                    conta.forma_pagamento = forma_pagamento
-                    conta.save()
 
                 gasto_por_mes[mes_num] += valor
-
-                # Se está pago, cria Transacao (Despesa) correspondente
-                if status == ContaPagar.STATUS_PAGO:
-                    origem = f"CONTA:{secao}:{desc_limpa}"
-                    existe = Transacao.objects.filter(
-                        usuario=usuario,
-                        is_legacy=True,
-                        origem_ano=ano,
-                        origem_mes=mes_num,
-                        origem_linha=origem,
-                    ).exists()
-
-                    if not existe:
-                        Transacao.objects.create(
-                            usuario=usuario,
-                            tipo=Transacao.TIPO_DESPESA,
-                            data=venc,
-                            valor=valor,
-                            descricao=desc_limpa,
-                            categoria=categoria,
-                            forma_pagamento=forma_pagamento,
-                            is_legacy=True,
-                            origem_ano=ano,
-                            origem_mes=mes_num,
-                            origem_linha=origem,
-                        )
 
         # -------------- ResumoMensal --------------
         for mes_num in range(1, 13):

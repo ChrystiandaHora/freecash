@@ -1,3 +1,4 @@
+from datetime import timezone
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -53,42 +54,50 @@ class FormaPagamento(models.Model):
         return self.nome
 
 
-class Transacao(models.Model):
+class Conta(models.Model):
+    # Natureza
     TIPO_RECEITA = "R"
     TIPO_DESPESA = "D"
     TIPO_INVESTIMENTO = "I"
-
     TIPO_CHOICES = (
         (TIPO_RECEITA, "Receita"),
         (TIPO_DESPESA, "Despesa"),
         (TIPO_INVESTIMENTO, "Investimento"),
     )
+
     usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transacoes"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="contas"
     )
 
     tipo = models.CharField(max_length=1, choices=TIPO_CHOICES)
-    data = models.DateField()
+
     descricao = models.CharField(max_length=255, blank=True)
+
     valor = models.DecimalField(max_digits=12, decimal_places=2)
 
+    # Agendamento (equivale ao vencimento / data prevista)
+    data_prevista = models.DateField(db_index=True)
+
+    # Realização (equivale a “virou transação”)
+    transacao_realizada = models.BooleanField(default=False, db_index=True)
+    data_realizacao = models.DateField(null=True, blank=True, db_index=True)
+
     categoria = models.ForeignKey(
-        Categoria,
+        "core.Categoria",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="transacoes",
+        related_name="contas",
     )
-
     forma_pagamento = models.ForeignKey(
-        FormaPagamento,
+        "core.FormaPagamento",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="transacoes",
+        related_name="contas",
     )
 
-    # Importações antigas
+    # (Opcional) para manter importações antigas
     is_legacy = models.BooleanField(default=False)
     origem_ano = models.IntegerField(null=True, blank=True)
     origem_mes = models.IntegerField(null=True, blank=True)
@@ -98,76 +107,40 @@ class Transacao(models.Model):
     atualizada_em = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-data", "-id"]
+        ordering = ["-data_prevista", "-id"]
+        indexes = [
+            models.Index(fields=["usuario", "tipo", "data_prevista"]),
+            models.Index(fields=["usuario", "transacao_realizada", "data_realizacao"]),
+        ]
 
     def __str__(self):
-        tipo = "Receita" if self.tipo == self.TIPO_RECEITA else "Despesa"
-        return f"{tipo} - {self.valor} em {self.data}"
-
-
-class ContaPagar(models.Model):
-    STATUS_PENDENTE = "pendente"
-    STATUS_PAGO = "pago"
-    STATUS_ATRASADO = "atrasado"
-
-    STATUS_CHOICES = [
-        (STATUS_PENDENTE, "Pendente"),
-        (STATUS_PAGO, "Pago"),
-        (STATUS_ATRASADO, "Atrasado"),
-    ]
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="contas_pagar"
-    )
-
-    descricao = models.CharField(max_length=255)
-
-    valor = models.DecimalField(max_digits=12, decimal_places=2)
-
-    data_vencimento = models.DateField()
-
-    status = models.CharField(
-        max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDENTE
-    )
-
-    categoria = models.ForeignKey(
-        Categoria,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="contas_pagar",
-    )
-
-    forma_pagamento = models.ForeignKey(
-        FormaPagamento,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="contas_pagar",
-    )
-
-    criada_em = models.DateTimeField(auto_now_add=True)
-    atualizada_em = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["data_vencimento", "descricao"]
-        verbose_name = "Conta a pagar"
-        verbose_name_plural = "Contas a pagar"
-
-    def __str__(self):
-        return f"{self.descricao} - {self.valor} (vence em {self.data_vencimento})"
-
-    @property
-    def esta_pendente(self):
-        return self.status == self.STATUS_PENDENTE
-
-    @property
-    def esta_paga(self):
-        return self.status == self.STATUS_PAGO
+        status = "Realizada" if self.transacao_realizada else "Prevista"
+        return (
+            f"{status} {self.get_tipo_display()} - {self.valor} ({self.data_prevista})"
+        )
 
     @property
     def esta_atrasada(self):
-        return self.status == self.STATUS_ATRASADO
+        # Atrasada = passou da data prevista e ainda não foi realizada
+        return (not self.transacao_realizada) and (
+            self.data_prevista < timezone.localdate()
+        )
+
+    def marcar_realizada(self, data=None):
+        if self.transacao_realizada:
+            return
+        self.transacao_realizada = True
+        self.data_realizacao = data or timezone.localdate()
+        self.save(
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
+        )
+
+    def desmarcar_realizada(self):
+        self.transacao_realizada = False
+        self.data_realizacao = None
+        self.save(
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
+        )
 
 
 class ResumoMensal(models.Model):
