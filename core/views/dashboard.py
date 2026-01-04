@@ -24,6 +24,133 @@ class Periodo:
     ultimo_dia: int
 
 
+def totals_for_range_competencia(usuario, inicio: date, fim: date):
+    qs = Conta.objects.filter(
+        usuario=usuario,
+        data_prevista__gte=inicio,
+        data_prevista__lt=fim,
+    )
+    receitas = (
+        qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"] or 0
+    )
+    despesas = (
+        qs.filter(tipo=Conta.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"] or 0
+    )
+    return float(receitas), float(despesas)
+
+
+def serie_por_dia_competencia(usuario, tipo, inicio: date, fim: date, ultimo_dia: int):
+    qs = (
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            data_prevista__gte=inicio,
+            data_prevista__lt=fim,
+        )
+        .annotate(dia=TruncDay("data_prevista"))
+        .values("dia")
+        .annotate(total=Sum("valor"))
+        .order_by("dia")
+    )
+
+    def norm_day(v):
+        return v.date() if hasattr(v, "date") else v
+
+    mapa = {norm_day(row["dia"]): float(row["total"] or 0) for row in qs}
+
+    labels, valores = [], []
+    for d in range(1, ultimo_dia + 1):
+        dt = date(inicio.year, inicio.month, d)
+        labels.append(f"{d:02d}")
+        valores.append(mapa.get(dt, 0.0))
+    return labels, valores
+
+
+def serie_6m_competencia(usuario, tipo, inicio_ref: date, fim_ref: date):
+    inicio_janela = inicio_ref - relativedelta(months=5)
+
+    qs = (
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            data_prevista__gte=inicio_janela,
+            data_prevista__lt=fim_ref,
+        )
+        .annotate(mes=TruncMonth("data_prevista"))
+        .values("mes")
+        .annotate(total=Sum("valor"))
+        .order_by("mes")
+    )
+
+    def norm_month(v):
+        return v.date().replace(day=1) if hasattr(v, "date") else v
+
+    mapa = {norm_month(row["mes"]): float(row["total"] or 0) for row in qs}
+
+    labels, values = [], []
+    for i in range(5, -1, -1):
+        ref = (inicio_ref - relativedelta(months=i)).replace(day=1)
+        labels.append(ref.strftime("%b/%Y"))
+        values.append(mapa.get(ref, 0.0))
+    return labels, values
+
+
+def breakdown_despesas_competencia(
+    usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4
+):
+    qs = (
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
+            data_prevista__gte=inicio,
+            data_prevista__lt=fim,
+        )
+        .values("categoria__nome")
+        .annotate(total=Sum("valor"))
+        .order_by("-total")
+    )
+
+    itens = [
+        {
+            "nome": (row["categoria__nome"] or "Sem categoria"),
+            "valor": float(row["total"] or 0),
+        }
+        for row in qs
+    ]
+
+    if not itens or total_despesas <= 0:
+        return [], {"nome": "Sem dados", "valor": 0.0, "pct": 0.0}
+
+    top = itens[:top_n]
+    soma_top = sum(i["valor"] for i in top)
+    outros = max(total_despesas - soma_top, 0.0)
+
+    out = [
+        {
+            "nome": i["nome"],
+            "valor": i["valor"],
+            "pct": (i["valor"] / total_despesas) * 100.0,
+        }
+        for i in top
+    ]
+
+    if outros > 0:
+        out.append(
+            {
+                "nome": "Outros",
+                "valor": outros,
+                "pct": (outros / total_despesas) * 100.0,
+            }
+        )
+
+    if out:
+        total_pct = sum(x["pct"] for x in out)
+        out[-1]["pct"] = max(0.0, out[-1]["pct"] - (total_pct - 100.0))
+
+    top1 = out[0] if out else {"nome": "Sem dados", "valor": 0.0, "pct": 0.0}
+    return out, top1
+
+
 def clamp_int(value: str, default: int = 0, min_v: int = 0, max_v: int = 2) -> int:
     value = (value or "").strip()
     if not value.isdigit():
@@ -224,37 +351,38 @@ class DashboardView(View):
         periodo_idx = clamp_int(request.GET.get("periodo"), default=0, min_v=0, max_v=2)
         periodo = make_periodo(hoje, periodo_idx)
 
-        # Totais (somente realizadas)
-        total_receitas, total_despesas = totals_for_range_realizadas(
+        # Totais do período por COMPETÊNCIA (data_prevista)
+        total_receitas, total_despesas = totals_for_range_competencia(
             usuario, periodo.inicio, periodo.fim
         )
         saldo_mes = total_receitas - total_despesas
 
-        receitas_prev, despesas_prev = totals_for_range_realizadas(
+        # Comparação vs mês anterior também por COMPETÊNCIA
+        receitas_prev, despesas_prev = totals_for_range_competencia(
             usuario, periodo.inicio_prev, periodo.inicio
         )
         receitas_pct = pct_change(total_receitas, receitas_prev)
         despesas_pct = pct_change(total_despesas, despesas_prev)
 
-        # Séries diárias (somente realizadas)
-        dias_labels, receitas_dias = serie_por_dia_realizadas(
+        # Séries diárias por COMPETÊNCIA
+        dias_labels, receitas_dias = serie_por_dia_competencia(
             usuario, Conta.TIPO_RECEITA, periodo.inicio, periodo.fim, periodo.ultimo_dia
         )
-        _, despesas_dias = serie_por_dia_realizadas(
+        _, despesas_dias = serie_por_dia_competencia(
             usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim, periodo.ultimo_dia
         )
 
-        # Séries 6 meses (somente realizadas)
-        meses_labels, receitas_6m = serie_6m_realizadas(
+        # Séries 6 meses por COMPETÊNCIA
+        meses_labels, receitas_6m = serie_6m_competencia(
             usuario, Conta.TIPO_RECEITA, periodo.inicio, periodo.fim
         )
-        _, despesas_6m = serie_6m_realizadas(
+        _, despesas_6m = serie_6m_competencia(
             usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim
         )
         saldos_6m = [r - d for r, d in zip(receitas_6m, despesas_6m)]
 
-        # Breakdown e insights (somente realizadas)
-        breakdown_items, top_categoria = breakdown_despesas_realizadas(
+        # Breakdown por COMPETÊNCIA
+        breakdown_items, top_categoria = breakdown_despesas_competencia(
             usuario, periodo.inicio, periodo.fim, total_despesas, top_n=4
         )
 
@@ -265,7 +393,7 @@ class DashboardView(View):
             (saldo_mes / total_receitas * 100.0) if total_receitas > 0 else None
         )
 
-        # Contas do mês (previstas/pendentes) para o card de contas
+        # Card "Status das contas" continua por data_prevista (já está correto)
         contas_mes = Conta.objects.filter(
             usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
@@ -279,6 +407,7 @@ class DashboardView(View):
             transacao_realizada=False, data_prevista__lt=hoje
         ).count()
 
+        # Próximas contas (corrija no template para usar data_prevista, não data_vencimento)
         upcoming_bills = (
             Conta.objects.filter(
                 usuario=usuario,
@@ -290,7 +419,7 @@ class DashboardView(View):
             .order_by("data_prevista")[:5]
         )
 
-        # Últimas transações (realizadas)
+        # Transações recentes continuam por CAIXA (realizadas)
         ultimas_transacoes = (
             Conta.objects.filter(usuario=usuario, transacao_realizada=True)
             .select_related("categoria", "forma_pagamento")
