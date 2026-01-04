@@ -1,35 +1,23 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.utils import timezone
 
-from core.models import (
-    Conta,
-    Categoria,
-    FormaPagamento,
-    ResumoMensal,
-    ConfigUsuario,
-)
+from core.models import Conta, Categoria, FormaPagamento, ResumoMensal, ConfigUsuario
 
-MODELOS_MONITORADOS = (
-    Conta,
-    Categoria,
-    FormaPagamento,
-    ResumoMensal,
-)
+MODELOS_MONITORADOS = (Conta, Categoria, FormaPagamento, ResumoMensal)
 
 
 def atualizar_config(usuario):
     config, _ = ConfigUsuario.objects.get_or_create(usuario=usuario)
-    config.save()  # Isso atualiza 'atualizada_em' automaticamente
+    config.save(update_fields=["atualizada_em"])
 
 
 @receiver(post_save)
 def monitorar_salvamento(sender, instance, **kwargs):
-    if sender in MODELOS_MONITORADOS:
+    if sender in MODELOS_MONITORADOS and getattr(instance, "usuario_id", None):
         atualizar_config(instance.usuario)
 
 
 @receiver(post_delete)
 def monitorar_delecao(sender, instance, **kwargs):
-    if sender in MODELOS_MONITORADOS:
+    if sender in MODELOS_MONITORADOS and getattr(instance, "usuario_id", None):
         atualizar_config(instance.usuario)
