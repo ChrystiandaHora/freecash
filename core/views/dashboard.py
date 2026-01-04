@@ -173,10 +173,7 @@ def make_periodo(hoje: date, periodo_idx: int) -> Periodo:
     fim = next_month_start(inicio)
     inicio_prev = inicio - relativedelta(months=1)
 
-    is_mes_atual = (inicio.year == hoje.year) and (inicio.month == hoje.month)
-    ultimo_dia = (
-        hoje.day if is_mes_atual else calendar.monthrange(inicio.year, inicio.month)[1]
-    )
+    ultimo_dia = calendar.monthrange(inicio.year, inicio.month)[1]
 
     return Periodo(
         idx=periodo_idx,
