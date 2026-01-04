@@ -1,3 +1,4 @@
+import calendar
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -8,6 +9,7 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.db import transaction
 
 from core.models import Conta, Categoria, FormaPagamento
 
@@ -98,27 +100,52 @@ class CadastrarContaPagarView(View):
 
         descricao = (request.POST.get("descricao") or "").strip()
         valor_raw = (request.POST.get("valor") or "").strip()
-        data_prevista = (
-            request.POST.get("data_prevista") or ""
-        ).strip()  # mantém o name do form
+        data_prevista_raw = (request.POST.get("data_prevista") or "").strip()
         forma_pagamento_id = (request.POST.get("forma_pagamento") or "").strip()
 
-        if not descricao or not valor_raw or not data_prevista:
+        parcelado = (request.POST.get("parcelado") or "").strip() == "1"
+        numero_parcelas_raw = (request.POST.get("numero_parcelas") or "").strip()
+
+        multiplicar = (request.POST.get("multiplicar") or "").strip() == "1"
+        numero_multiplicacoes_raw = (
+            request.POST.get("numero_multiplicacoes") or ""
+        ).strip()
+
+        if not descricao or not valor_raw or not data_prevista_raw:
             messages.error(request, "Preencha todos os campos obrigatórios.")
             return redirect("contas_pagar")
 
+        # Valor
         try:
-            # aceita "10,50" ou "10.50"
             valor_raw = (
                 valor_raw.replace(".", "").replace(",", ".")
                 if "," in valor_raw
                 else valor_raw
             )
-            valor = Decimal(valor_raw)
+            valor_total = Decimal(valor_raw).quantize(Decimal("0.01"))
         except (InvalidOperation, ValueError):
             messages.error(request, "Valor inválido.")
             return redirect("contas_pagar")
 
+        if valor_total <= 0:
+            messages.error(request, "O valor precisa ser maior que zero.")
+            return redirect("contas_pagar")
+
+        # Data
+        try:
+            data_prevista = date.fromisoformat(data_prevista_raw)
+        except ValueError:
+            messages.error(request, "Data de vencimento inválida.")
+            return redirect("contas_pagar")
+
+        # Não permitir as duas opções ao mesmo tempo
+        if parcelado and multiplicar:
+            messages.error(
+                request, "Escolha apenas uma opção: parcelar ou multiplicar."
+            )
+            return redirect("contas_pagar")
+
+        # FK forma pagamento
         forma_pagamento = (
             FormaPagamento.objects.filter(
                 id=forma_pagamento_id, usuario=usuario
@@ -127,18 +154,140 @@ class CadastrarContaPagarView(View):
             else None
         )
 
+        categoria_padrao = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
+        ).first()
+
+        def add_months(d: date, months: int) -> date:
+            y = d.year + (d.month - 1 + months) // 12
+            m = (d.month - 1 + months) % 12 + 1
+            last_day = calendar.monthrange(y, m)[1]
+            day = min(d.day, last_day)
+            return date(y, m, day)
+
+        def cents_to_decimal(cents: int) -> Decimal:
+            return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
+
+        # 1) MULTIPLICAR (criar N contas iguais, vencimentos mensais)
+        if multiplicar:
+            try:
+                n = int(numero_multiplicacoes_raw or "2")
+            except ValueError:
+                n = 2
+
+            if n < 2 or n > 12:
+                messages.error(request, "Quantidade deve ser entre 2 e 12.")
+                return redirect("contas_pagar")
+
+            with transaction.atomic():
+                contas = []
+                for i in range(1, n + 1):
+                    venc = add_months(data_prevista, i - 1)
+                    contas.append(
+                        Conta(
+                            usuario=usuario,
+                            tipo=Conta.TIPO_DESPESA,
+                            descricao=descricao,
+                            valor=valor_total,
+                            data_prevista=venc,
+                            transacao_realizada=False,
+                            data_realizacao=None,
+                            categoria=categoria_padrao,
+                            forma_pagamento=forma_pagamento,
+                            # não é parcelado
+                            eh_parcelada=False,
+                            parcela_numero=None,
+                            parcela_total=None,
+                            grupo_parcelamento=None,
+                        )
+                    )
+                Conta.objects.bulk_create(contas)
+
+            messages.success(request, f"Conta registrada {n} vezes.")
+            return redirect("contas_pagar")
+
+        # 2) PARCELAR
+        if parcelado:
+            try:
+                n = int(numero_parcelas_raw or "2")
+            except ValueError:
+                n = 2
+
+            if n < 2 or n > 12:
+                messages.error(request, "Número de parcelas deve ser entre 2 e 12.")
+                return redirect("contas_pagar")
+
+            total_cents = int((valor_total * 100).to_integral_value())
+            base = total_cents // n
+            resto = total_cents % n
+
+            with transaction.atomic():
+                cents_1 = base + (1 if 1 <= resto else 0)
+
+                primeira = Conta.objects.create(
+                    usuario=usuario,
+                    tipo=Conta.TIPO_DESPESA,
+                    descricao=descricao,
+                    valor=cents_to_decimal(cents_1),
+                    data_prevista=data_prevista,
+                    transacao_realizada=False,
+                    data_realizacao=None,
+                    categoria=categoria_padrao,
+                    forma_pagamento=forma_pagamento,
+                    eh_parcelada=True,
+                    parcela_numero=1,
+                    parcela_total=n,
+                    grupo_parcelamento=None,
+                )
+
+                gid = primeira.id
+                primeira.grupo_parcelamento = gid
+                primeira.save(update_fields=["grupo_parcelamento", "atualizada_em"])
+
+                contas = []
+                for i in range(2, n + 1):
+                    cents = base + (1 if i <= resto else 0)
+                    venc = add_months(data_prevista, i - 1)
+
+                    contas.append(
+                        Conta(
+                            usuario=usuario,
+                            tipo=Conta.TIPO_DESPESA,
+                            descricao=descricao,
+                            valor=cents_to_decimal(cents),
+                            data_prevista=venc,
+                            transacao_realizada=False,
+                            data_realizacao=None,
+                            categoria=categoria_padrao,
+                            forma_pagamento=forma_pagamento,
+                            eh_parcelada=True,
+                            parcela_numero=i,
+                            parcela_total=n,
+                            grupo_parcelamento=gid,
+                        )
+                    )
+
+                if contas:
+                    Conta.objects.bulk_create(contas)
+
+            messages.success(request, f"Conta registrada em {n} parcelas.")
+            return redirect("contas_pagar")
+
+        # 3) NORMAL
         Conta.objects.create(
             usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
             descricao=descricao,
-            valor=valor,
+            valor=valor_total,
             data_prevista=data_prevista,
             transacao_realizada=False,
             data_realizacao=None,
-            categoria=Categoria.objects.filter(
-                usuario=usuario, tipo=Categoria.TIPO_DESPESA
-            ).first(),
+            categoria=categoria_padrao,
             forma_pagamento=forma_pagamento,
+            eh_parcelada=False,
+            parcela_numero=None,
+            parcela_total=None,
+            grupo_parcelamento=None,
         )
 
         messages.success(request, "Conta registrada com sucesso.")

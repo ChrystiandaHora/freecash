@@ -70,10 +70,12 @@ class Conta(models.Model):
     )
 
     tipo = models.CharField(max_length=1, choices=TIPO_CHOICES)
-
     descricao = models.CharField(max_length=255, blank=True)
-
     valor = models.DecimalField(max_digits=12, decimal_places=2)
+    eh_parcelada = models.BooleanField(default=False, db_index=True)
+    parcela_numero = models.IntegerField(null=True, blank=True)
+    parcela_total = models.IntegerField(null=True, blank=True)
+    grupo_parcelamento = models.IntegerField(null=True, blank=True, db_index=True)
 
     # Agendamento (equivale ao vencimento / data prevista)
     data_prevista = models.DateField(db_index=True)
