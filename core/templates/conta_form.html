@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+{% load static %}
+{% load l10n %}
+
+{% block content %}
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- Header igual ao Contas -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Contas</h1>
+      <p class="text-sm text-gray-500">
+        {% if modo == "edit" %}
+          Editar conta selecionada.
+        {% else %}
+          Cadastre uma nova conta.
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="{% url 'conta_nova' %}"
+         class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+        + Nova conta
+      </a>
+
+      <a href="?"
+         class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        Atualizar
+      </a>
+
+      <a href="{% url 'contas_pagar' %}"
+         class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        Voltar
+      </a>
+    </div>
+  </div>
+
+  <!-- Grid igual ao Contas -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Coluna 1: Form -->
+    <div class="lg:col-span-1">
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-900">
+              {% if modo == "edit" %}Editar conta{% else %}Cadastrar nova conta{% endif %}
+            </h2>
+            <p class="mt-1 text-xs text-gray-500">
+              Campos com * são obrigatórios.
+            </p>
+          </div>
+        </div>
+
+        <form method="post" class="mt-5 space-y-4">
+          {% csrf_token %}
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Descrição *</label>
+            <input type="text"
+                   name="descricao"
+                   required
+                   value="{{ conta.descricao|default_if_none:'' }}"
+                   placeholder="Ex: Internet, Luz, Aluguel"
+                   class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Valor *</label>
+              <input type="number"
+                     step="0.01"
+                     name="valor"
+                     required
+                     value="{% if conta.valor != None %}{{ conta.valor|unlocalize }}{% endif %}"
+                     placeholder="0,00"
+                     class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+
+              {% if modo == "edit" and conta.eh_parcelada %}
+                <p class="mt-1 text-xs text-gray-500">
+                  Em parcelamento, o valor pode variar por parcela (centavos distribuídos).
+                </p>
+              {% endif %}
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Vencimento *</label>
+              <input type="date"
+                     name="data_prevista"
+                     required
+                     value="{% if conta.data_prevista %}{{ conta.data_prevista|date:'Y-m-d' }}{% endif %}"
+                     class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Categoria</label>
+            <select name="categoria"
+                    class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+              <option value="">Selecione...</option>
+              {% for cat in categorias %}
+                <option value="{{ cat.id }}"
+                  {% if conta.categoria and conta.categoria.id == cat.id %}selected{% endif %}>
+                  {{ cat.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Forma de pagamento</label>
+            <select name="forma_pagamento"
+                    class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+              <option value="">Selecione...</option>
+              {% for f in formas %}
+                <option value="{{ f.id }}"
+                  {% if conta.forma_pagamento and conta.forma_pagamento.id == f.id %}selected{% endif %}>
+                  {{ f.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          {% if modo != "edit" %}
+            <!-- Multiplicar -->
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <input id="multiplicar"
+                       type="checkbox"
+                       name="multiplicar"
+                       value="1"
+                       class="h-4 w-4 rounded border-gray-300">
+                Multiplicar (repetir mensal)
+              </label>
+
+              <div id="multiplicaBox" class="mt-3 hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Quantidade de meses</label>
+                <select id="numero_multiplicacoes"
+                        name="numero_multiplicacoes"
+                        disabled
+                        class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+                  <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                  <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                  <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                  <option value="11">11x</option><option value="12">12x</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Parcelar -->
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <input id="parcelado"
+                       type="checkbox"
+                       name="parcelado"
+                       value="1"
+                       class="h-4 w-4 rounded border-gray-300">
+                Parcelar
+              </label>
+
+              <div id="parcelasBox" class="mt-3 hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Número de parcelas</label>
+                <select id="numero_parcelas"
+                        name="numero_parcelas"
+                        disabled
+                        class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+                  <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                  <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                  <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                  <option value="11">11x</option><option value="12">12x</option>
+                </select>
+              </div>
+            </div>
+          {% endif %}
+
+          {% if modo == "edit" and conta.eh_parcelada and conta.grupo_parcelamento %}
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <input id="aplicar_grupo"
+                       type="checkbox"
+                       name="aplicar_grupo"
+                       value="1"
+                       class="h-4 w-4 rounded border-gray-300">
+                Aplicar alterações em todas as parcelas
+              </label>
+
+              <div class="mt-2 text-xs text-gray-600 space-y-1">
+                <p>Atualiza em todas as parcelas do grupo:</p>
+                <ul class="list-disc pl-5">
+                  <li>Descrição</li>
+                  <li>Categoria</li>
+                  <li>Forma de pagamento</li>
+                </ul>
+                <p class="mt-1 text-gray-500">
+                  Valor e vencimento continuam sendo ajustados apenas nesta parcela.
+                </p>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="flex items-center justify-between pt-2">
+            <a href="{% url 'contas_pagar' %}"
+               class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </a>
+
+            {% if modo == "edit" %}
+              <button type="submit"
+                      class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">
+                Salvar alterações
+              </button>
+            {% else %}
+              <button type="submit"
+                      class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">
+                Cadastrar conta
+              </button>
+            {% endif %}
+          </div>
+
+          {% if modo != "edit" %}
+            <p class="text-xs text-gray-500">
+              Dica: use descrições consistentes para facilitar buscas e relatórios.
+            </p>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <!-- Coluna 2-3: Painel contextual (no lugar das tabelas) -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-900">
+                {% if modo == "edit" %}Detalhes da conta{% else %}Como funciona{% endif %}
+              </h2>
+              <p class="mt-1 text-xs text-gray-500">
+                {% if modo == "edit" %}
+                  Ações rápidas e status da conta selecionada.
+                {% else %}
+                  Depois de criar, clique em uma linha na lista de pendentes/pagas para editar.
+                {% endif %}
+              </p>
+            </div>
+
+            {% if modo == "edit" %}
+              <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                ID {{ conta.id }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="p-6 space-y-4">
+
+          {% if modo == "edit" %}
+            <div class="flex flex-wrap gap-2">
+              {% if conta.transacao_realizada %}
+                <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                  Paga em {{ conta.data_realizacao|date:"d/m/Y" }}
+                </span>
+              {% else %}
+                <span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                  Pendente
+                </span>
+              {% endif %}
+
+              {% if conta.esta_atrasada %}
+                <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                  Atrasada
+                </span>
+              {% endif %}
+
+              {% if conta.eh_parcelada %}
+                <span class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                  Parcela {{ conta.parcela_numero }}/{{ conta.parcela_total }}
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p class="text-xs font-semibold text-gray-600">Vencimento</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">{{ conta.data_prevista|date:"d/m/Y" }}</p>
+              </div>
+
+              <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p class="text-xs font-semibold text-gray-600">Valor</p>
+                <p class="mt-1 text-sm font-semibold text-gray-900">R$ {{ conta.valor|floatformat:2 }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div class="text-xs text-gray-500">
+                Criada em {{ conta.criada_em|date:"d/m/Y H:i" }}
+                {% if conta.eh_parcelada %}
+                  <span class="ml-2">Grupo: <span class="font-semibold text-gray-700">{{ conta.grupo_parcelamento }}</span></span>
+                {% endif %}
+              </div>
+
+              <form method="post" class="flex items-center gap-3">
+                {% csrf_token %}
+
+                {% if conta.transacao_realizada %}
+                  <button type="submit"
+                          name="acao"
+                          value="desmarcar_paga"
+                          class="inline-flex items-center justify-center rounded-xl bg-white border border-green-200 px-4 py-2 text-sm font-semibold text-green-800 hover:bg-green-100">
+                    Desmarcar como paga
+                  </button>
+                {% else %}
+                  <button type="submit"
+                          name="acao"
+                          value="marcar_paga"
+                          class="inline-flex items-center justify-center rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-200">
+                    Marcar como paga
+                  </button>
+                {% endif %}
+              </form>
+            </div>
+
+            <div class="pt-5 border-t border-gray-100">
+              <form method="post"
+                    action="{% url 'apagar_conta' conta.id %}"
+                    onsubmit="return confirm('Tem certeza que deseja apagar esta conta?');"
+                    class="space-y-3">
+                {% csrf_token %}
+
+                {% if conta.eh_parcelada and conta.grupo_parcelamento %}
+                  <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" name="apagar_grupo" value="1" class="h-4 w-4 rounded border-gray-300">
+                    Apagar todas as parcelas deste grupo
+                  </label>
+                {% endif %}
+
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                  Apagar conta
+                </button>
+              </form>
+            </div>
+
+          {% else %}
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p class="text-sm font-semibold text-gray-900">Fluxo sugerido</p>
+              <ul class="mt-2 text-sm text-gray-700 list-disc pl-5 space-y-1">
+                <li>Cadastre a conta na coluna da esquerda.</li>
+                <li>Ela aparece em Pendentes na página de Contas.</li>
+                <li>Clique na linha para abrir esta tela de edição.</li>
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const form = document.querySelector("form");
+    if (!form) return;
+
+    const btnMark = document.querySelector('button[name="acao"][value="marcar_paga"]');
+    const btnUnmark = document.querySelector('button[name="acao"][value="desmarcar_paga"]');
+
+    function confirmAction(btn, msg) {
+      if (!btn) return;
+      btn.addEventListener("click", function (e) {
+        if (!confirm(msg)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      });
+    }
+
+    confirmAction(btnMark, "Marcar esta conta como paga agora?");
+    confirmAction(btnUnmark, "Desmarcar esta conta como paga?");
+  })();
+</script>
+
+<script>
+  (function () {
+    const chkParcelado = document.getElementById("parcelado");
+    const boxParcelas = document.getElementById("parcelasBox");
+    const selParcelas = document.getElementById("numero_parcelas");
+
+    const chkMultiplicar = document.getElementById("multiplicar");
+    const boxMultiplica = document.getElementById("multiplicaBox");
+    const selMultiplica = document.getElementById("numero_multiplicacoes");
+
+    const valorInput = document.querySelector('input[name="valor"]');
+    const parcelasOptions = selParcelas ? Array.from(selParcelas.options) : [];
+
+    function parseToCents(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim().replace(/\s/g, "");
+      if (s.includes(",")) {
+        s = s.replace(/\./g, "");
+        s = s.replace(",", ".");
+      }
+      const num = Number(s);
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return Math.round(num * 100);
+    }
+
+    function centsToBRL(cents) {
+      return (cents / 100).toFixed(2).replace(".", ",");
+    }
+
+    function splitCents(totalCents, n) {
+      const base = Math.floor(totalCents / n);
+      const resto = totalCents % n;
+      const parcelas = [];
+      for (let i = 1; i <= n; i++) {
+        parcelas.push(base + (i <= resto ? 1 : 0));
+      }
+      return parcelas;
+    }
+
+    function setVisible(el, visible) {
+      if (!el) return;
+      el.classList.toggle("hidden", !visible);
+    }
+
+    function updateParcelasOptions() {
+      if (!selParcelas || !valorInput) return;
+      const totalCents = parseToCents(valorInput.value);
+
+      parcelasOptions.forEach(opt => {
+        const n = parseInt(opt.value, 10);
+        if (!totalCents) {
+          opt.textContent = `${n}x`;
+          return;
+        }
+        const parcelas = splitCents(totalCents, n);
+        opt.textContent = `${n}x de R$ ${centsToBRL(parcelas[0])}`;
+      });
+    }
+
+    function updateUI() {
+      if (chkParcelado && chkMultiplicar && chkParcelado.checked && chkMultiplicar.checked) {
+        chkMultiplicar.checked = false;
+      }
+
+      setVisible(boxParcelas, chkParcelado && chkParcelado.checked);
+      setVisible(boxMultiplica, chkMultiplicar && chkMultiplicar.checked);
+
+      if (selParcelas && chkParcelado) selParcelas.disabled = !chkParcelado.checked;
+      if (selMultiplica && chkMultiplicar) selMultiplica.disabled = !chkMultiplicar.checked;
+
+      updateParcelasOptions();
+    }
+
+    if (chkParcelado) chkParcelado.addEventListener("change", updateUI);
+    if (chkMultiplicar) chkMultiplicar.addEventListener("change", updateUI);
+    if (selParcelas) selParcelas.addEventListener("change", updateUI);
+    if (valorInput) valorInput.addEventListener("input", updateUI);
+
+    updateUI();
+  })();
+</script>
+
+{% endblock %}

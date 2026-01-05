@@ -19,8 +19,11 @@ from django.contrib import admin
 from django.urls import path
 from core.views.contas import (
     CadastrarContaPagarView,
+    ContaCreateView,
     ContasPagarView,
     MarcarContaPagaView,
+    ContaUpdateView,
+    ApagarContaView,
 )
 from core.views.dashboard import DashboardView
 from core.views.exportar import ExportarView
@@ -42,7 +45,6 @@ urlpatterns += [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
     path("exportar/", ExportarView.as_view(), name="exportar"),
-    path("contas/", ContasPagarView.as_view(), name="contas_pagar"),
     path(
         "formas-de-pagamento/", FormasPagamentoView.as_view(), name="formas_pagamento"
     ),
@@ -56,11 +58,22 @@ urlpatterns += [
         CadastrarContaPagarView.as_view(),
         name="cadastrar_conta_pagar",
     ),
+    path("transacoes/", TransacoesView.as_view(), name="transacoes"),
+    path("receitas/", ReceitasView.as_view(), name="receitas"),
+]
+
+urlpatterns += [
+    path("contas/", ContasPagarView.as_view(), name="contas_pagar"),
+    path("contas/nova/", ContaCreateView.as_view(), name="conta_nova"),
     path(
-        "contas/pagar/<int:conta_id>/",
+        "contas/<int:conta_id>/editar/", ContaUpdateView.as_view(), name="conta_editar"
+    ),
+    path(
+        "contas/<int:conta_id>/pagar/",
         MarcarContaPagaView.as_view(),
         name="marcar_conta_paga",
     ),
-    path("transacoes/", TransacoesView.as_view(), name="transacoes"),
-    path("receitas/", ReceitasView.as_view(), name="receitas"),
+    path(
+        "contas/<int:conta_id>/apagar/", ApagarContaView.as_view(), name="apagar_conta"
+    ),
 ]

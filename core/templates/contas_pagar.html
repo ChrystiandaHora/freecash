@@ -12,7 +12,13 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <a href="?" class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+      <a href="{% url 'conta_nova' %}"
+        class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+        + Nova conta
+      </a>
+
+      <a href="?"
+        class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
         Atualizar
       </a>
     </div>
@@ -178,7 +184,7 @@
 
             <tbody class="divide-y divide-gray-100 text-sm">
               {% for c in pendentes_page %}
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{% url 'conta_editar' c.id %}'">
                   <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900">{{ c.descricao }}</div>
                     <div class="mt-1 text-xs text-gray-500">
@@ -198,7 +204,7 @@
                     R$ {{ c.valor|floatformat:2 }}
                   </td>
 
-                  <td class="px-6 py-4 text-right whitespace-nowrap">
+                  <td class="px-6 py-4 text-right whitespace-nowrap" onclick="event.stopPropagation()">
                   <form method="post" action="{% url 'marcar_conta_paga' c.id %}">
                     {% csrf_token %}
                     <button type="submit"
@@ -343,7 +349,7 @@
 
             <tbody class="divide-y divide-gray-100 text-sm">
               {% for c in pagas_page %}
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{% url 'conta_editar' c.id %}'">
                   <td class="px-6 py-4">
                     <div class="font-semibold text-gray-900">{{ c.descricao }}</div>
                     <div class="mt-1 text-xs text-gray-500">

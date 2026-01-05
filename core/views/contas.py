@@ -295,6 +295,156 @@ class CadastrarContaPagarView(View):
 
 
 @method_decorator(login_required, name="dispatch")
+class ContaCreateView(View):
+    template_name = "conta_form.html"
+
+    def get(self, request):
+        usuario = request.user
+        categorias = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
+        ).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
+        return render(
+            request,
+            self.template_name,
+            {"categorias": categorias, "formas": formas, "modo": "create"},
+        )
+
+    def post(self, request):
+        # aqui você reutiliza exatamente o corpo do seu CadastrarContaPagarView.post
+        return CadastrarContaPagarView().post(request)
+
+
+@method_decorator(login_required, name="dispatch")
+class ContaUpdateView(View):
+    template_name = "conta_form.html"
+
+    def get(self, request, conta_id):
+        usuario = request.user
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
+
+        categorias = Categoria.objects.filter(usuario=usuario).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "conta": conta,
+                "categorias": categorias,
+                "formas": formas,
+                "modo": "edit",
+            },
+        )
+
+    def post(self, request, conta_id):
+        usuario = request.user
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
+
+        aplicar_grupo = (request.POST.get("aplicar_grupo") or "").strip() == "1"
+
+        descricao = (request.POST.get("descricao") or "").strip()
+
+        # valor
+        valor_raw = (request.POST.get("valor") or "").strip()
+        try:
+            valor_raw = (
+                valor_raw.replace(".", "").replace(",", ".")
+                if "," in valor_raw
+                else valor_raw
+            )
+            valor = Decimal(valor_raw).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError):
+            messages.error(request, "Valor inválido.")
+            return redirect("conta_editar", conta_id=conta.id)
+
+        if valor <= 0:
+            messages.error(request, "O valor precisa ser maior que zero.")
+            return redirect("conta_editar", conta_id=conta.id)
+
+        # data prevista
+        data_prevista_raw = (request.POST.get("data_prevista") or "").strip()
+        try:
+            data_prevista = date.fromisoformat(data_prevista_raw)
+        except ValueError:
+            messages.error(request, "Data de vencimento inválida.")
+            return redirect("conta_editar", conta_id=conta.id)
+
+        # categoria
+        cat_id = (request.POST.get("categoria") or "").strip()
+        categoria = (
+            Categoria.objects.filter(id=cat_id, usuario=usuario).first()
+            if cat_id.isdigit()
+            else None
+        )
+
+        # forma de pagamento
+        forma_id = (request.POST.get("forma_pagamento") or "").strip()
+        forma_pagamento = (
+            FormaPagamento.objects.filter(id=forma_id, usuario=usuario).first()
+            if forma_id.isdigit()
+            else None
+        )
+
+        # Se marcou aplicar no grupo, e a conta é parcelada, atualiza o grupo inteiro
+        if aplicar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
+            gid = conta.grupo_parcelamento
+
+            # group edit seguro: só campos compartilháveis
+            Conta.objects.filter(usuario=usuario, grupo_parcelamento=gid).update(
+                descricao=descricao,
+                categoria=categoria,
+                forma_pagamento=forma_pagamento,
+            )
+
+            # individual edit: mantém o resto só para a parcela atual
+            conta.valor = valor
+            conta.data_prevista = data_prevista
+            conta.save(update_fields=["valor", "data_prevista", "atualizada_em"])
+
+            messages.success(
+                request,
+                "Grupo atualizado (descrição, categoria e forma). Esta parcela teve valor e vencimento atualizados individualmente.",
+            )
+            return redirect("contas_pagar")
+
+        # Edição individual normal
+        conta.descricao = descricao
+        conta.valor = valor
+        conta.data_prevista = data_prevista
+        conta.categoria = categoria
+        conta.forma_pagamento = forma_pagamento
+        conta.save()
+
+        messages.success(request, "Conta atualizada com sucesso.")
+        return redirect("contas_pagar")
+
+
+@method_decorator(login_required, name="dispatch")
+class ApagarContaView(View):
+    def post(self, request, conta_id):
+        usuario = request.user
+
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
+
+        # opcional: apagar grupo de parcelas se usuário escolher
+        apagar_grupo = (request.POST.get("apagar_grupo") or "").strip() == "1"
+
+        if apagar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
+            Conta.objects.filter(
+                usuario=usuario,
+                eh_parcelada=True,
+                grupo_parcelamento=conta.grupo_parcelamento,
+            ).delete()
+            messages.success(request, "Grupo de parcelas apagado com sucesso.")
+        else:
+            conta.delete()
+            messages.success(request, "Conta apagada com sucesso.")
+
+        return redirect("contas_pagar")
+
+
+@method_decorator(login_required, name="dispatch")
 class MarcarContaPagaView(View):
     def post(self, request, conta_id):
         usuario = request.user
