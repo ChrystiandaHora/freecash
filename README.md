@@ -5,7 +5,7 @@ Aplicação web em Django para controle financeiro pessoal com onboarding direto
 ## Visão geral do produto
 - **Onboarding rápido** (`core/views/lading.py` + `core/templates/ladingPage.html`): cria usuário e provisiona categorias/forma de pagamento padrão via `core/services/criar_usuario.py`.
 - **Dashboard analítico** (`core/views/dashboard.py`): mostra receitas/despesas/saldo do período, variação vs. mês anterior, séries diárias e de 6 meses, breakdown de despesas por categoria, contas atrasadas/pendentes e últimas transações.
-- **Contas a pagar** (`core/views/contas.py` + `core/templates/contas_pagar.html`): cadastro, listagem pagas/pendentes com paginação e ação de "marcar como paga" (registra realização e data).
+- **Contas a pagar** (`core/views/contas.py` + `core/templates/contas.html`): cadastro, listagem pagas/pendentes com paginação e ação de "marcar como paga" (registra realização e data).
 - **Receitas e transações** (`core/views/receitas.py`, `core/views/transacoes.py`): filtros por data, categoria e forma de pagamento, paginação e criação rápida de receitas.
 - **Importação/exportação unificada** (`core/views/importar.py`, `core/views/exportar.py`, `core/services/importar_unificado.py`, `core/services/exportar_planilha.py`): exporta backup completo (metadados, contas, categorias, formas de pagamento, resumo mensal, configurações) e importa tanto backups FreeCash quanto planilhas legadas por ano; logs ficam em `LogImportacao`.
 

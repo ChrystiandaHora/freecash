@@ -24,7 +24,7 @@ def clamp_per_page(raw, default=5, min_v=5, max_v=50):
 
 @method_decorator(login_required, name="dispatch")
 class ContasPagarView(View):
-    template_name = "contas_pagar.html"
+    template_name = "contas.html"
 
     def get(self, request):
         usuario = request.user
