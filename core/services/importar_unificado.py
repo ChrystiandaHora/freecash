@@ -15,7 +15,6 @@ from core.models import (
     Categoria,
     Conta,
     FormaPagamento,
-    ResumoMensal,
     ConfigUsuario,
     LogImportacao,
 )
@@ -204,7 +203,6 @@ def sobrescrever_dados_do_usuario(usuario) -> None:
     Conta.objects.filter(usuario=usuario).delete()
     Categoria.objects.filter(usuario=usuario).delete()
     FormaPagamento.objects.filter(usuario=usuario).delete()
-    ResumoMensal.objects.filter(usuario=usuario).delete()
     # ConfigUsuario é OneToOne: vamos sobrescrever atualizando/criando, não delete obrigatório
     # mas pode deletar para ficar bem “limpo”
     ConfigUsuario.objects.filter(usuario=usuario).delete()
@@ -349,33 +347,6 @@ def importar_backup_freecash_xlsx(
     if conta_objs:
         Conta.objects.bulk_create(conta_objs, batch_size=500)
 
-    # 4) Resumo mensal
-    df_rm = pd.read_excel(arquivo, sheet_name="resumo_mensal", dtype=object)
-    df_rm = df_rm.fillna("")
-
-    rm_objs = []
-    for _, row in df_rm.iterrows():
-        ano = safe_int(row.get("ano"))
-        mes = safe_int(row.get("mes"))
-        if not ano or not mes:
-            continue
-
-        rm = ResumoMensal(
-            usuario=usuario,
-            ano=ano,
-            mes=mes,
-            receita=parse_decimal(row.get("receita")),
-            outras_receitas=parse_decimal(row.get("outras_receitas")),
-            gastos=parse_decimal(row.get("gastos")),
-            total=parse_decimal(row.get("total")),
-            is_legacy=parse_bool(row.get("is_legacy")),
-        )
-        rm_objs.append(rm)
-
-    if rm_objs:
-        # como é overwrite, pode criar direto
-        ResumoMensal.objects.bulk_create(rm_objs, batch_size=500)
-
     # 5) Config do usuário
     df_conf = pd.read_excel(arquivo, sheet_name="configuracoes", dtype=object)
     df_conf = df_conf.fillna("")
@@ -397,9 +368,7 @@ def importar_backup_freecash_xlsx(
     )
 
     # Opcional (higiene): ajustar sequences
-    reset_sequences_for_models(
-        Categoria, FormaPagamento, Conta, ResumoMensal, ConfigUsuario
-    )
+    reset_sequences_for_models(Categoria, FormaPagamento, Conta, ConfigUsuario)
 
     return {
         "tipo": "backup",
@@ -408,7 +377,6 @@ def importar_backup_freecash_xlsx(
             "categorias": len(cat_old_to_new),
             "formas_pagamento": len(fp_old_to_new),
             "contas": len(conta_objs),
-            "resumos": len(rm_objs),
         },
     }
 

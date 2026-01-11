@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from core.models import Conta, ResumoMensal
+from core.models import Conta
 
 
 @dataclass(frozen=True)
@@ -337,6 +337,47 @@ def breakdown_despesas_realizadas(
     return out, top1
 
 
+def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date):
+    """
+    Retorna lista de 3 itens (do mais recente para o mais antigo), no formato:
+    [{ano, mes, receita, outras_receitas, gastos, total}, ...]
+    Tudo por COMPETÊNCIA (data_prevista).
+    """
+    itens = []
+
+    for i in range(0, 3):
+        inicio_mes = (inicio_ref - relativedelta(months=i)).replace(day=1)
+        fim_mes = (inicio_mes + relativedelta(months=1)).replace(day=1)
+
+        qs = Conta.objects.filter(
+            usuario=usuario,
+            data_prevista__gte=inicio_mes,
+            data_prevista__lt=fim_mes,
+        )
+
+        receita = (
+            qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"]
+            or 0
+        )
+        gastos = (
+            qs.filter(tipo=Conta.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"]
+            or 0
+        )
+
+        itens.append(
+            {
+                "ano": inicio_mes.year,
+                "mes": inicio_mes.month,
+                "receita": float(receita),
+                "outras_receitas": 0.0,
+                "gastos": float(gastos),
+                "total": float(receita) - float(gastos),
+            }
+        )
+
+    return itens
+
+
 @method_decorator(login_required, name="dispatch")
 class DashboardView(View):
     template_name = "dashboard.html"
@@ -423,9 +464,7 @@ class DashboardView(View):
             .order_by("-data_realizacao", "-id")[:7]
         )
 
-        resumo_3_meses = ResumoMensal.objects.filter(usuario=usuario).order_by(
-            "-ano", "-mes"
-        )[:3]
+        resumo_3_meses = resumo_ultimos_3_meses_competencia(usuario, periodo.inicio)
 
         contexto = {
             "periodo": periodo.idx,

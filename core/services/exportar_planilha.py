@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from openpyxl import Workbook
 
-from core.models import Categoria, Conta, FormaPagamento, ResumoMensal, ConfigUsuario
+from core.models import Categoria, Conta, FormaPagamento, ConfigUsuario
 
 
 def gerar_backup_excel(usuario):
@@ -116,37 +116,6 @@ def gerar_backup_excel(usuario):
                 fp.atualizada_em.strftime("%Y-%m-%d %H:%M:%S")
                 if getattr(fp, "atualizada_em", None)
                 else "",
-            ]
-        )
-
-    # =========================
-    # Aba 4: Resumo mensal
-    # =========================
-    ws_rm = wb.create_sheet("resumo_mensal")
-    ws_rm.append(
-        [
-            "id",
-            "ano",
-            "mes",
-            "receita",
-            "outras_receitas",
-            "gastos",
-            "total",
-            "is_legacy",
-        ]
-    )
-
-    for r in ResumoMensal.objects.filter(usuario=usuario).order_by("ano", "mes"):
-        ws_rm.append(
-            [
-                r.id,
-                r.ano,
-                r.mes,
-                float(r.receita),
-                float(r.outras_receitas),
-                float(r.gastos),
-                float(r.total),
-                bool(getattr(r, "is_legacy", False)),
             ]
         )
 

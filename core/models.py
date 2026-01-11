@@ -145,34 +145,6 @@ class Conta(models.Model):
         )
 
 
-class ResumoMensal(models.Model):
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="resumos_mensais",
-    )
-
-    ano = models.IntegerField()
-    mes = models.PositiveSmallIntegerField()
-
-    receita = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    outras_receitas = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    gastos = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-
-    is_legacy = models.BooleanField(default=True)
-
-    criada_em = models.DateTimeField(auto_now_add=True)
-    atualizada_em = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ("usuario", "ano", "mes")
-        ordering = ["-ano", "-mes"]
-
-    def __str__(self):
-        return f"{self.mes:02d}/{self.ano} → {self.total}"
-
-
 class ConfigUsuario(models.Model):
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="config"

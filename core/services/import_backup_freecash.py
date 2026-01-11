@@ -3,7 +3,7 @@ import pandas as pd
 from django.db import transaction
 from django.utils import timezone
 
-from core.models import Categoria, Conta, FormaPagamento, ResumoMensal, ConfigUsuario
+from core.models import Categoria, Conta, FormaPagamento, ConfigUsuario
 
 
 def _to_int(v):
@@ -72,7 +72,6 @@ def _to_date(v):
 def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
     if sobrescrever:
         Conta.objects.filter(usuario=usuario).delete()
-        ResumoMensal.objects.filter(usuario=usuario).delete()
         Categoria.objects.filter(usuario=usuario).delete()
         FormaPagamento.objects.filter(usuario=usuario).delete()
         ConfigUsuario.objects.filter(usuario=usuario).delete()
@@ -155,28 +154,6 @@ def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
             origem_ano=origem_ano,
             origem_mes=origem_mes,
             origem_linha=origem_linha,
-        )
-
-    # 4) Resumo mensal
-    df_rm = pd.read_excel(xls, sheet_name="resumo_mensal", dtype=object)
-    for _, row in df_rm.iterrows():
-        obj_id = _to_int(row.get("id"))
-        ano = _to_int(row.get("ano"))
-        mes = _to_int(row.get("mes"))
-
-        if not obj_id or not ano or not mes:
-            continue
-
-        ResumoMensal.objects.create(
-            id=obj_id,
-            usuario=usuario,
-            ano=ano,
-            mes=mes,
-            receita=_to_decimal(row.get("receita")),
-            outras_receitas=_to_decimal(row.get("outras_receitas")),
-            gastos=_to_decimal(row.get("gastos")),
-            total=_to_decimal(row.get("total")),
-            is_legacy=_to_bool(row.get("is_legacy")),
         )
 
     # 5) Config

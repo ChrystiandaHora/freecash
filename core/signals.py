@@ -1,9 +1,9 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from core.models import Conta, Categoria, FormaPagamento, ResumoMensal, ConfigUsuario
+from core.models import Conta, Categoria, FormaPagamento, ConfigUsuario
 
-MODELOS_MONITORADOS = (Conta, Categoria, FormaPagamento, ResumoMensal)
+MODELOS_MONITORADOS = (Conta, Categoria, FormaPagamento)
 
 
 def atualizar_config(usuario):

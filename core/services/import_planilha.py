@@ -8,7 +8,7 @@ import pandas as pd
 from django.db import transaction
 from django.utils import timezone
 
-from core.models import Conta, ResumoMensal, FormaPagamento, Categoria
+from core.models import Conta, FormaPagamento, Categoria
 
 
 MESES_MAP = {
@@ -290,15 +290,11 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
     6) FormaPagamento padronizada: PIX, Boleto, Cartão de Crédito, Cartão de Débito
     7) Se já existir, atualiza categoria/forma e também transacao_realizada/data_realizacao
     8) Dedupe por chave forte + rastreio legado
-    9) Atualiza ResumoMensal
-       Observação: como seu ResumoMensal só tem um campo "gastos", aqui ele refletirá o planejado da planilha.
-       O "realizado" você obtém filtrando Conta(transacao_realizada=True).
-    16) sobrescrever=True apaga tudo do usuário (Conta + ResumoMensal)
+    16) sobrescrever=True apaga tudo do usuário (Conta)
     18) Receita do mês entra no 5º dia útil do mês
     """
     if sobrescrever:
         Conta.objects.filter(usuario=usuario).delete()
-        ResumoMensal.objects.filter(usuario=usuario).delete()
 
     cats = get_or_create_categorias_padrao(usuario)
     formas_padrao = get_or_create_formas_padrao(usuario)
@@ -436,25 +432,5 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                 )
 
                 gasto_por_mes[mes_num] += valor
-
-        # -------------- ResumoMensal --------------
-        for mes_num in range(1, 13):
-            rec = receita_por_mes[mes_num]
-            gas = gasto_por_mes[mes_num]
-            if rec == 0 and gas == 0:
-                continue
-
-            ResumoMensal.objects.update_or_create(
-                usuario=usuario,
-                ano=ano,
-                mes=mes_num,
-                defaults={
-                    "receita": rec,
-                    "outras_receitas": Decimal("0"),
-                    "gastos": gas,
-                    "total": rec - gas,
-                    "is_legacy": True,
-                },
-            )
 
     return True
