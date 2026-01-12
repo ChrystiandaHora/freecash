@@ -12,7 +12,7 @@ class FormasPagamentoView(View):
 
     def get(self, request):
         q = (request.GET.get("q") or "").strip()
-        formas = FormaPagamento.objects.filter(usuario=request.user)
+        formas = FormaPagamento.objects.filter(created_by=request.user)
         if q:
             formas = formas.filter(nome__icontains=q)
         formas = formas.order_by("-ativa", "nome")
@@ -57,7 +57,7 @@ class EditarFormaPagamentoView(View):
 
         # não permitir duplicado (tirando o próprio registro)
         if (
-            FormaPagamento.objects.filter(usuario=request.user, nome__iexact=nome)
+            FormaPagamento.objects.filter(created_by=request.user, nome__iexact=nome)
             .exclude(pk=forma.pk)
             .exists()
         ):

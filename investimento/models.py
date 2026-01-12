@@ -2,7 +2,32 @@ from django.db import models
 from django.conf import settings
 
 
-class ClasseAtivo(models.Model):
+class AuditoriaMixin(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(class)s_created",
+        verbose_name="Criado Por",
+    )
+    modified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(class)s_modified",
+        verbose_name="Modificado Por",
+    )
+    is_active = models.BooleanField(default=True, verbose_name="Ativo")
+
+    class Meta:
+        abstract = True
+
+
+class ClasseAtivo(AuditoriaMixin):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -12,9 +37,6 @@ class ClasseAtivo(models.Model):
     nome = models.CharField(max_length=60)
     ativa = models.BooleanField(default=True)
 
-    criada_em = models.DateTimeField(auto_now_add=True)
-    atualizada_em = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ("usuario", "nome")
         ordering = ["nome"]
@@ -23,7 +45,7 @@ class ClasseAtivo(models.Model):
         return self.nome
 
 
-class Ativo(models.Model):
+class Ativo(AuditoriaMixin):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -43,9 +65,6 @@ class Ativo(models.Model):
 
     moeda = models.CharField(max_length=10, default="BRL")
     ativo = models.BooleanField(default=True)
-
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("usuario", "ticker")

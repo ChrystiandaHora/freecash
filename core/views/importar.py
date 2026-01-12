@@ -13,8 +13,8 @@ class ImportarView(View):
     template_name = "importar.html"
 
     def get(self, request):
-        logs = LogImportacao.objects.filter(usuario=request.user).order_by(
-            "-criado_em"
+        logs = LogImportacao.objects.filter(created_by=request.user).order_by(
+            "-created_by"
         )[:20]
         return render(request, self.template_name, {"logs": logs})
 

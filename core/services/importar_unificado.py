@@ -200,12 +200,12 @@ def sobrescrever_dados_do_usuario(usuario) -> None:
     Overwrite do usuário: apaga tudo que é dele.
     Importante: não mexe em dados de outros usuários.
     """
-    Conta.objects.filter(usuario=usuario).delete()
-    Categoria.objects.filter(usuario=usuario).delete()
-    FormaPagamento.objects.filter(usuario=usuario).delete()
+    Conta.objects.filter(created_by=usuario).delete()
+    Categoria.objects.filter(created_by=usuario).delete()
+    FormaPagamento.objects.filter(created_by=usuario).delete()
     # ConfigUsuario é OneToOne: vamos sobrescrever atualizando/criando, não delete obrigatório
     # mas pode deletar para ficar bem “limpo”
-    ConfigUsuario.objects.filter(usuario=usuario).delete()
+    ConfigUsuario.objects.filter(created_by=usuario).delete()
 
 
 def importar_backup_freecash_xlsx(
@@ -251,7 +251,7 @@ def importar_backup_freecash_xlsx(
             continue
 
         cat = Categoria(
-            usuario=usuario,
+            created_by=usuario,
             nome=nome,
             tipo=tipo,
             is_default=parse_bool(row.get("is_default")),
@@ -278,7 +278,7 @@ def importar_backup_freecash_xlsx(
         if not nome:
             continue
         fp = FormaPagamento(
-            usuario=usuario,
+            created_by=usuario,
             nome=nome,
             ativa=parse_bool(row.get("ativa"))
             if str(row.get("ativa")).strip() != ""
@@ -328,7 +328,7 @@ def importar_backup_freecash_xlsx(
         new_fp_id = maps.fp_old_to_new.get(old_fp_id) if old_fp_id is not None else None
 
         conta = Conta(
-            usuario=usuario,
+            created_by=usuario,
             tipo=tipo,
             descricao=descricao,
             valor=valor,
@@ -360,7 +360,7 @@ def importar_backup_freecash_xlsx(
         ultimo_export_em = parse_datetime(r0.get("ultimo_export_em"))
 
     ConfigUsuario.objects.update_or_create(
-        usuario=usuario,
+        created_by=usuario,
         defaults={
             "moeda_padrao": moeda,
             "ultimo_export_em": ultimo_export_em,
@@ -414,7 +414,7 @@ def importar_planilha_unificada(
                 arquivo, usuario, sobrescrever=sobrescrever
             )
             LogImportacao.objects.create(
-                usuario=usuario,
+                created_by=usuario,
                 tipo=LogImportacao.TIPO_BACKUP,
                 sucesso=True,
                 mensagem=resultado.get("msg") or "Backup importado com sucesso.",
@@ -429,7 +429,7 @@ def importar_planilha_unificada(
                 importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False)
 
             LogImportacao.objects.create(
-                usuario=usuario,
+                created_by=usuario,
                 tipo=LogImportacao.TIPO_LEGADO,
                 sucesso=True,
                 mensagem="Planilha legado importada com sucesso (overwrite do usuário)."
@@ -445,7 +445,7 @@ def importar_planilha_unificada(
     except Exception as e:
         # registra erro
         LogImportacao.objects.create(
-            usuario=usuario,
+            created_by=usuario,
             tipo=LogImportacao.TIPO_BACKUP,  # default
             sucesso=False,
             mensagem=str(e),

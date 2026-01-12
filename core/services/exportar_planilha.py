@@ -41,12 +41,12 @@ def gerar_backup_excel(usuario):
             "origem_mes",
             "origem_linha",
             "criada_em",
-            "atualizada_em",
+            "updated_at",
         ]
     )
 
     contas = (
-        Conta.objects.filter(usuario=usuario)
+        Conta.objects.filter(created_by=usuario)
         .select_related("categoria", "forma_pagamento")
         .order_by("data_prevista", "id")
     )
@@ -70,8 +70,8 @@ def gerar_backup_excel(usuario):
                 c.criada_em.strftime("%Y-%m-%d %H:%M:%S")
                 if getattr(c, "criada_em", None)
                 else "",
-                c.atualizada_em.strftime("%Y-%m-%d %H:%M:%S")
-                if getattr(c, "atualizada_em", None)
+                c.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if getattr(c, "updated_at", None)
                 else "",
             ]
         )
@@ -80,9 +80,9 @@ def gerar_backup_excel(usuario):
     # Aba 2: Categorias
     # =========================
     ws_cat = wb.create_sheet("categorias")
-    ws_cat.append(["id", "nome", "tipo", "is_default", "criada_em", "atualizada_em"])
+    ws_cat.append(["id", "nome", "tipo", "is_default", "criada_em", "updated_at"])
 
-    for cat in Categoria.objects.filter(usuario=usuario).order_by("id"):
+    for cat in Categoria.objects.filter(created_by=usuario).order_by("id"):
         ws_cat.append(
             [
                 cat.id,
@@ -92,8 +92,8 @@ def gerar_backup_excel(usuario):
                 cat.criada_em.strftime("%Y-%m-%d %H:%M:%S")
                 if getattr(cat, "criada_em", None)
                 else "",
-                cat.atualizada_em.strftime("%Y-%m-%d %H:%M:%S")
-                if getattr(cat, "atualizada_em", None)
+                cat.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if getattr(cat, "updated_at", None)
                 else "",
             ]
         )
@@ -102,9 +102,9 @@ def gerar_backup_excel(usuario):
     # Aba 3: Formas de pagamento
     # =========================
     ws_fp = wb.create_sheet("formas_pagamento")
-    ws_fp.append(["id", "nome", "ativa", "criada_em", "atualizada_em"])
+    ws_fp.append(["id", "nome", "ativa", "criada_em", "updated_at"])
 
-    for fp in FormaPagamento.objects.filter(usuario=usuario).order_by("id"):
+    for fp in FormaPagamento.objects.filter(created_by=usuario).order_by("id"):
         ws_fp.append(
             [
                 fp.id,
@@ -113,8 +113,8 @@ def gerar_backup_excel(usuario):
                 fp.criada_em.strftime("%Y-%m-%d %H:%M:%S")
                 if getattr(fp, "criada_em", None)
                 else "",
-                fp.atualizada_em.strftime("%Y-%m-%d %H:%M:%S")
-                if getattr(fp, "atualizada_em", None)
+                fp.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if getattr(fp, "updated_at", None)
                 else "",
             ]
         )
@@ -125,7 +125,7 @@ def gerar_backup_excel(usuario):
     ws_conf = wb.create_sheet("configuracoes")
     ws_conf.append(["moeda_padrao", "ultimo_export_em"])
 
-    config = ConfigUsuario.objects.filter(usuario=usuario).first()
+    config = ConfigUsuario.objects.filter(created_by=usuario).first()
     ws_conf.append(
         [
             getattr(config, "moeda_padrao", "BRL") if config else "BRL",

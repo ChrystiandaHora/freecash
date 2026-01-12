@@ -34,7 +34,7 @@ class ReceitasView(View):
         forma_id = (request.GET.get("forma_pagamento") or "").strip()
 
         qs = Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=Conta.TIPO_RECEITA,
             transacao_realizada=True,
         ).select_related("categoria", "forma_pagamento")
@@ -53,10 +53,10 @@ class ReceitasView(View):
         qs = qs.order_by("-data_realizacao", "-id")
 
         categorias = Categoria.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo__in=[Categoria.TIPO_RECEITA, Categoria.TIPO_INVESTIMENTO],
         ).order_by("nome")
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
+        formas = FormaPagamento.objects.filter(created_by=usuario, ativa=True).order_by(
             "nome"
         )
 
@@ -67,7 +67,7 @@ class ReceitasView(View):
         # opção A (como você tinha): total do mês/ano ref, independente dos filtros
         total_periodo = (
             Conta.objects.filter(
-                usuario=usuario,
+                created_by=usuario,
                 tipo=Conta.TIPO_RECEITA,
                 transacao_realizada=True,
                 data_realizacao__year=ano_ref,
@@ -141,18 +141,18 @@ class ReceitasView(View):
             return redirect("receitas")
 
         categoria = (
-            Categoria.objects.filter(usuario=usuario, id=categoria_id).first()
+            Categoria.objects.filter(created_by=usuario, id=categoria_id).first()
             if categoria_id.isdigit()
             else None
         )
         forma_pagamento = (
-            FormaPagamento.objects.filter(usuario=usuario, id=forma_id).first()
+            FormaPagamento.objects.filter(created_by=usuario, id=forma_id).first()
             if forma_id.isdigit()
             else None
         )
 
         Conta.objects.create(
-            usuario=usuario,
+            created_by=usuario,
             tipo=Conta.TIPO_RECEITA,
             descricao=descricao,
             valor=valor,

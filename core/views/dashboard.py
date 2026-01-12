@@ -26,7 +26,7 @@ class Periodo:
 
 def totals_for_range_competencia(usuario, inicio: date, fim: date):
     qs = Conta.objects.filter(
-        usuario=usuario,
+        created_by=usuario,
         data_prevista__gte=inicio,
         data_prevista__lt=fim,
     )
@@ -42,7 +42,7 @@ def totals_for_range_competencia(usuario, inicio: date, fim: date):
 def serie_por_dia_competencia(usuario, tipo, inicio: date, fim: date, ultimo_dia: int):
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=tipo,
             data_prevista__gte=inicio,
             data_prevista__lt=fim,
@@ -71,7 +71,7 @@ def serie_6m_competencia(usuario, tipo, inicio_ref: date, fim_ref: date):
 
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=tipo,
             data_prevista__gte=inicio_janela,
             data_prevista__lt=fim_ref,
@@ -100,7 +100,7 @@ def breakdown_despesas_competencia(
 ):
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=Conta.TIPO_DESPESA,
             data_prevista__gte=inicio,
             data_prevista__lt=fim,
@@ -197,7 +197,7 @@ def totals_for_range_realizadas(usuario, inicio: date, fim: date):
     usando data_realizacao dentro do range.
     """
     qs = Conta.objects.filter(
-        usuario=usuario,
+        created_by=usuario,
         transacao_realizada=True,
         data_realizacao__gte=inicio,
         data_realizacao__lt=fim,
@@ -218,7 +218,7 @@ def serie_por_dia_realizadas(usuario, tipo, inicio: date, fim: date, ultimo_dia:
     """
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=tipo,
             transacao_realizada=True,
             data_realizacao__gte=inicio,
@@ -251,7 +251,7 @@ def serie_6m_realizadas(usuario, tipo, inicio_ref: date, fim_ref: date):
 
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=tipo,
             transacao_realizada=True,
             data_realizacao__gte=inicio_janela,
@@ -284,7 +284,7 @@ def breakdown_despesas_realizadas(
     """
     qs = (
         Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=Conta.TIPO_DESPESA,
             transacao_realizada=True,
             data_realizacao__gte=inicio,
@@ -350,7 +350,7 @@ def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date):
         fim_mes = (inicio_mes + relativedelta(months=1)).replace(day=1)
 
         qs = Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             data_prevista__gte=inicio_mes,
             data_prevista__lt=fim_mes,
         )
@@ -433,7 +433,7 @@ class DashboardView(View):
 
         # Card "Status das contas" continua por data_prevista (já está correto)
         contas_mes = Conta.objects.filter(
-            usuario=usuario,
+            created_by=usuario,
             tipo=Conta.TIPO_DESPESA,
             data_prevista__gte=periodo.inicio,
             data_prevista__lt=periodo.fim,
@@ -448,7 +448,7 @@ class DashboardView(View):
         # Próximas contas (corrija no template para usar data_prevista, não data_vencimento)
         upcoming_bills = (
             Conta.objects.filter(
-                usuario=usuario,
+                created_by=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=False,
                 data_prevista__gte=hoje,
@@ -459,17 +459,20 @@ class DashboardView(View):
 
         # Transações recentes continuam por CAIXA (realizadas)
         ultimas_transacoes = (
-            Conta.objects.filter(usuario=usuario, transacao_realizada=True)
+            Conta.objects.filter(created_by=usuario, transacao_realizada=True)
             .select_related("categoria", "forma_pagamento")
             .order_by("-data_realizacao", "-id")[:7]
         )
 
         resumo_3_meses = resumo_ultimos_3_meses_competencia(usuario, periodo.inicio)
+        saldo_prev = receitas_prev - despesas_prev
+        saldo_pct = pct_change(saldo_mes, saldo_prev)
 
         contexto = {
             "periodo": periodo.idx,
             "periodo_label": periodo.label,
             "total_receitas": total_receitas,
+            "saldo_pct": saldo_pct,
             "total_despesas": total_despesas,
             "saldo_mes": saldo_mes,
             "receitas_pct": receitas_pct,

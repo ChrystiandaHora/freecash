@@ -12,7 +12,7 @@ class ExportarView(View):
     template_name = "exportar.html"
 
     def get(self, request):
-        config = ConfigUsuario.objects.filter(usuario=request.user).first()
+        config = ConfigUsuario.objects.filter(created_by=request.user).first()
         return render(request, self.template_name, {"config": config})
 
     def post(self, request):
