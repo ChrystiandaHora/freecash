@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Novo{% endif %} Ativo | FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- Header -->
+  <div class="space-y-1">
+    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
+      <i class="fa-solid fa-wallet text-emerald-500 mr-2"></i>
+      {% if form.instance.pk %}Editar Ativo{% else %}Novo Ativo{% endif %}
+    </h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      {% if form.instance.pk %}Atualize as informações do ativo{% else %}Cadastre um novo ativo na sua carteira{% endif %}
+    </p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm p-6">
+    <form method="post" class="space-y-5">
+      {% csrf_token %}
+
+      <!-- Ticker -->
+      <div>
+        <label for="id_ticker" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ticker *</label>
+        <input type="text" name="ticker" id="id_ticker" value="{{ form.ticker.value|default:'' }}"
+               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                      focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                      placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+               placeholder="Ex: PETR4, ITUB4, BTC" required>
+        {% if form.ticker.errors %}
+          <p class="mt-1 text-xs text-red-600">{{ form.ticker.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Nome -->
+      <div>
+        <label for="id_nome" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+        <input type="text" name="nome" id="id_nome" value="{{ form.nome.value|default:'' }}"
+               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                      focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                      placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+               placeholder="Ex: Petrobras, Itaú Unibanco">
+      </div>
+
+      <!-- Classe -->
+      <div>
+        <label for="id_classe" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Classe</label>
+        <select name="classe" id="id_classe"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                       bg-white dark:bg-gray-900">
+          <option value="">Selecione uma classe</option>
+          {% for classe in form.classe.field.queryset %}
+            <option value="{{ classe.id }}" {% if form.classe.value == classe.id %}selected{% endif %}>
+              {{ classe.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Moeda -->
+      <div>
+        <label for="id_moeda" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Moeda</label>
+        <select name="moeda" id="id_moeda"
+                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                       bg-white dark:bg-gray-900">
+          <option value="BRL" {% if form.moeda.value == 'BRL' %}selected{% endif %}>BRL - Real</option>
+          <option value="USD" {% if form.moeda.value == 'USD' %}selected{% endif %}>USD - Dólar</option>
+          <option value="EUR" {% if form.moeda.value == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+        </select>
+      </div>
+
+      <!-- Ativo (checkbox) -->
+      <div class="flex items-center gap-3">
+        <input type="checkbox" name="ativo" id="id_ativo"
+               {% if form.ativo.value %}checked{% endif %}
+               class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-gray-700">
+        <label for="id_ativo" class="text-sm text-gray-700 dark:text-gray-300">Ativo está ativo na carteira</label>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
+                       bg-emerald-600 dark:bg-emerald-600/90 text-white hover:bg-emerald-700 dark:hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 shadow-lg shadow-emerald-900/20">
+          <i class="fa-solid fa-check mr-2"></i>
+          {% if form.instance.pk %}Salvar Alterações{% else %}Cadastrar Ativo{% endif %}
+        </button>
+        <a href="{% url 'investimento:ativo_listar' %}"
+           class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
+                  bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+          Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

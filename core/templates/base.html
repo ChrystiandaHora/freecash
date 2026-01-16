@@ -1,294 +1,422 @@
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
+<html lang="pt-br" class="">
+  <head>
+    <meta charset="UTF-8" />
     <title>{% block title %}FreeCash{% endblock %}</title>
 
-    <!-- Tailwind -->
+    <!-- Dark Mode Detection (runs before page renders) -->
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+
+    <!-- Tailwind with dark mode -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% load static %}
-    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css" >
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="{% static 'freecash/freecash_icon_512_dark.png' %}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"
+    />
+
+    <!-- Alpine.js for interactive components -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
 
     {% block extra_head %}{% endblock %}
-</head>
-<body class="bg-gray-100">
+  </head>
+  <body class="bg-gray-100 dark:bg-gray-900 transition-colors">
     <div class="flex h-screen">
-
-        <!-- MESSAGES -->
-        {% if messages %}
+      <!-- MESSAGES -->
+      {% if messages %}
+      <div
+        id="toast-stack"
+        class="fixed top-4 right-4 z-50 w-full max-w-sm space-y-3 px-4 sm:px-0"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {% for msg in messages %}
         <div
-            id="toast-stack"
-            class="fixed top-4 right-4 z-50 w-full max-w-sm space-y-3 px-4 sm:px-0"
-            aria-live="polite"
-            aria-atomic="true"
+          class="toast-item pointer-events-auto w-full rounded-2xl border p-4 shadow-lg bg-white/95 backdrop-blur flex items-start gap-3 opacity-0 translate-y-2 transition duration-300 ease-out {% if msg.tags == 'success' %} border-emerald-200 {% elif msg.tags == 'error' %} border-red-200 {% elif msg.tags == 'warning' %} border-amber-200 {% else %} border-gray-200 {% endif %}"
+          data-timeout="4500"
+          role="alert"
         >
-            {% for msg in messages %}
+          <!-- Icon -->
+          <div
+            class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl {% if msg.tags == 'success' %} bg-emerald-50 text-emerald-700 {% elif msg.tags == 'error' %} bg-red-50 text-red-700 {% elif msg.tags == 'warning' %} bg-amber-50 text-amber-700 {% else %} bg-gray-50 text-gray-700 {% endif %}"
+          >
+            {% if msg.tags == "success" %}
+            <i
+              class="fa-solid fa-circle-check text-emerald-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% elif msg.tags == "error" %}
+            <i
+              class="fa-solid fa-circle-xmark text-red-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% elif msg.tags == "warning" %}
+            <i
+              class="fa-solid fa-triangle-exclamation text-yellow-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% else %}
+            <i
+              class="fa-solid fa-circle-info text-sky-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% endif %}
+          </div>
+
+          <!-- Content -->
+          <div class="min-w-0 flex-1">
+            <!-- prettier-ignore -->
+            <p class="text-sm font-semibold text-gray-900">{% if msg.tags == "success" %}Sucesso{% elif msg.tags == "error" %}Erro{% elif msg.tags == "warning" %}Atenção{% else %}Aviso{% endif %}</p>
+            <p class="mt-0.5 text-sm text-gray-600 break-words">{{ msg }}</p>
+
+            <!-- Progress bar -->
             <div
-                class="
-                toast-item
-                pointer-events-auto
-                w-full rounded-2xl border p-4 shadow-lg
-                bg-white/95 backdrop-blur
-                flex items-start gap-3
-                opacity-0 translate-y-2
-                transition duration-300 ease-out
-                {% if msg.tags == 'success' %} border-emerald-200 {% elif msg.tags == 'error' %} border-red-200 {% elif msg.tags == 'warning' %} border-amber-200 {% else %} border-gray-200 {% endif %}
-                "
-                data-timeout="4500"
-                role="alert"
+              class="mt-3 h-1 w-full overflow-hidden rounded-full bg-gray-100"
             >
-                <!-- Icon -->
-                <div
-                class="
-                    mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl
-                    {% if msg.tags == 'success' %} bg-emerald-50 text-emerald-700
-                    {% elif msg.tags == 'error' %} bg-red-50 text-red-700
-                    {% elif msg.tags == 'warning' %} bg-amber-50 text-amber-700
-                    {% else %} bg-gray-50 text-gray-700 {% endif %}
-                "
-                >
-                {% if msg.tags == "success" %}
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-[20px]" aria-hidden="true"></i>
-                {% elif msg.tags == "error" %}
-                    <i class="fa-solid fa-circle-xmark text-red-400 text-[20px]" aria-hidden="true"></i>
-                {% elif msg.tags == "warning" %}
-                    <i class="fa-solid fa-triangle-exclamation text-yellow-400 text-[20px]" aria-hidden="true"></i>
-                {% else %}
-                    <i class="fa-solid fa-circle-info text-sky-400 text-[20px]" aria-hidden="true"></i>
-                {% endif %}
-                </div>
-
-                <!-- Content -->
-                <div class="min-w-0 flex-1">
-                <p class="text-sm font-semibold text-gray-900">
-                    {% if msg.tags == "success" %}Sucesso
-                    {% elif msg.tags == "error" %}Erro
-                    {% elif msg.tags == "warning" %}Atenção
-                    {% else %}Aviso{% endif %}
-                </p>
-                <p class="mt-0.5 text-sm text-gray-600 break-words">
-                    {{ msg }}
-                </p>
-
-                <!-- Progress bar -->
-                <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div
-                    class="
-                        toast-bar h-1 w-full
-                        {% if msg.tags == 'success' %} bg-emerald-500
-                        {% elif msg.tags == 'error' %} bg-red-500
-                        {% elif msg.tags == 'warning' %} bg-amber-500
-                        {% else %} bg-gray-500 {% endif %}
-                    "
-                    style="transform: translateX(-100%);"
-                    ></div>
-                </div>
-                </div>
-
-                <!-- Close -->
-                <button
-                type="button"
-                class="toast-close -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                aria-label="Fechar"
-                >
-                    <i class="fa-solid fa-xmark text-[20px]" aria-hidden="true"></i>
-                </button>
+              <div
+                class="toast-bar h-1 w-full {% if msg.tags == 'success' %} bg-emerald-500 {% elif msg.tags == 'error' %} bg-red-500 {% elif msg.tags == 'warning' %} bg-amber-500 {% else %} bg-gray-500 {% endif %}"
+                style="transform: translateX(-100%)"
+              ></div>
             </div>
-            {% endfor %}
+          </div>
+
+          <!-- Close -->
+          <button
+            type="button"
+            class="toast-close -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+            aria-label="Fechar"
+          >
+            <i class="fa-solid fa-xmark text-[20px]" aria-hidden="true"></i>
+          </button>
         </div>
-        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
 
-        <!-- MENU LATERAL -->
-        <aside class="w-64 bg-slate-900 text-slate-200 px-6 py-8 flex flex-col shadow-xl">
+      <!-- MENU LATERAL -->
+      <aside
+        class="w-64 bg-slate-900 text-slate-200 px-6 py-8 flex flex-col shadow-xl"
+      >
+        <!-- Logo -->
+        <div class="mb-10">
+          <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">
+              FreeCash
+            </h1>
 
-            <!-- Logo -->
-            <div class="mb-10">
-                <div class="flex items-center gap-3">
-                    <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">
-                    FreeCash
-                    </h1>
+            <img
+              src="{% static 'freecash/Icon.png' %}"
+              alt="FreeCash"
+              class="w-[64px] h-[64px] flex-shrink-0"
+            />
+          </div>
 
-                    <img
-                    src="{% static 'freecash/Icon.png' %}"
-                    alt="FreeCash"
-                    class="w-[64px] h-[64px] flex-shrink-0"
-                    >
-                </div>
+          <p class="text-slate-500 text-sm mt-1">Controle financeiro pessoal</p>
+        </div>
 
-                <p class="text-slate-500 text-sm mt-1">
-                    Controle financeiro pessoal
-                </p>
+        <!-- MENU -->
+        <nav class="flex-1 space-y-3">
+          <a
+            href="{% url 'dashboard' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Dashboard
+          </a>
+
+          <a
+            href="{% url 'contas_pagar' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Contas
+          </a>
+
+          <a
+            href="{% url 'receitas' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Receitas
+          </a>
+
+          <a
+            href="{% url 'transacoes' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Transações
+          </a>
+
+          <a
+            href="{% url 'formas_pagamento' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Formas de Pagamento
+          </a>
+
+          <a
+            href="{% url 'importar' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Importar dados
+          </a>
+
+          <a
+            href="{% url 'exportar' %}"
+            class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition"
+          >
+            Exportar backup
+          </a>
+
+          <!-- Investimentos com Submenu -->
+          <div x-data="{ open: false }" class="relative">
+            <button
+              @click="open = !open"
+              class="w-full flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-800 transition text-left"
+            >
+              <span>Investimentos</span>
+              <i
+                class="fa-solid fa-chevron-down text-xs transition-transform"
+                :class="{ 'rotate-180': open }"
+              ></i>
+            </button>
+
+            <div
+              x-show="open"
+              x-collapse
+              class="ml-4 mt-1 space-y-1 border-l border-slate-700 pl-3"
+            >
+              <a
+                href="{% url 'investimento:dashboard' %}"
+                class="block py-1.5 px-3 rounded-lg hover:bg-slate-800 transition text-sm text-slate-300"
+              >
+                <i class="fa-solid fa-chart-pie mr-2"></i> Dashboard
+              </a>
+              <a
+                href="{% url 'investimento:ativo_listar' %}"
+                class="block py-1.5 px-3 rounded-lg hover:bg-slate-800 transition text-sm text-slate-300"
+              >
+                <i class="fa-solid fa-wallet mr-2"></i> Ativos
+              </a>
+              <a
+                href="{% url 'investimento:transacao_listar' %}"
+                class="block py-1.5 px-3 rounded-lg hover:bg-slate-800 transition text-sm text-slate-300"
+              >
+                <i class="fa-solid fa-right-left mr-2"></i> Transações
+              </a>
+              <a
+                href="{% url 'investimento:classe_listar' %}"
+                class="block py-1.5 px-3 rounded-lg hover:bg-slate-800 transition text-sm text-slate-300"
+              >
+                <i class="fa-solid fa-tags mr-2"></i> Classes
+              </a>
             </div>
+          </div>
+        </nav>
 
-            <!-- MENU -->
-            <nav class="flex-1 space-y-3">
-                <a href="{% url 'dashboard' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Dashboard
-                </a>
-
-                <a href="{% url 'contas_pagar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Contas
-                </a>
-
-                <a href="{% url 'receitas' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Receitas
-                </a>
-
-                <a href="{% url 'transacoes' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Transações
-                </a>
-
-                <a href="{% url 'formas_pagamento' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Formas de Pagamento
-                </a>
-
-                <a href="{% url 'importar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Importar dados
-                </a>
-
-                <a href="{% url 'exportar' %}" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Exportar backup
-                </a>
-
-                <a href="" class="block py-2 px-3 rounded-lg hover:bg-slate-800 transition">
-                    Investimentos
-                </a>
-            </nav>
-
-            <!-- RODAPÉ -->
-            <div class="mt-10 pt-6 border-t border-slate-700">
-                
-                <!-- Última atualização -->
-                <div>
-                    <p class="text-xs text-slate-500 mb-1">Última atualização</p>
-                    <div class="flex items-center space-x-2">
-                        <span 
-                            id="atualizacao-dot"
-                            class="w-2.5 h-2.5 rounded-full bg-slate-500 transition"></span>
-
-                        <span class="text-sm text-slate-300">
-                            {% if request.user.config.atualizada_em %}
-                                {{ request.user.config.atualizada_em|date:"d/m/Y H:i" }}
-                            {% else %}
-                                Nunca
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Último backup -->
-                <div class="mt-4">
-                    <p class="text-xs text-slate-500 mb-1">Último backup</p>
-
-                    <span class="text-sm text-slate-300">
-                        {% if request.user.config.ultimo_export_em %}
-                            {{ request.user.config.ultimo_export_em|date:"d/m/Y H:i" }}
-                        {% else %}
-                            Nunca
-                        {% endif %}
-                    </span>
-                </div>
-
-                <!-- Logout -->
-                <a href="{% url 'logout' %}" 
-                class="mt-6 block w-full text-center py-2 rounded-lg bg-red-600 hover:bg-red-700 transition text-white font-semibold">
-                    Sair
-                </a>
+        <!-- Theme Toggle -->
+        <div class="mt-6 px-3">
+          <button
+            id="theme-toggle"
+            class="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-sm"
+          >
+            <span class="text-slate-300">Tema</span>
+            <div class="flex items-center gap-2">
+              <i id="theme-icon-light" class="fa-solid fa-sun text-yellow-400 hidden"></i>
+              <i id="theme-icon-dark" class="fa-solid fa-moon text-blue-400 hidden"></i>
+              <span id="theme-label" class="text-xs text-slate-400"></span>
             </div>
+          </button>
+        </div>
 
-        </aside>
+        <!-- RODAPÉ -->
+        <div class="mt-10 pt-6 border-t border-slate-700">
+          <!-- Última atualização -->
+          <div>
+            <p class="text-xs text-slate-500 mb-1">Última atualização</p>
+            <div class="flex items-center space-x-2">
+              <span
+                id="atualizacao-dot"
+                class="w-2.5 h-2.5 rounded-full bg-slate-500 transition"
+              ></span>
 
-        <!-- ÁREA PRINCIPAL -->
-        <main class="flex-1 p-6 overflow-y-auto">
-            {% block content %}
-            {% endblock %}
-        </main>
+              <span class="text-sm text-slate-300">
+                {% if request.user.config.atualizada_em %} {{request.user.config.atualizada_em|date:"d/m/Y H:i" }} {% else %} Nunca {% endif %}
+              </span>
+            </div>
+          </div>
 
+          <!-- Último backup -->
+          <div class="mt-4">
+            <p class="text-xs text-slate-500 mb-1">Último backup</p>
+
+            <!-- prettier-ignore -->
+            <span class="text-sm text-slate-300">{% if request.user.config.ultimo_export_em %}{{ request.user.config.ultimo_export_em|date:"d/m/Y H:i" }}{% else %}Nunca{% endif %}</span>
+          </div>
+
+          <!-- Logout -->
+          <a
+            href="{% url 'logout' %}"
+            class="mt-6 block w-full text-center py-2 rounded-lg bg-red-600 hover:bg-red-700 transition text-white font-semibold"
+          >
+            Sair
+          </a>
+        </div>
+      </aside>
+
+      <!-- ÁREA PRINCIPAL -->
+      <main class="flex-1 p-6 overflow-y-auto">
+        {% block content %} {% endblock %}
+      </main>
     </div>
 
     <script>
-        const ultimaAtualizacao = "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
+      const ultimaAtualizacao =
+        "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
     </script>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            if (!ultimaAtualizacao) return;
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!ultimaAtualizacao) return;
 
-            const dot = document.getElementById("atualizacao-dot");
-            if (!dot) return;
+        const dot = document.getElementById("atualizacao-dot");
+        if (!dot) return;
 
-            const agora = new Date();
-            const ultima = new Date(ultimaAtualizacao);
-            const diffMs = agora - ultima;
-            const diffMin = diffMs / 60000;
+        const agora = new Date();
+        const ultima = new Date(ultimaAtualizacao);
+        const diffMs = agora - ultima;
+        const diffMin = diffMs / 60000;
 
-            if (diffMin <= 5) {
-                dot.classList.remove("bg-slate-500");
-                dot.classList.add("bg-emerald-400");
-            } else if (diffMin <= 1440) {
-                dot.classList.remove("bg-slate-500");
-                dot.classList.add("bg-yellow-400");
-            } else {
-                dot.classList.remove("bg-slate-500");
-                dot.classList.add("bg-red-500");
-            }
-        });
+        if (diffMin <= 5) {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-emerald-400");
+        } else if (diffMin <= 1440) {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-yellow-400");
+        } else {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-red-500");
+        }
+      });
     </script>
     <script>
-        (function () {
-            const stack = document.getElementById("toast-stack");
-            if (!stack) return;
+      (function () {
+        const stack = document.getElementById("toast-stack");
+        if (!stack) return;
 
-            const toasts = Array.from(stack.querySelectorAll(".toast-item"));
+        const toasts = Array.from(stack.querySelectorAll(".toast-item"));
 
-            function showToast(el) {
-            // anima entrada
+        function showToast(el) {
+          // anima entrada
+          requestAnimationFrame(() => {
+            el.classList.remove("opacity-0", "translate-y-2");
+            el.classList.add("opacity-100", "translate-y-0");
+          });
+
+          // anima barra de tempo
+          const ms = parseInt(el.getAttribute("data-timeout") || "4500", 10);
+          const bar = el.querySelector(".toast-bar");
+          if (bar) {
+            bar.style.transition = `transform ${ms}ms linear`;
             requestAnimationFrame(() => {
-                el.classList.remove("opacity-0", "translate-y-2");
-                el.classList.add("opacity-100", "translate-y-0");
+              bar.style.transform = "translateX(0)";
             });
+          }
 
-            // anima barra de tempo
-            const ms = parseInt(el.getAttribute("data-timeout") || "4500", 10);
-            const bar = el.querySelector(".toast-bar");
-            if (bar) {
-                bar.style.transition = `transform ${ms}ms linear`;
-                requestAnimationFrame(() => {
-                bar.style.transform = "translateX(0)";
-                });
+          // auto-dismiss
+          const t = setTimeout(() => dismissToast(el), ms);
+
+          // botão fechar
+          const btn = el.querySelector(".toast-close");
+          if (btn) {
+            btn.addEventListener("click", () => {
+              clearTimeout(t);
+              dismissToast(el);
+            });
+          }
+        }
+
+        function dismissToast(el) {
+          el.classList.remove("opacity-100", "translate-y-0");
+          el.classList.add("opacity-0", "translate-y-2");
+
+          // remove do DOM após transição
+          setTimeout(() => {
+            el.remove();
+            // se não sobrar nenhum, remove o container
+            if (stack.querySelectorAll(".toast-item").length === 0) {
+              stack.remove();
             }
+          }, 250);
+        }
 
-            // auto-dismiss
-            const t = setTimeout(() => dismissToast(el), ms);
-
-            // botão fechar
-            const btn = el.querySelector(".toast-close");
-            if (btn) {
-                btn.addEventListener("click", () => {
-                clearTimeout(t);
-                dismissToast(el);
-                });
-            }
-            }
-
-            function dismissToast(el) {
-            el.classList.remove("opacity-100", "translate-y-0");
-            el.classList.add("opacity-0", "translate-y-2");
-
-            // remove do DOM após transição
-            setTimeout(() => {
-                el.remove();
-                // se não sobrar nenhum, remove o container
-                if (stack.querySelectorAll(".toast-item").length === 0) {
-                stack.remove();
-                }
-            }, 250);
-            }
-
-            toasts.forEach(showToast);
-        })();
+        toasts.forEach(showToast);
+      })();
     </script>
 
-</body>
+    <!-- Theme Toggle Script -->
+    <script>
+      (function() {
+        const toggleBtn = document.getElementById('theme-toggle');
+        const iconLight = document.getElementById('theme-icon-light');
+        const iconDark = document.getElementById('theme-icon-dark');
+        const themeLabel = document.getElementById('theme-label');
+        
+        function updateThemeUI() {
+          const isDark = document.documentElement.classList.contains('dark');
+          if (isDark) {
+            iconLight?.classList.add('hidden');
+            iconDark?.classList.remove('hidden');
+            if (themeLabel) themeLabel.textContent = 'Escuro';
+          } else {
+            iconLight?.classList.remove('hidden');
+            iconDark?.classList.add('hidden');
+            if (themeLabel) themeLabel.textContent = 'Claro';
+          }
+        }
+        
+        function toggleTheme() {
+          const isDark = document.documentElement.classList.contains('dark');
+          if (isDark) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+          } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+          }
+          updateThemeUI();
+        }
+        
+        // Initial UI update
+        updateThemeUI();
+        
+        // Toggle on click
+        toggleBtn?.addEventListener('click', toggleTheme);
+      })();
+    </script>
+  </body>
 </html>

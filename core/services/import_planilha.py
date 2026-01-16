@@ -45,7 +45,7 @@ def get_or_create_formas_padrao(usuario):
     formas = {}
     for nome in [FP_PIX, FP_BOLETO, FP_CREDITO, FP_DEBITO]:
         obj, _ = FormaPagamento.objects.get_or_create(
-            created_by=usuario,
+            usuario=usuario,
             nome=nome,
             defaults={"ativa": True},
         )
@@ -176,17 +176,17 @@ def quinto_dia_util(ano: int, mes: int) -> date:
 # ---- categorias padrão ----
 def get_or_create_categorias_padrao(usuario):
     cat_receita, _ = Categoria.objects.get_or_create(
-        created_by=usuario,
+        usuario=usuario,
         nome="Receita",
         defaults={"tipo": Categoria.TIPO_RECEITA, "is_default": True},
     )
     cat_gastos, _ = Categoria.objects.get_or_create(
-        created_by=usuario,
+        usuario=usuario,
         nome="Gastos",
         defaults={"tipo": Categoria.TIPO_DESPESA, "is_default": True},
     )
     cat_invest, _ = Categoria.objects.get_or_create(
-        created_by=usuario,
+        usuario=usuario,
         nome="Investimento",
         defaults={"tipo": Categoria.TIPO_DESPESA, "is_default": True},
     )
@@ -226,7 +226,7 @@ def upsert_conta_legado(
     """
     # chave forte
     conta = Conta.objects.filter(
-        created_by=usuario,
+        usuario=usuario,
         tipo=tipo,
         descricao=descricao,
         valor=valor,
@@ -236,7 +236,7 @@ def upsert_conta_legado(
     if not conta:
         # fallback pelo rastreio legado (caso o valor/descricao mude mas origem seja igual)
         conta = Conta.objects.filter(
-            created_by=usuario,
+            usuario=usuario,
             is_legacy=True,
             origem_ano=origem_ano,
             origem_mes=origem_mes,
@@ -245,7 +245,7 @@ def upsert_conta_legado(
 
     if not conta:
         return Conta.objects.create(
-            created_by=usuario,
+            usuario=usuario,
             tipo=tipo,
             descricao=descricao,
             valor=valor,
@@ -294,7 +294,7 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
     18) Receita do mês entra no 5º dia útil do mês
     """
     if sobrescrever:
-        Conta.objects.filter(created_by=usuario).delete()
+        Conta.objects.filter(usuario=usuario).delete()
 
     cats = get_or_create_categorias_padrao(usuario)
     formas_padrao = get_or_create_formas_padrao(usuario)
@@ -368,7 +368,7 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                         origem = f"RECEITA_{receita_idx}"
 
                         upsert_conta_legado(
-                            created_by=usuario,
+                            usuario=usuario,
                             tipo=Conta.TIPO_RECEITA,
                             descricao=desc,
                             valor=valor,
@@ -416,7 +416,7 @@ def importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False):
                 origem = f"CONTA:{secao}:{desc_limpa}"
 
                 upsert_conta_legado(
-                    created_by=usuario,
+                    usuario=usuario,
                     tipo=tipo_conta,
                     descricao=desc_limpa,
                     valor=valor,

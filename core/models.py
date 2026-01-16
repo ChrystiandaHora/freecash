@@ -4,32 +4,26 @@ from django.conf import settings
 from django.contrib.auth.models import User
 
 
-class AuditoriaMixin(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="%(class)s_created",
-        verbose_name="Criado Por",
-    )
-    modified_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="%(class)s_modified",
-        verbose_name="Modificado Por",
-    )
-    is_active = models.BooleanField(default=True, verbose_name="Ativo")
+# Create your models here.
+import uuid
+
+
+class AuditoriaModel(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
 
 
-class Categoria(AuditoriaMixin):
+class Categoria(AuditoriaModel):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="categorias",
+    )
+
     TIPO_RECEITA = "R"
     TIPO_DESPESA = "D"
     TIPO_INVESTIMENTO = "I"
@@ -45,25 +39,37 @@ class Categoria(AuditoriaMixin):
     is_default = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ("created_by", "nome")
+        unique_together = ("usuario", "nome")
         ordering = ["nome"]
 
     def __str__(self):
         return self.nome
 
 
-class FormaPagamento(AuditoriaMixin):
+class FormaPagamento(AuditoriaModel):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="formas_pagamento",
+    )
+
     nome = models.CharField(max_length=100)
     ativa = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ("created_by", "nome")
+        unique_together = ("usuario", "nome")
 
     def __str__(self):
         return self.nome
 
 
-class Conta(AuditoriaMixin):
+class Conta(AuditoriaModel):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="contas",
+    )
+
     # Natureza
     TIPO_RECEITA = "R"
     TIPO_DESPESA = "D"
@@ -113,10 +119,8 @@ class Conta(AuditoriaMixin):
     class Meta:
         ordering = ["-data_prevista", "-id"]
         indexes = [
-            models.Index(fields=["created_by", "tipo", "data_prevista"]),
-            models.Index(
-                fields=["created_by", "transacao_realizada", "data_realizacao"]
-            ),
+            models.Index(fields=["usuario", "tipo", "data_prevista"]),
+            models.Index(fields=["usuario", "transacao_realizada", "data_realizacao"]),
         ]
 
     def __str__(self):
@@ -138,31 +142,29 @@ class Conta(AuditoriaMixin):
         self.transacao_realizada = True
         self.data_realizacao = data or timezone.localdate()
         self.save(
-            update_fields=["transacao_realizada", "data_realizacao", "updated_at"]
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
 
     def desmarcar_realizada(self):
         self.transacao_realizada = False
         self.data_realizacao = None
         self.save(
-            update_fields=["transacao_realizada", "data_realizacao", "updated_at"]
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
 
 
-class ConfigUsuario(AuditoriaMixin):
-    created_by = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="config",
+class ConfigUsuario(AuditoriaModel):
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="config"
     )
     moeda_padrao = models.CharField(max_length=10, default="BRL")
     ultimo_export_em = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Configurações de {self.created_by.username}"
+        return f"Configurações de {self.usuario.username}"
 
 
-class LogImportacao(AuditoriaMixin):
+class LogImportacao(AuditoriaModel):
     TIPO_BACKUP = "backup"
     TIPO_LEGADO = "legado"
 
@@ -175,5 +177,13 @@ class LogImportacao(AuditoriaMixin):
     sucesso = models.BooleanField(default=False)
     mensagem = models.TextField(blank=True, null=True)
 
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="logs_importacao",
+        null=True,
+        blank=True,
+    )
+
     def __str__(self):
-        return f"{self.created_by.username} - {self.tipo} - {'OK' if self.sucesso else 'ERRO'}"
+        return f"{self.tipo} - {'OK' if self.sucesso else 'ERRO'}"

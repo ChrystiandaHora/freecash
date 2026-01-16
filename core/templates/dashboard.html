@@ -10,311 +10,252 @@
 {{ receitas_dias|json_script:"receitasDias" }}
 {{ despesas_dias|json_script:"despesasDias" }}
 
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
-  <!-- Top bar -->
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div class="space-y-1">
-      <h1 class="text-xl font-semibold text-gray-900">Dashboard</h1>
-      <p class="text-sm text-gray-500">Visão rápida do {{ periodo_label|lower }}</p>
+  <!-- Compact Top Bar -->
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-emerald-500"></i> Dashboard
+        <span class="text-sm font-normal text-gray-500 dark:text-slate-400">• {{ periodo_label }}</span>
+      </h1>
     </div>
 
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-600">Período</span>
-        <select
-          class="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-          onchange="setPeriodo(this.value)">
-          <option value="0" {% if periodo == 0 %}selected{% endif %}>Mês atual</option>
-          <option value="1" {% if periodo == 1 %}selected{% endif %}>Mês passado</option>
-          <option value="2" {% if periodo == 2 %}selected{% endif %}>Mês retrasado</option>
-        </select>
-      </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <select
+        class="text-xs border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        onchange="setPeriodo(this.value)">
+        <option value="0" {% if periodo == 0 %}selected{% endif %}>Mês atual</option>
+        <option value="1" {% if periodo == 1 %}selected{% endif %}>Mês passado</option>
+        <option value="2" {% if periodo == 2 %}selected{% endif %}>Mês retrasado</option>
+      </select>
 
-      <div class="flex items-center gap-2">
-        <a href="{% url 'contas_pagar' %}"
-           class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold
-                  bg-gray-900 text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20">
-          Gerenciar contas
-        </a>
-        <a href="{% url 'transacoes' %}"
-           class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold
-                  bg-gray-100 text-gray-900 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
-          Ver transações
-        </a>
-      </div>
+      <a href="{% url 'contas_pagar' %}"
+         class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold
+                bg-emerald-600 text-white hover:bg-emerald-500 transition-all">
+        <i class="fa-solid fa-plus mr-1.5"></i> Nova conta
+      </a>
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <!-- KPI Row: Compact 4-column grid -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
     <!-- Receita -->
-    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-gray-500">Receitas</p>
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+          <i class="fa-solid fa-arrow-trend-up text-emerald-600 dark:text-emerald-400 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Receitas</p>
+          <p class="text-base font-bold text-gray-900 dark:text-white truncate">R$ {{ total_receitas|floatformat:2 }}</p>
+        </div>
         {% if receitas_pct != None %}
-          {% if receitas_pct >= 0 %}
-            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
-              +{{ receitas_pct|floatformat:1 }}%
-            </span>
-          {% else %}
-            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
-              {{ receitas_pct|floatformat:1 }}%
-            </span>
-          {% endif %}
-        {% else %}
-          <span class="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">sem base</span>
+          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 {% if receitas_pct >= 0 %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400{% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+            {% if receitas_pct >= 0 %}+{% endif %}{{ receitas_pct|floatformat:0 }}%
+          </span>
         {% endif %}
       </div>
-      <p class="mt-2 text-2xl font-semibold text-gray-900">R$ {{ total_receitas|floatformat:2 }}</p>
-      <p class="mt-1 text-xs text-gray-500">vs mês anterior</p>
     </div>
 
     <!-- Despesa -->
-    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-gray-500">Despesas</p>
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <i class="fa-solid fa-arrow-trend-down text-red-600 dark:text-red-400 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Despesas</p>
+          <p class="text-base font-bold text-gray-900 dark:text-white truncate">R$ {{ total_despesas|floatformat:2 }}</p>
+        </div>
         {% if despesas_pct != None %}
-          {% if despesas_pct <= 0 %}
-            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
-              {{ despesas_pct|floatformat:1 }}%
-            </span>
-          {% else %}
-            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
-              +{{ despesas_pct|floatformat:1 }}%
-            </span>
-          {% endif %}
-        {% else %}
-          <span class="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">sem base</span>
+          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 {% if despesas_pct <= 0 %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400{% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+            {% if despesas_pct > 0 %}+{% endif %}{{ despesas_pct|floatformat:0 }}%
+          </span>
         {% endif %}
       </div>
-      <p class="mt-2 text-2xl font-semibold text-gray-900">R$ {{ total_despesas|floatformat:2 }}</p>
-      <p class="mt-1 text-xs text-gray-500">vs mês anterior</p>
     </div>
 
     <!-- Saldo -->
-    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-gray-500">Saldo</p>
-        <span class="text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
-          {{ periodo_label|lower }}
-        </span>
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <i class="fa-solid fa-wallet text-blue-600 dark:text-blue-400 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Saldo</p>
+          <p class="text-base font-bold {% if saldo_mes >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %} truncate">R$ {{ saldo_mes|floatformat:2 }}</p>
+        </div>
+        {% if taxa_poupanca != None %}
+          <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 shrink-0">
+            {{ taxa_poupanca|floatformat:0 }}% poup.
+          </span>
+        {% endif %}
       </div>
-      <p class="mt-2 text-2xl font-semibold text-gray-900">R$ {{ saldo_mes|floatformat:2 }}</p>
-      {% if taxa_poupanca != None %}
-        <p class="mt-1 text-xs text-gray-500">Poupança: {{ taxa_poupanca|floatformat:0 }}%</p>
-      {% else %}
-        <p class="mt-1 text-xs text-gray-500">Sem base</p>
-      {% endif %}
     </div>
 
-    <!-- Contas -->
-    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-      <p class="text-sm text-gray-500">Contas</p>
-      <div class="mt-2 flex items-baseline justify-between">
-        <p class="text-2xl font-semibold text-gray-900">
-          {{ contas_pendentes|default:0 }} pendentes
-        </p>
-        <p class="text-xs text-gray-500 text-right">
-          {{ contas_atrasadas|default:0 }} atrasadas
-        </p>
+    <!-- Contas Pendentes -->
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <i class="fa-regular fa-calendar-check text-purple-600 dark:text-purple-400 text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Pendentes</p>
+          <p class="text-base font-bold text-gray-900 dark:text-white">{{ contas_pendentes|default:0 }}</p>
+        </div>
+        {% if contas_atrasadas > 0 %}
+          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">
+            {{ contas_atrasadas }} atras.
+          </span>
+        {% endif %}
       </div>
-      <p class="mt-1 text-xs text-gray-500">status geral</p>
     </div>
 
   </div>
 
-  <!-- Main layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Main Grid: Better proportions -->
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
 
-    <!-- Left: insights -->
-    <div class="lg:col-span-2 space-y-6">
+    <!-- Left Column: Charts -->
+    <div class="xl:col-span-8 space-y-4">
 
-      <!-- Primary chart: cashflow -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm font-semibold text-gray-900">Fluxo de caixa</h2>
-              <span class="text-gray-400 cursor-help" title="Ative séries para comparar tendências">
-                <i class="fa-solid fa-circle-info"></i>
-              </span>
-            </div>
-            <p class="text-xs text-gray-500">Últimos 6 meses</p>
-          </div>
-
-          <div class="inline-flex rounded-xl bg-gray-50 p-1 border border-gray-100">
-            <button id="btnSavings"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white shadow-sm text-gray-900">
-              Saldo
-            </button>
-            <button id="btnIncome"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-gray-900">
-              Receita
-            </button>
-            <button id="btnExpense"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-gray-900">
-              Despesa
-            </button>
+      <!-- Cash Flow Chart -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo de caixa <span class="text-xs font-normal text-gray-500 dark:text-slate-400">(6 meses)</span></h2>
+          <div class="inline-flex rounded-lg bg-gray-100 dark:bg-slate-700/50 p-0.5 text-[11px]">
+            <button id="btnSavings" class="px-2 py-1 rounded-md bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white font-semibold">Saldo</button>
+            <button id="btnIncome" class="px-2 py-1 rounded-md text-gray-600 dark:text-slate-400 font-medium hover:text-gray-900 dark:hover:text-white">Receita</button>
+            <button id="btnExpense" class="px-2 py-1 rounded-md text-gray-600 dark:text-slate-400 font-medium hover:text-gray-900 dark:hover:text-white">Despesa</button>
           </div>
         </div>
-
-        <div class="mt-4 h-64">
+        <div class="h-48">
           <canvas id="graficoMeses"></canvas>
         </div>
       </div>
 
-      <!-- Unified card: Receitas vs Despesas (tabs) -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-        <div class="flex items-center justify-between gap-3">
-          <div class="space-y-1">
-            <h2 class="text-sm font-semibold text-gray-900">Movimento diário</h2>
-            <p class="text-xs text-gray-500">No período selecionado</p>
-          </div>
-
-          <div class="inline-flex rounded-xl bg-gray-50 p-1 border border-gray-100" role="tablist" aria-label="Movimento diário">
-            <button
-              class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-white shadow-sm text-gray-900"
-              data-tab="tab-receitas" aria-selected="true" type="button">
-              Receitas
-            </button>
-            <button
-              class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-700 hover:text-gray-900"
-              data-tab="tab-despesas" aria-selected="false" type="button">
-              Despesas
-            </button>
+      <!-- Daily Movement: More compact with inline tabs -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Movimento diário</h2>
+          <div class="inline-flex rounded-lg bg-gray-100 dark:bg-slate-700/50 p-0.5 text-[11px]" role="tablist">
+            <button class="tab-btn px-2 py-1 rounded-md bg-white dark:bg-slate-600 shadow-sm text-gray-900 dark:text-white font-semibold" data-tab="tab-receitas" aria-selected="true" type="button">Receitas</button>
+            <button class="tab-btn px-2 py-1 rounded-md text-gray-600 dark:text-slate-400 font-medium hover:text-gray-900 dark:hover:text-white" data-tab="tab-despesas" aria-selected="false" type="button">Despesas</button>
           </div>
         </div>
 
-        <!-- Tab: receitas -->
-        <div id="tab-receitas" class="tab-panel mt-4">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <p class="text-xs text-gray-500">Total</p>
-              <p class="mt-1 text-lg font-semibold text-gray-900">R$ {{ total_receitas|floatformat:2 }}</p>
-            </div>
-            <p class="text-xs text-gray-500">linha diária</p>
+        <!-- Tab: Receitas -->
+        <div id="tab-receitas" class="tab-panel">
+          <div class="flex items-baseline justify-between mb-2">
+            <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400">R$ {{ total_receitas|floatformat:2 }}</p>
+            <p class="text-[10px] text-gray-500 dark:text-slate-400">total do período</p>
           </div>
-          <div class="mt-3 h-52">
+          <div class="h-36">
             <canvas id="chartReceitas"></canvas>
           </div>
         </div>
 
-        <!-- Tab: despesas -->
-        <div id="tab-despesas" class="tab-panel mt-4 hidden">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="text-xs text-gray-500">Total</p>
-              <p class="mt-1 text-lg font-semibold text-gray-900">R$ {{ total_despesas|floatformat:2 }}</p>
-              <p class="mt-1 text-xs text-gray-500">linha diária e categorias</p>
-            </div>
+        <!-- Tab: Despesas -->
+        <div id="tab-despesas" class="tab-panel hidden">
+          <div class="flex items-baseline justify-between mb-2">
+            <p class="text-lg font-bold text-red-600 dark:text-red-400">R$ {{ total_despesas|floatformat:2 }}</p>
+            <p class="text-[10px] text-gray-500 dark:text-slate-400">total do período</p>
           </div>
 
-          <div class="mt-4">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-sm font-semibold text-gray-800">Categorias</p>
-              <p class="text-xs text-gray-500">Top + outros</p>
+          {% if breakdown_items %}
+            <!-- Compact category bar -->
+            <div class="h-3 rounded-full bg-gray-100 dark:bg-slate-700/50 overflow-hidden flex mb-2">
+              {% for item in breakdown_items %}
+                <div
+                  title="{{ item.nome }}: R$ {{ item.valor|floatformat:2 }} ({{ item.pct|floatformat:0 }}%)"
+                  class="{% if forloop.counter0 == 0 %}bg-orange-500{% elif forloop.counter0 == 1 %}bg-orange-400{% elif forloop.counter0 == 2 %}bg-orange-300{% elif forloop.counter0 == 3 %}bg-orange-200{% else %}bg-gray-300{% endif %}"
+                  style="width: {{ item.pct|floatformat:2|cut:',' }}%;"></div>
+              {% endfor %}
             </div>
-
-            {% if breakdown_items %}
-              <div class="h-8 rounded-lg bg-gray-100 overflow-hidden flex border border-gray-100">
-                {% for item in breakdown_items %}
-                  <div
-                    title="{{ item.nome }}: R$ {{ item.valor|floatformat:2 }} ({{ item.pct|floatformat:0 }}%)"
-                    class="{% if forloop.counter0 == 0 %}bg-orange-600{% elif forloop.counter0 == 1 %}bg-orange-400{% elif forloop.counter0 == 2 %}bg-orange-300{% elif forloop.counter0 == 3 %}bg-orange-200{% else %}bg-gray-300{% endif %}"
-                    style="width: {{ item.pct|floatformat:2|cut:',' }}%;">
-                  </div>
-                {% endfor %}
-              </div>
-
-              <div class="mt-3 space-y-1">
-                {% for item in breakdown_items %}
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-700 font-medium truncate max-w-[60%]">{{ item.nome }}</span>
-                    <span class="text-gray-500 tabular-nums">
-                      R$ {{ item.valor|floatformat:2 }} • {{ item.pct|floatformat:0 }}%
-                    </span>
-                  </div>
-                {% endfor %}
-              </div>
-            {% else %}
-              <p class="text-sm text-gray-500">Sem dados de categorias no período.</p>
-            {% endif %}
-
-            <div class="mt-4 h-28">
-              <canvas id="chartDespesasMini"></canvas>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 text-[10px] mb-3">
+              {% for item in breakdown_items %}
+                <span class="text-gray-600 dark:text-slate-400">
+                  <span class="font-medium text-gray-800 dark:text-slate-200">{{ item.nome|truncatechars:12 }}</span> {{ item.pct|floatformat:0 }}%
+                </span>
+              {% endfor %}
             </div>
+          {% endif %}
+
+          <div class="h-24">
+            <canvas id="chartDespesasMini"></canvas>
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- Right: secondary info -->
-    <div class="space-y-6">
+    <!-- Right Column: Quick Actions & Status -->
+    <div class="xl:col-span-4 space-y-4">
 
-      <!-- Próximas contas -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <h2 class="text-sm font-semibold text-gray-900">Próximas contas</h2>
-            <p class="text-xs text-gray-500">Organize o que vem aí</p>
-          </div>
-          <a href="{% url 'contas_pagar' %}"
-             class="w-9 h-9 rounded-xl border border-gray-200 text-gray-700 text-lg leading-none inline-flex items-center justify-center hover:bg-gray-50">
-            +
-          </a>
+      <!-- Próximas Contas: Compact list -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Próximas contas</h2>
+          <a href="{% url 'contas_pagar' %}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">Ver todas</a>
         </div>
 
-        <div class="mt-4 space-y-3">
+        <div class="space-y-2">
           {% for c in upcoming_bills %}
-            <div class="border border-gray-100 rounded-2xl p-4 hover:bg-gray-50/60 transition-colors">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold text-gray-900 truncate">{{ c.descricao }}</p>
-                  <p class="text-xs text-gray-500 mt-1">{{ c.data_vencimento|date:"d/m/Y" }}</p>
-                  {% if c.categoria %}
-                    <p class="text-xs text-gray-500">{{ c.categoria.nome }}</p>
-                  {% endif %}
-                </div>
-
-                <div class="text-right shrink-0">
-                  <p class="text-sm font-semibold text-gray-900 tabular-nums">R$ {{ c.valor|floatformat:2 }}</p>
-                  <span class="inline-flex mt-2 text-xs px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
-                    Programado
-                  </span>
-                </div>
+            <div class="flex items-center justify-between gap-2 p-2 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ c.descricao }}</p>
+                <p class="text-[10px] text-gray-500 dark:text-slate-400">{{ c.data_vencimento|date:"d/m" }}{% if c.categoria %} • {{ c.categoria.nome|truncatechars:10 }}{% endif %}</p>
               </div>
+              <p class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums shrink-0">R$ {{ c.valor|floatformat:2 }}</p>
             </div>
           {% empty %}
-            <p class="text-sm text-gray-500">Nenhuma conta pendente futura.</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400 text-center py-4">Nenhuma conta pendente</p>
           {% endfor %}
         </div>
-
-        <a href="{% url 'contas_pagar' %}"
-          class="mt-4 inline-flex w-full items-center justify-center rounded-xl
-                 bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-semibold py-2
-                 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
-          Ver tudo
-        </a>
       </div>
 
-      <!-- Status das contas -->
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-        <div class="flex items-center justify-between">
-          <div class="space-y-1">
-            <h2 class="text-sm font-semibold text-gray-900">Status das contas</h2>
-            <p class="text-xs text-gray-500">Pagas, pendentes e atrasadas</p>
-          </div>
-        </div>
-        <div class="mt-4 h-56">
+      <!-- Status das Contas: Mini donut -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Status das contas</h2>
+        <div class="h-40">
           <canvas id="graficoContas"></canvas>
+        </div>
+        <!-- Legend inline -->
+        <div class="flex justify-center gap-4 mt-2 text-[10px]">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Pagas {{ contas_pagas|default:0 }}</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Pendentes {{ contas_pendentes|default:0 }}</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Atrasadas {{ contas_atrasadas|default:0 }}</span>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Atalhos rápidos</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <a href="{% url 'contas_pagar' %}" class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs">
+            <i class="fa-solid fa-file-invoice-dollar text-gray-500 dark:text-slate-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Contas</span>
+          </a>
+          <a href="{% url 'receitas' %}" class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs">
+            <i class="fa-solid fa-coins text-gray-500 dark:text-slate-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Receitas</span>
+          </a>
+          <a href="{% url 'formas_pagamento' %}" class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs">
+            <i class="fa-solid fa-credit-card text-gray-500 dark:text-slate-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Pagamentos</span>
+          </a>
+          <a href="{% url 'transacoes' %}" class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs">
+            <i class="fa-solid fa-list text-gray-500 dark:text-slate-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Transações</span>
+          </a>
         </div>
       </div>
 
     </div>
   </div>
+
 </div>
 
 <script>
@@ -327,7 +268,7 @@
   }
 
   function makeGradient(ctx, top, bottom) {
-    const g = ctx.createLinearGradient(0, 0, 0, 180);
+    const g = ctx.createLinearGradient(0, 0, 0, 120);
     g.addColorStop(0, top);
     g.addColorStop(1, bottom);
     return g;
@@ -346,12 +287,12 @@
         labels,
         datasets: [{
           data: dataArr,
-          tension: 0.35,
+          tension: 0.4,
           borderColor,
           backgroundColor: bg,
-          borderWidth: 2,
-          pointRadius: 2,
-          pointHoverRadius: 4,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          pointHoverRadius: 3,
           fill: true
         }]
       },
@@ -369,19 +310,11 @@
         },
         scales: {
           x: {
-            grid: { display: false },
-            ticks: {
-              maxRotation: 0,
-              callback: (value, index) => {
-                const label = labels[index] || "";
-                const day = Number(label);
-                return (day === 1 || day % 5 === 0) ? label : "";
-              }
-            }
+            display: false
           },
           y: {
-            beginAtZero: true,
-            ticks: { callback: (v) => brl.format(v) }
+            display: false,
+            beginAtZero: true
           }
         }
       }
@@ -398,10 +331,10 @@
   const receitasDias = JSON.parse(document.getElementById("receitasDias").textContent).map(v => Number(v) || 0);
   const despesasDias = JSON.parse(document.getElementById("despesasDias").textContent).map(v => Number(v) || 0);
 
-  makeDailyLine("chartReceitas", diasLabels, receitasDias, "#16a34a", "rgba(34,197,94,0.22)", "rgba(34,197,94,0)");
-  makeDailyLine("chartDespesasMini", diasLabels, despesasDias, "#f97316", "rgba(249,115,22,0.20)", "rgba(249,115,22,0)");
+  makeDailyLine("chartReceitas", diasLabels, receitasDias, "#16a34a", "rgba(34,197,94,0.15)", "rgba(34,197,94,0)");
+  makeDailyLine("chartDespesasMini", diasLabels, despesasDias, "#f97316", "rgba(249,115,22,0.15)", "rgba(249,115,22,0)");
 
-  // Tabs (Receitas/Despesas)
+  // Tabs
   const tabButtons = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");
 
@@ -410,16 +343,19 @@
     tabButtons.forEach(b => {
       const active = b.dataset.tab === tabId;
       b.setAttribute("aria-selected", String(active));
-      b.classList.toggle("bg-white", active);
-      b.classList.toggle("shadow-sm", active);
-      b.classList.toggle("text-gray-900", active);
-      b.classList.toggle("text-gray-700", !active);
+      if (active) {
+        b.classList.remove("text-gray-600", "dark:text-slate-400");
+        b.classList.add("bg-white", "dark:bg-slate-600", "shadow-sm", "text-gray-900", "dark:text-white", "font-semibold");
+      } else {
+        b.classList.remove("bg-white", "dark:bg-slate-600", "shadow-sm", "text-gray-900", "dark:text-white", "font-semibold");
+        b.classList.add("text-gray-600", "dark:text-slate-400", "font-medium");
+      }
     });
   }
 
   tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.dataset.tab)));
 
-  // Donut contas
+  // Donut
   const donutEl = document.getElementById("graficoContas");
   if (donutEl) {
     const pagas = Number("{{ contas_pagas|default:0 }}");
@@ -439,21 +375,28 @@
     new Chart(donutEl, {
       type: "doughnut",
       data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, cutout: "70%" }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        cutout: "75%"
+      }
     });
   }
 
-  // Fluxo de caixa
+  // Cash flow chart
   const cashFlowEl = document.getElementById("graficoMeses");
   let cashFlowChart = null;
 
   function setButtonState(btn, active) {
     if (!btn) return;
-    btn.classList.toggle("bg-white", active);
-    btn.classList.toggle("shadow-sm", active);
-    btn.classList.toggle("text-gray-900", active);
-    btn.classList.toggle("bg-transparent", !active);
-    btn.classList.toggle("text-gray-700", !active);
+    if (active) {
+      btn.classList.remove("text-gray-600", "dark:text-slate-400");
+      btn.classList.add("bg-white", "dark:bg-slate-600", "shadow-sm", "text-gray-900", "dark:text-white", "font-semibold");
+    } else {
+      btn.classList.remove("bg-white", "dark:bg-slate-600", "shadow-sm", "text-gray-900", "dark:text-white", "font-semibold");
+      btn.classList.add("text-gray-600", "dark:text-slate-400", "font-medium");
+    }
   }
 
   function toggleDataset(idx, btn) {
@@ -470,24 +413,24 @@
       data: {
         labels: mesesLabels,
         datasets: [
-          { label: "Receita", data: receitas6m, borderColor: "#16a34a", borderWidth: 2, tension: 0.35, pointRadius: 2, fill: false, hidden: true },
-          { label: "Despesa", data: despesas6m, borderColor: "#ef4444", borderWidth: 2, tension: 0.35, pointRadius: 2, fill: false, hidden: true },
-          { label: "Saldo", data: saldos6m, borderColor: "#3b82f6", borderWidth: 3, tension: 0.35, pointRadius: 3, fill: false, hidden: false },
+          { label: "Receita", data: receitas6m, borderColor: "#16a34a", borderWidth: 2, tension: 0.4, pointRadius: 2, fill: false, hidden: true },
+          { label: "Despesa", data: despesas6m, borderColor: "#ef4444", borderWidth: 2, tension: 0.4, pointRadius: 2, fill: false, hidden: true },
+          { label: "Saldo", data: saldos6m, borderColor: "#3b82f6", borderWidth: 2.5, tension: 0.4, pointRadius: 3, fill: false, hidden: false },
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: "top" },
+          legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${brl.format(ctx.parsed.y || 0)}` } }
         },
         scales: {
-          x: { grid: { display: false } },
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
           y: {
             beginAtZero: true,
-            grid: { color: (ctx) => (ctx.tick.value === 0 ? "#9ca3af" : "rgba(156,163,175,0.2)") },
-            ticks: { callback: (v) => brl.format(v) }
+            grid: { color: "rgba(156,163,175,0.1)" },
+            ticks: { font: { size: 10 }, callback: (v) => brl.format(v) }
           }
         }
       }

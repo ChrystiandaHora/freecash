@@ -33,7 +33,7 @@ class ContasPagarView(View):
         # Pendentes: despesas ainda não realizadas
         qs_pendentes = (
             Conta.objects.filter(
-                created_by=usuario,
+                usuario=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=False,
             )
@@ -44,7 +44,7 @@ class ContasPagarView(View):
         # Pagas: despesas realizadas
         qs_pagas = (
             Conta.objects.filter(
-                created_by=usuario,
+                usuario=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=True,
             )
@@ -77,9 +77,9 @@ class ContasPagarView(View):
 
         # selects
         categorias = Categoria.objects.filter(
-            created_by=usuario, tipo=Categoria.TIPO_DESPESA
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).order_by("nome")
-        formas = FormaPagamento.objects.filter(created_by=usuario).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
 
         contexto = {
             "pendentes_page": pendentes_page,
@@ -148,14 +148,14 @@ class CadastrarContaPagarView(View):
         # FK forma pagamento
         forma_pagamento = (
             FormaPagamento.objects.filter(
-                id=forma_pagamento_id, created_by=usuario
+                id=forma_pagamento_id, usuario=usuario
             ).first()
             if forma_pagamento_id.isdigit()
             else None
         )
 
         categoria_padrao = Categoria.objects.filter(
-            created_by=usuario, tipo=Categoria.TIPO_DESPESA
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).first()
 
         def add_months(d: date, months: int) -> date:
@@ -185,7 +185,7 @@ class CadastrarContaPagarView(View):
                     venc = add_months(data_prevista, i - 1)
                     contas.append(
                         Conta(
-                            created_by=usuario,
+                            usuario=usuario,
                             tipo=Conta.TIPO_DESPESA,
                             descricao=descricao,
                             valor=valor_total,
@@ -225,7 +225,7 @@ class CadastrarContaPagarView(View):
                 cents_1 = base + (1 if 1 <= resto else 0)
 
                 primeira = Conta.objects.create(
-                    created_by=usuario,
+                    usuario=usuario,
                     tipo=Conta.TIPO_DESPESA,
                     descricao=descricao,
                     valor=cents_to_decimal(cents_1),
@@ -242,7 +242,7 @@ class CadastrarContaPagarView(View):
 
                 gid = primeira.id
                 primeira.grupo_parcelamento = gid
-                primeira.save(update_fields=["grupo_parcelamento", "updated_at"])
+                primeira.save(update_fields=["grupo_parcelamento", "atualizada_em"])
 
                 contas = []
                 for i in range(2, n + 1):
@@ -251,7 +251,7 @@ class CadastrarContaPagarView(View):
 
                     contas.append(
                         Conta(
-                            created_by=usuario,
+                            usuario=usuario,
                             tipo=Conta.TIPO_DESPESA,
                             descricao=descricao,
                             valor=cents_to_decimal(cents),
@@ -275,7 +275,7 @@ class CadastrarContaPagarView(View):
 
         # 3) NORMAL
         Conta.objects.create(
-            created_by=usuario,
+            usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
             descricao=descricao,
             valor=valor_total,
@@ -301,9 +301,9 @@ class ContaCreateView(View):
     def get(self, request):
         usuario = request.user
         categorias = Categoria.objects.filter(
-            created_by=usuario, tipo=Categoria.TIPO_DESPESA
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).order_by("nome")
-        formas = FormaPagamento.objects.filter(created_by=usuario).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
         return render(
             request,
             self.template_name,
@@ -321,10 +321,10 @@ class ContaUpdateView(View):
 
     def get(self, request, conta_id):
         usuario = request.user
-        conta = get_object_or_404(Conta, id=conta_id, created_by=usuario)
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
-        categorias = Categoria.objects.filter(created_by=usuario).order_by("nome")
-        formas = FormaPagamento.objects.filter(created_by=usuario).order_by("nome")
+        categorias = Categoria.objects.filter(usuario=usuario).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
 
         return render(
             request,
@@ -339,7 +339,7 @@ class ContaUpdateView(View):
 
     def post(self, request, conta_id):
         usuario = request.user
-        conta = get_object_or_404(Conta, id=conta_id, created_by=usuario)
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
         aplicar_grupo = (request.POST.get("aplicar_grupo") or "").strip() == "1"
 
@@ -373,7 +373,7 @@ class ContaUpdateView(View):
         # categoria
         cat_id = (request.POST.get("categoria") or "").strip()
         categoria = (
-            Categoria.objects.filter(id=cat_id, created_by=usuario).first()
+            Categoria.objects.filter(id=cat_id, usuario=usuario).first()
             if cat_id.isdigit()
             else None
         )
@@ -381,7 +381,7 @@ class ContaUpdateView(View):
         # forma de pagamento
         forma_id = (request.POST.get("forma_pagamento") or "").strip()
         forma_pagamento = (
-            FormaPagamento.objects.filter(id=forma_id, created_by=usuario).first()
+            FormaPagamento.objects.filter(id=forma_id, usuario=usuario).first()
             if forma_id.isdigit()
             else None
         )
@@ -391,7 +391,7 @@ class ContaUpdateView(View):
             gid = conta.grupo_parcelamento
 
             # group edit seguro: só campos compartilháveis
-            Conta.objects.filter(created_by=usuario, grupo_parcelamento=gid).update(
+            Conta.objects.filter(usuario=usuario, grupo_parcelamento=gid).update(
                 descricao=descricao,
                 categoria=categoria,
                 forma_pagamento=forma_pagamento,
@@ -400,7 +400,7 @@ class ContaUpdateView(View):
             # individual edit: mantém o resto só para a parcela atual
             conta.valor = valor
             conta.data_prevista = data_prevista
-            conta.save(update_fields=["valor", "data_prevista", "updated_at"])
+            conta.save(update_fields=["valor", "data_prevista", "atualizada_em"])
 
             messages.success(
                 request,
@@ -425,14 +425,14 @@ class ApagarContaView(View):
     def post(self, request, conta_id):
         usuario = request.user
 
-        conta = get_object_or_404(Conta, id=conta_id, created_by=usuario)
+        conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
         # opcional: apagar grupo de parcelas se usuário escolher
         apagar_grupo = (request.POST.get("apagar_grupo") or "").strip() == "1"
 
         if apagar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
             Conta.objects.filter(
-                created_by=usuario,
+                usuario=usuario,
                 eh_parcelada=True,
                 grupo_parcelamento=conta.grupo_parcelamento,
             ).delete()
@@ -453,7 +453,7 @@ class MarcarContaPagaView(View):
         conta = get_object_or_404(
             Conta,
             id=conta_id,
-            created_by=usuario,
+            usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
         )
 
@@ -466,7 +466,7 @@ class MarcarContaPagaView(View):
         conta.transacao_realizada = True
         conta.data_realizacao = data_pagamento or hoje
         conta.save(
-            update_fields=["transacao_realizada", "data_realizacao", "updated_at"]
+            update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
 
         messages.success(request, "Conta marcada como paga com sucesso.")

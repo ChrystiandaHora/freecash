@@ -71,10 +71,10 @@ def _to_date(v):
 @transaction.atomic
 def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
     if sobrescrever:
-        Conta.objects.filter(created_by=usuario).delete()
-        Categoria.objects.filter(created_by=usuario).delete()
-        FormaPagamento.objects.filter(created_by=usuario).delete()
-        ConfigUsuario.objects.filter(created_by=usuario).delete()
+        Conta.objects.filter(usuario=usuario).delete()
+        Categoria.objects.filter(usuario=usuario).delete()
+        FormaPagamento.objects.filter(usuario=usuario).delete()
+        ConfigUsuario.objects.filter(usuario=usuario).delete()
 
     xls = pd.ExcelFile(arquivo)
 
@@ -91,7 +91,7 @@ def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
 
         Categoria.objects.create(
             id=obj_id,
-            created_by=usuario,
+            usuario=usuario,
             nome=nome,
             tipo=tipo,
             is_default=is_default,
@@ -109,7 +109,7 @@ def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
 
         FormaPagamento.objects.create(
             id=obj_id,
-            created_by=usuario,
+            usuario=usuario,
             nome=nome,
             ativa=ativa,
         )
@@ -141,7 +141,7 @@ def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
 
         Conta.objects.create(
             id=obj_id,
-            created_by=usuario,
+            usuario=usuario,
             tipo=tipo,
             descricao=descricao,
             valor=valor,
@@ -165,7 +165,7 @@ def importar_backup_freecash_xlsx(arquivo, usuario, sobrescrever=True):
             moeda = m
 
     ConfigUsuario.objects.create(
-        created_by=usuario,
+        usuario=usuario,
         moeda_padrao=moeda,
         ultimo_export_em=timezone.now(),
     )

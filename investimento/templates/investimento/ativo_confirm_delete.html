@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Ativo | FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+  <!-- Confirmation Card -->
+  <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 text-center">
+    
+    <!-- Icon -->
+    <div class="w-16 h-16 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-6">
+      <i class="fa-solid fa-trash text-2xl text-red-500"></i>
+    </div>
+
+    <!-- Title -->
+    <h1 class="text-xl font-semibold text-gray-900 mb-2">Excluir Ativo</h1>
+    
+    <!-- Message -->
+    <p class="text-sm text-gray-600 mb-6">
+      Tem certeza que deseja excluir o ativo <strong class="text-gray-900">{{ ativo.ticker }}</strong>?
+      <br>
+      <span class="text-red-600">Esta ação não pode ser desfeita.</span>
+    </p>
+
+    <!-- Ativo Info -->
+    <div class="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-gray-500">Ticker:</span>
+        <span class="font-semibold text-gray-900">{{ ativo.ticker }}</span>
+      </div>
+      {% if ativo.nome %}
+      <div class="flex items-center justify-between text-sm mt-2">
+        <span class="text-gray-500">Nome:</span>
+        <span class="text-gray-900">{{ ativo.nome }}</span>
+      </div>
+      {% endif %}
+      <div class="flex items-center justify-between text-sm mt-2">
+        <span class="text-gray-500">Quantidade:</span>
+        <span class="text-gray-900 tabular-nums">{{ ativo.quantidade|floatformat:4 }}</span>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <form method="post" class="flex items-center justify-center gap-3">
+      {% csrf_token %}
+      <a href="{% url 'investimento:ativo_listar' %}"
+         class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
+                bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+        Cancelar
+      </a>
+      <button type="submit"
+              class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
+                     bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600/20">
+        <i class="fa-solid fa-trash mr-2"></i>
+        Sim, Excluir
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -13,8 +13,8 @@ class ImportarView(View):
     template_name = "importar.html"
 
     def get(self, request):
-        logs = LogImportacao.objects.filter(created_by=request.user).order_by(
-            "-created_by"
+        logs = LogImportacao.objects.filter(usuario=request.user).order_by(
+            "-criada_em"
         )[:20]
         return render(request, self.template_name, {"logs": logs})
 
@@ -29,9 +29,10 @@ class ImportarView(View):
             messages.error(request, "Formato inválido. Envie um arquivo .xlsx ou .csv.")
             return redirect("importar")
 
+        password = request.POST.get("password")
         try:
             resultado = importar_planilha_unificada(
-                arquivo, request.user, sobrescrever=True
+                arquivo, request.user, sobrescrever=True, password=password
             )
             messages.success(
                 request, resultado.get("msg") or "Importação concluída com sucesso!"

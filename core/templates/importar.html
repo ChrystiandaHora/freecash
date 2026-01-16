@@ -1,98 +1,143 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 
 <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
   <!-- Header -->
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div
+    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+  >
     <div>
-      <h1 class="text-2xl font-semibold text-gray-900">Importar dados</h1>
-      <p class="text-sm text-gray-500">Envie um backup (.xlsx) para restaurar seus dados financeiros.</p>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Importar dados</h1>
+      <p class="text-sm text-gray-500 dark:text-slate-400">
+        Envie um backup (.xlsx) para restaurar seus dados financeiros.
+      </p>
     </div>
 
     <div class="flex items-center gap-3">
-      <a href="#"
-         class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-        Fazer backup antes
+      <a
+        href="{% url 'exportar' %}"
+        class="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+      >
+        <i class="fa-solid fa-file-export mr-2"></i> Fazer backup antes
       </a>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
     <!-- Left: Import card -->
     <div class="lg:col-span-1">
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm p-6">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-sm font-semibold text-gray-900">Importação</h2>
-            <p class="mt-1 text-xs text-gray-500">Suporta .xlsx do FreeCash e planilha legado.</p>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Importação</h2>
+            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+              Suporta .xlsx do FreeCash e planilha legado.
+            </p>
           </div>
         </div>
 
         <!-- Warning -->
-        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p class="text-sm font-semibold text-amber-900">Atenção</p>
-          <p class="mt-1 text-sm text-amber-800">
-            Ao importar, os dados atuais podem ser sobrescritos.
-            Recomendado gerar um backup antes.
+        <div
+          class="mt-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
+        >
+          <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">Atenção</p>
+          <p class="mt-1 text-sm text-amber-800 dark:text-amber-300">
+            Ao importar, os dados atuais podem ser sobrescritos. Recomendado
+            gerar um backup antes.
           </p>
         </div>
 
         <!-- Dropzone -->
-        <form method="post" enctype="multipart/form-data" class="mt-5 space-y-4">
+        <form
+          method="post"
+          enctype="multipart/form-data"
+          class="mt-5 space-y-4"
+        >
           {% csrf_token %}
 
           <div
             id="dropzone"
-            class="group rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center cursor-pointer
-                   hover:border-gray-400 hover:bg-gray-100 transition"
+            class="group rounded-2xl border border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50 p-6 text-center cursor-pointer hover:border-gray-400 dark:hover:border-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition"
           >
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-gray-200">
-              <span class="text-xl"><i class="fa-solid fa-file"></i></span>
+            <div
+              class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600"
+            >
+              <span class="text-xl text-gray-700 dark:text-gray-200"><i class="fa-solid fa-file"></i></span>
             </div>
 
-            <p class="mt-3 text-sm font-semibold text-gray-900">
+            <p class="mt-3 text-sm font-semibold text-gray-900 dark:text-white">
               Arraste o arquivo aqui
             </p>
-            <p class="mt-1 text-sm text-gray-600">
+            <p class="mt-1 text-sm text-gray-600 dark:text-slate-300">
               ou clique para selecionar um .xlsx
             </p>
 
-            <p class="mt-3 text-xs text-gray-500">
+            <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">
               Tamanho recomendado: até 10MB
             </p>
 
-            <input id="fileInput" type="file" name="arquivo" accept=".xlsx" class="hidden" required>
+            <input
+              id="fileInput"
+              type="file"
+              name="arquivo"
+              accept=".xlsx"
+              class="hidden"
+              required
+            />
           </div>
 
           <!-- Preview -->
-          <div id="filePreview" class="hidden rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <div
+            id="filePreview"
+            class="hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3"
+          >
             <div class="flex items-center justify-between gap-3">
               <div class="min-w-0">
-                <p class="text-xs font-semibold text-gray-500">Arquivo selecionado</p>
-                <p id="fileName" class="truncate text-sm font-semibold text-gray-900"></p>
+                <p class="text-xs font-semibold text-gray-500 dark:text-slate-400">
+                  Arquivo selecionado
+                </p>
+                <p
+                  id="fileName"
+                  class="truncate text-sm font-semibold text-gray-900 dark:text-white"
+                ></p>
               </div>
 
-              <button type="button" id="btnClear"
-                      class="inline-flex items-center justify-center rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
+              <button
+                type="button"
+                id="btnClear"
+                class="inline-flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              >
                 Remover
               </button>
             </div>
+          </div>
+
+          <div class="mb-4">
+            <label
+              for="password"
+              class="block text-sm font-medium text-gray-700 dark:text-slate-300"
+              >Senha (Caso o arquivo esteja criptografado)</label
+            >
+            <input
+              type="password"
+              name="password"
+              id="password"
+              class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm mt-1"
+              placeholder="Senha do backup (se houver)"
+            />
           </div>
 
           <button
             type="submit"
             id="btnSubmit"
             disabled
-            class="w-full inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white
-                   hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full inline-flex items-center justify-center rounded-xl bg-gray-900 dark:bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 dark:hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-gray-900/20 dark:shadow-emerald-900/20"
           >
             Importar agora
           </button>
 
-          <p class="text-xs text-gray-500">
-            Ao continuar, você confirma que revisou o arquivo e deseja aplicar a importação.
+          <p class="text-xs text-gray-500 dark:text-slate-400">
+            Ao continuar, você confirma que revisou o arquivo e deseja aplicar a
+            importação.
           </p>
         </form>
       </div>
@@ -100,72 +145,88 @@
 
     <!-- Right: History -->
     <div class="lg:col-span-2">
-      <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden"
+      >
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
             <div>
-              <h2 class="text-sm font-semibold text-gray-900">Histórico de importações</h2>
-              <p class="mt-1 text-xs text-gray-500">
-                {% if logs %}Mostrando {{ logs|length }} registro(s).{% else %}Nenhum registro ainda.{% endif %}
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+                Histórico de importações
+              </h2>
+              <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                {% if logs %}Mostrando {{ logs|length }} registro(s).{% else
+                %}Nenhum registro ainda.{% endif %}
               </p>
             </div>
           </div>
         </div>
 
         {% if logs %}
-          <div class="overflow-x-auto">
-            <table class="min-w-full">
-              <thead class="bg-gray-50">
-                <tr class="text-left text-xs font-semibold text-gray-500">
-                  <th class="px-6 py-3">Tipo</th>
-                  <th class="px-6 py-3">Status</th>
-                  <th class="px-6 py-3">Mensagem</th>
-                  <th class="px-6 py-3 text-right">Data</th>
-                </tr>
-              </thead>
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-gray-50 dark:bg-slate-700/50">
+              <tr class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400">
+                <th class="px-6 py-3">Tipo</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Mensagem</th>
+                <th class="px-6 py-3 text-right">Data</th>
+              </tr>
+            </thead>
 
-              <tbody class="divide-y divide-gray-100 text-sm">
-                {% for log in logs %}
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 font-semibold text-gray-900 whitespace-nowrap">
-                      {{ log.get_tipo_display }}
-                    </td>
+            <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
+              {% for log in logs %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <td
+                  class="px-6 py-4 font-semibold text-gray-900 dark:text-white whitespace-nowrap"
+                >
+                  {{ log.get_tipo_display }}
+                </td>
 
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      {% if log.sucesso %}
-                        <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                          Sucesso
-                        </span>
-                      {% else %}
-                        <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                          Erro
-                        </span>
-                      {% endif %}
-                    </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  {% if log.sucesso %}
+                  <span
+                    class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-3 py-1 text-xs font-semibold text-green-700 dark:text-green-400"
+                  >
+                    Sucesso
+                  </span>
+                  {% else %}
+                  <span
+                    class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400"
+                  >
+                    Erro
+                  </span>
+                  {% endif %}
+                </td>
 
-                    <td class="px-6 py-4 text-gray-700">
-                      <div class="line-clamp-2">
-                        {{ log.mensagem|default:"—" }}
-                      </div>
-                    </td>
+                <td class="px-6 py-4 text-gray-700 dark:text-slate-300">
+                  <div class="line-clamp-2">{{ log.mensagem|default:"—" }}</div>
+                </td>
 
-                    <td class="px-6 py-4 text-right text-gray-600 whitespace-nowrap">
-                      {{ log.criado_em|date:"d/m/Y H:i" }}
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+                <td
+                  class="px-6 py-4 text-right text-gray-600 dark:text-slate-400 whitespace-nowrap"
+                >
+                  {{ log.criada_em|date:"d/m/Y H:i" }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
         {% else %}
-          <div class="px-6 py-10 text-center">
-            <p class="text-sm font-semibold text-gray-900">Nenhuma importação registrada</p>
-            <p class="mt-1 text-sm text-gray-500">Quando você importar um arquivo, o histórico aparece aqui.</p>
-          </div>
+        <div class="px-6 py-10 text-center">
+          <p class="text-sm font-semibold text-gray-900 dark:text-white">
+            Nenhuma importação registrada
+          </p>
+          <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
+            Quando você importar um arquivo, o histórico aparece aqui.
+          </p>
+        </div>
         {% endif %}
       </div>
     </div>
-
   </div>
 </div>
 

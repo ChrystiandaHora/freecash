@@ -33,7 +33,7 @@ class TransacoesView(View):
         forma_pagamento = (request.GET.get("forma_pagamento") or "").strip()
 
         qs = (
-            Conta.objects.filter(created_by=usuario, transacao_realizada=True)
+            Conta.objects.filter(usuario=usuario, transacao_realizada=True)
             .select_related("categoria", "forma_pagamento")
             .order_by("-data_realizacao", "-id")
         )
@@ -79,9 +79,9 @@ class TransacoesView(View):
             "total_count": total_count,
             "per_page": per_page,
             "querystring": querystring,
-            "categorias": Categoria.objects.filter(created_by=usuario).order_by("nome"),
+            "categorias": Categoria.objects.filter(usuario=usuario).order_by("nome"),
             "formas_pagamento": FormaPagamento.objects.filter(
-                created_by=usuario
+                usuario=usuario
             ).order_by("nome"),
             "anos": anos,
             "meses": meses,

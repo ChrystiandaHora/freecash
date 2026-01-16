@@ -34,6 +34,13 @@ out/
 .vscode/
 .idea/
 *.swp
+*.code-workspace
+.history/
+.settings/
+.classpath
+.project
+*.suo
+*.user
 
 # Arquivos temporários
 *.tmp
@@ -43,3 +50,6 @@ out/
 .env
 *.env
 .env.*
+
+# Generated Static Files
+staticfiles/

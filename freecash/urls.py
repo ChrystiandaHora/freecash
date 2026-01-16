@@ -16,7 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from core.views.contas import (
     CadastrarContaPagarView,
     ContaCreateView,
@@ -31,7 +31,7 @@ from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagament
 from core.views.importar import ImportarView
 from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutView
-from core.views.receitas import ReceitasView
+from core.views.receitas import ReceitasView, ReceitaUpdateView, ReceitaCreateView
 from core.views.transacoes import TransacoesView
 
 urlpatterns = [
@@ -60,6 +60,11 @@ urlpatterns += [
     ),
     path("transacoes/", TransacoesView.as_view(), name="transacoes"),
     path("receitas/", ReceitasView.as_view(), name="receitas"),
+    path("receitas/nova/", ReceitaCreateView.as_view(), name="receita_nova"),
+    path(
+        "receitas/<int:pk>/editar/", ReceitaUpdateView.as_view(), name="receita_editar"
+    ),
+    path("investimentos/", include("investimento.urls", namespace="investimento")),
 ]
 
 urlpatterns += [

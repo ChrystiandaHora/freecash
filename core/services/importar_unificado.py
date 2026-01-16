@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional, Tuple
-
+from typing import Any, Dict, Optional, Tuple, List
+import io
 import pandas as pd
+import uuid
 
 from django.db import connection, transaction
 from django.utils import timezone
@@ -19,6 +20,7 @@ from core.models import (
     LogImportacao,
 )
 from core.services.import_planilha import importar_planilha_legado_padrao
+from core.services.encryption import decrypt_from_zip
 
 
 # =========================================================
@@ -33,19 +35,6 @@ def advisory_lock(lock_id: int = 987654321) -> None:
     """
     with connection.cursor() as cursor:
         cursor.execute("SELECT pg_advisory_xact_lock(%s)", [lock_id])
-
-
-def reset_sequences_for_models(*models) -> None:
-    """
-    Ajusta sequences do Postgres para o MAX(id) da tabela.
-    Seguro mesmo com vários usuários (sequência é global por tabela).
-    """
-    sql_list = connection.ops.sequence_reset_sql(no_style(), models)
-    if not sql_list:
-        return
-    with connection.cursor() as cursor:
-        for sql in sql_list:
-            cursor.execute(sql)
 
 
 def parse_bool(v: Any) -> bool:
@@ -150,6 +139,15 @@ def safe_int(v: Any) -> Optional[int]:
         return None
 
 
+def safe_uuid(v: Any) -> Optional[uuid.UUID]:
+    if not v:
+        return None
+    try:
+        return uuid.UUID(str(v))
+    except ValueError:
+        return None
+
+
 # =========================================================
 # Detecção de arquivo
 # =========================================================
@@ -167,7 +165,6 @@ def eh_backup_freecash(xls: pd.ExcelFile) -> bool:
         "contas",
         "categorias",
         "formas_pagamento",
-        "resumo_mensal",
         "configuracoes",
     }
     return needed.issubset(abas)
@@ -185,199 +182,171 @@ def eh_planilha_legado(xls: pd.ExcelFile) -> bool:
 
 
 # =========================================================
-# Import do backup FreeCash (XLSX)
+# Import do backup FreeCash (XLSX) - UPSERT STRATEGY
 # =========================================================
 
 
-@dataclass
-class ImportMaps:
-    cat_old_to_new: Dict[int, int]
-    fp_old_to_new: Dict[int, int]
-
-
-def sobrescrever_dados_do_usuario(usuario) -> None:
+def importar_backup_freecash_upsert(arquivo_io, usuario) -> Dict[str, Any]:
     """
-    Overwrite do usuário: apaga tudo que é dele.
-    Importante: não mexe em dados de outros usuários.
+    Importa backup usando estratégia UPSERT baseada em UUIDs.
+    NÃO apaga dados existentes, apenas atualiza ou cria.
     """
-    Conta.objects.filter(created_by=usuario).delete()
-    Categoria.objects.filter(created_by=usuario).delete()
-    FormaPagamento.objects.filter(created_by=usuario).delete()
-    # ConfigUsuario é OneToOne: vamos sobrescrever atualizando/criando, não delete obrigatório
-    # mas pode deletar para ficar bem “limpo”
-    ConfigUsuario.objects.filter(created_by=usuario).delete()
-
-
-def importar_backup_freecash_xlsx(
-    arquivo, usuario, sobrescrever: bool = True
-) -> Dict[str, Any]:
-    """
-    Importa o XLSX gerado pelo gerar_backup_excel (FreeCash).
-    Estratégia segura para multiusuário:
-    - NÃO reaproveita IDs globais do arquivo (evita colisão com outros usuários)
-    - cria Categorias e Formas primeiro e monta um mapa old_id -> new_id
-    - cria Contas e ResumoMensal usando esse mapa
-    - ConfigUsuario é recriado/atualizado
-    """
-    xls = pd.ExcelFile(arquivo)
-    abas = _lower_sheetnames(xls)
+    xls = pd.ExcelFile(arquivo_io)
 
     if not eh_backup_freecash(xls):
-        raise ValueError(
-            "Arquivo não parece ser um backup FreeCash válido (abas esperadas não encontradas)."
-        )
+        raise ValueError("Arquivo não possui as abas necessárias para backup FreeCash.")
 
-    if sobrescrever:
-        sobrescrever_dados_do_usuario(usuario)
+    # Reads all UUID maps first to allow easy FK resolution
+    # In this robust version, we rely on the UUIDs present in the file.
+
+    counts = {
+        "categorias_created": 0,
+        "categorias_updated": 0,
+        "formas_created": 0,
+        "formas_updated": 0,
+        "contas_created": 0,
+        "contas_updated": 0,
+    }
 
     # 1) Categorias
-    df_cat = pd.read_excel(arquivo, sheet_name="categorias", dtype=object)
-    df_cat = df_cat.fillna("")
-    cat_old_to_new: Dict[int, int] = {}
+    df_cat = pd.read_excel(arquivo_io, sheet_name="categorias", dtype=object).fillna("")
 
-    # cria em massa
-    cat_objs = []
-    cat_rows = []
     for _, row in df_cat.iterrows():
-        old_id = safe_int(row.get("id"))
+        uid = safe_uuid(row.get("uuid"))
+        if not uid:
+            continue  # Skip if no UUID (can't upsert reliably without it)
+
         nome = str(row.get("nome") or "").strip()
         tipo = str(row.get("tipo") or "").strip()
 
-        if not nome or tipo not in {
-            Categoria.TIPO_RECEITA,
-            Categoria.TIPO_DESPESA,
-            Categoria.TIPO_INVESTIMENTO,
-        }:
-            continue
+        defaults = {
+            "nome": nome,
+            "tipo": tipo,
+            "is_default": parse_bool(row.get("is_default")),
+        }
 
-        cat = Categoria(
-            created_by=usuario,
-            nome=nome,
-            tipo=tipo,
-            is_default=parse_bool(row.get("is_default")),
+        # Check if created/updated time exists in file? We usually don't overwrite these unless essential
+        # But for full restore, maybe we should. For now let's keep auto_now behaviors unless specified.
+
+        obj, created = Categoria.objects.update_or_create(
+            uuid=uid, defaults=dict(usuario=usuario, **defaults)
         )
-        cat_objs.append(cat)
-        cat_rows.append(old_id)
-
-    if cat_objs:
-        created = Categoria.objects.bulk_create(cat_objs, batch_size=500)
-        for old_id, obj in zip(cat_rows, created):
-            if old_id is not None:
-                cat_old_to_new[old_id] = obj.id
+        if created:
+            counts["categorias_created"] += 1
+        else:
+            counts["categorias_updated"] += 1
 
     # 2) Formas de pagamento
-    df_fp = pd.read_excel(arquivo, sheet_name="formas_pagamento", dtype=object)
-    df_fp = df_fp.fillna("")
-    fp_old_to_new: Dict[int, int] = {}
+    df_fp = pd.read_excel(
+        arquivo_io, sheet_name="formas_pagamento", dtype=object
+    ).fillna("")
 
-    fp_objs = []
-    fp_rows = []
     for _, row in df_fp.iterrows():
-        old_id = safe_int(row.get("id"))
-        nome = str(row.get("nome") or "").strip()
-        if not nome:
+        uid = safe_uuid(row.get("uuid"))
+        if not uid:
             continue
-        fp = FormaPagamento(
-            created_by=usuario,
-            nome=nome,
-            ativa=parse_bool(row.get("ativa"))
+
+        nome = str(row.get("nome") or "").strip()
+
+        defaults = {
+            "nome": nome,
+            "ativa": parse_bool(row.get("ativa"))
             if str(row.get("ativa")).strip() != ""
             else True,
+        }
+
+        obj, created = FormaPagamento.objects.update_or_create(
+            uuid=uid, defaults=dict(usuario=usuario, **defaults)
         )
-        fp_objs.append(fp)
-        fp_rows.append(old_id)
-
-    if fp_objs:
-        created = FormaPagamento.objects.bulk_create(fp_objs, batch_size=500)
-        for old_id, obj in zip(fp_rows, created):
-            if old_id is not None:
-                fp_old_to_new[old_id] = obj.id
-
-    maps = ImportMaps(cat_old_to_new=cat_old_to_new, fp_old_to_new=fp_old_to_new)
+        if created:
+            counts["formas_created"] += 1
+        else:
+            counts["formas_updated"] += 1
 
     # 3) Contas
-    df_contas = pd.read_excel(arquivo, sheet_name="contas", dtype=object)
-    df_contas = df_contas.fillna("")
+    df_contas = pd.read_excel(arquivo_io, sheet_name="contas", dtype=object).fillna("")
 
-    conta_objs = []
+    # Pre-fetch UUID->ID maps for FKs
+    cat_map = {str(c.uuid): c.id for c in Categoria.objects.filter(usuario=usuario)}
+    fp_map = {str(f.uuid): f.id for f in FormaPagamento.objects.filter(usuario=usuario)}
+
     for _, row in df_contas.iterrows():
-        tipo = str(row.get("tipo") or "").strip()
-        if tipo not in {
-            Conta.TIPO_RECEITA,
-            Conta.TIPO_DESPESA,
-            Conta.TIPO_INVESTIMENTO,
-        }:
+        uid = safe_uuid(row.get("uuid"))
+        if not uid:
             continue
 
+        tipo = str(row.get("tipo") or "").strip()
         descricao = str(row.get("descricao") or "").strip()
         valor = parse_decimal(row.get("valor"))
-
         data_prevista = parse_date(row.get("data_prevista"))
+
         if not data_prevista:
-            # sem data_prevista não dá para importar
             continue
 
         realizada = parse_bool(row.get("transacao_realizada"))
         data_realizacao = parse_date(row.get("data_realizacao")) if realizada else None
 
-        old_cat_id = safe_int(row.get("categoria_id"))
-        old_fp_id = safe_int(row.get("forma_pagamento_id"))
-        new_cat_id = (
-            maps.cat_old_to_new.get(old_cat_id) if old_cat_id is not None else None
-        )
-        new_fp_id = maps.fp_old_to_new.get(old_fp_id) if old_fp_id is not None else None
+        cat_uuid_str = str(row.get("categoria_uuid") or "")
+        fp_uuid_str = str(row.get("forma_pagamento_uuid") or "")
 
-        conta = Conta(
-            created_by=usuario,
-            tipo=tipo,
-            descricao=descricao,
-            valor=valor,
-            data_prevista=data_prevista,
-            transacao_realizada=realizada,
-            data_realizacao=data_realizacao,
-            categoria_id=new_cat_id,
-            forma_pagamento_id=new_fp_id,
-            is_legacy=parse_bool(row.get("is_legacy")),
-            origem_ano=safe_int(row.get("origem_ano")),
-            origem_mes=safe_int(row.get("origem_mes")),
-            origem_linha=str(row.get("origem_linha") or "").strip() or None,
-        )
-        conta_objs.append(conta)
+        cat_id = cat_map.get(cat_uuid_str)
+        fp_id = fp_map.get(fp_uuid_str)
 
-    if conta_objs:
-        Conta.objects.bulk_create(conta_objs, batch_size=500)
+        defaults = {
+            "tipo": tipo,
+            "descricao": descricao,
+            "valor": valor,
+            "data_prevista": data_prevista,
+            "transacao_realizada": realizada,
+            "data_realizacao": data_realizacao,
+            "categoria_id": cat_id,
+            "forma_pagamento_id": fp_id,
+            "is_legacy": parse_bool(row.get("is_legacy")),
+            "origem_ano": safe_int(row.get("origem_ano")),
+            "origem_mes": safe_int(row.get("origem_mes")),
+            "origem_linha": str(row.get("origem_linha") or "").strip() or None,
+        }
+
+        obj, created = Conta.objects.update_or_create(
+            uuid=uid, defaults=dict(usuario=usuario, **defaults)
+        )
+        if created:
+            counts["contas_created"] += 1
+        else:
+            counts["contas_updated"] += 1
 
     # 5) Config do usuário
-    df_conf = pd.read_excel(arquivo, sheet_name="configuracoes", dtype=object)
-    df_conf = df_conf.fillna("")
-    moeda = "BRL"
-    ultimo_export_em = None
-
+    df_conf = pd.read_excel(
+        arquivo_io, sheet_name="configuracoes", dtype=object
+    ).fillna("")
     if len(df_conf) >= 1:
-        # primeira linha de dados
         r0 = df_conf.iloc[0].to_dict()
+        uid = safe_uuid(r0.get("uuid"))
         moeda = str(r0.get("moeda_padrao") or "BRL").strip() or "BRL"
         ultimo_export_em = parse_datetime(r0.get("ultimo_export_em"))
 
-    ConfigUsuario.objects.update_or_create(
-        created_by=usuario,
-        defaults={
-            "moeda_padrao": moeda,
-            "ultimo_export_em": ultimo_export_em,
-        },
-    )
-
-    # Opcional (higiene): ajustar sequences
-    reset_sequences_for_models(Categoria, FormaPagamento, Conta, ConfigUsuario)
+        if uid:
+            ConfigUsuario.objects.update_or_create(
+                usuario=usuario,
+                defaults={
+                    "uuid": uid,  # Force UUID if provided (careful with uniqueness)
+                    "moeda_padrao": moeda,
+                    # We might not want to overwrite ultimo_export_em from backup, or maybe we do?
+                    # Let's overwrite it as it is a restore state.
+                    "ultimo_export_em": ultimo_export_em,
+                },
+            )
+        else:
+            # Fallback if no UUID in config
+            ConfigUsuario.objects.update_or_create(
+                usuario=usuario,
+                defaults={"moeda_padrao": moeda, "ultimo_export_em": ultimo_export_em},
+            )
 
     return {
-        "tipo": "backup",
-        "msg": "Backup FreeCash importado com overwrite do usuário.",
-        "counts": {
-            "categorias": len(cat_old_to_new),
-            "formas_pagamento": len(fp_old_to_new),
-            "contas": len(conta_objs),
-        },
+        "tipo": "backup_upsert",
+        "msg": "Backup FreeCash importado (Upsert - Atualizado/Criado).",
+        "counts": counts,
     }
 
 
@@ -388,65 +357,98 @@ def importar_backup_freecash_xlsx(
 
 @transaction.atomic
 def importar_planilha_unificada(
-    arquivo, usuario, sobrescrever: bool = True
+    arquivo, usuario, sobrescrever: bool = True, password: str = None
 ) -> Dict[str, Any]:
     """
-    Decide se o arquivo é:
-    - backup FreeCash (xlsx gerado pelo app)
-    - planilha legado (abas por ano)
-    e executa overwrite do usuário (sobrescrever=True).
-    Sempre registra LogImportacao.
+    Router unificado.
+    Suporta:
+    - Backup Zipado (criptografado) -> requer senha
+    - Backup XLSX (novo formato com UUID) -> Upsert
+    - Planilha legado -> (mantido como fallback)
     """
     advisory_lock(987654321)
 
-    # Detecta por extensão e tenta abrir com pandas
     nome = (getattr(arquivo, "name", "") or "").lower()
 
-    if not (nome.endswith(".xlsx") or nome.endswith(".xlsm") or nome.endswith(".xls")):
-        # você pode adicionar CSV aqui depois
-        raise ValueError("Formato não suportado no unificado. Envie .xlsx.")
+    arquivo_processado = arquivo
 
-    xls = pd.ExcelFile(arquivo)
+    # 1. Decryption Handling
+    if nome.endswith(".zip"):
+        if not password:
+            raise ValueError("Arquivo criptografado requer senha.")
+
+        # Read file to bytes
+        if hasattr(arquivo, "read"):
+            arquivo.seek(0)
+            file_bytes = arquivo.read()
+        else:
+            file_bytes = arquivo
+
+        try:
+            decrypted_files = decrypt_from_zip(file_bytes, password)
+        except Exception:
+            raise ValueError("Senha incorreta ou arquivo corrompido.")
+
+        # Expecting valid xlsx inside
+        # We take the first file ending with .xlsx
+        xlsx_content = None
+        for fname, content in decrypted_files.items():
+            if fname.lower().endswith(".xlsx"):
+                xlsx_content = content
+                break
+
+        if not xlsx_content:
+            raise ValueError(
+                "Nenhum arquivo .xlsx encontrado dentro do backup criptografado."
+            )
+
+        # Create bytes buffer for pandas
+        arquivo_processado = io.BytesIO(xlsx_content)
+
+    # 2. Processing
+    xls = pd.ExcelFile(arquivo_processado)
 
     try:
         if eh_backup_freecash(xls):
-            resultado = importar_backup_freecash_xlsx(
-                arquivo, usuario, sobrescrever=sobrescrever
-            )
+            # NEW LOGIC: Upsert
+            resultado = importar_backup_freecash_upsert(arquivo_processado, usuario)
+
             LogImportacao.objects.create(
-                created_by=usuario,
+                usuario=usuario,
                 tipo=LogImportacao.TIPO_BACKUP,
                 sucesso=True,
-                mensagem=resultado.get("msg") or "Backup importado com sucesso.",
+                mensagem=resultado.get("msg"),
             )
             return resultado
 
         if eh_planilha_legado(xls):
+            # OLD LOGIC: Legacy
+            # Legacy imports might not have UUIDs, and logic is different.
+            # We keep sobrescrever param support here as requested?
+            # User turned this into "secure" request, meaning they probably want new format.
+            # But let's allow legacy for old files.
+
             if sobrescrever:
-                # legado já tem opção sobrescrever; garantimos aqui
                 importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=True)
             else:
                 importar_planilha_legado_padrao(arquivo, usuario, sobrescrever=False)
 
             LogImportacao.objects.create(
-                created_by=usuario,
+                usuario=usuario,
                 tipo=LogImportacao.TIPO_LEGADO,
                 sucesso=True,
-                mensagem="Planilha legado importada com sucesso (overwrite do usuário)."
-                if sobrescrever
-                else "Planilha legado importada (sem overwrite).",
+                mensagem="Planilha legado importada com sucesso.",
             )
             return {"tipo": "legado", "msg": "Planilha legado importada com sucesso."}
 
         raise ValueError(
-            "Arquivo não reconhecido: não parece ser backup FreeCash nem planilha legado."
+            "Arquivo não reconhecido: não parece ser backup FreeCash válido."
         )
 
     except Exception as e:
-        # registra erro
         LogImportacao.objects.create(
-            created_by=usuario,
-            tipo=LogImportacao.TIPO_BACKUP,  # default
+            usuario=usuario,
+            tipo=LogImportacao.TIPO_BACKUP,
             sucesso=False,
             mensagem=str(e),
         )
