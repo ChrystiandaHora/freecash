@@ -1,100 +1,120 @@
-{% extends 'base.html' %}
-
-{% block title %}Classes de Ativos | FreeCash{% endblock %}
-
-{% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
+{% extends 'base.html' %} {% block title %} Classificação de Ativos | FreeCash
+{% endblock %} {% block content %}
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
   <!-- Top bar -->
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div class="space-y-1">
       <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-        <i class="fa-solid fa-tags text-emerald-500 mr-2"></i>
-        Classes de Ativos
+        <i class="fa-solid fa-sitemap text-emerald-500 mr-2"></i>
+        Estrutura de Investimentos
       </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Organize seus ativos por tipo (Ações, FIIs, Cripto, etc.)</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        Visualize a hierarquia de classificação dos seus ativos (Classe >
+        Categoria > Subcategoria)
+      </p>
     </div>
 
     <div class="flex items-center gap-2">
-      <a href="{% url 'investimento:dashboard' %}"
-         class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold
-                bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600
-                focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-gray-500/50">
+      <a
+        href="{% url 'investimento:dashboard' %}"
+        class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-gray-500/50"
+      >
         <i class="fa-solid fa-arrow-left mr-2"></i> Dashboard
       </a>
-      <a href="{% url 'investimento:classe_criar' %}"
-         class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold
-                bg-emerald-600 dark:bg-emerald-600/90 text-white hover:bg-emerald-700 dark:hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 shadow-lg shadow-emerald-900/20">
+      <a
+        href="{% url 'investimento:classe_criar' %}"
+        class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold bg-emerald-600 dark:bg-emerald-600/90 text-white hover:bg-emerald-700 dark:hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 shadow-lg shadow-emerald-900/20"
+      >
         <i class="fa-solid fa-plus mr-2"></i> Nova Classe
       </a>
     </div>
   </div>
 
-  <!-- Lista de Classes -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
-          <tr>
-            <th class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Nome</th>
-            <th class="text-center text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Status</th>
-            <th class="text-center text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Ativos</th>
-            <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Ações</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-          {% for classe in classes %}
-          <tr class="hover:bg-gray-50/60 dark:hover:bg-slate-700/30 transition-colors">
-            <td class="px-5 py-4">
-              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ classe.nome }}</span>
-            </td>
-            <td class="px-5 py-4 text-center">
-              {% if classe.ativa %}
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800">
-                  Ativa
-                </span>
-              {% else %}
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 border border-gray-100 dark:border-slate-600">
-                  Inativa
-                </span>
-              {% endif %}
-            </td>
-            <td class="px-5 py-4 text-center">
-              <span class="text-sm text-gray-600 dark:text-slate-300">{{ classe.ativos.count }}</span>
-            </td>
-            <td class="px-5 py-4 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <a href="{% url 'investimento:classe_editar' classe.id %}"
-                   class="w-8 h-8 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 inline-flex items-center justify-center transition-colors"
-                   title="Editar">
-                  <i class="fa-solid fa-pen text-xs"></i>
-                </a>
-                <a href="{% url 'investimento:classe_excluir' classe.id %}"
-                   class="w-8 h-8 rounded-lg border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 inline-flex items-center justify-center transition-colors"
-                   title="Excluir">
-                  <i class="fa-solid fa-trash text-xs"></i>
-                </a>
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="4" class="px-5 py-12 text-center">
-              <div class="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500">
-                <i class="fa-solid fa-tags text-4xl mb-3"></i>
-                <p class="text-sm">Nenhuma classe cadastrada.</p>
-                <a href="{% url 'investimento:classe_criar' %}"
-                   class="mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium dark:text-emerald-400 dark:hover:text-emerald-300">
-                  Crie classes como "Ações BR", "FIIs", "Cripto"
-                </a>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Exibição em Cards por Classe -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for classe in classes %}
+    <div
+      class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col"
+    >
+      <!-- Header da Classe -->
+      <div
+        class="px-5 py-4 bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between"
+      >
+        <h3
+          class="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2"
+        >
+          {{ classe.nome }} {% if not classe.ativa %}
+          <span
+            class="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-600 uppercase"
+            >Inativa</span
+          >
+          {% endif %}
+        </h3>
+        <div class="flex items-center gap-1">
+          <a
+            href="{% url 'investimento:classe_editar' classe.id %}"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
+          >
+            <i class="fa-solid fa-pen-to-square text-sm"></i>
+          </a>
+        </div>
+      </div>
 
+      <!-- Conteúdo (Categorias e Subcategorias) -->
+      <div class="p-5 flex-1 space-y-4">
+        {% if classe.categorias.exists %} {% for categoria in
+        classe.categorias.all %}
+        <div class="space-y-2">
+          <!-- Categoria -->
+          <div class="flex items-center gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+            <span
+              class="font-semibold text-gray-800 dark:text-gray-200 text-sm"
+            >
+              {{ categoria.nome }}
+            </span>
+          </div>
+
+          <!-- Subcategorias -->
+          {% if categoria.subcategorias.exists %}
+          <div
+            class="pl-4 ml-0.5 border-l-2 border-gray-100 dark:border-slate-700 space-y-1"
+          >
+            {% for sub in categoria.subcategorias.all %}
+            <div class="flex items-center justify-between group">
+              <span class="text-sm text-gray-500 dark:text-gray-400">
+                {{ sub.nome }}
+              </span>
+              <span
+                class="text-xs text-gray-300 dark:text-slate-600 opacity-0 group-hover:opacity-100"
+              >
+                {{ sub.ativos.count }} ativos
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="pl-4 text-xs text-gray-400 italic">Sem subcategorias</p>
+          {% endif %}
+        </div>
+        {% endfor %} {% else %}
+        <div
+          class="flex flex-col items-center justify-center h-full py-6 text-gray-400 dark:text-slate-500 opacity-60"
+        >
+          <i class="fa-solid fa-folder-open text-2xl mb-2"></i>
+          <p class="text-xs">Nenhuma categoria</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div
+      class="col-span-full py-12 text-center text-gray-500 dark:text-slate-400"
+    >
+      Nenhuma classe cadastrada. Crie uma para começar a organizar seus
+      investimentos.
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

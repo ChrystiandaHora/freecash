@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F
 from django.contrib import messages
-from .models import Ativo, Transacao, ClasseAtivo
+from .models import Ativo, Transacao, ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo
 from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
 
 
@@ -55,7 +55,7 @@ def classe_excluir(request, pk):
 @login_required
 def dashboard(request):
     ativos = Ativo.objects.filter(usuario=request.user, ativo=True).order_by(
-        "classe__nome", "ticker"
+        "subcategoria__categoria__classe__nome", "ticker"
     )
 
     # Calcular total investido e valor atual (se tivéssemos cotação online, mas vamos usar preço médio ou manual)
@@ -87,10 +87,16 @@ def ativo_listar(request):
 @login_required
 def ativo_criar(request):
     form = AtivoForm(request.POST or None)
+    # Filtrar subcategorias do usuário
+    form.fields["subcategoria"].queryset = SubcategoriaAtivo.objects.filter(
+        usuario=request.user
+    ).select_related("categoria__classe")
+
     if form.is_valid():
         ativo = form.save(commit=False)
         ativo.usuario = request.user
         ativo.save()
+        form.process_initial_position(ativo)  # Processa transação inicial
         messages.success(request, "Ativo criado com sucesso!")
         return redirect("investimento:ativo_listar")
     return render(request, "investimento/ativo_form.html", {"form": form})
@@ -100,6 +106,11 @@ def ativo_criar(request):
 def ativo_editar(request, pk):
     ativo = get_object_or_404(Ativo, pk=pk, usuario=request.user)
     form = AtivoForm(request.POST or None, instance=ativo)
+    # Filtrar subcategorias do usuário
+    form.fields["subcategoria"].queryset = SubcategoriaAtivo.objects.filter(
+        usuario=request.user
+    ).select_related("categoria__classe")
+
     if form.is_valid():
         form.save()
         messages.success(request, "Ativo atualizado!")

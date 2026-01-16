@@ -52,6 +52,30 @@ class ContasPagarView(View):
             .order_by("-data_realizacao", "-id")
         )
 
+        # Filtros
+        q = (request.GET.get("q") or "").strip()
+        ano = (request.GET.get("ano") or "").strip()
+        mes = (request.GET.get("mes") or "").strip()
+        categoria_id = (request.GET.get("categoria") or "").strip()
+        forma_id = (request.GET.get("forma_pagamento") or "").strip()
+
+        # Base filters
+        if ano.isdigit():
+            qs_pendentes = qs_pendentes.filter(data_prevista__year=int(ano))
+            qs_pagas = qs_pagas.filter(data_realizacao__year=int(ano))
+        if mes.isdigit():
+            qs_pendentes = qs_pendentes.filter(data_prevista__month=int(mes))
+            qs_pagas = qs_pagas.filter(data_realizacao__month=int(mes))
+        if categoria_id.isdigit():
+            qs_pendentes = qs_pendentes.filter(categoria_id=int(categoria_id))
+            qs_pagas = qs_pagas.filter(categoria_id=int(categoria_id))
+        if forma_id.isdigit():
+            qs_pendentes = qs_pendentes.filter(forma_pagamento_id=int(forma_id))
+            qs_pagas = qs_pagas.filter(forma_pagamento_id=int(forma_id))
+        if q:
+            qs_pendentes = qs_pendentes.filter(descricao__icontains=q)
+            qs_pagas = qs_pagas.filter(descricao__icontains=q)
+
         per_page_pendentes = clamp_per_page(
             request.GET.get("per_page_pendentes"), default=5, max_v=50
         )
@@ -66,20 +90,29 @@ class ContasPagarView(View):
             request.GET.get("page_pagas") or 1
         )
 
-        # Querystring preservando estado
-        params_pendentes = request.GET.copy()
-        params_pendentes.pop("page_pendentes", None)
-        pendentes_qs = params_pendentes.urlencode()
+        # Querystring preservando filtro, mas removendo a página específica de cada paginator
+        # Para que ao mudar de pagina em um, não perca os filtros gerais.
+        params = request.GET.copy()
 
-        params_pagas = request.GET.copy()
-        params_pagas.pop("page_pagas", None)
-        pagas_qs = params_pagas.urlencode()
+        # Para pendentes
+        p_pend = params.copy()
+        p_pend.pop("page_pendentes", None)
+        pendentes_qs = p_pend.urlencode()
 
-        # selects
+        # Para pagas
+        p_pagas = params.copy()
+        p_pagas.pop("page_pagas", None)
+        pagas_qs = p_pagas.urlencode()
+
+        # Selects
         categorias = Categoria.objects.filter(
             usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).order_by("nome")
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
+
+        anos = list(range(hoje.year - 5, hoje.year + 1))
+        anos.reverse()
+        meses = list(range(1, 13))
 
         contexto = {
             "pendentes_page": pendentes_page,
@@ -89,6 +122,15 @@ class ContasPagarView(View):
             "categorias": categorias,
             "formas": formas,
             "hoje": hoje,
+            "anos": anos,
+            "meses": meses,
+            "filtros": {
+                "q": q,
+                "ano": ano,
+                "mes": mes,
+                "categoria": categoria_id,
+                "forma_pagamento": forma_id,
+            },
         }
         return render(request, self.template_name, contexto)
 
