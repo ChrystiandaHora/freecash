@@ -1,12 +1,15 @@
 {% comment %}
 Standard Pagination Partial
-Usage: {% include "_pagination.html" with page=page_obj qs=querystring anchor="" %}
+Usage: {% include "_pagination.html" with page=page_obj qs=querystring anchor="" page_param="page" %}
 
 Variables:
   - page: The Django Page object (required)
   - qs: Optional querystring to preserve filters
   - anchor: Optional anchor to jump to (e.g., "#pagas")
+  - page_param: Optional page parameter name (default: "page"). Use for multiple paginators on same page (e.g., "page_pendentes")
 {% endcomment %}
+
+{% with param=page_param|default:"page" %}
 
 {% if page.paginator.num_pages > 1 %}
 <div class="flex items-center justify-between border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 sm:px-6 rounded-b-2xl">
@@ -14,7 +17,7 @@ Variables:
   <!-- Mobile: Simpler Previous/Next -->
   <div class="flex flex-1 justify-between sm:hidden">
     {% if page.has_previous %}
-      <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page.previous_page_number }}{{ anchor }}"
+      <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.previous_page_number }}{{ anchor }}"
          class="relative inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600">
         Anterior
       </a>
@@ -25,7 +28,7 @@ Variables:
     {% endif %}
 
     {% if page.has_next %}
-      <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page.next_page_number }}{{ anchor }}"
+      <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.next_page_number }}{{ anchor }}"
          class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600">
         Próxima
       </a>
@@ -54,7 +57,7 @@ Variables:
       <nav aria-label="Paginação" class="isolate inline-flex -space-x-px rounded-md shadow-sm">
         <!-- Previous Arrow -->
         {% if page.has_previous %}
-          <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page.previous_page_number }}{{ anchor }}"
+          <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.previous_page_number }}{{ anchor }}"
              class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-500 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
             <span class="sr-only">Anterior</span>
             <i class="fa-solid fa-chevron-left text-sm" aria-hidden="true"></i>
@@ -76,7 +79,7 @@ Variables:
                   {{ num }}
                 </span>
               {% else %}
-                <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ num }}{{ anchor }}"
+                <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ num }}{{ anchor }}"
                    class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 dark:text-slate-300 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
                   {{ num }}
                 </a>
@@ -95,7 +98,7 @@ Variables:
 
         <!-- Next Arrow -->
         {% if page.has_next %}
-          <a href="?{% if qs %}{{ qs }}&{% endif %}page={{ page.next_page_number }}{{ anchor }}"
+          <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.next_page_number }}{{ anchor }}"
              class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-500 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
             <span class="sr-only">Próxima</span>
             <i class="fa-solid fa-chevron-right text-sm" aria-hidden="true"></i>
@@ -111,3 +114,4 @@ Variables:
   </div>
 </div>
 {% endif %}
+{% endwith %}

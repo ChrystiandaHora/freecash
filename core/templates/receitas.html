@@ -34,9 +34,9 @@
     <!-- Total Receitas -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Receitas do Mês</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Receitas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ {{ total_periodo|floatformat:2 }}</span>
+        <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ {{ total_receitas|floatformat:2 }}</span>
       </div>
       <div class="mt-4 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
         <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -47,13 +47,13 @@
     <!-- Registros -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Registros</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Número de Receitas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ receitas|length }}</span>
-        <span class="text-sm text-gray-400 dark:text-slate-500">itens</span>
+        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ receitas_count }}</span>
+        <span class="text-sm text-gray-400 dark:text-slate-500">registros</span>
       </div>
       <div class="mt-4 text-xs text-blue-600 dark:text-blue-400">
-        Exibidos nesta página
+        Receitas no período
       </div>
     </div>
 
@@ -106,10 +106,10 @@
   <!-- Content List -->
   <div class="space-y-4">
       <div class="flex items-center justify-between px-2">
-            <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Últimas Receitas
             </h2>
-             <span class="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400">
+             <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-400">
                 {{ page_obj.paginator.count }}
             </span>
       </div>

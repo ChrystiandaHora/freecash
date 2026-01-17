@@ -34,40 +34,39 @@
     <!-- Total Pendente -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-rose-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Total Pendente</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Total Pendente ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ 0,00</span> <!-- Placeholder: Backend logic for total sum needed if required -->
-        <span class="text-sm text-gray-400 dark:text-slate-500">(estimado)</span>
+        <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ {{ total_pendente|floatformat:2 }}</span>
       </div>
       <div class="mt-4 flex items-center gap-2 text-xs text-rose-500 dark:text-rose-400">
         <span class="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
-        Prioridade Alta
+        Aguardando pagamento
       </div>
     </div>
 
     <!-- Contas em Aberto -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Em Aberto</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Em Aberto ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendentes_qs.count }}</span>
+        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendentes_count }}</span>
         <span class="text-sm text-gray-400 dark:text-slate-500">contas</span>
       </div>
       <div class="mt-4 text-xs text-blue-600 dark:text-blue-400">
-        Aguardando pagamento
+        Vencendo este mês
       </div>
     </div>
 
      <!-- Contas Pagas Periodo -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Pagas (Mês)</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Pagas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
-        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pagas_qs.count }}</span>
+        <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pagas_count }}</span>
         <span class="text-sm text-gray-400 dark:text-slate-500">contas</span>
       </div>
       <div class="mt-4 text-xs text-emerald-600 dark:text-emerald-400">
-        Finalizadas com sucesso
+        Finalizadas este mês
       </div>
     </div>
   </div>
@@ -153,10 +152,10 @@
 
                     <!-- Value & Actions -->
                     <div class="text-right">
-                        <p class="font-bold text-white text-lg">R$ {{ c.valor|floatformat:2 }}</p>
-                        <form method="post" action="{% url 'marcar_conta_paga' c.id %}" onclick="event.stopPropagation()" class="mt-1 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                        <p class="font-bold text-gray-900 dark:text-white text-lg">R$ {{ c.valor|floatformat:2 }}</p>
+                        <form method="post" action="{% url 'marcar_conta_paga' c.id %}" onclick="event.stopPropagation()" class="mt-1">
                             {% csrf_token %}
-                            <button type="submit" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center justify-end gap-1">
+                            <button type="submit" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 flex items-center justify-end gap-1">
                                 <i class="fa-solid fa-check"></i> Pagar
                             </button>
                         </form>
@@ -164,18 +163,18 @@
                 </div>
             </div>
             {% empty %}
-            <div class="text-center py-12 rounded-2xl border-2 border-dashed border-slate-800">
-                <div class="inline-flex p-4 rounded-full bg-slate-900 mb-3">
-                    <i class="fa-regular fa-face-smile text-slate-500 text-2xl"></i>
+            <div class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-800">
+                <div class="inline-flex p-4 rounded-full bg-gray-100 dark:bg-slate-900 mb-3">
+                    <i class="fa-regular fa-face-smile text-gray-400 dark:text-slate-500 text-2xl"></i>
                 </div>
-                <p class="text-slate-400 font-medium">Tudo em dia por aqui!</p>
-                <p class="text-slate-600 text-sm">Nenhuma conta pendente encontrada.</p>
+                <p class="text-gray-600 dark:text-slate-400 font-medium">Tudo em dia por aqui!</p>
+                <p class="text-gray-500 dark:text-slate-600 text-sm">Nenhuma conta pendente encontrada.</p>
             </div>
             {% endfor %}
         </div>
         
         <!-- Pagination -->
-        {% include "_pagination.html" with page=pendentes_page qs=pendentes_qs anchor="#pendentes" %}
+        {% include "_pagination.html" with page=pendentes_page qs=pendentes_qs page_param="page_pendentes" anchor="#pendentes" %}
     </div>
 
 
@@ -211,18 +210,18 @@
                         </div>
                     </div>
                      <div class="text-right">
-                        <p class="font-medium text-slate-400 group-hover:text-slate-200">R$ {{ c.valor|floatformat:2 }}</p>
+                        <p class="font-medium text-gray-500 dark:text-slate-400 group-hover:text-gray-700 dark:group-hover:text-slate-200">R$ {{ c.valor|floatformat:2 }}</p>
                     </div>
                 </div>
             </div>
             {% empty %}
-             <div class="text-center py-12 rounded-2xl border-2 border-dashed border-slate-800">
-                <p class="text-slate-500 text-sm">Nenhuma conta paga no histórico recente.</p>
+             <div class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-800">
+                <p class="text-gray-500 dark:text-slate-500 text-sm">Nenhuma conta paga no histórico recente.</p>
             </div>
             {% endfor %}
         </div>
 
-        {% include "_pagination.html" with page=pagas_page qs=pagas_qs anchor="#pagas" %}
+        {% include "_pagination.html" with page=pagas_page qs=pagas_qs page_param="page_pagas" anchor="#pagas" %}
     </div>
 
   </div>

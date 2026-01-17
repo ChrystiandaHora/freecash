@@ -41,6 +41,7 @@ class ReceitasView(View):
 
     def get(self, request):
         usuario = request.user
+        hoje = timezone.localdate()
 
         q = (request.GET.get("q") or "").strip()
         ano = (request.GET.get("ano") or "").strip()
@@ -48,16 +49,26 @@ class ReceitasView(View):
         categoria_id = (request.GET.get("categoria") or "").strip()
         forma_id = (request.GET.get("forma_pagamento") or "").strip()
 
+        # Verificar se há filtros de data aplicados
+        has_date_filter = ano.isdigit() or mes.isdigit()
+
         qs = Conta.objects.filter(
             usuario=usuario,
             tipo=Conta.TIPO_RECEITA,
             transacao_realizada=True,
         ).select_related("categoria", "forma_pagamento")
 
+        # Aplicar filtros - com default para mês atual se não houver filtro de data
         if ano.isdigit():
             qs = qs.filter(data_realizacao__year=int(ano))
+        elif not has_date_filter:
+            qs = qs.filter(data_realizacao__year=hoje.year)
+
         if mes.isdigit():
             qs = qs.filter(data_realizacao__month=int(mes))
+        elif not has_date_filter:
+            qs = qs.filter(data_realizacao__month=hoje.month)
+
         if categoria_id.isdigit():
             qs = qs.filter(categoria_id=int(categoria_id))
         if forma_id.isdigit():
@@ -65,7 +76,21 @@ class ReceitasView(View):
         if q:
             qs = qs.filter(descricao__icontains=q)
 
-        qs = qs.order_by("data_realizacao", "id")
+        qs = qs.order_by("-data_realizacao", "-id")
+
+        # KPIs - Baseados nos querysets já filtrados
+        total_receitas = qs.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+        receitas_count = qs.count()
+
+        # Texto para label do período nos KPIs
+        if ano.isdigit() and mes.isdigit():
+            kpi_periodo = f"{int(mes):02d}/{ano}"
+        elif ano.isdigit():
+            kpi_periodo = ano
+        elif mes.isdigit():
+            kpi_periodo = f"{int(mes):02d}/{hoje.year}"
+        else:
+            kpi_periodo = hoje.strftime("%b/%Y")  # Default: mês atual
 
         categorias = Categoria.objects.filter(
             usuario=usuario,
@@ -75,34 +100,13 @@ class ReceitasView(View):
             "nome"
         )
 
-        hoje = timezone.localdate()
-        ano_ref = int(ano) if ano.isdigit() else hoje.year
-        mes_ref = int(mes) if mes.isdigit() else hoje.month
-
-        # opção A (como você tinha): total do mês/ano ref, independente dos filtros
-        total_periodo = (
-            Conta.objects.filter(
-                usuario=usuario,
-                tipo=Conta.TIPO_RECEITA,
-                transacao_realizada=True,
-                data_realizacao__year=ano_ref,
-                data_realizacao__month=mes_ref,
-            ).aggregate(total=Sum("valor"))["total"]
-            or 0
-        )
-
-        # opção B (se preferir): total considerando exatamente os filtros aplicados
-        # total_periodo = qs.aggregate(total=Sum("valor"))["total"] or 0
-
         anos = list(range(hoje.year - 5, hoje.year + 1))
         anos.reverse()
         meses = list(range(1, 13))
 
-        per_page = clamp_per_page(request.GET.get("per_page"), default=4, max_v=200)
+        per_page = clamp_per_page(request.GET.get("per_page"), default=10, max_v=200)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get("page") or 1)
-
-        total_count = paginator.count  # mais barato/consistente do que qs.count()
 
         params = request.GET.copy()
         params.pop("page", None)
@@ -112,15 +116,16 @@ class ReceitasView(View):
             "page_obj": page_obj,
             "receitas": page_obj.object_list,
             "per_page": per_page,
-            "total_count": total_count,
             "querystring": querystring,
             "categorias": categorias,
             "formas": formas,
-            "total_periodo": total_periodo,
-            "ano_ref": ano_ref,
-            "mes_ref": mes_ref,
+            "hoje": hoje,
             "anos": anos,
             "meses": meses,
+            # KPIs
+            "total_receitas": total_receitas,
+            "receitas_count": receitas_count,
+            "kpi_periodo": kpi_periodo,
             "filtros": {
                 "q": q,
                 "ano": ano,

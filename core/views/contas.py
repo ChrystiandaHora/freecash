@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Sum
 
 from core.models import Conta, Categoria, FormaPagamento
 
@@ -72,13 +73,26 @@ class ContasPagarView(View):
         categoria_id = (request.GET.get("categoria") or "").strip()
         forma_id = (request.GET.get("forma_pagamento") or "").strip()
 
+        # Verificar se há filtros aplicados (para decidir KPI default)
+        has_date_filter = ano.isdigit() or mes.isdigit()
+
         # Base filters
         if ano.isdigit():
             qs_pendentes = qs_pendentes.filter(data_prevista__year=int(ano))
             qs_pagas = qs_pagas.filter(data_realizacao__year=int(ano))
+        elif not has_date_filter:
+            # Default: mês atual para pendentes
+            qs_pendentes = qs_pendentes.filter(data_prevista__year=hoje.year)
+            qs_pagas = qs_pagas.filter(data_realizacao__year=hoje.year)
+
         if mes.isdigit():
             qs_pendentes = qs_pendentes.filter(data_prevista__month=int(mes))
             qs_pagas = qs_pagas.filter(data_realizacao__month=int(mes))
+        elif not has_date_filter:
+            # Default: mês atual
+            qs_pendentes = qs_pendentes.filter(data_prevista__month=hoje.month)
+            qs_pagas = qs_pagas.filter(data_realizacao__month=hoje.month)
+
         if categoria_id.isdigit():
             qs_pendentes = qs_pendentes.filter(categoria_id=int(categoria_id))
             qs_pagas = qs_pagas.filter(categoria_id=int(categoria_id))
@@ -88,6 +102,23 @@ class ContasPagarView(View):
         if q:
             qs_pendentes = qs_pendentes.filter(descricao__icontains=q)
             qs_pagas = qs_pagas.filter(descricao__icontains=q)
+
+        # KPIs - Baseados nos querysets já filtrados
+        total_pendente = qs_pendentes.aggregate(total=Sum("valor"))["total"] or Decimal(
+            "0.00"
+        )
+        pendentes_count = qs_pendentes.count()
+        pagas_count = qs_pagas.count()
+
+        # Texto para label do período nos KPIs
+        if ano.isdigit() and mes.isdigit():
+            kpi_periodo = f"{int(mes):02d}/{ano}"
+        elif ano.isdigit():
+            kpi_periodo = ano
+        elif mes.isdigit():
+            kpi_periodo = f"{int(mes):02d}/{hoje.year}"
+        else:
+            kpi_periodo = hoje.strftime("%b/%Y")  # Default: mês atual
 
         per_page_pendentes = clamp_per_page(
             request.GET.get("per_page_pendentes"), default=5, max_v=50
@@ -137,6 +168,11 @@ class ContasPagarView(View):
             "hoje": hoje,
             "anos": anos,
             "meses": meses,
+            # KPIs
+            "total_pendente": total_pendente,
+            "pendentes_count": pendentes_count,
+            "pagas_count": pagas_count,
+            "kpi_periodo": kpi_periodo,
             "filtros": {
                 "q": q,
                 "ano": ano,
