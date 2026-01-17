@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}{% if form.instance.pk %}Editar{% else %}Nova{% endif %} Transação | FreeCash{% endblock %}
 
@@ -47,7 +48,7 @@
                        bg-white dark:bg-gray-900" required>
           <option value="">Selecione o ativo</option>
           {% for ativo in form.ativo.field.queryset %}
-            <option value="{{ ativo.id }}" {% if form.ativo.value == ativo.id %}selected{% endif %}>
+            <option value="{{ ativo.id }}" {% if form.ativo.value|stringformat:"s" == ativo.id|stringformat:"s" %}selected{% endif %}>
               {{ ativo.ticker }} - {{ ativo.nome }}
             </option>
           {% endfor %}
@@ -70,44 +71,60 @@
         {% endif %}
       </div>
 
-      <!-- Quantidade e Preço Unitário -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label for="id_quantidade" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade *</label>
-          <input type="number" step="0.00000001" name="quantidade" id="id_quantidade" 
-                 value="{{ form.quantidade.value|default:'' }}"
-                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
-                        focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                        placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
-                 placeholder="0,00" required>
-          {% if form.quantidade.errors %}
-            <p class="mt-1 text-xs text-red-600">{{ form.quantidade.errors.0 }}</p>
-          {% endif %}
+      <!-- Campos para Compra/Venda -->
+      <div id="campos-compra-venda">
+        <!-- Quantidade e Preço Unitário -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <label for="id_quantidade" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade *</label>
+            <input type="number" step="0.00000001" name="quantidade" id="id_quantidade" 
+                   value="{% if form.instance.pk %}{{ form.instance.quantidade|unlocalize }}{% endif %}"
+                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                          placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                   placeholder="0,00">
+            {% if form.quantidade.errors %}
+              <p class="mt-1 text-xs text-red-600">{{ form.quantidade.errors.0 }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <label for="id_preco_unitario" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço Unitário *</label>
+            <input type="number" step="0.0001" name="preco_unitario" id="id_preco_unitario" 
+                   value="{% if form.instance.pk %}{{ form.instance.preco_unitario|unlocalize }}{% endif %}"
+                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                          placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                   placeholder="R$ 0,00">
+            {% if form.preco_unitario.errors %}
+              <p class="mt-1 text-xs text-red-600">{{ form.preco_unitario.errors.0 }}</p>
+            {% endif %}
+          </div>
         </div>
+
+        <!-- Taxas (apenas para compra/venda) -->
         <div>
-          <label for="id_preco_unitario" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço Unitário *</label>
-          <input type="number" step="0.0001" name="preco_unitario" id="id_preco_unitario" 
-                 value="{{ form.preco_unitario.value|default:'' }}"
+          <label for="id_taxas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taxas / Corretagem</label>
+          <input type="number" step="0.01" name="taxas" id="id_taxas" 
+                 value="{% if form.instance.pk %}{{ form.instance.taxas|unlocalize }}{% else %}0{% endif %}"
                  class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                         focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
                         placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
-                 placeholder="R$ 0,00" required>
-          {% if form.preco_unitario.errors %}
-            <p class="mt-1 text-xs text-red-600">{{ form.preco_unitario.errors.0 }}</p>
-          {% endif %}
+                 placeholder="R$ 0,00">
+          <p class="mt-1 text-xs text-gray-500">Opcional. Taxas de corretagem, emolumentos, etc.</p>
         </div>
       </div>
 
-      <!-- Taxas -->
-      <div>
-        <label for="id_taxas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taxas / Corretagem</label>
-        <input type="number" step="0.01" name="taxas" id="id_taxas" 
-               value="{{ form.taxas.value|default:'0' }}"
-               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
-                      focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                      placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
-               placeholder="R$ 0,00">
-        <p class="mt-1 text-xs text-gray-500">Opcional. Taxas de corretagem, emolumentos, etc.</p>
+      <!-- Campos para Dividendo/Provento -->
+      <div id="campos-dividendo" class="hidden">
+        <div>
+          <label for="id_valor_dividendo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Recebido *</label>
+          <input type="number" step="0.01" name="valor_dividendo" id="id_valor_dividendo" 
+                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                        focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
+                        placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                 placeholder="R$ 0,00">
+          <p class="mt-1 text-xs text-gray-500">Valor total do dividendo, JCP ou rendimento recebido.</p>
+        </div>
       </div>
 
       <!-- Buttons -->
@@ -128,4 +145,47 @@
   </div>
 
 </div>
+
+<script>
+(function() {
+  const tipoSelect = document.getElementById('id_tipo');
+  const camposCompraVenda = document.getElementById('campos-compra-venda');
+  const camposDividendo = document.getElementById('campos-dividendo');
+  const qtdInput = document.getElementById('id_quantidade');
+  const precoInput = document.getElementById('id_preco_unitario');
+  const valorDividendoInput = document.getElementById('id_valor_dividendo');
+
+  function toggleCampos() {
+    const tipo = tipoSelect.value;
+    
+    if (tipo === 'D') {
+      // Dividendo: mostra apenas valor
+      camposCompraVenda.classList.add('hidden');
+      camposDividendo.classList.remove('hidden');
+      
+      // Remove required dos campos de compra/venda
+      qtdInput.removeAttribute('required');
+      precoInput.removeAttribute('required');
+      
+      // Se já temos valor_total no formulário, usa para o dividendo
+      {% if form.instance.pk and form.instance.tipo == 'D' %}
+      valorDividendoInput.value = '{{ form.instance.valor_total|unlocalize }}';
+      {% endif %}
+    } else {
+      // Compra/Venda: mostra quantidade e preço
+      camposCompraVenda.classList.remove('hidden');
+      camposDividendo.classList.add('hidden');
+      
+      // Adiciona required aos campos
+      qtdInput.setAttribute('required', 'required');
+      precoInput.setAttribute('required', 'required');
+    }
+  }
+
+  tipoSelect.addEventListener('change', toggleCampos);
+  
+  // Executa ao carregar a página
+  toggleCampos();
+})();
+</script>
 {% endblock %}

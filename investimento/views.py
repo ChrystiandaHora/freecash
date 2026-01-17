@@ -162,9 +162,12 @@ def transacao_criar(request):
 def transacao_editar(request, pk):
     t = get_object_or_404(Transacao, pk=pk, usuario=request.user)
     form = TransacaoForm(request.POST or None, instance=t)
-    form.fields["ativo"].queryset = Ativo.objects.filter(
-        usuario=request.user, ativo=True
-    )
+
+    # Incluir ativos ativos + o ativo atual da transação (caso esteja inativo)
+    ativos_qs = Ativo.objects.filter(usuario=request.user, ativo=True)
+    if t.ativo_id:
+        ativos_qs = ativos_qs | Ativo.objects.filter(pk=t.ativo_id)
+    form.fields["ativo"].queryset = ativos_qs.distinct()
 
     if form.is_valid():
         form.save()
