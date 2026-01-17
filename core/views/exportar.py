@@ -29,12 +29,11 @@ class ExportarView(View):
                 },
             )
 
-        from core.services.secure_backup import SecureBackupService
+        from core.services.export_service import export_user_data
         from django.http import HttpResponse
 
         # Modular dynamic backup
-        data = SecureBackupService.gather_user_data(request.user)
-        encrypted_payload = SecureBackupService.encrypt_data(data, password)
+        encrypted_payload = export_user_data(request.user, password)
 
         filename = f"backup_freecash_{request.user.username}_{timezone.localtime().strftime('%Y%m%d_%H%M%S')}.fcbk"
 

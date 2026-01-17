@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
 from core.models import LogImportacao
-from core.services.import_service import importar_planilha_unificada
+from core.services.import_service import importar_universal
 
 
 @method_decorator(login_required, name="dispatch")
@@ -35,9 +35,7 @@ class ImportarView(View):
 
         password = request.POST.get("password")
         try:
-            resultado = importar_planilha_unificada(
-                arquivo, request.user, sobrescrever=True, password=password
-            )
+            resultado = importar_universal(arquivo, request.user, password=password)
             messages.success(
                 request, resultado.get("msg") or "Importação concluída com sucesso!"
             )
