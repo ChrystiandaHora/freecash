@@ -1,0 +1,41 @@
+{
+  "name": "freecash",
+  "version": "1.0.0",
+  "description": "**FreeCash** é uma aplicação web completa para gestão financeira pessoal e controle de investimentos. Desenvolvida com **Django** e **TailwindCSS**, oferece uma interface moderna e responsiva para acompanhar receitas, despesas e a evolução do seu patrimônio em um só lugar.",
+  "main": "index.js",
+  "dependencies": {
+    "apexcharts": "^5.3.6",
+    "autoprefixer": "^10.4.22",
+    "baseline-browser-mapping": "^2.9.4",
+    "browserslist": "^4.28.1",
+    "caniuse-lite": "^1.0.30001759",
+    "electron-to-chromium": "^1.5.266",
+    "escalade": "^3.2.0",
+    "flowbite": "^4.0.1",
+    "fraction.js": "^5.3.4",
+    "nanoid": "^3.3.11",
+    "node-releases": "^2.0.27",
+    "normalize-range": "^0.1.2",
+    "picocolors": "^1.1.1",
+    "postcss": "^8.5.6",
+    "postcss-value-parser": "^4.2.0",
+    "source-map-js": "^1.2.1",
+    "tailwindcss": "^4.1.17",
+    "update-browserslist-db": "^1.2.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChrystiandaHora/freecash.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ChrystiandaHora/freecash/issues"
+  },
+  "homepage": "https://github.com/ChrystiandaHora/freecash#readme"
+}

@@ -1,5 +1,5 @@
 import calendar
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from django.views import View
@@ -12,6 +12,19 @@ from django.utils import timezone
 from django.db import transaction
 
 from core.models import Conta, Categoria, FormaPagamento
+
+
+def parse_date_flexible(date_str: str) -> date | None:
+    """Parse date string in DD/MM/YYYY or YYYY-MM-DD format."""
+    if not date_str:
+        return None
+    # Try DD/MM/YYYY first (Flowbite format)
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def clamp_per_page(raw, default=5, min_v=5, max_v=50):
@@ -174,9 +187,8 @@ class CadastrarContaPagarView(View):
             return redirect("contas_pagar")
 
         # Data
-        try:
-            data_prevista = date.fromisoformat(data_prevista_raw)
-        except ValueError:
+        data_prevista = parse_date_flexible(data_prevista_raw)
+        if not data_prevista:
             messages.error(request, "Data de vencimento inválida.")
             return redirect("contas_pagar")
 
@@ -406,9 +418,9 @@ class ContaUpdateView(View):
 
         # data prevista
         data_prevista_raw = (request.POST.get("data_prevista") or "").strip()
-        try:
-            data_prevista = date.fromisoformat(data_prevista_raw)
-        except ValueError:
+        # Data
+        data_prevista = parse_date_flexible(data_prevista_raw)
+        if not data_prevista:
             messages.error(request, "Data de vencimento inválida.")
             return redirect("conta_editar", conta_id=conta.id)
 

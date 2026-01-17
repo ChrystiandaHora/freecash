@@ -78,11 +78,21 @@
 
               <div>
                 <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Vencimento *</label>
-                <input type="date"
-                       name="data_prevista"
-                       required
-                       value="{% if conta.data_prevista %}{{ conta.data_prevista|date:'Y-m-d' }}{% endif %}"
-                       class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                    <i class="fa-regular fa-calendar text-gray-400"></i>
+                  </div>
+                  <input type="text"
+                         name="data_prevista"
+                         required
+                         datepicker
+                         datepicker-format="dd/mm/yyyy"
+                         datepicker-autohide
+                         datepicker-language="pt-BR"
+                         value="{% if conta.data_prevista %}{{ conta.data_prevista|date:'d/m/Y' }}{% endif %}"
+                         placeholder="dd/mm/aaaa"
+                         class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white pl-10 pr-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                </div>
               </div>
             </div>
 

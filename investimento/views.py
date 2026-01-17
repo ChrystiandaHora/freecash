@@ -14,7 +14,7 @@ from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
 @login_required
 def classe_listar(request):
     classes = ClasseAtivo.objects.filter(usuario=request.user)
-    return render(request, "investimento/classe_list.html", {"classes": classes})
+    return render(request, "classe_list.html", {"classes": classes})
 
 
 @login_required
@@ -26,7 +26,7 @@ def classe_criar(request):
         classe.save()
         messages.success(request, "Classe criada com sucesso!")
         return redirect("investimento:classe_listar")
-    return render(request, "investimento/classe_form.html", {"form": form})
+    return render(request, "classe_form.html", {"form": form})
 
 
 @login_required
@@ -37,7 +37,7 @@ def classe_editar(request, pk):
         form.save()
         messages.success(request, "Classe atualizada!")
         return redirect("investimento:classe_listar")
-    return render(request, "investimento/classe_form.html", {"form": form})
+    return render(request, "classe_form.html", {"form": form})
 
 
 @login_required
@@ -47,9 +47,7 @@ def classe_excluir(request, pk):
         classe.delete()
         messages.success(request, "Classe excluída!")
         return redirect("investimento:classe_listar")
-    return render(
-        request, "investimento/classe_confirm_delete.html", {"classe": classe}
-    )
+    return render(request, "classe_confirm_delete.html", {"classe": classe})
 
 
 @login_required
@@ -62,13 +60,33 @@ def dashboard(request):
     # Por enquanto, dashboard mostra resumo da carteira baseada no custo de aquisição (preco_medio * qtd)
 
     total_patrimonio = 0
+    allocation_by_class = {}
+
     for a in ativos:
         a.valor_atual = a.quantidade * a.preco_medio  # Simplificação: Valor 'Investido'
         total_patrimonio += a.valor_atual
 
+        # Aggregate by Class for chart
+        if (
+            a.subcategoria
+            and a.subcategoria.categoria
+            and a.subcategoria.categoria.classe
+        ):
+            class_name = a.subcategoria.categoria.classe.nome
+        else:
+            class_name = "Sem Classe"
+        allocation_by_class[class_name] = allocation_by_class.get(
+            class_name, 0
+        ) + float(a.valor_atual)
+
+    allocation_labels = list(allocation_by_class.keys())
+    allocation_values = list(allocation_by_class.values())
+
     context = {
         "ativos": ativos,
         "total_patrimonio": total_patrimonio,
+        "allocation_labels": allocation_labels,
+        "allocation_values": allocation_values,
     }
     return render(request, "investimento/dashboard.html", context)
 
@@ -81,7 +99,7 @@ def dashboard(request):
 @login_required
 def ativo_listar(request):
     ativos = Ativo.objects.filter(usuario=request.user)
-    return render(request, "investimento/ativo_list.html", {"ativos": ativos})
+    return render(request, "ativo_list.html", {"ativos": ativos})
 
 
 @login_required
@@ -99,7 +117,7 @@ def ativo_criar(request):
         form.process_initial_position(ativo)  # Processa transação inicial
         messages.success(request, "Ativo criado com sucesso!")
         return redirect("investimento:ativo_listar")
-    return render(request, "investimento/ativo_form.html", {"form": form})
+    return render(request, "ativo_form.html", {"form": form})
 
 
 @login_required
@@ -115,7 +133,7 @@ def ativo_editar(request, pk):
         form.save()
         messages.success(request, "Ativo atualizado!")
         return redirect("investimento:ativo_listar")
-    return render(request, "investimento/ativo_form.html", {"form": form})
+    return render(request, "ativo_form.html", {"form": form})
 
 
 @login_required
@@ -125,7 +143,7 @@ def ativo_excluir(request, pk):
         ativo.delete()
         messages.success(request, "Ativo excluído!")
         return redirect("investimento:ativo_listar")
-    return render(request, "investimento/ativo_confirm_delete.html", {"ativo": ativo})
+    return render(request, "ativo_confirm_delete.html", {"ativo": ativo})
 
 
 # ==========================
@@ -136,9 +154,7 @@ def ativo_excluir(request, pk):
 @login_required
 def transacao_listar(request):
     transacoes = Transacao.objects.filter(usuario=request.user)
-    return render(
-        request, "investimento/transacao_list.html", {"transacoes": transacoes}
-    )
+    return render(request, "transacao_list.html", {"transacoes": transacoes})
 
 
 @login_required
@@ -155,7 +171,7 @@ def transacao_criar(request):
         transacao.save()
         messages.success(request, "Transação registrada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_form.html", {"form": form})
+    return render(request, "transacao_form.html", {"form": form})
 
 
 @login_required
@@ -173,7 +189,7 @@ def transacao_editar(request, pk):
         form.save()
         messages.success(request, "Transação atualizada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_form.html", {"form": form})
+    return render(request, "transacao_form.html", {"form": form})
 
 
 @login_required
@@ -183,4 +199,4 @@ def transacao_excluir(request, pk):
         t.delete()
         messages.success(request, "Transação excluída!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_confirm_delete.html", {"object": t})
+    return render(request, "transacao_confirm_delete.html", {"object": t})

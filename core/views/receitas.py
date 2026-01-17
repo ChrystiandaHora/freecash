@@ -1,5 +1,5 @@
 import calendar
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 from django.core.paginator import Paginator
@@ -21,6 +21,18 @@ def clamp_per_page(raw, default=5, min_v=5, max_v=200):
     except (TypeError, ValueError):
         v = default
     return max(min_v, min(v, max_v))
+
+
+def parse_date_flexible(date_str: str) -> date | None:
+    """Parse date string in DD/MM/YYYY or YYYY-MM-DD format."""
+    if not date_str:
+        return None
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 @method_decorator(login_required, name="dispatch")
@@ -187,9 +199,8 @@ class ReceitaCreateView(View):
             return redirect("receita_nova")
 
         # Se for receita, data_prevista = data_realizacao (pois já entra como realizado)
-        try:
-            data_date = date.fromisoformat(data_input)
-        except ValueError:
+        data_date = parse_date_flexible(data_input)
+        if not data_date:
             messages.error(request, "Data inválida.")
             return redirect("receita_nova")
 

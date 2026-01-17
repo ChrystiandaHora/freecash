@@ -33,13 +33,19 @@ class AtivoForm(forms.ModelForm):
     data_compra = forms.DateField(
         required=False,
         label="Data da Compra",
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "dd/mm/aaaa"}
+        ),
     )
 
     # Campos Opcionais Renda Fixa (Definir required=False explicitamente)
     data_vencimento = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+        input_formats=["%d/%m/%Y", "%Y-%m-%d"],
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "dd/mm/aaaa"}
+        ),
     )
     emissor = forms.CharField(
         required=False, widget=forms.TextInput(attrs={"class": "form-control"})
@@ -125,7 +131,9 @@ class TransacaoForm(forms.ModelForm):
         widgets = {
             "ativo": forms.Select(attrs={"class": "form-select"}),
             "tipo": forms.Select(attrs={"class": "form-select"}),
-            "data": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "data": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "dd/mm/aaaa"}
+            ),
             "quantidade": forms.NumberInput(
                 attrs={"class": "form-control", "step": "0.00000001"}
             ),
@@ -137,6 +145,8 @@ class TransacaoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Accept DD/MM/YYYY format for date field
+        self.fields["data"].input_formats = ["%d/%m/%Y", "%Y-%m-%d"]
         # Campos não são required por padrão (JS controla dinamicamente)
         self.fields["quantidade"].required = False
         self.fields["preco_unitario"].required = False
