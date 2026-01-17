@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y gcc g++ libpq-dev postgresql-client \
+    && apt-get install -y gcc g++ libpq-dev postgresql-client nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

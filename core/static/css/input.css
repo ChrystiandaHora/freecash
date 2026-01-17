@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .glass-card {
+        @apply bg-slate-800/40 backdrop-blur-md border border-white/5 shadow-xl;
+    }
+    .glass-input {
+        @apply bg-slate-900/60 border border-white/10 text-white focus:bg-slate-900/80 focus:border-emerald-500 outline-none;
+    }
+}

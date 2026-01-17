@@ -5,53 +5,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FreeCash - Domine suas Finanças</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>FreeCash - Domine suas Finanças</title>
+    
+    <!-- Tailwind (local) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
+    
     <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome (local) -->
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    
+    <!-- Inter Font (local) -->
+    <link rel="stylesheet" href="{% static 'fonts/inter.css' %}">
 
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              slate: {
-                850: '#151e2e',
-                950: '#020617',
-              }
-            },
-            animation: {
-              'blob': 'blob 10s infinite',
-              'fade-in': 'fadeIn 1s ease-out forwards',
-              'slide-up': 'slideUp 0.8s ease-out forwards',
-            },
-            keyframes: {
-              blob: {
-                '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                '100%': { transform: 'translate(0px, 0px) scale(1)' },
-              },
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              }
-            }
-          }
-        }
-      }
-    </script>
-    
     <style>
         body {
             background-color: #020617; /* Slate 950 */
