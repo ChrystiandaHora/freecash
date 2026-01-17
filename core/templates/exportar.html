@@ -1,124 +1,172 @@
 {% extends "base.html" %} {% block content %}
 
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="max-w-3xl">
-    <!-- Header -->
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1
-          class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white"
-        >
-          Exportar backup
-        </h1>
-        <p class="mt-2 text-sm sm:text-base text-gray-500 dark:text-slate-400 leading-relaxed">
-          Gere um arquivo completo com seus dados e configurações do FreeCash.
-        </p>
-      </div>
-    </div>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+      Backup Seguro
+    </h1>
+    <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">
+      Exporte seus dados com criptografia de ponta a ponta no formato <strong class="text-emerald-600 dark:text-emerald-400">.fcbk</strong>
+    </p>
+  </div>
 
-    <!-- Card -->
-    <div
-      class="mt-6 rounded-2xl bg-white dark:bg-slate-800 ring-1 ring-white/10 dark:ring-slate-700 shadow-sm overflow-hidden"
-    >
-      <!-- Top info -->
-      <div class="p-6">
-        <div class="flex items-start gap-4">
-          <div
-            class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20"
-          >
-            <i class="fa-solid fa-file-arrow-down"></i>
-          </div>
-
-          <div class="flex-1">
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-              Backup completo (XLSX)
-            </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Inclui contas, categorias, formas de pagamento, resumos e
-              configurações.
-            </p>
-
-            <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div class="rounded-xl bg-white/5 dark:bg-slate-700/30 ring-1 ring-white/10 dark:ring-slate-700 p-4">
-                <p class="text-xs text-slate-400 dark:text-slate-500">Último backup</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                  {% if config and config.ultimo_export_em %} {{
-                  config.ultimo_export_em|date:"d/m/Y H:i" }} {% else %} Nunca
-                  gerado {% endif %}
-                </p>
-              </div>
-
-              <div class="rounded-xl bg-white/5 dark:bg-slate-700/30 ring-1 ring-white/10 dark:ring-slate-700 p-4">
-                <p class="text-xs text-slate-400 dark:text-slate-500">Formato</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">.xlsx</p>
-              </div>
-
-              <div class="rounded-xl bg-white/5 dark:bg-slate-700/30 ring-1 ring-white/10 dark:ring-slate-700 p-4">
-                <p class="text-xs text-slate-400 dark:text-slate-500">Recomendação</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                  1x por mês
-                </p>
-              </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Export Form -->
+    <div class="lg:col-span-2">
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-6 py-5 border-b border-gray-100 dark:border-slate-700">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30">
+              <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
-
-            <div
-              class="mt-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
-            >
-              <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">Atenção</p>
-              <p class="mt-1 text-sm text-amber-800 dark:text-amber-300">
-                O backup pode conter informações sensíveis. Guarde o arquivo em
-                um local seguro.
-              </p>
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">Backup Antigravidade</h2>
+              <p class="text-sm text-gray-500 dark:text-slate-400">Formato modular criptografado</p>
             </div>
           </div>
         </div>
+
+        <!-- Card Body -->
+        <div class="p-6">
+          {% if error %}
+          <div class="mb-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+              <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error }}</p>
+            </div>
+          </div>
+          {% endif %}
+
+          <form
+            method="post"
+            class="space-y-5"
+            onsubmit="this.querySelector('button[type=submit]').disabled = true; this.querySelector('[data-loading]').classList.remove('hidden');"
+          >
+            {% csrf_token %}
+
+            <!-- Password Input -->
+            <div>
+              <label for="password" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                Senha de Criptografia
+              </label>
+              <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">
+                <i class="fa-solid fa-lock text-amber-500 mr-1"></i>
+                <span class="font-semibold text-amber-600 dark:text-amber-400">Obrigatória.</span>
+                Guarde esta senha em local seguro — ela será necessária para restaurar seus dados.
+              </p>
+              <div class="relative">
+                <input
+                  type="password"
+                  name="password"
+                  id="password"
+                  required
+                  minlength="6"
+                  class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white pl-4 pr-12 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                  placeholder="Mínimo 6 caracteres"
+                />
+                <div class="absolute inset-y-0 right-0 flex items-center pr-4">
+                  <i class="fa-solid fa-key text-gray-400"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button
+              type="submit"
+              class="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 text-base font-bold text-white hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/30"
+            >
+              <i class="fa-solid fa-download"></i>
+              Gerar Backup Seguro
+            </button>
+
+            <!-- Loading State -->
+            <div data-loading class="hidden">
+              <div class="flex items-center justify-center gap-3 py-3">
+                <svg class="animate-spin h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm text-gray-600 dark:text-slate-300">Criptografando seus dados...</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Info Cards -->
+    <div class="space-y-4">
+      <!-- Last Backup Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Último Backup</h3>
+        </div>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">
+          {% if config and config.ultimo_export_em %}
+            {{ config.ultimo_export_em|date:"d/m/Y" }}
+            <span class="text-base font-normal text-gray-500 dark:text-slate-400">às {{ config.ultimo_export_em|date:"H:i" }}</span>
+          {% else %}
+            <span class="text-gray-400 dark:text-slate-500">Nunca</span>
+          {% endif %}
+        </p>
       </div>
 
-      <!-- CTA -->
-      <div class="border-t border-white/10 dark:border-slate-700 p-6">
-        <form
-          method="post"
-          class="space-y-3"
-          onsubmit="this.querySelector('button').disabled = true; this.querySelector('[data-loading]').classList.remove('hidden');"
-        >
-          {% csrf_token %}
+      <!-- Format Info Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Formato</h3>
+        </div>
+        <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">.fcbk</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">FreeCash Backup Seguro</p>
+      </div>
 
-          <div class="mb-4">
-            <label
-              for="password"
-              class="block text-sm font-medium text-gray-700 dark:text-slate-300"
-              >Senha (Opcional)</label
-            >
-            <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">
-              Defina uma senha para criptografar o arquivo de backup e torná-lo
-              seguro.
+      <!-- Security Features -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-shield-halved text-xl"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Segurança</h3>
+        </div>
+        <ul class="space-y-2 text-sm">
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Criptografia AES-256-GCM</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Verificação SHA-256</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">PBKDF2 (100k iterações)</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <i class="fa-solid fa-check text-emerald-500 dark:text-emerald-400"></i>
+            <span class="text-gray-700 dark:text-slate-300">Backup modular</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Warning Card -->
+      <div class="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-5">
+        <div class="flex items-start gap-3">
+          <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+          <div>
+            <p class="font-semibold text-amber-900 dark:text-amber-200 text-sm">Atenção</p>
+            <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
+              Sem a senha, será impossível recuperar os dados. Armazene-a em local seguro.
             </p>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              placeholder="Sua senha segura"
-            />
           </div>
-
-          <button
-            type="submit"
-            class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-gray-900 hover:bg-emerald-600 active:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <i class="fa-solid fa-file-arrow-down"></i>
-
-            Gerar backup agora
-          </button>
-
-          <div data-loading class="hidden text-center text-xs text-slate-400">
-            Gerando arquivo... isso pode levar alguns segundos.
-          </div>
-
-          <p class="text-xs text-slate-400 leading-relaxed">
-            Ao gerar o backup, você fará o download automático do arquivo.
-          </p>
-        </form>
+        </div>
       </div>
     </div>
   </div>

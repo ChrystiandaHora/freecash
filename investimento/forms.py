@@ -108,6 +108,17 @@ class AtivoForm(forms.ModelForm):
 
 
 class TransacaoForm(forms.ModelForm):
+    # Campo virtual para dividendos
+    valor_dividendo = forms.DecimalField(
+        required=False,
+        max_digits=19,
+        decimal_places=2,
+        label="Valor Recebido",
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "step": "0.01", "placeholder": "R$ 0,00"}
+        ),
+    )
+
     class Meta:
         model = Transacao
         fields = ["ativo", "tipo", "data", "quantidade", "preco_unitario", "taxas"]
@@ -124,28 +135,52 @@ class TransacaoForm(forms.ModelForm):
             "taxas": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Campos não são required por padrão (JS controla dinamicamente)
+        self.fields["quantidade"].required = False
+        self.fields["preco_unitario"].required = False
+
     def clean(self):
         cleaned_data = super().clean()
-        qtd = cleaned_data.get("quantidade")
-        preco = cleaned_data.get("preco_unitario")
-        taxas = cleaned_data.get("taxas") or 0
+        tipo = cleaned_data.get("tipo")
 
-        if qtd and preco is not None:
+        if tipo == Transacao.TIPO_DIVIDENDO:
+            # Para dividendos, usamos o valor_dividendo
+            valor = cleaned_data.get("valor_dividendo")
+            if not valor:
+                raise forms.ValidationError("Informe o valor do dividendo recebido.")
+
+            # Definimos quantidade=1 e preco=valor para manter compatibilidade
+            cleaned_data["quantidade"] = 1
+            cleaned_data["preco_unitario"] = valor
+            cleaned_data["valor_total"] = valor
+            cleaned_data["taxas"] = 0
+        else:
+            # Compra/Venda: valida quantidade e preço
+            qtd = cleaned_data.get("quantidade")
+            preco = cleaned_data.get("preco_unitario")
+            taxas = cleaned_data.get("taxas") or 0
+
+            if not qtd or qtd <= 0:
+                raise forms.ValidationError("Informe a quantidade.")
+            if preco is None or preco < 0:
+                raise forms.ValidationError("Informe o preço unitário.")
+
             valor_bruto = qtd * preco
-            tipo = cleaned_data.get("tipo")
 
             if tipo == Transacao.TIPO_COMPRA:
                 cleaned_data["valor_total"] = valor_bruto + taxas
             elif tipo == Transacao.TIPO_VENDA:
                 cleaned_data["valor_total"] = valor_bruto - taxas
-            else:
-                # Dividendo
-                cleaned_data["valor_total"] = valor_bruto
 
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        instance.quantidade = self.cleaned_data.get("quantidade")
+        instance.preco_unitario = self.cleaned_data.get("preco_unitario")
+        instance.taxas = self.cleaned_data.get("taxas") or 0
         instance.valor_total = self.cleaned_data.get("valor_total")
         if commit:
             instance.save()

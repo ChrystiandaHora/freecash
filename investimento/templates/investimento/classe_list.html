@@ -8,7 +8,7 @@
         <i class="fa-solid fa-sitemap text-emerald-500 mr-2"></i>
         Estrutura de Investimentos
       </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
+      <p class="text-sm text-gray-500 dark:text-slate-400">
         Visualize a hierarquia de classificação dos seus ativos (Classe >
         Categoria > Subcategoria)
       </p>
@@ -62,8 +62,8 @@
 
       <!-- Conteúdo (Categorias e Subcategorias) -->
       <div class="p-5 flex-1 space-y-4">
-        {% if classe.categorias.exists %} {% for categoria in
-        classe.categorias.all %}
+        {% if classe.categorias.exists %} 
+        {% for categoria in classe.categorias.all %}
         <div class="space-y-2">
           <!-- Categoria -->
           <div class="flex items-center gap-2">
@@ -81,14 +81,12 @@
             class="pl-4 ml-0.5 border-l-2 border-gray-100 dark:border-slate-700 space-y-1"
           >
             {% for sub in categoria.subcategorias.all %}
-            <div class="flex items-center justify-between group">
-              <span class="text-sm text-gray-500 dark:text-gray-400">
+            <div class="flex items-center justify-between py-0.5">
+              <span class="text-sm text-gray-600 dark:text-gray-300">
                 {{ sub.nome }}
               </span>
-              <span
-                class="text-xs text-gray-300 dark:text-slate-600 opacity-0 group-hover:opacity-100"
-              >
-                {{ sub.ativos.count }} ativos
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+                {{ sub.ativos.count }}
               </span>
             </div>
             {% endfor %}
