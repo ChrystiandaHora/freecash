@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
 from core.models import LogImportacao
-from core.services.importar_unificado import importar_planilha_unificada
+from core.services.import_service import importar_planilha_unificada
 
 
 @method_decorator(login_required, name="dispatch")
