@@ -1,207 +1,163 @@
 {% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
 {% block content %}
+<div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-  <!-- Header -->
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
     <div>
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Transações</h1>
-      <p class="text-sm text-gray-500 dark:text-slate-400">Filtre, encontre e revise suas movimentações.</p>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+        <div class="p-2 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-600/10 dark:from-violet-500/20 dark:to-purple-600/20 border border-violet-500/20 dark:border-violet-500/30">
+            <i class="fa-solid fa-right-left text-violet-600 dark:text-violet-400"></i>
+        </div>
+        Transações
+      </h1>
+      <p class="mt-2 text-gray-500 dark:text-slate-400 text-sm">Histórico completo de toda sua movimentação financeira.</p>
+    </div>
+
+    <!-- Quick Stats (Mini) -->
+    <div class="flex gap-4">
+        <div class="hidden md:block px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-right">
+            <p class="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Total Registros</p>
+            <p class="text-lg font-bold text-white">{{ total_count }}</p>
+        </div>
     </div>
   </div>
 
-  <!-- Filters -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm p-4 mb-6">
-    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
-      
-      <!-- Ano -->
-      <select name="ano"
-              class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20">
-        <option value="">Ano</option>
-        {% for a in anos %}
-          <option value="{{ a }}" {% if request.GET.ano|stringformat:"s" == a|stringformat:"s" %}selected{% endif %}>
-            {{ a }}
-          </option>
-        {% endfor %}
-      </select>
+  <!-- Filters Bar -->
+  <div class="p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800 backdrop-blur-md sticky top-4 z-10 shadow-lg dark:shadow-2xl">
+    <form method="get" class="flex flex-col lg:flex-row gap-3">
+        <!-- Search & Type Group -->
+        <div class="flex flex-1 gap-2">
+            <!-- Type Filter (Crucial for transactions) -->
+            <div class="relative min-w-[140px]">
+                <select name="tipo" class="w-full appearance-none bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors pl-10">
+                    <option value="">Todos</option>
+                    <option value="receita" {% if request.GET.tipo == "receita" %}selected{% endif %}>Receitas</option>
+                    <option value="despesa" {% if request.GET.tipo == "despesa" %}selected{% endif %}>Despesas</option>
+                </select>
+                <i class="fa-solid fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-xs"></i>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-600 text-xs pointer-events-none"></i>
+            </div>
+            
+             <input type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar transação..."
+                   class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all">
+        </div>
 
-      <!-- Mês -->
-      <select name="mes"
-              class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20">
-        <option value="">Mês</option>
-        {% for m in meses %}
-          <option value="{{ m }}" {% if request.GET.mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>
-            {{ m }}
-          </option>
-        {% endfor %}
-      </select>
+        <!-- Filters Group -->
+        <div class="flex flex-wrap gap-2 lg:flex-nowrap">
+            <!-- Selects -->
+            {% for field in "ano,mes,categoria,forma_pagamento"|split:"," %}
+            <div class="relative min-w-[100px] lg:min-w-[120px]">
+                <select name="{{ field }}" class="w-full appearance-none bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                    <option value="">{{ field|title|replace:"_ ," }}</option>
+                     {% if field == "ano" %} {% for a in anos %} <option value="{{ a }}" {% if request.GET.ano|stringformat:"s" == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option> {% endfor %} {% endif %}
+                    {% if field == "mes" %} {% for m in meses %} <option value="{{ m }}" {% if request.GET.mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option> {% endfor %} {% endif %}
+                    {% if field == "categoria" %} {% for c in categorias %} <option value="{{ c.id }}" {% if request.GET.categoria|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option> {% endfor %} {% endif %}
+                    {% if field == "forma_pagamento" %} {% for f in formas_pagamento %} <option value="{{ f.id }}" {% if request.GET.forma_pagamento|stringformat:"s" == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nome }}</option> {% endfor %} {% endif %}
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-600 text-xs pointer-events-none"></i>
+            </div>
+            {% endfor %}
 
-      <!-- Tipo -->
-      <select name="tipo"
-              class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20">
-        <option value="">Tipo</option>
-        <option value="receita" {% if request.GET.tipo == "receita" %}selected{% endif %}>Receita</option>
-        <option value="despesa" {% if request.GET.tipo == "despesa" %}selected{% endif %}>Despesa</option>
-      </select>
-
-      <!-- Categoria -->
-      <select name="categoria"
-              class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20">
-        <option value="">Categoria</option>
-        {% for c in categorias %}
-          <option value="{{ c.id }}" {% if request.GET.categoria|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
-            {{ c.nome }}
-          </option>
-        {% endfor %}
-      </select>
-
-      <!-- Forma -->
-      <select name="forma_pagamento"
-              class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20">
-        <option value="">Forma</option>
-        {% for f in formas_pagamento %}
-          <option value="{{ f.id }}" {% if request.GET.forma_pagamento|stringformat:"s" == f.id|stringformat:"s" %}selected{% endif %}>
-            {{ f.nome }}
-          </option>
-        {% endfor %}
-      </select>
-
-      <!-- Actions -->
-      <div class="sm:col-span-1 lg:col-span-1 flex gap-2 justify-end mt-2 lg:mt-0">
-          <button class="w-full inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
-            Filtrar
-          </button>
-      </div>
-      <div class="sm:col-span-1 lg:col-span-1 flex gap-2 justify-start mt-2 lg:mt-0">
-          <a href="{% url 'transacoes' %}"
-             class="w-full inline-flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700/50 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
-            Limpar
-          </a>
-      </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gray-800 dark:bg-slate-800 hover:bg-gray-700 dark:hover:bg-slate-700 border border-gray-700 dark:border-slate-700 text-white dark:text-slate-300 transition-colors font-medium text-sm">
+                Filtrar
+            </button>
+            <a href="{% url 'transacoes' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+            </a>
+        </div>
     </form>
   </div>
 
-  <!-- Table -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-
-    <!-- Table header -->
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
-      <div>
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Lista de transações</h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-          {% if total_count %}
-            Mostrando {{ page_obj.start_index }} a {{ page_obj.end_index }} de {{ total_count }} registro(s).
-          {% else %}
-            Nada para exibir.
-          {% endif %}
-        </p>
+  <!-- Content List -->
+  <div class="space-y-4">
+      <div class="flex items-center justify-between px-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-violet-500"></span> Linha do Tempo
+            </h2>
+             <!-- Pagination/Count Info -->
+             <div class="flex items-center gap-3">
+                 <span class="text-xs text-slate-500">
+                    {% if total_count %}
+                        {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ total_count }}
+                    {% endif %}
+                 </span>
+                 <form method="get" class="hidden sm:block">
+                     {% for key, value in request.GET.items %}
+                        {% if key != "per_page" and key != "page" %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+                     {% endfor %}
+                    <select name="per_page" onchange="this.form.submit()" class="bg-slate-900 border border-slate-800 text-xs text-slate-400 rounded-lg px-2 py-1 focus:ring-0">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10 / pág</option>
+                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25 / pág</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / pág</option>
+                    </select>
+                 </form>
+             </div>
       </div>
 
-      <!-- Per page (separate GET form to avoid duplicate inputs) -->
-      <form method="get" class="flex items-center gap-2">
-        {% for key, value in request.GET.items %}
-          {% if key != "per_page" and key != "page" %}
-            <input type="hidden" name="{{ key }}" value="{{ value }}">
-          {% endif %}
+      <div class="space-y-3">
+        {% for t in transacoes %}
+        <div onclick="window.location='{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% else %}{% url 'conta_editar' t.id %}{% endif %}'" 
+             class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 cursor-pointer shadow-sm dark:shadow-lg hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
+            
+            <!-- Contextual Strip & Glow -->
+            <div class="absolute left-0 top-4 bottom-4 w-1 {% if t.tipo == 'R' %}bg-emerald-500{% else %}bg-rose-500{% endif %} rounded-r-full opacity-60 group-hover:opacity-100 transition-opacity"></div>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pl-3">
+                <!-- Main Info -->
+                <div class="flex items-start sm:items-center gap-4">
+                    <!-- Date Box -->
+                    <div class="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400">
+                        <span class="text-[10px] uppercase font-bold">{{ t.data_realizacao|date:"M" }}</span>
+                        <span class="text-lg font-bold text-gray-900 dark:text-white leading-none">{{ t.data_realizacao|date:"d" }}</span>
+                    </div>
+
+                    <div>
+                        <h3 class="font-medium text-gray-900 dark:text-slate-200 group-hover:text-black dark:group-hover:text-white transition-colors text-base">{{ t.descricao|default:"Sem descrição" }}</h3>
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-400 dark:text-slate-500">ID #{{ t.id }}</span>
+                             {% if t.categoria %}
+                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/50">
+                                {{ t.categoria.nome }}
+                            </span>
+                            {% endif %}
+                            {% if t.forma_pagamento %}
+                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] text-gray-500 dark:text-slate-500 border border-gray-200 dark:border-slate-700/50">
+                                <i class="fa-regular fa-credit-card mr-1"></i> {{ t.forma_pagamento.nome }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Value -->
+                <div class="text-left sm:text-right pl-16 sm:pl-0">
+                    <p class="font-bold text-lg {% if t.tipo == 'R' %}text-emerald-600 dark:text-emerald-400{% else %}text-rose-600 dark:text-rose-400{% endif %}">
+                        {% if t.tipo == 'R' %}+{% else %}-{% endif %} R$ {{ t.valor|floatformat:2 }}
+                    </p>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-600 uppercase font-bold tracking-wider mt-1">
+                        {% if t.tipo == 'R' %}Receita{% else %}Despesa{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-16 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-800">
+            <div class="inline-flex p-4 rounded-full bg-gray-100 dark:bg-slate-900 mb-3">
+                <i class="fa-solid fa-receipt text-gray-400 dark:text-slate-500 text-2xl"></i>
+            </div>
+            <p class="text-gray-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada</p>
+            <p class="text-gray-400 dark:text-slate-600 text-sm">Tente ajustar os filtros ou o período.</p>
+        </div>
         {% endfor %}
+      </div>
 
-        <label class="text-xs font-semibold text-gray-600 dark:text-slate-400">Por página</label>
-        <select name="per_page"
-                onchange="this.form.submit()"
-                class="rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500/20">
-          <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
-          <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-          <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
-          <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-          <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
-        </select>
-      </form>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="min-w-full">
-        <thead class="bg-gray-50 dark:bg-slate-700/50">
-          <tr class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400">
-            <th class="px-6 py-3">Descrição</th>
-            <th class="px-6 py-3">Data</th>
-            <th class="px-6 py-3">Tipo</th>
-            <th class="px-6 py-3">Categoria</th>
-            <th class="px-6 py-3">Pagamento</th>
-            <th class="px-6 py-3 text-right">Valor</th>
-          </tr>
-        </thead>
-
-        <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
-          {% for t in transacoes %}
-            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
-                onclick="window.location='{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% else %}{% url 'conta_editar' t.id %}{% endif %}'">
-              <td class="px-6 py-4">
-                <div class="font-semibold text-gray-900 dark:text-white">
-                  {{ t.descricao|default:"Sem descrição" }}
-                </div>
-                <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">ID #{{ t.id }}</div>
-              </td>
-
-              <td class="px-6 py-4 text-gray-700 dark:text-slate-300 whitespace-nowrap">
-                {{ t.data_realizacao|date:"d/m/Y" }}
-              </td>
-
-              <td class="px-6 py-4">
-                {% if t.tipo == "R" %}
-                  <span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-3 py-1 text-xs font-semibold text-green-700 dark:text-green-400">
-                    Receita
-                  </span>
-                {% else %}
-                  <span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
-                    Despesa
-                  </span>
-                {% endif %}
-              </td>
-
-              <td class="px-6 py-4 text-gray-700 dark:text-slate-300">
-                {% if t.categoria %}
-                  {{ t.categoria.nome }}
-                {% else %}
-                  <span class="text-gray-400 dark:text-slate-500">Sem categoria</span>
-                {% endif %}
-              </td>
-
-              <td class="px-6 py-4 text-gray-700 dark:text-slate-300">
-                {% if t.forma_pagamento %}
-                  {{ t.forma_pagamento.nome }}
-                {% else %}
-                  <span class="text-gray-400 dark:text-slate-500">Não informado</span>
-                {% endif %}
-              </td>
-
-              <td class="px-6 py-4 text-right font-semibold whitespace-nowrap {% if t.tipo == 'R' %}text-emerald-700 dark:text-emerald-400{% else %}text-red-700 dark:text-red-400{% endif %}">
-                {% if t.tipo == 'R' %}+{% else %}-{% endif %} R$ {{ t.valor|floatformat:2 }}
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td class="px-6 py-10 text-center" colspan="6">
-                <div class="mx-auto max-w-sm">
-                  <p class="text-sm font-semibold text-gray-900 dark:text-white">Nenhuma transação encontrada</p>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Tente limpar os filtros ou ajustar o período.</p>
-                  <a href="{% url 'transacoes' %}" class="mt-4 inline-flex items-center justify-center rounded-xl bg-gray-900 dark:bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 dark:hover:bg-emerald-500 transition-all shadow-lg shadow-gray-900/20 dark:shadow-emerald-900/20">
-                    Limpar filtros
-                  </a>
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    {% include "_pagination.html" with page=page_obj qs=querystring %}
-
+      <!-- Pagination -->
+      {% include "_pagination.html" with page=page_obj qs=querystring anchor="" %}
   </div>
 
 </div>
-
 {% endblock %}

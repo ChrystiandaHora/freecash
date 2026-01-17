@@ -228,8 +228,8 @@
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ c.descricao }}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-              <i class="fa-regular fa-calendar mr-1"></i>{{ c.data_prevista|date:"d/m" }}
+            <p class="text-xs {% if c.esta_atrasada %}text-rose-500 font-semibold{% else %}text-gray-500 dark:text-slate-400{% endif %} mt-0.5">
+              <i class="fa-regular {% if c.esta_atrasada %}fa-calendar-xmark{% else %}fa-calendar{% endif %} mr-1"></i>{{ c.data_prevista|date:"d/m" }}
             </p>
           </div>
           <p class="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">R$ {{ c.valor|floatformat:2 }}</p>

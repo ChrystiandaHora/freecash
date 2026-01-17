@@ -445,13 +445,12 @@ class DashboardView(View):
             transacao_realizada=False, data_prevista__lt=hoje
         ).count()
 
-        # Próximas contas (corrija no template para usar data_prevista, não data_vencimento)
+        # Próximas contas (inclui atrasadas, ordenadas por vencimento)
         upcoming_bills = (
             Conta.objects.filter(
                 usuario=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=False,
-                data_prevista__gte=hoje,
             )
             .select_related("categoria", "forma_pagamento")
             .order_by("data_prevista")[:5]
