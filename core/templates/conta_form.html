@@ -3,103 +3,96 @@
 {% load l10n %}
 
 {% block content %}
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-  <!-- Header igual ao Contas -->
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-        <i class="fa-solid fa-pen-to-square text-blue-500"></i> {{ titulo|default:"Contas" }}
-      </h1>
-      <p class="text-sm text-gray-500 dark:text-slate-400">
-        {% if modo == "edit" %}
-          Editar conta selecionada.
-        {% else %}
-          {% if is_receita %}Cadastre uma nova receita.{% else %}Cadastre uma nova conta.{% endif %}
-        {% endif %}
-      </p>
-    </div>
-
-    <div class="flex items-center gap-3">
-      {% if modo != "edit" %}
-      <a href="{% if is_receita %}{% url 'receita_nova' %}{% else %}{% url 'conta_nova' %}{% endif %}"
-         class="inline-flex items-center justify-center rounded-xl bg-gray-900 dark:bg-emerald-600 text-white hover:bg-gray-800 dark:hover:bg-emerald-500 px-4 py-2 text-sm font-semibold transition-all shadow-lg shadow-gray-900/20 dark:shadow-emerald-900/20">
-        <i class="fa-solid fa-plus mr-2"></i> {% if is_receita %}Nova receita{% else %}Nova conta{% endif %}
-      </a>
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+      {% if modo == "edit" %}
+        {% if is_receita %}Editar Receita{% else %}Editar Conta{% endif %}
+      {% else %}
+        {% if is_receita %}Nova Receita{% else %}Nova Conta{% endif %}
       {% endif %}
-
-      <a href="{% if is_receita %}{% url 'receitas' %}{% else %}{% url 'contas_pagar' %}{% endif %}"
-         class="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-        <i class="fa-solid fa-arrow-left mr-2"></i> Voltar
-      </a>
-    </div>
+    </h1>
+    <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">
+      {% if modo == "edit" %}
+        Atualize os dados e gerencie o status do lançamento.
+      {% else %}
+        {% if is_receita %}Registre uma nova entrada financeira.{% else %}Cadastre uma nova conta a pagar.{% endif %}
+      {% endif %}
+    </p>
   </div>
 
-  <!-- Grid igual ao Contas -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- Coluna 1: Form -->
-    <div class="lg:col-span-1">
-      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm p-6">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-              {% if titulo %}{{ titulo }}{% elif modo == "edit" %}Editar conta{% else %}Cadastrar nova conta{% endif %}
-            </h2>
-            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-              Campos com * são obrigatórios.
-            </p>
+    <!-- Left Column: Form (2 cols) -->
+    <div class="lg:col-span-2">
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-6 py-5 border-b border-gray-100 dark:border-slate-700">
+          <div class="flex items-center gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br {% if is_receita %}from-emerald-500 to-teal-600{% else %}from-rose-500 to-red-600{% endif %} text-white shadow-lg {% if is_receita %}shadow-emerald-500/30{% else %}shadow-rose-500/30{% endif %}">
+              <i class="fa-solid {% if is_receita %}fa-arrow-trend-up{% else %}fa-file-invoice-dollar{% endif %} text-xl"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                {% if modo == "edit" %}{{ conta.descricao|truncatechars:30 }}{% else %}Dados do Lançamento{% endif %}
+              </h2>
+              <p class="text-sm text-gray-500 dark:text-slate-400">
+                {% if modo == "edit" %}ID #{{ conta.id }}{% else %}Campos com * são obrigatórios{% endif %}
+              </p>
+            </div>
           </div>
         </div>
 
-        <form method="post" class="mt-5 space-y-4">
-          {% csrf_token %}
+        <!-- Card Body -->
+        <div class="p-6">
+          <form method="post" class="space-y-5">
+            {% csrf_token %}
 
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Descrição *</label>
-            <input type="text"
-                   name="descricao"
-                   required
-                   value="{{ conta.descricao|default_if_none:'' }}"
-                   placeholder="Ex: Internet, Luz, Aluguel"
-                   class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Valor *</label>
-              <input type="number"
-                     step="0.01"
-                     name="valor"
+              <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Descrição *</label>
+              <input type="text"
+                     name="descricao"
                      required
-                     value="{% if conta.valor != None %}{{ conta.valor|unlocalize }}{% endif %}"
-                     placeholder="0,00"
-                     class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-
-              {% if modo == "edit" and conta.eh_parcelada %}
-                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                  Em parcelamento, o valor pode variar por parcela (centavos distribuídos).
-                </p>
-              {% endif %}
+                     value="{{ conta.descricao|default_if_none:'' }}"
+                     placeholder="Ex: Internet, Luz, Aluguel"
+                     class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
             </div>
 
-            <div>
-              <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Vencimento *</label>
-              <input type="date"
-                     name="data_prevista"
-                     required
-                     value="{% if conta.data_prevista %}{{ conta.data_prevista|date:'Y-m-d' }}{% endif %}"
-                     class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-            </div>
-          </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Valor *</label>
+                <input type="number"
+                       step="0.01"
+                       name="valor"
+                       required
+                       value="{% if conta.valor != None %}{{ conta.valor|unlocalize }}{% endif %}"
+                       placeholder="0,00"
+                       class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                {% if modo == "edit" and conta.eh_parcelada %}
+                  <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                    Em parcelamento, o valor pode variar por parcela.
+                  </p>
+                {% endif %}
+              </div>
 
-          {% if categorias|length == 1 %}
-            <input type="hidden" name="categoria" value="{{ categorias.first.id }}">
-          {% else %}
+              <div>
+                <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Vencimento *</label>
+                <input type="date"
+                       name="data_prevista"
+                       required
+                       value="{% if conta.data_prevista %}{{ conta.data_prevista|date:'Y-m-d' }}{% endif %}"
+                       class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+              </div>
+            </div>
+
+            {% if categorias|length == 1 %}
+              <input type="hidden" name="categoria" value="{{ categorias.first.id }}">
+            {% else %}
             <div>
-              <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Categoria</label>
+              <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Categoria</label>
               <select name="categoria"
-                      class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
+                      class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
                 <option value="">Selecione...</option>
                 {% for cat in categorias %}
                   <option value="{{ cat.id }}"
@@ -109,255 +102,214 @@
                 {% endfor %}
               </select>
             </div>
-          {% endif %}
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Forma de pagamento</label>
-            <select name="forma_pagamento"
-                    class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-              <option value="">Selecione...</option>
-              {% for f in formas %}
-                <option value="{{ f.id }}"
-                  {% if conta.forma_pagamento and conta.forma_pagamento.id == f.id %}selected{% endif %}>
-                  {{ f.nome }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-
-          {% if modo != "edit" %}
-            <!-- Multiplicar -->
-            <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
-              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-300">
-                <input id="multiplicar"
-                       type="checkbox"
-                       name="multiplicar"
-                       value="1"
-                       class="h-4 w-4 rounded border-gray-300 dark:border-slate-600 dark:bg-slate-700">
-                Multiplicar (repetir mensal)
-              </label>
-
-              <div id="multiplicaBox" class="mt-3 hidden">
-                <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Quantidade de meses</label>
-                <select id="numero_multiplicacoes"
-                        name="numero_multiplicacoes"
-                        disabled
-                        class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-                  <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
-                  <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
-                  <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
-                  <option value="11">11x</option><option value="12">12x</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Parcelar -->
-            <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
-              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-300">
-                <input id="parcelado"
-                       type="checkbox"
-                       name="parcelado"
-                       value="1"
-                       class="h-4 w-4 rounded border-gray-300 dark:border-slate-600 dark:bg-slate-700">
-                Parcelar
-              </label>
-
-              <div id="parcelasBox" class="mt-3 hidden">
-                <label class="block text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1">Número de parcelas</label>
-                <select id="numero_parcelas"
-                        name="numero_parcelas"
-                        disabled
-                        class="w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500">
-                  <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
-                  <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
-                  <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
-                  <option value="11">11x</option><option value="12">12x</option>
-                </select>
-              </div>
-            </div>
-          {% endif %}
-
-          {% if modo == "edit" and conta.eh_parcelada and conta.grupo_parcelamento %}
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <input id="aplicar_grupo"
-                       type="checkbox"
-                       name="aplicar_grupo"
-                       value="1"
-                       class="h-4 w-4 rounded border-gray-300">
-                Aplicar alterações em todas as parcelas
-              </label>
-
-              <div class="mt-2 text-xs text-gray-600 space-y-1">
-                <p>Atualiza em todas as parcelas do grupo:</p>
-                <ul class="list-disc pl-5">
-                  <li>Descrição</li>
-                  <li>Categoria</li>
-                  <li>Forma de pagamento</li>
-                </ul>
-                <p class="mt-1 text-gray-500">
-                  Valor e vencimento continuam sendo ajustados apenas nesta parcela.
-                </p>
-              </div>
-            </div>
-          {% endif %}
-
-          <div class="flex items-center justify-between pt-2">
-            <a href="{% if is_receita %}{% url 'receitas' %}{% else %}{% url 'contas_pagar' %}{% endif %}"
-               class="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-              Cancelar
-            </a>
-
-            {% if modo == "edit" %}
-              <button type="submit"
-                      class="inline-flex items-center justify-center rounded-xl bg-gray-900 dark:bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:hover:bg-emerald-500 shadow-lg shadow-gray-900/10 dark:shadow-emerald-900/20">
-                <i class="fa-solid fa-check mr-2"></i> Salvar alterações
-              </button>
-            {% else %}
-              <button type="submit"
-                      class="inline-flex items-center justify-center rounded-xl bg-gray-900 dark:bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:hover:bg-emerald-500 shadow-lg shadow-gray-900/10 dark:shadow-emerald-900/20">
-                <i class="fa-solid fa-plus mr-2"></i> {% if is_receita %}Cadastrar receita{% else %}Cadastrar conta{% endif %}
-              </button>
             {% endif %}
-          </div>
 
-          {% if modo != "edit" %}
-            <p class="text-xs text-gray-500">
-              Dica: use descrições consistentes para facilitar buscas e relatórios.
-            </p>
-          {% endif %}
-        </form>
+            <div>
+              <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Forma de pagamento</label>
+              <select name="forma_pagamento"
+                      class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm">
+                <option value="">Selecione...</option>
+                {% for f in formas %}
+                  <option value="{{ f.id }}"
+                    {% if conta.forma_pagamento and conta.forma_pagamento.id == f.id %}selected{% endif %}>
+                    {{ f.nome }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            {% if modo != "edit" %}
+            <!-- Opções de Multiplicar/Parcelar -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Multiplicar -->
+              <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
+                <label class="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Repetir mensal</p>
+                    <p class="text-xs text-gray-500 dark:text-slate-400">Criar cópias para os próximos meses</p>
+                  </div>
+                  <input id="multiplicar" type="checkbox" name="multiplicar" value="1"
+                         class="w-5 h-5 rounded border-gray-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500">
+                </label>
+                <div id="multiplicaBox" class="mt-3 hidden">
+                  <select id="numero_multiplicacoes" name="numero_multiplicacoes" disabled
+                          class="w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-3 py-2 text-sm">
+                    <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                    <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                    <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                    <option value="11">11x</option><option value="12">12x</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Parcelar -->
+              <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
+                <label class="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Parcelar</p>
+                    <p class="text-xs text-gray-500 dark:text-slate-400">Dividir o valor em parcelas</p>
+                  </div>
+                  <input id="parcelado" type="checkbox" name="parcelado" value="1"
+                         class="w-5 h-5 rounded border-gray-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500">
+                </label>
+                <div id="parcelasBox" class="mt-3 hidden">
+                  <select id="numero_parcelas" name="numero_parcelas" disabled
+                          class="w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-3 py-2 text-sm">
+                    <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                    <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                    <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                    <option value="11">11x</option><option value="12">12x</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if modo == "edit" and conta.eh_parcelada and conta.grupo_parcelamento %}
+            <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+              <label class="flex items-center gap-3">
+                <input id="aplicar_grupo" type="checkbox" name="aplicar_grupo" value="1"
+                       class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                <div>
+                  <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">Aplicar em todas as parcelas</p>
+                  <p class="text-xs text-amber-600 dark:text-amber-400">Atualiza descrição, categoria e forma de pagamento</p>
+                </div>
+              </label>
+            </div>
+            {% endif %}
+
+            <!-- Submit Buttons -->
+            <div class="flex items-center gap-3 pt-4">
+              <button type="submit"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r {% if is_receita %}from-emerald-500 to-teal-600{% else %}from-gray-800 to-gray-900{% endif %} px-6 py-3 text-sm font-bold text-white hover:opacity-90 shadow-lg transition-all">
+                <i class="fa-solid {% if modo == 'edit' %}fa-check{% else %}fa-plus{% endif %}"></i>
+                {% if modo == "edit" %}Salvar Alterações{% else %}{% if is_receita %}Cadastrar Receita{% else %}Cadastrar Conta{% endif %}{% endif %}
+              </button>
+
+              <a href="{% if is_receita %}{% url 'receitas' %}{% else %}{% url 'contas_pagar' %}{% endif %}"
+                 class="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-6 py-3 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                Cancelar
+              </a>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
-    <!-- Coluna 2-3: Painel contextual (no lugar das tabelas) -->
-    <div class="lg:col-span-2 space-y-6">
+    <!-- Right Column: Sidebar (1 col) -->
+    <div class="lg:col-span-1 space-y-4">
 
-      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-                {% if modo == "edit" %}Detalhes da {% if is_receita %}receita{% else %}conta{% endif %}{% else %}Como funciona{% endif %}
-              </h2>
-              <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">
-                {% if modo == "edit" %}
-                  Ações rápidas e status da conta selecionada.
-                {% else %}
-                  Depois de criar, clique em uma linha na lista de pendentes/pagas para editar.
-                {% endif %}
-              </p>
-            </div>
-
-            {% if modo == "edit" %}
-              <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-gray-700 dark:text-slate-300">
-                ID {{ conta.id }}
-              </span>
-            {% endif %}
+      {% if modo == "edit" %}
+      <!-- Status Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl {% if conta.transacao_realizada %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">
+            <i class="fa-solid {% if conta.transacao_realizada %}fa-check-circle{% else %}fa-clock{% endif %}"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900 dark:text-white">Status</h3>
+            <p class="text-xs {% if conta.transacao_realizada %}text-emerald-600 dark:text-emerald-400{% else %}text-blue-600 dark:text-blue-400{% endif %}">
+              {% if conta.transacao_realizada %}Paga{% else %}Pendente{% endif %}
+            </p>
           </div>
         </div>
 
-        <div class="p-6 space-y-4">
-
-          {% if modo == "edit" %}
-            <div class="flex flex-wrap gap-2">
-              {% if conta.transacao_realizada %}
-                <span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-3 py-1 text-xs font-semibold text-green-700 dark:text-green-400">
-                  Paga em {{ conta.data_realizacao|date:"d/m/Y" }}
-                </span>
-              {% else %}
-                <span class="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
-                  Pendente
-                </span>
-              {% endif %}
-
-              {% if conta.esta_atrasada %}
-                <span class="inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400">
-                  Atrasada
-                </span>
-              {% endif %}
-
-              {% if conta.eh_parcelada %}
-                <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-gray-700 dark:text-slate-300">
-                  Parcela {{ conta.parcela_numero }}/{{ conta.parcela_total }}
-                </span>
-              {% endif %}
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
-                <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Vencimento</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ conta.data_prevista|date:"d/m/Y" }}</p>
-              </div>
-
-              <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
-                <p class="text-xs font-semibold text-gray-600 dark:text-slate-400">Valor</p>
-                <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">R$ {{ conta.valor|floatformat:2 }}</p>
-              </div>
-            </div>
-
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div class="text-xs text-gray-500 dark:text-slate-400">
-                Criada em {{ conta.criada_em|date:"d/m/Y H:i" }}
-                {% if conta.eh_parcelada %}
-                  <span class="ml-2">Grupo: <span class="font-semibold text-gray-700">{{ conta.grupo_parcelamento }}</span></span>
-                {% endif %}
-              </div>
-
-              <form method="post" class="flex items-center gap-3">
-                {% csrf_token %}
-
-                {% if conta.transacao_realizada %}
-                  <button type="submit"
-                          name="acao"
-                          value="desmarcar_paga"
-                          class="inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-700 border border-green-200 dark:border-green-800 px-4 py-2 text-sm font-semibold text-green-800 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30">
-                    <i class="fa-solid fa-xmark mr-2"></i> Desmarcar como paga
-                  </button>
-                {% else %}
-                  <button type="submit"
-                          name="acao"
-                          value="marcar_paga"
-                          class="inline-flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-slate-600">
-                    <i class="fa-solid fa-check mr-2"></i> Marcar como paga
-                  </button>
-                {% endif %}
-              </form>
-            </div>
-
-            <div class="pt-5 border-t border-gray-100">
-              <form method="post"
-                    action="{% url 'apagar_conta' conta.id %}"
-                    onsubmit="return confirm('Tem certeza que deseja apagar esta conta?');"
-                    class="space-y-3">
-                {% csrf_token %}
-
-                {% if conta.eh_parcelada and conta.grupo_parcelamento %}
-                  <label class="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" name="apagar_grupo" value="1" class="h-4 w-4 rounded border-gray-300">
-                    Apagar todas as parcelas deste grupo
-                  </label>
-                {% endif %}
-
-                <button type="submit"
-                        class="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
-                  Apagar {% if is_receita %}receita{% else %}conta{% endif %}
-                </button>
-              </form>
-            </div>
-
-          {% else %}
-            <div class="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 p-4">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo sugerido</p>
-              <ul class="mt-2 text-sm text-gray-700 dark:text-slate-300 list-disc pl-5 space-y-1">
-                <li>Cadastre a conta na coluna da esquerda.</li>
-                <li>Ela aparece em Pendentes na página de Contas.</li>
-                <li>Clique na linha para abrir esta tela de edição.</li>
-              </ul>
-            </div>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-slate-400">Vencimento</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ conta.data_prevista|date:"d/m/Y" }}</span>
+          </div>
+          {% if conta.transacao_realizada %}
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-slate-400">Paga em</span>
+            <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ conta.data_realizacao|date:"d/m/Y" }}</span>
+          </div>
+          {% endif %}
+          {% if conta.eh_parcelada %}
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-slate-400">Parcela</span>
+            <span class="font-medium text-gray-900 dark:text-white">{{ conta.parcela_numero }}/{{ conta.parcela_total }}</span>
+          </div>
           {% endif %}
         </div>
+
+        <form method="post" class="mt-4">
+          {% csrf_token %}
+          {% if conta.transacao_realizada %}
+            <button type="submit" name="acao" value="desmarcar_paga"
+                    class="w-full inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
+              <i class="fa-solid fa-xmark mr-2"></i> Desmarcar como paga
+            </button>
+          {% else %}
+            <button type="submit" name="acao" value="marcar_paga"
+                    class="w-full inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/30 transition-all">
+              <i class="fa-solid fa-check mr-2"></i> Marcar como paga
+            </button>
+          {% endif %}
+        </form>
       </div>
+
+      <!-- Danger Zone -->
+      <div class="bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+            <i class="fa-solid fa-trash"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Zona de Perigo</h3>
+        </div>
+        <form method="post" action="{% url 'apagar_conta' conta.id %}"
+              onsubmit="return confirm('Tem certeza que deseja apagar esta conta?');">
+          {% csrf_token %}
+          {% if conta.eh_parcelada and conta.grupo_parcelamento %}
+          <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 mb-3">
+            <input type="checkbox" name="apagar_grupo" value="1" class="rounded border-gray-300 dark:border-slate-600">
+            Apagar todas as parcelas
+          </label>
+          {% endif %}
+          <button type="submit"
+                  class="w-full inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500 transition-all">
+            Apagar {% if is_receita %}Receita{% else %}Conta{% endif %}
+          </button>
+        </form>
+      </div>
+
+      {% else %}
+      <!-- Info Card (New Mode) -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-info-circle"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Como funciona</h3>
+        </div>
+        <ul class="text-sm text-gray-600 dark:text-slate-400 space-y-2">
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+            Preencha o formulário ao lado
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+            O lançamento aparece na lista
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+            Clique na linha para editar
+          </li>
+        </ul>
+      </div>
+
+      <!-- Quick Action -->
+      <a href="{% if is_receita %}{% url 'receitas' %}{% else %}{% url 'contas_pagar' %}{% endif %}"
+         class="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400">
+          <i class="fa-solid fa-arrow-left"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Voltar</h3>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Ver todos os lançamentos</p>
+        </div>
+      </a>
+      {% endif %}
 
     </div>
   </div>
