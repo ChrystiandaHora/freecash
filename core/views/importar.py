@@ -25,8 +25,12 @@ class ImportarView(View):
             return redirect("importar")
 
         nome = (arquivo.name or "").lower()
-        if not (nome.endswith(".xlsx") or nome.endswith(".csv")):
-            messages.error(request, "Formato inválido. Envie um arquivo .xlsx ou .csv.")
+        if not (
+            nome.endswith(".xlsx") or nome.endswith(".csv") or nome.endswith(".fcbk")
+        ):
+            messages.error(
+                request, "Formato inválido. Envie um arquivo .xlsx, .csv ou .fcbk."
+            )
             return redirect("importar")
 
         password = request.POST.get("password")

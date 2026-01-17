@@ -373,6 +373,35 @@ def importar_planilha_unificada(
     arquivo_processado = arquivo
 
     # 1. Decryption Handling
+    if nome.endswith(".fcbk"):
+        if not password:
+            raise ValueError("Arquivo de backup seguro (.fcbk) requer senha.")
+
+        from core.services.secure_backup import SecureBackupService
+
+        if hasattr(arquivo, "read"):
+            arquivo.seek(0)
+            content = arquivo.read()
+        else:
+            content = arquivo
+
+        # Decrypt
+        decrypted_dict = SecureBackupService.decrypt_data(content, password)
+        # Restore
+        resultado_counts = SecureBackupService.restore_user_data(
+            decrypted_dict, usuario
+        )
+
+        msg = f"Backup Seguro (.fcbk) restaurado com sucesso! ({resultado_counts['total']} registros processados)"
+
+        LogImportacao.objects.create(
+            usuario=usuario,
+            tipo=LogImportacao.TIPO_BACKUP,
+            sucesso=True,
+            mensagem=msg,
+        )
+        return {"tipo": "secure_backup", "msg": msg, "counts": resultado_counts}
+
     if nome.endswith(".zip"):
         if not password:
             raise ValueError("Arquivo criptografado requer senha.")
