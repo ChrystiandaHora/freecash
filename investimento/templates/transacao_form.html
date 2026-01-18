@@ -12,23 +12,23 @@
       <i class="fa-solid fa-right-left text-emerald-500 mr-2"></i>
       {% if form.instance.pk %}Editar Transação{% else %}Nova Transação{% endif %}
     </h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400">
+    <p class="text-sm text-gray-500 dark:text-slate-400">
       {% if form.instance.pk %}Atualize os dados da transação{% else %}Registre uma compra, venda ou provento{% endif %}
     </p>
   </div>
 
   <!-- Form Card -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm p-6">
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm p-6">
     <form method="post" class="space-y-5">
       {% csrf_token %}
 
       <!-- Tipo -->
       <div>
-        <label for="id_tipo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Transação *</label>
+        <label for="id_tipo" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Tipo de Transação *</label>
         <select name="tipo" id="id_tipo"
-                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                       bg-white dark:bg-gray-900" required>
+                       bg-white dark:bg-slate-900" required>
           <option value="">Selecione o tipo</option>
           <option value="C" {% if form.tipo.value == 'C' %}selected{% endif %}>Compra</option>
           <option value="V" {% if form.tipo.value == 'V' %}selected{% endif %}>Venda</option>
@@ -41,11 +41,11 @@
 
       <!-- Ativo -->
       <div>
-        <label for="id_ativo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ativo *</label>
+        <label for="id_ativo" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Ativo *</label>
         <select name="ativo" id="id_ativo"
-                class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                       bg-white dark:bg-gray-900" required>
+                       bg-white dark:bg-slate-900" required>
           <option value="">Selecione o ativo</option>
           {% for ativo in form.ativo.field.queryset %}
             <option value="{{ ativo.id }}" {% if form.ativo.value|stringformat:"s" == ativo.id|stringformat:"s" %}selected{% endif %}>
@@ -60,11 +60,11 @@
 
       <!-- Data -->
       <div>
-        <label for="id_data" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data *</label>
+        <label for="id_data" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Data *</label>
         <input type="date" name="data" id="id_data" value="{{ form.data.value|date:'Y-m-d' }}"
-               class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+               class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                       focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                      bg-white dark:bg-gray-900"
+                      bg-white dark:bg-slate-900"
                required>
         {% if form.data.errors %}
           <p class="mt-1 text-xs text-red-600">{{ form.data.errors.0 }}</p>
@@ -76,24 +76,24 @@
         <!-- Quantidade e Preço Unitário -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <div>
-            <label for="id_quantidade" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade *</label>
+            <label for="id_quantidade" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Quantidade *</label>
             <input type="number" step="0.00000001" name="quantidade" id="id_quantidade" 
                    value="{% if form.instance.pk %}{{ form.instance.quantidade|unlocalize }}{% endif %}"
-                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                   class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                           focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                          placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                          placeholder:text-gray-400 dark:placeholder:text-slate-500 bg-white dark:bg-slate-900"
                    placeholder="0,00">
             {% if form.quantidade.errors %}
               <p class="mt-1 text-xs text-red-600">{{ form.quantidade.errors.0 }}</p>
             {% endif %}
           </div>
           <div>
-            <label for="id_preco_unitario" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preço Unitário *</label>
+            <label for="id_preco_unitario" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Preço Unitário *</label>
             <input type="number" step="0.0001" name="preco_unitario" id="id_preco_unitario" 
                    value="{% if form.instance.pk %}{{ form.instance.preco_unitario|unlocalize }}{% endif %}"
-                   class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                   class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                           focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                          placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                          placeholder:text-gray-400 dark:placeholder:text-slate-500 bg-white dark:bg-slate-900"
                    placeholder="R$ 0,00">
             {% if form.preco_unitario.errors %}
               <p class="mt-1 text-xs text-red-600">{{ form.preco_unitario.errors.0 }}</p>
@@ -103,32 +103,32 @@
 
         <!-- Taxas (apenas para compra/venda) -->
         <div>
-          <label for="id_taxas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taxas / Corretagem</label>
+          <label for="id_taxas" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Taxas / Corretagem</label>
           <input type="number" step="0.01" name="taxas" id="id_taxas" 
                  value="{% if form.instance.pk %}{{ form.instance.taxas|unlocalize }}{% else %}0{% endif %}"
-                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                 class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                         focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                        placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                        placeholder:text-gray-400 dark:placeholder:text-slate-500 bg-white dark:bg-slate-900"
                  placeholder="R$ 0,00">
-          <p class="mt-1 text-xs text-gray-500">Opcional. Taxas de corretagem, emolumentos, etc.</p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Opcional. Taxas de corretagem, emolumentos, etc.</p>
         </div>
       </div>
 
       <!-- Campos para Dividendo/Provento -->
       <div id="campos-dividendo" class="hidden">
         <div>
-          <label for="id_valor_dividendo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Recebido *</label>
+          <label for="id_valor_dividendo" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Valor Recebido *</label>
           <input type="number" step="0.01" name="valor_dividendo" id="id_valor_dividendo" 
-                 class="w-full rounded-xl border border-gray-200 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                 class="w-full rounded-xl border border-gray-200 dark:border-slate-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white
                         focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400
-                        placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+                        placeholder:text-gray-400 dark:placeholder:text-slate-500 bg-white dark:bg-slate-900"
                  placeholder="R$ 0,00">
-          <p class="mt-1 text-xs text-gray-500">Valor total do dividendo, JCP ou rendimento recebido.</p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Valor total do dividendo, JCP ou rendimento recebido.</p>
         </div>
       </div>
 
       <!-- Buttons -->
-      <div class="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
         <button type="submit"
                 class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
                        bg-emerald-600 dark:bg-emerald-600/90 text-white hover:bg-emerald-700 dark:hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 shadow-lg shadow-emerald-900/20">
@@ -137,7 +137,7 @@
         </button>
         <a href="{% url 'investimento:transacao_listar' %}"
            class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold
-                  bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
+                  bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-gray-900/10">
           Cancelar
         </a>
       </div>
