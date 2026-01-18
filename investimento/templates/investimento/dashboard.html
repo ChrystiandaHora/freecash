@@ -17,7 +17,7 @@
         <i class="fa-solid fa-chart-pie text-emerald-500 mr-2"></i>
         Dashboard de Investimentos
       </h1>
-      <p class="text-sm text-gray-500 dark:text-slate-400">
+      <p class="text-sm text-gray-500 dark:text-slate-300">
         Acompanhe sua carteira e alocação de ativos
       </p>
     </div>
@@ -59,7 +59,7 @@
           <i class="fa-solid fa-briefcase text-blue-600 dark:text-blue-400 text-lg"></i>
         </div>
         <div>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Total de Ativos</p>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Total de Ativos</p>
           <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ ativos|length }}</p>
         </div>
       </div>
@@ -72,10 +72,10 @@
           <i class="fa-solid fa-clock-rotate-left text-orange-600 dark:text-orange-400 text-lg"></i>
         </div>
         <div>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Última Transação</p>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Última Transação</p>
           {% if ultima_transacao %}
           <p class="text-sm font-bold text-gray-900 dark:text-white">{{ ultima_transacao.data|date:"d/m/Y" }}</p>
-          <p class="text-xs text-gray-500 dark:text-slate-400">
+          <p class="text-xs text-gray-600 dark:text-slate-300">
             {{ ultima_transacao.get_tipo_display }} {{ ultima_transacao.ativo.ticker }}
           </p>
           {% else %}
@@ -92,7 +92,7 @@
     <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 overflow-hidden">
       <div class="mb-4">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Alocação por Classe</h2>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Distribuição do patrimônio</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Distribuição do patrimônio</p>
       </div>
       {% if allocation_labels %}
       <div id="chartAllocation" style="height: 220px;"></div>
@@ -121,7 +121,7 @@
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
           <i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Top 5 Posições
         </h2>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Maiores valores investidos</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Maiores valores investidos</p>
       </div>
       {% if top_5_ativos %}
       <div class="space-y-3">
@@ -134,14 +134,14 @@
             <div>
               <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ ativo.ticker }}</p>
               {% if ativo.subcategoria %}
-              <p class="text-xs text-gray-500 dark:text-slate-400">{{ ativo.subcategoria.categoria.classe.nome }}</p>
+              <p class="text-xs text-gray-600 dark:text-slate-300">{{ ativo.subcategoria.categoria.classe.nome }}</p>
               {% endif %}
             </div>
           </div>
           <div class="text-right">
             <p class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">R$ {{ ativo.valor_atual|floatformat:2|intcomma }}</p>
             {% if total_patrimonio > 0 %}
-            <p class="text-xs text-gray-500 dark:text-slate-400">{{ ativo.valor_atual|floatformat:0|default:0 }}% do total</p>
+            <p class="text-xs text-gray-600 dark:text-slate-300">{{ ativo.valor_atual|floatformat:0|default:0 }}% do total</p>
             {% endif %}
           </div>
         </div>
@@ -159,7 +159,7 @@
     <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 overflow-hidden">
       <div class="mb-4">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Alocação por Categoria</h2>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Diversificação dentro das classes</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Diversificação dentro das classes</p>
       </div>
       {% if category_labels %}
       <div id="chartCategory" style="height: 220px;"></div>
@@ -191,7 +191,7 @@
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
           <i class="fa-solid fa-calendar-day text-red-500 mr-2"></i>Próximos Vencimentos
         </h2>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Renda Fixa nos próximos 90 dias</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Renda Fixa nos próximos 90 dias</p>
       </div>
       {% if proximos_vencimentos %}
       <div class="space-y-3">
@@ -199,11 +199,11 @@
         <div class="flex items-center justify-between p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30">
           <div>
             <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ ativo.ticker }}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">{{ ativo.nome|truncatechars:25 }}</p>
+            <p class="text-xs text-gray-600 dark:text-slate-300">{{ ativo.nome|truncatechars:25 }}</p>
           </div>
           <div class="text-right">
             <p class="text-sm font-bold text-red-600 dark:text-red-400">{{ ativo.data_vencimento|date:"d/m/Y" }}</p>
-            <p class="text-xs text-gray-500 dark:text-slate-400">R$ {{ ativo.valor_atual|floatformat:2|intcomma }}</p>
+            <p class="text-xs text-gray-600 dark:text-slate-300">R$ {{ ativo.valor_atual|floatformat:2|intcomma }}</p>
           </div>
         </div>
         {% endfor %}
@@ -221,7 +221,7 @@
       <div class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
         <div>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Carteira Completa</h2>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Todos os ativos ativos</p>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">Todos os ativos ativos</p>
         </div>
         <a href="{% url 'investimento:ativo_criar' %}" class="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium">
           <i class="fa-solid fa-plus mr-1"></i> Novo Ativo
@@ -232,11 +232,11 @@
         <table class="w-full">
           <thead class="bg-gray-50 dark:bg-slate-700/50 sticky top-0">
             <tr>
-              <th class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Ativo</th>
-              <th class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Classe</th>
-              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Qtd</th>
-              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">PM</th>
-              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider px-5 py-3">Total</th>
+              <th class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3">Ativo</th>
+              <th class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3">Classe</th>
+              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3">Qtd</th>
+              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3">PM</th>
+              <th class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3">Total</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
@@ -245,7 +245,7 @@
               <td class="px-5 py-3">
                 <div>
                   <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ ativo.ticker }}</p>
-                  <p class="text-xs text-gray-500 dark:text-slate-400">{{ ativo.nome|truncatechars:18 }}</p>
+                  <p class="text-xs text-gray-500 dark:text-slate-300">{{ ativo.nome|truncatechars:18 }}</p>
                 </div>
               </td>
               <td class="px-5 py-3">
@@ -265,7 +265,7 @@
                 <span class="text-sm text-gray-900 dark:text-white tabular-nums">{{ ativo.quantidade|floatformat:2 }}</span>
               </td>
               <td class="px-5 py-3 text-right">
-                <span class="text-sm text-gray-500 dark:text-slate-400 tabular-nums">R$ {{ ativo.preco_medio|floatformat:2 }}</span>
+                <span class="text-sm text-gray-500 dark:text-slate-300 tabular-nums">R$ {{ ativo.preco_medio|floatformat:2 }}</span>
               </td>
               <td class="px-5 py-3 text-right">
                 <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -293,7 +293,7 @@
       {% if ativos %}
       <div class="px-5 py-3 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/30">
         <div class="flex items-center justify-between text-sm">
-          <span class="text-gray-500 dark:text-slate-400">{{ ativos|length }} ativo{{ ativos|length|pluralize:"s" }}</span>
+          <span class="text-gray-500 dark:text-slate-300">{{ ativos|length }} ativo{{ ativos|length|pluralize:"s" }}</span>
           <a href="{% url 'investimento:ativo_listar' %}" class="text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
             Ver todos <i class="fa-solid fa-arrow-right ml-1"></i>
           </a>
@@ -311,7 +311,7 @@
       </div>
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">Ativos</p>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Gerenciar</p>
+        <p class="text-xs text-gray-500 dark:text-slate-300">Gerenciar</p>
       </div>
     </a>
     <a href="{% url 'investimento:transacao_listar' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md">
@@ -320,7 +320,7 @@
       </div>
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">Transações</p>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Histórico</p>
+        <p class="text-xs text-gray-500 dark:text-slate-300">Histórico</p>
       </div>
     </a>
     <a href="{% url 'investimento:transacao_criar' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md">
@@ -329,7 +329,7 @@
       </div>
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">Nova Transação</p>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Compra/Venda</p>
+        <p class="text-xs text-gray-500 dark:text-slate-300">Compra/Venda</p>
       </div>
     </a>
     <a href="{% url 'investimento:classe_listar' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md">
@@ -338,7 +338,7 @@
       </div>
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">Classes</p>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Categorizar</p>
+        <p class="text-xs text-gray-500 dark:text-slate-300">Categorizar</p>
       </div>
     </a>
   </div>
