@@ -7,7 +7,7 @@
       Restaurar Backup
     </h1>
     <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">
-      Importe seus dados de um arquivo <strong class="text-emerald-600 dark:text-emerald-400">.fcbk</strong> ou planilha Excel
+      Importe seus dados de um arquivo <strong class="text-emerald-600 dark:text-emerald-400">.fcbk</strong>
     </p>
   </div>
 
@@ -53,19 +53,13 @@
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                   <i class="fa-solid fa-shield-halved mr-1.5"></i> .fcbk
                 </span>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
-                  <i class="fa-solid fa-file-excel mr-1.5"></i> .xlsx
-                </span>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
-                  <i class="fa-solid fa-file-csv mr-1.5"></i> .csv
-                </span>
               </div>
 
               <input
                 id="fileInput"
                 type="file"
                 name="arquivo"
-                accept=".fcbk,.xlsx,.csv"
+                accept=".fcbk"
                 class="hidden"
                 required
               />
@@ -102,10 +96,6 @@
               <label for="password" class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
                 Senha de Descriptografia
               </label>
-              <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">
-                <i class="fa-solid fa-info-circle text-blue-500 mr-1"></i>
-                Necessária apenas para arquivos <strong>.fcbk</strong>
-              </p>
               <div class="relative">
                 <input
                   type="password"
@@ -170,15 +160,6 @@
               <p class="text-xs text-gray-500 dark:text-slate-400">Backup seguro criptografado</p>
             </div>
           </li>
-          <li class="flex items-start gap-3">
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 shrink-0">
-              <i class="fa-solid fa-file-excel text-xs"></i>
-            </span>
-            <div>
-              <p class="font-medium text-gray-900 dark:text-white">.xlsx / .csv</p>
-              <p class="text-xs text-gray-500 dark:text-slate-400">Planilhas legado</p>
-            </div>
-          </li>
         </ul>
       </div>
 
@@ -195,35 +176,7 @@
         </div>
       </div>
 
-      <!-- History Preview -->
-      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
-        <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <i class="fa-solid fa-clock-rotate-left text-gray-400"></i>
-          Histórico
-        </h3>
-        {% if logs %}
-        <ul class="space-y-2">
-          {% for log in logs|slice:":3" %}
-          <li class="flex items-center justify-between text-xs">
-            <span class="text-gray-600 dark:text-slate-400">{{ log.criada_em|date:"d/m H:i" }}</span>
-            {% if log.sucesso %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
-              <i class="fa-solid fa-check mr-1"></i> OK
-            </span>
-            {% else %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium">
-              <i class="fa-solid fa-xmark mr-1"></i> Erro
-            </span>
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="text-xs text-gray-500 dark:text-slate-400 text-center py-2">
-          Nenhuma importação registrada
-        </p>
-        {% endif %}
-      </div>
+
     </div>
   </div>
 </div>

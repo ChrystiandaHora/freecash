@@ -162,28 +162,3 @@ class ConfigUsuario(AuditoriaModel):
 
     def __str__(self):
         return f"Configurações de {self.usuario.username}"
-
-
-class LogImportacao(AuditoriaModel):
-    TIPO_BACKUP = "backup"
-    TIPO_LEGADO = "legado"
-
-    TIPOS = [
-        (TIPO_BACKUP, "Backup Moderno"),
-        (TIPO_LEGADO, "Planilha Legado"),
-    ]
-
-    tipo = models.CharField(max_length=20, choices=TIPOS)
-    sucesso = models.BooleanField(default=False)
-    mensagem = models.TextField(blank=True, null=True)
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="logs_importacao",
-        null=True,
-        blank=True,
-    )
-
-    def __str__(self):
-        return f"{self.tipo} - {'OK' if self.sucesso else 'ERRO'}"

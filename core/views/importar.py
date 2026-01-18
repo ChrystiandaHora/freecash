@@ -4,7 +4,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
-from core.models import LogImportacao
 from core.services.import_service import importar_universal
 
 
@@ -13,10 +12,7 @@ class ImportarView(View):
     template_name = "importar.html"
 
     def get(self, request):
-        logs = LogImportacao.objects.filter(usuario=request.user).order_by(
-            "-criada_em"
-        )[:20]
-        return render(request, self.template_name, {"logs": logs})
+        return render(request, self.template_name)
 
     def post(self, request):
         arquivo = request.FILES.get("arquivo")

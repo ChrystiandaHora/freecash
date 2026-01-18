@@ -43,9 +43,8 @@ class ExportarView(View):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
         # Update last export date
-        config = ConfigUsuario.objects.filter(usuario=request.user).first()
-        if config:
-            config.ultimo_export_em = timezone.now()
-            config.save(update_fields=["ultimo_export_em"])
+        config, _ = ConfigUsuario.objects.get_or_create(usuario=request.user)
+        config.ultimo_export_em = timezone.now()
+        config.save(update_fields=["ultimo_export_em"])
 
         return response
