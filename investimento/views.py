@@ -52,41 +52,83 @@ def classe_excluir(request, pk):
 
 @login_required
 def dashboard(request):
-    ativos = Ativo.objects.filter(usuario=request.user, ativo=True).order_by(
-        "subcategoria__categoria__classe__nome", "ticker"
+    from datetime import date, timedelta
+
+    ativos = (
+        Ativo.objects.filter(usuario=request.user, ativo=True)
+        .select_related("subcategoria__categoria__classe")
+        .order_by("subcategoria__categoria__classe__nome", "ticker")
     )
 
-    # Calcular total investido e valor atual (se tivéssemos cotação online, mas vamos usar preço médio ou manual)
-    # Por enquanto, dashboard mostra resumo da carteira baseada no custo de aquisição (preco_medio * qtd)
-
+    # Calculate portfolio value and build allocation data
     total_patrimonio = 0
     allocation_by_class = {}
+    allocation_by_category = {}
 
     for a in ativos:
-        a.valor_atual = a.quantidade * a.preco_medio  # Simplificação: Valor 'Investido'
+        a.valor_atual = a.quantidade * a.preco_medio
         total_patrimonio += a.valor_atual
 
-        # Aggregate by Class for chart
+        # Aggregate by Class
         if (
             a.subcategoria
             and a.subcategoria.categoria
             and a.subcategoria.categoria.classe
         ):
             class_name = a.subcategoria.categoria.classe.nome
+            cat_name = a.subcategoria.categoria.nome
         else:
             class_name = "Sem Classe"
+            cat_name = "Sem Categoria"
+
         allocation_by_class[class_name] = allocation_by_class.get(
             class_name, 0
+        ) + float(a.valor_atual)
+        allocation_by_category[cat_name] = allocation_by_category.get(
+            cat_name, 0
         ) + float(a.valor_atual)
 
     allocation_labels = list(allocation_by_class.keys())
     allocation_values = list(allocation_by_class.values())
+    category_labels = list(allocation_by_category.keys())
+    category_values = list(allocation_by_category.values())
+
+    # Top 5 ativos by value
+    ativos_with_value = list(ativos)
+    ativos_with_value.sort(key=lambda x: x.valor_atual, reverse=True)
+    top_5_ativos = ativos_with_value[:5]
+
+    # Última transação
+    ultima_transacao = (
+        Transacao.objects.filter(ativo__usuario=request.user).order_by("-data").first()
+    )
+
+    # Próximos vencimentos (Renda Fixa com data_vencimento nos próximos 90 dias)
+    today = date.today()
+    limit_date = today + timedelta(days=90)
+    proximos_vencimentos = (
+        Ativo.objects.filter(
+            usuario=request.user,
+            ativo=True,
+            data_vencimento__gte=today,
+            data_vencimento__lte=limit_date,
+        )
+        .select_related("subcategoria__categoria__classe")
+        .order_by("data_vencimento")[:5]
+    )
 
     context = {
         "ativos": ativos,
         "total_patrimonio": total_patrimonio,
         "allocation_labels": allocation_labels,
         "allocation_values": allocation_values,
+        "allocation_data": list(zip(allocation_labels, allocation_values)),
+        "category_labels": category_labels,
+        "category_values": category_values,
+        "category_data": list(zip(category_labels, category_values)),
+        "top_5_ativos": top_5_ativos,
+        "ultima_transacao": ultima_transacao,
+        "proximos_vencimentos": proximos_vencimentos,
     }
     return render(request, "investimento/dashboard.html", context)
 
@@ -117,7 +159,28 @@ def ativo_criar(request):
         form.process_initial_position(ativo)  # Processa transação inicial
         messages.success(request, "Ativo criado com sucesso!")
         return redirect("investimento:ativo_listar")
-    return render(request, "ativo_form.html", {"form": form})
+
+    # Build Hierarchy Data for Dependent Dropdowns
+    classes = ClasseAtivo.objects.filter(usuario=request.user).prefetch_related(
+        "categorias__subcategorias"
+    )
+    hierarchy = []
+    for c in classes:
+        cats_data = []
+        for cat in c.categorias.all():
+            subs_data = []
+            for sub in cat.subcategorias.all():
+                subs_data.append({"id": sub.id, "nome": sub.nome})
+            cats_data.append(
+                {"id": cat.id, "nome": cat.nome, "subcategorias": subs_data}
+            )
+        hierarchy.append({"id": c.id, "nome": c.nome, "categorias": cats_data})
+
+    return render(
+        request,
+        "ativo_form.html",
+        {"form": form, "hierarchy_data": hierarchy},
+    )
 
 
 @login_required
@@ -133,7 +196,28 @@ def ativo_editar(request, pk):
         form.save()
         messages.success(request, "Ativo atualizado!")
         return redirect("investimento:ativo_listar")
-    return render(request, "ativo_form.html", {"form": form})
+
+    # Build Hierarchy Data for Dependent Dropdowns
+    classes = ClasseAtivo.objects.filter(usuario=request.user).prefetch_related(
+        "categorias__subcategorias"
+    )
+    hierarchy = []
+    for c in classes:
+        cats_data = []
+        for cat in c.categorias.all():
+            subs_data = []
+            for sub in cat.subcategorias.all():
+                subs_data.append({"id": sub.id, "nome": sub.nome})
+            cats_data.append(
+                {"id": cat.id, "nome": cat.nome, "subcategorias": subs_data}
+            )
+        hierarchy.append({"id": c.id, "nome": c.nome, "categorias": cats_data})
+
+    return render(
+        request,
+        "ativo_form.html",
+        {"form": form, "hierarchy_data": hierarchy},
+    )
 
 
 @login_required
