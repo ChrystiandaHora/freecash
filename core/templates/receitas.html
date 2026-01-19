@@ -14,7 +14,7 @@
         </div>
         Receitas
       </h1>
-      <p class="mt-2 text-gray-500 dark:text-slate-400 text-sm">Gerencie suas entradas e acompanhe seus ganhos.</p>
+      <p class="mt-2 text-gray-500 dark:text-slate-300 text-sm">Gerencie suas entradas e acompanhe seus ganhos.</p>
     </div>
 
     <div class="flex gap-3">
@@ -34,7 +34,7 @@
     <!-- Total Receitas -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Receitas ({{ kpi_periodo }})</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Receitas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ {{ total_receitas|floatformat:2 }}</span>
       </div>
@@ -47,7 +47,7 @@
     <!-- Registros -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Número de Receitas ({{ kpi_periodo }})</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Número de Receitas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ receitas_count }}</span>
         <span class="text-sm text-gray-400 dark:text-slate-500">registros</span>
@@ -60,7 +60,7 @@
      <!-- Dica -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-amber-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl group-hover:bg-amber-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Dica Financeira</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Dica Financeira</p>
       <div class="mt-2">
          <p class="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">Mantenha suas receitas categorizadas para entender melhor suas fontes de renda no dashboard.</p>
       </div>
@@ -96,7 +96,7 @@
             <button type="submit" class="px-5 py-2.5 rounded-xl bg-gray-800 dark:bg-slate-800 hover:bg-gray-700 dark:hover:bg-slate-700 border border-gray-700 dark:border-slate-700 text-white dark:text-slate-300 transition-colors font-medium text-sm">
                 Filtrar
             </button>
-            <a href="{% url 'receitas' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <a href="{% url 'receitas' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
             </a>
         </div>
@@ -109,7 +109,7 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Últimas Receitas
             </h2>
-             <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-400">
+             <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-300">
                 {{ page_obj.paginator.count }}
             </span>
       </div>
@@ -124,7 +124,7 @@
             <div class="flex items-center justify-between gap-4">
                 <!-- Icon & Info -->
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-slate-950 border border-emerald-100 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-slate-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 dark:group-hover:border-slate-600 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-slate-950 border border-emerald-100 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-slate-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 group-hover:border-emerald-200 dark:group-hover:border-slate-600 transition-colors">
                         <i class="fa-solid fa-coins text-lg"></i>
                     </div>
                     <div>
@@ -134,7 +134,7 @@
                                 <i class="fa-regular fa-calendar"></i> {{ r.data_realizacao|date:"d/m/Y" }}
                             </span>
                              {% if r.categoria %}
-                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/50">
+                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-300 border border-gray-200 dark:border-slate-700/50">
                                 {{ r.categoria.nome }}
                             </span>
                             {% endif %}
@@ -154,7 +154,7 @@
             <div class="inline-flex p-4 rounded-full bg-gray-100 dark:bg-slate-900 mb-3">
                 <i class="fa-solid fa-piggy-bank text-gray-400 dark:text-slate-500 text-2xl"></i>
             </div>
-            <p class="text-gray-500 dark:text-slate-400 font-medium">Nenhuma receita encontrada</p>
+            <p class="text-gray-500 dark:text-slate-300 font-medium">Nenhuma receita encontrada</p>
             <p class="text-gray-400 dark:text-slate-600 text-sm">Cadastre suas entradas para começar.</p>
              <a href="{% url 'receita_nova' %}" class="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-600/10 text-emerald-600 dark:text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-600/20 transition-colors text-sm font-semibold">
                 Cadastrar agora

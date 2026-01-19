@@ -8,7 +8,7 @@
     <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
       Editar Forma de Pagamento
     </h1>
-    <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">
+    <p class="mt-2 text-sm text-gray-500 dark:text-slate-300">
       Atualize o nome e o status da forma de pagamento.
     </p>
   </div>
@@ -25,7 +25,7 @@
             </div>
             <div>
               <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ forma.nome }}</h2>
-              <p class="text-sm text-gray-500 dark:text-slate-400">ID #{{ forma.id }}</p>
+              <p class="text-sm text-gray-500 dark:text-slate-300">ID #{{ forma.id }}</p>
             </div>
           </div>
         </div>
@@ -47,7 +47,7 @@
             <div class="flex items-center justify-between rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 px-4 py-3">
               <div>
                 <p class="text-sm font-semibold text-gray-900 dark:text-white">Status Ativa</p>
-                <p class="text-xs text-gray-500 dark:text-slate-400">Se desativar, ela não aparece para seleção em novos lançamentos.</p>
+                <p class="text-xs text-gray-500 dark:text-slate-300">Se desativar, ela não aparece para seleção em novos lançamentos.</p>
               </div>
 
               <label class="relative inline-flex items-center cursor-pointer">
@@ -82,19 +82,19 @@
           </div>
           <h3 class="font-semibold text-gray-900 dark:text-white">Dica</h3>
         </div>
-        <p class="text-sm text-gray-600 dark:text-slate-400">
+        <p class="text-sm text-gray-600 dark:text-slate-300">
           Formas de pagamento são usadas para categorizar suas transações e facilitar a análise de gastos.
         </p>
       </div>
 
       <a href="{% url 'formas_pagamento' %}"
          class="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
           <i class="fa-solid fa-arrow-left"></i>
         </div>
         <div>
           <h3 class="font-semibold text-gray-900 dark:text-white">Voltar</h3>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Ver todas as formas</p>
+          <p class="text-xs text-gray-500 dark:text-slate-300">Ver todas as formas</p>
         </div>
       </a>
     </div>

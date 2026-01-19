@@ -58,7 +58,7 @@ Variables:
         <!-- Previous Arrow -->
         {% if page.has_previous %}
           <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.previous_page_number }}{{ anchor }}"
-             class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-500 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
+             class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-500 dark:text-slate-300 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
             <span class="sr-only">Anterior</span>
             <i class="fa-solid fa-chevron-left text-sm" aria-hidden="true"></i>
           </a>
@@ -85,11 +85,11 @@ Variables:
                 </a>
               {% endif %}
             {% elif num == 2 and current > 3 %}
-              <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600">
+              <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 ring-1 ring-inset ring-gray-300 dark:ring-slate-600">
                 ...
               </span>
             {% elif num == total|add:"-1" and current < total|add:"-2" %}
-              <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600">
+              <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 ring-1 ring-inset ring-gray-300 dark:ring-slate-600">
                 ...
               </span>
             {% endif %}
@@ -99,7 +99,7 @@ Variables:
         <!-- Next Arrow -->
         {% if page.has_next %}
           <a href="?{% if qs %}{{ qs }}&{% endif %}{{ param }}={{ page.next_page_number }}{{ anchor }}"
-             class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-500 dark:text-slate-400 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
+             class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-500 dark:text-slate-300 ring-1 ring-inset ring-gray-300 dark:ring-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 focus:z-20 focus:outline-offset-0">
             <span class="sr-only">Próxima</span>
             <i class="fa-solid fa-chevron-right text-sm" aria-hidden="true"></i>
           </a>

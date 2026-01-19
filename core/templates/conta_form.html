@@ -26,9 +26,19 @@
       <!-- Header -->
       <div class="text-center space-y-2">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-            {% if conta %}Editar Lançamento{% else %}Novo Lançamento{% endif %}
+            {% if tipo == 'receita' %}
+                {% if conta %}Editar Receita{% else %}Nova Receita{% endif %}
+            {% else %}
+                {% if conta %}Editar Conta{% else %}Nova Conta{% endif %}
+            {% endif %}
         </h1>
-        <p class="text-gray-500 dark:text-slate-400">Preencha os dados da sua transação financeira.</p>
+        <p class="text-gray-500 dark:text-slate-400">
+            {% if tipo == 'receita' %}
+                Registre suas entradas de dinheiro.
+            {% else %}
+                Registre suas despesas e contas a pagar.
+            {% endif %}
+        </p>
       </div>
 
       <!-- Errors (Django messages are handled in base.html, but if manual errors passed in context?) -->
@@ -76,33 +86,21 @@
             </div>
         </div>
 
-        <!-- Row: Categoria & Forma -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div class="space-y-1.5">
-                <label for="categoria" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Categoria</label>
-                <select name="categoria" id="categoria" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                    <option value="">Selecione...</option>
-                    {% for cat in categorias %}
-                        <option value="{{ cat.id }}" {% if conta.categoria_id == cat.id %}selected{% endif %}>{{ cat.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="space-y-1.5">
-                <label for="forma_pagamento" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
-                <select name="forma_pagamento" id="forma_pagamento" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                    <option value="">Selecione...</option>
-                    {% for f in formas %}
-                        <option value="{{ f.id }}" {% if conta.forma_pagamento_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+        <!-- Forma de Pagamento (full width since category is auto-set by form type) -->
+        <div class="space-y-1.5">
+            <label for="forma_pagamento" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
+            <select name="forma_pagamento" id="forma_pagamento" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <option value="">Selecione...</option>
+                {% for f in formas %}
+                    <option value="{{ f.id }}" {% if conta.forma_pagamento_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div class="border-t border-gray-100 dark:border-slate-800 my-6"></div>
 
-        <!-- Advanced Options (Recurrence) -->
-        {% if not conta %} <!-- Only show for new items -->
+        <!-- Advanced Options (Recurrence) - Only for new Despesas -->
+        {% if not conta and tipo != 'receita' %}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             
             <!-- Parcelado Card -->

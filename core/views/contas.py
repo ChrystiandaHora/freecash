@@ -202,6 +202,12 @@ class CadastrarContaPagarView(View):
             request.POST.get("numero_multiplicacoes") or ""
         ).strip()
 
+        # Pago checkbox
+        pago = (request.POST.get("pago") or "").strip() == "on"
+
+        # Categoria (user selection)
+        categoria_id = (request.POST.get("categoria") or "").strip()
+
         if not descricao or not valor_raw or not data_prevista_raw:
             messages.error(request, "Preencha todos os campos obrigatórios.")
             return redirect("contas_pagar")
@@ -244,9 +250,14 @@ class CadastrarContaPagarView(View):
             else None
         )
 
-        categoria_padrao = Categoria.objects.filter(
-            usuario=usuario, tipo=Categoria.TIPO_DESPESA
-        ).first()
+        # FK categoria (user selection, fallback to default)
+        categoria = (
+            Categoria.objects.filter(id=categoria_id, usuario=usuario).first()
+            if categoria_id.isdigit()
+            else Categoria.objects.filter(
+                usuario=usuario, tipo=Categoria.TIPO_DESPESA
+            ).first()
+        )
 
         def add_months(d: date, months: int) -> date:
             y = d.year + (d.month - 1 + months) // 12
@@ -280,11 +291,10 @@ class CadastrarContaPagarView(View):
                             descricao=descricao,
                             valor=valor_total,
                             data_prevista=venc,
-                            transacao_realizada=False,
-                            data_realizacao=None,
-                            categoria=categoria_padrao,
+                            transacao_realizada=pago,
+                            data_realizacao=venc if pago else None,
+                            categoria=categoria,
                             forma_pagamento=forma_pagamento,
-                            # não é parcelado
                             eh_parcelada=False,
                             parcela_numero=None,
                             parcela_total=None,
@@ -320,9 +330,9 @@ class CadastrarContaPagarView(View):
                     descricao=descricao,
                     valor=cents_to_decimal(cents_1),
                     data_prevista=data_prevista,
-                    transacao_realizada=False,
-                    data_realizacao=None,
-                    categoria=categoria_padrao,
+                    transacao_realizada=pago,
+                    data_realizacao=data_prevista if pago else None,
+                    categoria=categoria,
                     forma_pagamento=forma_pagamento,
                     eh_parcelada=True,
                     parcela_numero=1,
@@ -346,9 +356,9 @@ class CadastrarContaPagarView(View):
                             descricao=descricao,
                             valor=cents_to_decimal(cents),
                             data_prevista=venc,
-                            transacao_realizada=False,
-                            data_realizacao=None,
-                            categoria=categoria_padrao,
+                            transacao_realizada=pago,
+                            data_realizacao=venc if pago else None,
+                            categoria=categoria,
                             forma_pagamento=forma_pagamento,
                             eh_parcelada=True,
                             parcela_numero=i,
@@ -370,9 +380,9 @@ class CadastrarContaPagarView(View):
             descricao=descricao,
             valor=valor_total,
             data_prevista=data_prevista,
-            transacao_realizada=False,
-            data_realizacao=None,
-            categoria=categoria_padrao,
+            transacao_realizada=pago,
+            data_realizacao=data_prevista if pago else None,
+            categoria=categoria,
             forma_pagamento=forma_pagamento,
             eh_parcelada=False,
             parcela_numero=None,
@@ -397,7 +407,12 @@ class ContaCreateView(View):
         return render(
             request,
             self.template_name,
-            {"categorias": categorias, "formas": formas, "modo": "create"},
+            {
+                "categorias": categorias,
+                "formas": formas,
+                "modo": "create",
+                "tipo": "despesa",
+            },
         )
 
     def post(self, request):
@@ -424,6 +439,7 @@ class ContaUpdateView(View):
                 "categorias": categorias,
                 "formas": formas,
                 "modo": "edit",
+                "tipo": "receita" if conta.tipo == Conta.TIPO_RECEITA else "despesa",
             },
         )
 
@@ -432,6 +448,9 @@ class ContaUpdateView(View):
         conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
         aplicar_grupo = (request.POST.get("aplicar_grupo") or "").strip() == "1"
+
+        # Pago checkbox
+        pago = (request.POST.get("pago") or "").strip() == "on"
 
         descricao = (request.POST.get("descricao") or "").strip()
 
@@ -504,6 +523,8 @@ class ContaUpdateView(View):
         conta.data_prevista = data_prevista
         conta.categoria = categoria
         conta.forma_pagamento = forma_pagamento
+        conta.transacao_realizada = pago
+        conta.data_realizacao = data_prevista if pago else None
         conta.save()
 
         messages.success(request, "Conta atualizada com sucesso.")
