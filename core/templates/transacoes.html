@@ -14,7 +14,7 @@
         </div>
         Transações
       </h1>
-      <p class="mt-2 text-gray-500 dark:text-slate-400 text-sm">Histórico completo de toda sua movimentação financeira.</p>
+      <p class="mt-2 text-gray-500 dark:text-slate-300 text-sm">Histórico completo de toda sua movimentação financeira.</p>
     </div>
 
     <!-- Quick Stats (Mini) -->
@@ -65,7 +65,7 @@
             <button type="submit" class="px-5 py-2.5 rounded-xl bg-gray-800 dark:bg-slate-800 hover:bg-gray-700 dark:hover:bg-slate-700 border border-gray-700 dark:border-slate-700 text-white dark:text-slate-300 transition-colors font-medium text-sm">
                 Filtrar
             </button>
-            <a href="{% url 'transacoes' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <a href="{% url 'transacoes' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
             </a>
         </div>
@@ -110,7 +110,7 @@
                 <!-- Main Info -->
                 <div class="flex items-start sm:items-center gap-4">
                     <!-- Date Box -->
-                    <div class="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400">
+                    <div class="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-300">
                         <span class="text-[10px] uppercase font-bold">{{ t.data_realizacao|date:"M" }}</span>
                         <span class="text-lg font-bold text-gray-900 dark:text-white leading-none">{{ t.data_realizacao|date:"d" }}</span>
                     </div>
@@ -120,7 +120,7 @@
                         <div class="flex flex-wrap items-center gap-2 mt-1">
                             <span class="text-xs text-gray-400 dark:text-slate-500">ID #{{ t.id }}</span>
                              {% if t.categoria %}
-                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/50">
+                            <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-300 border border-gray-200 dark:border-slate-700/50">
                                 {{ t.categoria.nome }}
                             </span>
                             {% endif %}
@@ -149,7 +149,7 @@
             <div class="inline-flex p-4 rounded-full bg-gray-100 dark:bg-slate-900 mb-3">
                 <i class="fa-solid fa-receipt text-gray-400 dark:text-slate-500 text-2xl"></i>
             </div>
-            <p class="text-gray-500 dark:text-slate-400 font-medium">Nenhuma transação encontrada</p>
+            <p class="text-gray-500 dark:text-slate-300 font-medium">Nenhuma transação encontrada</p>
             <p class="text-gray-400 dark:text-slate-600 text-sm">Tente ajustar os filtros ou o período.</p>
         </div>
         {% endfor %}

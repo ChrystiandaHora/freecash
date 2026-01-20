@@ -9,7 +9,7 @@
     <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
       Formas de Pagamento
     </h1>
-    <p class="mt-2 text-sm text-gray-500 dark:text-slate-400">
+    <p class="mt-2 text-sm text-gray-500 dark:text-slate-300">
       Cadastre e gerencie as formas utilizadas nas transações e contas.
     </p>
   </div>
@@ -27,7 +27,7 @@
               </div>
               <div>
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">Lista de Formas</h2>
-                <p class="text-sm text-gray-500 dark:text-slate-400">{{ formas|length }} cadastrada(s)</p>
+                <p class="text-sm text-gray-500 dark:text-slate-300">{{ formas|length }} cadastrada(s)</p>
               </div>
             </div>
 
@@ -47,7 +47,7 @@
         <div class="overflow-x-auto">
           <table class="min-w-full">
             <thead class="bg-gray-50 dark:bg-slate-700/50">
-              <tr class="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              <tr class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider">
                 <th class="px-6 py-3">Nome</th>
                 <th class="px-6 py-3">Status</th>
                 <th class="px-6 py-3 text-right">Ações</th>
@@ -65,7 +65,7 @@
                     </div>
                     <div>
                       <div class="font-semibold text-gray-900 dark:text-white">{{ f.nome }}</div>
-                      <div class="text-xs text-gray-500 dark:text-slate-400">ID #{{ f.id }}</div>
+                      <div class="text-xs text-gray-500 dark:text-slate-300">ID #{{ f.id }}</div>
                     </div>
                   </div>
                 </td>
@@ -76,7 +76,7 @@
                     <i class="fa-solid fa-check-circle mr-1.5"></i> Ativa
                   </span>
                   {% else %}
-                  <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
+                  <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-gray-500 dark:text-slate-300">
                     <i class="fa-solid fa-minus-circle mr-1.5"></i> Inativa
                   </span>
                   {% endif %}
@@ -97,7 +97,7 @@
                       <i class="fa-solid fa-wallet text-2xl"></i>
                     </div>
                     <p class="text-sm font-semibold text-gray-900 dark:text-white">Nenhuma forma cadastrada</p>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Use o formulário ao lado para criar uma.</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-slate-300">Use o formulário ao lado para criar uma.</p>
                   </div>
                 </td>
               </tr>
@@ -118,7 +118,7 @@
           </div>
           <div>
             <h3 class="font-semibold text-gray-900 dark:text-white">Nova Forma</h3>
-            <p class="text-xs text-gray-500 dark:text-slate-400">Ex: Pix, Cartão, Boleto</p>
+            <p class="text-xs text-gray-500 dark:text-slate-300">Ex: Pix, Cartão, Boleto</p>
           </div>
         </div>
 
@@ -148,7 +148,7 @@
           </div>
           <h3 class="font-semibold text-gray-900 dark:text-white">Dica</h3>
         </div>
-        <p class="text-sm text-gray-600 dark:text-slate-400">
+        <p class="text-sm text-gray-600 dark:text-slate-300">
           Formas de pagamento ajudam a categorizar suas transações e analisar como você movimenta seu dinheiro.
         </p>
       </div>
@@ -163,11 +163,11 @@
         </div>
         <div class="space-y-2 text-sm">
           <div class="flex justify-between">
-            <span class="text-gray-500 dark:text-slate-400">Total</span>
+            <span class="text-gray-500 dark:text-slate-300">Total</span>
             <span class="font-semibold text-gray-900 dark:text-white">{{ formas|length }}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-gray-500 dark:text-slate-400">Ativas</span>
+            <span class="text-gray-500 dark:text-slate-300">Ativas</span>
             <span class="font-semibold text-emerald-600 dark:text-emerald-400">
               {% with ativas=formas|dictsort:"ativa"|last %}{{ formas|length }}{% endwith %}
             </span>

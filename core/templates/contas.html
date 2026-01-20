@@ -14,7 +14,7 @@
         </div>
         Contas a Pagar
       </h1>
-      <p class="mt-2 text-gray-500 dark:text-slate-400 text-sm">Gerencie seus compromissos financeiros e evite atrasos.</p>
+      <p class="mt-2 text-gray-500 dark:text-slate-300 text-sm">Gerencie seus compromissos financeiros e evite atrasos.</p>
     </div>
 
     <div class="flex gap-3">
@@ -34,7 +34,7 @@
     <!-- Total Pendente -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-rose-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Total Pendente ({{ kpi_periodo }})</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Total Pendente ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-gray-900 dark:text-white">R$ {{ total_pendente|floatformat:2 }}</span>
       </div>
@@ -47,7 +47,7 @@
     <!-- Contas em Aberto -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Em Aberto ({{ kpi_periodo }})</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Em Aberto ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pendentes_count }}</span>
         <span class="text-sm text-gray-400 dark:text-slate-500">contas</span>
@@ -60,7 +60,7 @@
      <!-- Contas Pagas Periodo -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
-      <p class="text-sm font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Pagas ({{ kpi_periodo }})</p>
+      <p class="text-sm font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Pagas ({{ kpi_periodo }})</p>
       <div class="mt-2 flex items-baseline gap-2">
         <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ pagas_count }}</span>
         <span class="text-sm text-gray-400 dark:text-slate-500">contas</span>
@@ -101,7 +101,7 @@
             <button type="submit" class="px-5 py-2.5 rounded-xl bg-gray-800 dark:bg-slate-800 hover:bg-gray-700 dark:hover:bg-slate-700 border border-gray-700 dark:border-slate-700 text-white dark:text-slate-300 transition-colors font-medium text-sm">
                 Filtrar
             </button>
-            <a href="{% url 'contas_pagar' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <a href="{% url 'contas_pagar' %}" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800/50 hover:bg-gray-200 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
             </a>
         </div>
@@ -117,7 +117,7 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-rose-500"></span> Pendentes
             </h2>
-            <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-400">
+            <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-300">
                 {{ pendentes_page.paginator.count }}
             </span>
         </div>
@@ -132,7 +132,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <!-- Icon & Info -->
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 flex items-center justify-center text-gray-400 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-white group-hover:border-gray-200 dark:group-hover:border-slate-600 transition-colors">
+                        <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-950 border border-gray-100 dark:border-slate-800 flex items-center justify-center text-gray-400 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-white group-hover:border-gray-200 dark:group-hover:border-slate-600 transition-colors">
                             <i class="fa-solid fa-file-invoice text-lg"></i>
                         </div>
                         <div>
@@ -142,7 +142,7 @@
                                     <i class="fa-regular fa-calendar"></i> {{ c.data_prevista|date:"d/m" }}
                                 </span>
                                 {% if c.categoria %}
-                                <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/50">
+                                <span class="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-gray-500 dark:text-slate-300 border border-gray-200 dark:border-slate-700/50">
                                     {{ c.categoria.nome }}
                                 </span>
                                 {% endif %}
@@ -167,7 +167,7 @@
                 <div class="inline-flex p-4 rounded-full bg-gray-100 dark:bg-slate-900 mb-3">
                     <i class="fa-regular fa-face-smile text-gray-400 dark:text-slate-500 text-2xl"></i>
                 </div>
-                <p class="text-gray-600 dark:text-slate-400 font-medium">Tudo em dia por aqui!</p>
+                <p class="text-gray-600 dark:text-slate-300 font-medium">Tudo em dia por aqui!</p>
                 <p class="text-gray-500 dark:text-slate-600 text-sm">Nenhuma conta pendente encontrada.</p>
             </div>
             {% endfor %}
@@ -184,7 +184,7 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Pagas
             </h2>
-             <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-400">
+             <span class="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs font-medium text-gray-600 dark:text-slate-300">
                 {{ pagas_page.paginator.count }}
             </span>
         </div>
@@ -210,7 +210,7 @@
                         </div>
                     </div>
                      <div class="text-right">
-                        <p class="font-medium text-gray-500 dark:text-slate-400 group-hover:text-gray-700 dark:group-hover:text-slate-200">R$ {{ c.valor|floatformat:2 }}</p>
+                        <p class="font-medium text-gray-500 dark:text-slate-300 group-hover:text-gray-700 dark:group-hover:text-slate-200">R$ {{ c.valor|floatformat:2 }}</p>
                     </div>
                 </div>
             </div>

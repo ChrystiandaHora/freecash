@@ -159,9 +159,9 @@ class ReceitaCreateView(View):
                 "formas": formas,
                 "modo": "create",
                 "titulo": "Nova Receita",
-                # Passamos um objeto vazio ou dicionario para evitar erro no template se ele tentar acessar conta
                 "conta": None,
-                "is_receita": True,  # Flag util se precisarmos customizar o texto no template
+                "is_receita": True,
+                "tipo": "receita",
             },
         )
 
@@ -385,6 +385,8 @@ class ReceitaUpdateView(View):
                 "formas": formas,
                 "modo": "edit",
                 "titulo": "Editar Receita",
+                "is_receita": True,
+                "tipo": "receita",
             },
         )
 
@@ -403,6 +405,9 @@ class ReceitaUpdateView(View):
             or request.POST.get("data_realizacao")
             or ""
         )
+
+        # Pago checkbox
+        pago = (request.POST.get("pago") or "").strip() == "on"
 
         try:
             valor_norm = (
@@ -436,9 +441,9 @@ class ReceitaUpdateView(View):
         # Para receitas, usamos data_prevista = data_realizacao
         if data_input:
             conta.data_prevista = data_input
-            conta.data_realizacao = data_input
+            conta.data_realizacao = data_input if pago else None
 
-        conta.transacao_realizada = True
+        conta.transacao_realizada = pago
         conta.categoria = categoria
         conta.forma_pagamento = forma_pagamento
         conta.save()

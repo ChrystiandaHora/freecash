@@ -26,17 +26,17 @@
     <!-- Ativo Info -->
     <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 text-left">
       <div class="flex items-center justify-between text-sm">
-        <span class="text-gray-500 dark:text-slate-400">Ticker:</span>
+        <span class="text-gray-500 dark:text-slate-300">Ticker:</span>
         <span class="font-semibold text-gray-900 dark:text-white">{{ ativo.ticker }}</span>
       </div>
       {% if ativo.nome %}
       <div class="flex items-center justify-between text-sm mt-2">
-        <span class="text-gray-500 dark:text-slate-400">Nome:</span>
+        <span class="text-gray-500 dark:text-slate-300">Nome:</span>
         <span class="text-gray-900 dark:text-white">{{ ativo.nome }}</span>
       </div>
       {% endif %}
       <div class="flex items-center justify-between text-sm mt-2">
-        <span class="text-gray-500 dark:text-slate-400">Quantidade:</span>
+        <span class="text-gray-500 dark:text-slate-300">Quantidade:</span>
         <span class="text-gray-900 dark:text-white tabular-nums">{{ ativo.quantidade|floatformat:4 }}</span>
       </div>
     </div>
