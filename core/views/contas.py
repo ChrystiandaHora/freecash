@@ -576,6 +576,7 @@ class MarcarContaPagaView(View):
         data_pagamento = (request.POST.get("data_pagamento") or "").strip()
         conta.transacao_realizada = True
         conta.data_realizacao = data_pagamento or hoje
+        conta.atualizada_em = timezone.now()  # Força atualização para ordenação
         conta.save(
             update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
