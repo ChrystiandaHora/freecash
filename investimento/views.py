@@ -1,8 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, F
 from django.contrib import messages
-from .models import Ativo, Transacao, ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo
+from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
 from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
 
 
@@ -97,6 +96,12 @@ def dashboard(request):
     ativos_with_value = list(ativos)
     ativos_with_value.sort(key=lambda x: x.valor_atual, reverse=True)
     top_5_ativos = ativos_with_value[:5]
+
+    for a in top_5_ativos:
+        if total_patrimonio > 0:
+            a.percentual = (float(a.valor_atual) / float(total_patrimonio)) * 100
+        else:
+            a.percentual = 0
 
     # Última transação
     ultima_transacao = (
