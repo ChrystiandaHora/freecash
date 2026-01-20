@@ -123,6 +123,65 @@
     </div>
   </div>
 
+    <!-- Upcoming Bills -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Próximas Contas</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Vencimentos futuros</p>
+      </div>
+      <a href="{% url 'contas_pagar' %}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium">
+        Ver todas <i class="fa-solid fa-arrow-right ml-1"></i>
+      </a>
+    </div>
+    {% if upcoming_bills %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {% for c in upcoming_bills %}
+      <a href="{% url 'conta_editar' c.id %}" 
+         class="block p-3 rounded-xl border transition-all duration-200
+                {% if c.esta_atrasada %}
+                  bg-rose-50/40 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900/30 hover:shadow-md hover:shadow-rose-500/10
+                {% elif c.data_prevista == hoje %}
+                  bg-amber-50/40 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30 hover:shadow-md hover:shadow-amber-500/10
+                {% else %}
+                  bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 shadow-sm
+                {% endif %}">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-emerald-600 transition-colors">{{ c.descricao }}</p>
+            <p class="text-xs mt-1
+              {% if c.esta_atrasada %}text-rose-700 dark:text-rose-400 font-bold
+              {% elif c.data_prevista == hoje %}text-amber-700 dark:text-amber-400 font-bold
+              {% else %}text-gray-500 dark:text-slate-400{% endif %}">
+              <i class="fa-solid 
+                {% if c.esta_atrasada %}fa-calendar-xmark
+                {% elif c.data_prevista == hoje %}fa-calendar-day
+                {% else %}fa-calendar{% endif %} mr-1"></i>
+              {{ c.data_prevista|date:"d/m" }}
+              {% if c.data_prevista == hoje %}<span class="ml-1 uppercase text-[10px] bg-amber-100 dark:bg-amber-500/20 px-1 rounded">Hoje</span>{% endif %}
+            </p>
+          </div>
+          <p class="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">R$ {{ c.valor|floatformat:2 }}</p>
+        </div>
+        {% if c.categoria %}
+        <span class="inline-block mt-2 px-2 py-0.5 text-[10px] rounded-full font-medium border
+          {% if c.esta_atrasada %}bg-rose-100/50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border-rose-200/50 dark:border-rose-800/50
+          {% elif c.data_prevista == hoje %}bg-amber-100/50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200/50 dark:border-amber-800/50
+          {% else %}bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400 border-transparent{% endif %}">
+          {{ c.categoria.nome|truncatechars:15 }}
+        </span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-8 text-gray-400 dark:text-slate-500">
+      <i class="fa-regular fa-calendar-check text-3xl mb-2 opacity-30"></i>
+      <p class="text-sm">Nenhuma conta pendente</p>
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Charts Grid -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <!-- Main Chart: 6-Month Bar Chart (spans 2 columns) -->
@@ -208,46 +267,6 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Upcoming Bills -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Próximas Contas</h2>
-        <p class="text-xs text-gray-500 dark:text-slate-400">Vencimentos futuros</p>
-      </div>
-      <a href="{% url 'contas_pagar' %}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium">
-        Ver todas <i class="fa-solid fa-arrow-right ml-1"></i>
-      </a>
-    </div>
-    {% if upcoming_bills %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-      {% for c in upcoming_bills %}
-      <a href="{% url 'conta_editar' c.id %}" class="block p-3 rounded-xl border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ c.descricao }}</p>
-            <p class="text-xs {% if c.esta_atrasada %}text-rose-500 font-semibold{% else %}text-gray-500 dark:text-slate-400{% endif %} mt-0.5">
-              <i class="fa-regular {% if c.esta_atrasada %}fa-calendar-xmark{% else %}fa-calendar{% endif %} mr-1"></i>{{ c.data_prevista|date:"d/m" }}
-            </p>
-          </div>
-          <p class="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">R$ {{ c.valor|floatformat:2 }}</p>
-        </div>
-        {% if c.categoria %}
-        <span class="inline-block mt-2 px-2 py-0.5 text-[10px] rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400">
-          {{ c.categoria.nome|truncatechars:12 }}
-        </span>
-        {% endif %}
-      </a>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="flex flex-col items-center justify-center py-8 text-gray-400 dark:text-slate-500">
-      <i class="fa-regular fa-calendar-check text-3xl mb-2 opacity-30"></i>
-      <p class="text-sm">Nenhuma conta pendente</p>
-    </div>
-    {% endif %}
   </div>
 
   <!-- Quick Links -->

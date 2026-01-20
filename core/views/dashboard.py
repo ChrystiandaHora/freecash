@@ -470,6 +470,7 @@ class DashboardView(View):
         contexto = {
             "periodo": periodo.idx,
             "periodo_label": periodo.label,
+            "hoje": hoje,
             "total_receitas": total_receitas,
             "saldo_pct": saldo_pct,
             "total_despesas": total_despesas,

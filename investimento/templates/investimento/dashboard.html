@@ -228,7 +228,7 @@
         </a>
       </div>
 
-      <div class="overflow-x-auto max-h-96">
+      <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50 dark:bg-slate-700/50 sticky top-0">
             <tr>
@@ -240,7 +240,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-            {% for ativo in ativos %}
+            {% for ativo in ativos_page %}
             <tr class="hover:bg-gray-50/60 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'">
               <td class="px-5 py-3">
                 <div>
@@ -290,7 +290,11 @@
         </table>
       </div>
       
-      {% if ativos %}
+      {% if ativos_page.paginator.num_pages > 1 %}
+        {% include "_pagination.html" with page=ativos_page %}
+      {% endif %}
+
+      {% if ativos_page %}
       <div class="px-5 py-3 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/30">
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-500 dark:text-slate-300">{{ ativos|length }} ativo{{ ativos|length|pluralize:"s" }}</span>

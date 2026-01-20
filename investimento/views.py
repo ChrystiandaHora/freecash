@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.contrib import messages
 from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
 from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
@@ -122,8 +123,15 @@ def dashboard(request):
         .order_by("data_vencimento")[:5]
     )
 
+    # Prepare for pagination of the full list
+    # Use request.GET.get('page') or 1
+    paginator = Paginator(ativos, 5)
+    page_number = request.GET.get("page")
+    ativos_page = paginator.get_page(page_number)
+
     context = {
-        "ativos": ativos,
+        "ativos": ativos,  # Keep full list for charts
+        "ativos_page": ativos_page,  # Paginated list for table
         "total_patrimonio": total_patrimonio,
         "allocation_labels": allocation_labels,
         "allocation_values": allocation_values,
