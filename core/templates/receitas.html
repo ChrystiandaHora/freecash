@@ -17,15 +17,26 @@
       <p class="mt-2 text-gray-500 dark:text-slate-300 text-sm">Gerencie suas entradas e acompanhe seus ganhos.</p>
     </div>
 
-    <div class="flex gap-3">
-       <a href="{% url 'transacoes' %}?tipo=receita" class="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800/50 hover:bg-gray-50 dark:hover:bg-slate-700/50 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 text-gray-600 dark:text-slate-300 transition-all flex items-center gap-2 backdrop-blur-sm">
+    <div class="flex items-center gap-4">
+      <!-- Visão -->
+      <a href="{% url 'transacoes' %}?tipo=receita" class="group p-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center gap-2" title="Ver em Transações">
         <i class="fa-solid fa-list-ul"></i>
-        <span>Ver em Transações</span>
       </a>
-      <a href="{% url 'receita_nova' %}" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all flex items-center gap-2">
-        <i class="fa-solid fa-plus"></i>
-        Nova Receita
-      </a>
+
+      <!-- Divisor -->
+      <div class="h-8 w-px bg-gray-200 dark:bg-slate-700"></div>
+
+      <!-- Ações -->
+      <div class="flex gap-2">
+        <a href="{% url 'receita_lote' %}" class="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 text-gray-700 dark:text-slate-300 font-medium transition-all flex items-center gap-2 hover:shadow-sm">
+          <i class="fa-solid fa-layer-group text-gray-400 dark:text-slate-500"></i>
+          <span>Lote</span>
+        </a>
+        <a href="{% url 'receita_nova' %}" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all flex items-center gap-2 hover:-translate-y-0.5 transform">
+          <i class="fa-solid fa-plus"></i>
+          Nova Receita
+        </a>
+      </div>
     </div>
   </div>
 

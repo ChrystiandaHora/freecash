@@ -33,6 +33,7 @@ from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutView
 from core.views.receitas import ReceitasView, ReceitaUpdateView, ReceitaCreateView
 from core.views.transacoes import TransacoesView
+from core.views.lote import ContaLoteCreateView, ReceitaLoteCreateView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -61,6 +62,7 @@ urlpatterns += [
     path("transacoes/", TransacoesView.as_view(), name="transacoes"),
     path("receitas/", ReceitasView.as_view(), name="receitas"),
     path("receitas/nova/", ReceitaCreateView.as_view(), name="receita_nova"),
+    path("receitas/lote/", ReceitaLoteCreateView.as_view(), name="receita_lote"),
     path(
         "receitas/<int:pk>/editar/", ReceitaUpdateView.as_view(), name="receita_editar"
     ),
@@ -81,4 +83,5 @@ urlpatterns += [
     path(
         "contas/<int:conta_id>/apagar/", ApagarContaView.as_view(), name="apagar_conta"
     ),
+    path("contas/lote/", ContaLoteCreateView.as_view(), name="conta_lote"),
 ]

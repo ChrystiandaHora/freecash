@@ -173,7 +173,7 @@
             {% for t in group.list %}
             <!-- List Item (Ledger Style) -->
             <div onclick="window.location='{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% elif t.tipo == 'D' %}{% url 'conta_editar' t.id %}{% else %}{% url 'ativo_list' %}{% endif %}'" 
-                 class="group relative bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 p-4 hover:bg-gray-50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer first:rounded-t-2xl last:rounded-b-2xl last:border-b-0">
+                 class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 cursor-pointer shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
                 
                 <div class="flex items-center justify-between gap-4">
                     <!-- Main Info -->

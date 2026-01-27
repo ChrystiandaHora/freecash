@@ -19,7 +19,8 @@
         <span class="text-sm font-normal text-gray-500 dark:text-slate-400">• {{ periodo_label }}</span>
       </h1>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-4">
+      <!-- Period Selector -->
       <select
         class="text-xs border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         onchange="setPeriodo(this.value)"
@@ -28,16 +29,27 @@
         <option value="1" {% if periodo == 1 %}selected{% endif %}>Mês passado</option>
         <option value="2" {% if periodo == 2 %}selected{% endif %}>Mês retrasado</option>
       </select>
-      <a href="{% url 'contas_pagar' %}" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all">
-        <i class="fa-solid fa-plus mr-1.5"></i> Nova conta
-      </a>
+
+      <!-- Divisor -->
+      <div class="h-6 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block"></div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center gap-2">
+        <a href="{% url 'receita_nova' %}" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all shadow-sm shadow-emerald-500/20">
+          <i class="fa-solid fa-plus mr-1.5"></i> Receita
+        </a>
+        <a href="{% url 'conta_nova' %}" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-500 transition-all shadow-sm shadow-rose-500/20">
+          <i class="fa-solid fa-plus mr-1.5"></i> Conta
+        </a>
+      </div>
     </div>
   </div>
 
   <!-- KPI Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
     <!-- Receitas -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
           <i class="fa-solid fa-arrow-trend-up text-white"></i>
@@ -59,7 +71,8 @@
     </div>
 
     <!-- Despesas -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-rose-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/20">
           <i class="fa-solid fa-arrow-trend-down text-white"></i>
@@ -81,7 +94,8 @@
     </div>
 
     <!-- Saldo -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
           <i class="fa-solid fa-wallet text-white"></i>
@@ -103,7 +117,8 @@
     </div>
 
     <!-- Contas Pendentes -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-purple-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl group-hover:bg-purple-500/20 transition-colors"></div>
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
           <i class="fa-regular fa-clock text-white"></i>
@@ -124,7 +139,7 @@
   </div>
 
     <!-- Upcoming Bills -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5">
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Próximas Contas</h2>
@@ -185,7 +200,7 @@
   <!-- Charts Grid -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <!-- Main Chart: 6-Month Bar Chart (spans 2 columns) -->
-    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 overflow-hidden">
+    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo de Caixa</h2>
@@ -201,7 +216,7 @@
     </div>
 
     <!-- Expense Breakdown Donut -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="mb-4">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Despesas por Categoria</h2>
         <p class="text-xs text-gray-500 dark:text-slate-400">Distribuição do período</p>
@@ -231,7 +246,7 @@
   <!-- Second Row: Daily + Status -->
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <!-- Daily Movement Chart -->
-    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 overflow-hidden">
+    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Movimento Diário</h2>
@@ -246,7 +261,7 @@
     </div>
 
     <!-- Bill Status Radial -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-5 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="mb-4">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Status das Contas</h2>
         <p class="text-xs text-gray-500 dark:text-slate-400">{{ contas_pagas|default:0|add:contas_pendentes|add:contas_atrasadas }} contas no mês</p>
@@ -271,7 +286,7 @@
 
   <!-- Quick Links -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <a href="{% url 'contas_pagar' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+    <a href="{% url 'contas_pagar' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
       <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
         <i class="fa-solid fa-file-invoice-dollar text-blue-600 dark:text-blue-400"></i>
       </div>
@@ -280,7 +295,7 @@
         <p class="text-xs text-gray-500 dark:text-slate-400">Gerenciar</p>
       </div>
     </a>
-    <a href="{% url 'receitas' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+    <a href="{% url 'receitas' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
       <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
         <i class="fa-solid fa-coins text-emerald-600 dark:text-emerald-400"></i>
       </div>
@@ -289,7 +304,7 @@
         <p class="text-xs text-gray-500 dark:text-slate-400">Gerenciar</p>
       </div>
     </a>
-    <a href="{% url 'formas_pagamento' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+    <a href="{% url 'formas_pagamento' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
       <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
         <i class="fa-solid fa-credit-card text-purple-600 dark:text-purple-400"></i>
       </div>
@@ -298,13 +313,33 @@
         <p class="text-xs text-gray-500 dark:text-slate-400">Formas</p>
       </div>
     </a>
-    <a href="{% url 'transacoes' %}" class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+    <a href="{% url 'transacoes' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
       <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
         <i class="fa-solid fa-list text-orange-600 dark:text-orange-400"></i>
       </div>
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-white">Transações</p>
         <p class="text-xs text-gray-500 dark:text-slate-400">Histórico</p>
+      </div>
+    </a>
+    <!-- Lote Contas -->
+    <a href="{% url 'conta_lote' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-layer-group text-rose-600 dark:text-rose-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Lote Contas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Cadastrar</p>
+      </div>
+    </a>
+    <!-- Lote Receitas -->
+    <a href="{% url 'receita_lote' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-layer-group text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Lote Receitas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Cadastrar</p>
       </div>
     </a>
   </div>
