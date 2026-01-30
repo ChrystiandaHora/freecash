@@ -60,18 +60,28 @@
                    class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium">
         </div>
 
-        <!-- Row: Valor & Data -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <!-- Row: Valor, Moeda & Data -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div class="space-y-1.5">
-                <label for="valor" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor (R$)</label>
+                <label for="valor" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor</label>
                 <div class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
+                    <span id="moedaSymbol" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
                     <!-- Using type="number" step="0.01" for better mobile keyboard, relying on unlocalize for dot format -->
                     <input type="number" step="0.01" name="valor" id="valor" required
                            value="{{ conta.valor|unlocalize }}"
                            placeholder="0.00"
                            class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-bold text-lg">
                 </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label for="moeda" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Moeda</label>
+                <select name="moeda" id="moeda" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                    <option value="BRL" {% if conta.moeda == 'BRL' or not conta %}selected{% endif %}>🇧🇷 BRL (R$)</option>
+                    <option value="USD" {% if conta.moeda == 'USD' %}selected{% endif %}>🇺🇸 USD (US$)</option>
+                    <option value="EUR" {% if conta.moeda == 'EUR' %}selected{% endif %}>🇪🇺 EUR (€)</option>
+                    <option value="GBP" {% if conta.moeda == 'GBP' %}selected{% endif %}>🇬🇧 GBP (£)</option>
+                </select>
             </div>
 
             <div class="space-y-1.5">

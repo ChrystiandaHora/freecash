@@ -45,6 +45,18 @@ from core.views.cartoes import (
     CartaoDespesaDeleteView,
     FaturaPagarView,
 )
+from core.views.assinaturas import (
+    AssinaturasListView,
+    AssinaturaCreateView,
+    AssinaturaUpdateView,
+    AssinaturaDeleteView,
+    AssinaturaGerarContaView,
+)
+from core.views.conciliacao import (
+    ConciliacaoUploadView,
+    ConciliacaoStagingView,
+    ConciliacaoDeleteView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -61,6 +73,36 @@ urlpatterns += [
         "exportar/relatorio/",
         ExportarRelatorioView.as_view(),
         name="exportar_relatorio",
+    ),
+    # Conciliação Bancária
+    path("conciliacao/", ConciliacaoUploadView.as_view(), name="conciliacao"),
+    path(
+        "conciliacao/<int:pk>/",
+        ConciliacaoStagingView.as_view(),
+        name="conciliacao_staging",
+    ),
+    path(
+        "conciliacao/<int:pk>/apagar/",
+        ConciliacaoDeleteView.as_view(),
+        name="conciliacao_delete",
+    ),
+    # Assinaturas
+    path("assinaturas/", AssinaturasListView.as_view(), name="assinaturas"),
+    path("assinaturas/nova/", AssinaturaCreateView.as_view(), name="assinatura_nova"),
+    path(
+        "assinaturas/<int:pk>/editar/",
+        AssinaturaUpdateView.as_view(),
+        name="assinatura_editar",
+    ),
+    path(
+        "assinaturas/<int:pk>/apagar/",
+        AssinaturaDeleteView.as_view(),
+        name="assinatura_apagar",
+    ),
+    path(
+        "assinaturas/<int:pk>/gerar/",
+        AssinaturaGerarContaView.as_view(),
+        name="assinatura_gerar",
     ),
     path(
         "formas-de-pagamento/", FormasPagamentoView.as_view(), name="formas_pagamento"

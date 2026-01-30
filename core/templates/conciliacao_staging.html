@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Revisar Extrato - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <a href="{% url 'conciliacao' %}" class="text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+          Revisar Extrato
+        </h1>
+      </div>
+      <p class="text-sm text-gray-500 dark:text-slate-400">
+        {{ extrato.get_banco_display }} • {{ extrato.arquivo_nome }}
+      </p>
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+        {{ linhas|length }} pendentes
+      </span>
+    </div>
+  </div>
+
+  {% if linhas %}
+  <form method="post" id="stagingForm">
+    {% csrf_token %}
+    <input type="hidden" name="acao" id="acaoInput" value="">
+
+    <!-- Ações em Lote -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4 mb-4 flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
+        <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+        Selecionar tudo
+      </label>
+      <div class="flex-1"></div>
+      <button
+        type="submit"
+        onclick="document.getElementById('acaoInput').value='importar'"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"
+      >
+        <i class="fa-solid fa-check"></i>
+        Importar Selecionados
+      </button>
+      <button
+        type="submit"
+        onclick="document.getElementById('acaoInput').value='ignorar'"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 text-sm font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+      >
+        <i class="fa-solid fa-times"></i>
+        Ignorar Selecionados
+      </button>
+    </div>
+
+    <!-- Lista de Linhas -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div class="divide-y divide-gray-100 dark:divide-slate-700">
+        {% for linha in linhas %}
+        <div class="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+          <div class="flex items-start gap-4">
+            <input
+              type="checkbox"
+              name="linha_ids"
+              value="{{ linha.pk }}"
+              class="linha-checkbox w-5 h-5 mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            >
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="font-medium text-gray-900 dark:text-white truncate">
+                    {{ linha.descricao }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    {{ linha.data|date:"d/m/Y" }}
+                  </p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-lg font-bold {% if linha.tipo == 'C' %}text-emerald-600 dark:text-emerald-400{% else %}text-rose-600 dark:text-rose-400{% endif %}">
+                    {% if linha.tipo == 'C' %}+{% else %}-{% endif %}
+                    R$ {{ linha.valor|floatformat:2 }}
+                  </p>
+                  <span class="text-xs px-2 py-0.5 rounded-full {% if linha.tipo == 'C' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300{% endif %}">
+                    {% if linha.tipo == 'C' %}Crédito{% else %}Débito{% endif %}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </form>
+
+  <script>
+    document.getElementById('selectAll').addEventListener('change', function() {
+      const checkboxes = document.querySelectorAll('.linha-checkbox');
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+  </script>
+
+  {% else %}
+  <!-- Empty State -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 p-12 text-center">
+    <div class="flex justify-center mb-4">
+      <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-check text-2xl text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+    </div>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      Todas as linhas foram processadas!
+    </h3>
+    <p class="text-gray-500 dark:text-slate-400 mb-6">
+      Não há mais linhas pendentes neste extrato.
+    </p>
+    <a
+      href="{% url 'conciliacao' %}"
+      class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all"
+    >
+      <i class="fa-solid fa-arrow-left"></i>
+      Voltar
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Resumo -->
+  <div class="mt-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 p-4">
+    <div class="grid grid-cols-3 gap-4 text-center">
+      <div>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ extrato.linhas_encontradas }}</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Encontradas</p>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ extrato.linhas_importadas }}</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Importadas</p>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-gray-400">{{ linhas|length }}</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Pendentes</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

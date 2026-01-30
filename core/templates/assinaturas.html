@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Assinaturas - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+        Assinaturas
+      </h1>
+      <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">
+        Pagamentos recorrentes mensais
+      </p>
+    </div>
+    <a
+      href="{% url 'assinatura_nova' %}"
+      class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700 transition-all"
+    >
+      <i class="fa-solid fa-plus"></i>
+      Nova Assinatura
+    </a>
+  </div>
+
+  <!-- Lista de Assinaturas -->
+  {% if assinaturas %}
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+    <div class="divide-y divide-gray-100 dark:divide-slate-700">
+      {% for assinatura in assinaturas %}
+      <div class="p-4 sm:p-5 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors {% if not assinatura.ativa %}opacity-60{% endif %}">
+        <div class="flex items-center justify-between gap-4">
+          <!-- Info Principal -->
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {% if assinatura.tipo == 'D' %}bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400{% else %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% endif %}">
+              <i class="fa-solid {% if assinatura.tipo == 'D' %}fa-arrow-trend-down{% else %}fa-arrow-trend-up{% endif %} text-lg"></i>
+            </div>
+            <div class="min-w-0">
+              <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+                {{ assinatura.descricao }}
+              </h3>
+              <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                <span class="flex items-center gap-1">
+                  <i class="fa-regular fa-calendar"></i>
+                  Dia {{ assinatura.dia_vencimento }}
+                </span>
+                {% if assinatura.categoria %}
+                <span class="flex items-center gap-1">
+                  <i class="fa-regular fa-folder"></i>
+                  {{ assinatura.categoria.nome }}
+                </span>
+                {% endif %}
+                <span class="flex items-center gap-1 {% if assinatura.ativa %}text-emerald-600 dark:text-emerald-400{% else %}text-gray-400{% endif %}">
+                  <i class="fa-solid {% if assinatura.ativa %}fa-check-circle{% else %}fa-pause-circle{% endif %}"></i>
+                  {% if assinatura.ativa %}Ativa{% else %}Pausada{% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Valor e Próxima -->
+          <div class="text-right hidden sm:block">
+            <p class="text-lg font-bold {% if assinatura.tipo == 'D' %}text-rose-600 dark:text-rose-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
+              {% if assinatura.tipo == 'D' %}-{% else %}+{% endif %}
+              R$ {{ assinatura.valor|floatformat:2 }}
+            </p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">
+              Próxima: {{ assinatura.proxima_geracao|date:"d/m/Y" }}
+            </p>
+          </div>
+
+          <!-- Ações -->
+          <div class="flex items-center gap-2">
+            <!-- Gerar Conta -->
+            <form method="post" action="{% url 'assinatura_gerar' assinatura.pk %}" class="inline">
+              {% csrf_token %}
+              <button
+                type="submit"
+                title="Gerar conta agora"
+                class="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+              >
+                <i class="fa-solid fa-bolt"></i>
+              </button>
+            </form>
+
+            <!-- Editar -->
+            <a
+              href="{% url 'assinatura_editar' assinatura.pk %}"
+              title="Editar"
+              class="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <i class="fa-solid fa-pen"></i>
+            </a>
+
+            <!-- Apagar -->
+            <form method="post" action="{% url 'assinatura_apagar' assinatura.pk %}" class="inline" onsubmit="return confirm('Remover esta assinatura?')">
+              {% csrf_token %}
+              <button
+                type="submit"
+                title="Remover"
+                class="p-2 rounded-lg text-gray-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Mobile: Valor -->
+        <div class="sm:hidden mt-3 flex items-center justify-between">
+          <p class="text-lg font-bold {% if assinatura.tipo == 'D' %}text-rose-600 dark:text-rose-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
+            {% if assinatura.tipo == 'D' %}-{% else %}+{% endif %}
+            R$ {{ assinatura.valor|floatformat:2 }}
+          </p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">
+            Próxima: {{ assinatura.proxima_geracao|date:"d/m/Y" }}
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 p-12 text-center">
+    <div class="flex justify-center mb-4">
+      <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-repeat text-2xl text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+    </div>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      Nenhuma assinatura cadastrada
+    </h3>
+    <p class="text-gray-500 dark:text-slate-400 mb-6">
+      Cadastre suas contas recorrentes como Netflix, aluguel, internet...
+    </p>
+    <a
+      href="{% url 'assinatura_nova' %}"
+      class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold hover:from-emerald-600 hover:to-teal-700 transition-all"
+    >
+      <i class="fa-solid fa-plus"></i>
+      Criar Primeira Assinatura
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Info Box -->
+  <div class="mt-6 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 p-4">
+    <div class="flex items-start gap-3">
+      <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+      <div>
+        <p class="font-semibold text-blue-900 dark:text-blue-200 text-sm">Como funciona?</p>
+        <p class="text-xs text-blue-800 dark:text-blue-300 mt-1">
+          Clique no <i class="fa-solid fa-bolt"></i> para gerar a conta do mês. 
+          O sistema avançará automaticamente a data de "Próxima Geração" para o mês seguinte.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

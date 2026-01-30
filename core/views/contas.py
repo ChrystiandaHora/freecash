@@ -13,6 +13,7 @@ from django.db import transaction
 from django.db.models import Sum, Q
 
 from core.models import Conta, Categoria, FormaPagamento, CategoriaCartao
+from core.services.cotacao_service import converter_para_brl
 
 
 def parse_date_flexible(date_str: str) -> date | None:
@@ -277,6 +278,13 @@ class CadastrarContaPagarView(View):
             else None
         )
 
+        # Moeda e conversão
+        moeda = (request.POST.get("moeda") or "BRL").strip().upper()
+        if moeda not in ("BRL", "USD", "EUR", "GBP"):
+            moeda = "BRL"
+
+        valor_brl, taxa_cambio = converter_para_brl(valor_total, moeda, data_prevista)
+
         def add_months(d: date, months: int) -> date:
             y = d.year + (d.month - 1 + months) // 12
             m = (d.month - 1 + months) % 12 + 1
@@ -400,6 +408,9 @@ class CadastrarContaPagarView(View):
             tipo=Conta.TIPO_DESPESA,
             descricao=descricao,
             valor=valor_total,
+            moeda=moeda,
+            valor_brl=valor_brl,
+            taxa_cambio=taxa_cambio,
             data_prevista=data_prevista,
             transacao_realizada=pago,
             data_realizacao=data_prevista if pago else None,
