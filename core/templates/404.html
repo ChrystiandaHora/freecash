@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FreeCash - Página não encontrada</title>
+    
+    <!-- Tailwind (local) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
+    
+    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}">
+    
+    <!-- FontAwesome (local) -->
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+    
+    <!-- Inter Font (local) -->
+    <link rel="stylesheet" href="{% static 'fonts/inter.css' %}">
+
+    <style>
+        body {
+            background-color: #020617; /* Slate 950 */
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Aurora Background */
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            background: #020617;
+        }
+        .aurora-blob {
+            position: absolute;
+            background-blend-mode: multiply;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: blob 15s infinite alternate;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 60px rgba(239, 68, 68, 0.5); }
+        }
+        .error-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+    </style>
+  </head>
+  <body class="antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Aurora Background -->
+    <div class="aurora-bg">
+        <div class="aurora-blob bg-rose-900 w-96 h-96 rounded-full top-0 left-0 mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div class="aurora-blob bg-slate-900 w-96 h-96 rounded-full bottom-0 right-0 mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div class="aurora-blob bg-rose-950 w-96 h-96 rounded-full bottom-0 left-1/4 mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="min-h-screen flex flex-col items-center justify-center relative p-8">
+
+        <!-- Logo -->
+        <a href="{% url 'landing' %}" class="flex items-center gap-3 mb-10 hover:opacity-80 transition-opacity">
+            <img src="{% static 'freecash/Icon.png' %}" alt="FreeCash" class="w-12 h-12 rounded-xl shadow-lg shadow-emerald-900/50">
+            <span class="text-2xl font-bold tracking-tight text-white">FreeCash</span>
+        </a>
+
+        <!-- Error Card -->
+        <div class="glass-card rounded-[2rem] p-12 text-center max-w-lg relative overflow-hidden error-glow">
+            
+            <!-- 404 Icon -->
+            <div class="floating mb-8">
+                <div class="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-rose-500/20 to-rose-600/10 flex items-center justify-center">
+                    <i class="fa-solid fa-map-location-dot text-5xl text-rose-400"></i>
+                </div>
+            </div>
+
+            <!-- Error Code -->
+            <h1 class="text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-500 mb-4">
+                404
+            </h1>
+            
+            <!-- Error Message -->
+            <h2 class="text-2xl font-bold text-white mb-4">
+                Página não encontrada
+            </h2>
+            
+            <p class="text-slate-400 mb-8 leading-relaxed">
+                Ops! A página que você está procurando não existe ou foi movida. 
+                Verifique o endereço ou volte para a página inicial.
+            </p>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="{% url 'landing' %}" class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-emerald-900/30 transform hover:-translate-y-0.5 transition-all duration-200">
+                    <i class="fa-solid fa-house"></i>
+                    Página Inicial
+                </a>
+                <button onclick="history.back()" class="inline-flex items-center justify-center gap-2 bg-slate-700/50 hover:bg-slate-700 text-white font-bold py-3.5 px-8 rounded-xl border border-slate-600 transform hover:-translate-y-0.5 transition-all duration-200">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Voltar
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-12 text-xs text-slate-600">
+            &copy; {% now "Y" %} FreeCash. Construído para o futuro das suas finanças.
+        </div>
+    </div>
+
+  </body>
+</html>
