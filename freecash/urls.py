@@ -26,7 +26,7 @@ from core.views.contas import (
     ApagarContaView,
 )
 from core.views.dashboard import DashboardView
-from core.views.exportar import ExportarView
+from core.views.exportar import ExportarView, ExportarRelatorioView
 from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagamentoView
 from core.views.importar import ImportarView
 from core.views.lading import LadingPageView
@@ -57,6 +57,11 @@ urlpatterns += [
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
     path("exportar/", ExportarView.as_view(), name="exportar"),
+    path(
+        "exportar/relatorio/",
+        ExportarRelatorioView.as_view(),
+        name="exportar_relatorio",
+    ),
     path(
         "formas-de-pagamento/", FormasPagamentoView.as_view(), name="formas_pagamento"
     ),
