@@ -109,12 +109,37 @@ class Conta(AuditoriaModel):
         blank=True,
         related_name="contas",
     )
+    cartao = models.ForeignKey(
+        "core.CartaoCredito",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="despesas",
+    )
+    categoria_cartao = models.ForeignKey(
+        "core.CategoriaCartao",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="contas",
+    )
+    # Data da compra (para despesas de cartão - diferente da data de vencimento)
+    data_compra = models.DateField(null=True, blank=True, db_index=True)
 
-    # (Opcional) para manter importações antigas
-    is_legacy = models.BooleanField(default=False)
-    origem_ano = models.IntegerField(null=True, blank=True)
-    origem_mes = models.IntegerField(null=True, blank=True)
-    origem_linha = models.CharField(max_length=50, null=True, blank=True)
+    # Sistema de Fatura de Cartão
+    eh_fatura_cartao = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Marca se este registro é uma fatura de cartão (não uma despesa individual)",
+    )
+    fatura = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="despesas_fatura",
+        help_text="Fatura à qual esta despesa pertence",
+    )
 
     class Meta:
         ordering = ["-data_prevista", "-id"]
@@ -162,3 +187,62 @@ class ConfigUsuario(AuditoriaModel):
 
     def __str__(self):
         return f"Configurações de {self.usuario.username}"
+
+
+class CategoriaCartao(models.Model):
+    """
+    Categorias de despesas baseadas no padrão MCC (ISO 18245).
+    São categorias globais do sistema, não editáveis pelo usuário.
+    """
+
+    codigo = models.CharField(max_length=4, unique=True)  # Código MCC simplificado
+    nome = models.CharField(max_length=100)
+    icone = models.CharField(max_length=50, default="fa-tag")  # FontAwesome icon
+    emoji = models.CharField(max_length=10, default="📦")
+
+    class Meta:
+        ordering = ["nome"]
+        verbose_name = "Categoria de Cartão"
+        verbose_name_plural = "Categorias de Cartão"
+
+    def __str__(self):
+        return f"{self.emoji} {self.nome}"
+
+
+class CartaoCredito(AuditoriaModel):
+    """
+    Cartão de crédito do usuário.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="cartoes",
+    )
+
+    BANDEIRA_CHOICES = (
+        ("VISA", "Visa"),
+        ("MASTERCARD", "Mastercard"),
+        ("ELO", "Elo"),
+        ("AMEX", "American Express"),
+        ("HIPERCARD", "Hipercard"),
+        ("DINERS", "Diners Club"),
+        ("OUTRO", "Outro"),
+    )
+
+    nome = models.CharField(max_length=100)  # Ex: "Nubank", "Inter", "C6"
+    bandeira = models.CharField(max_length=20, choices=BANDEIRA_CHOICES, default="VISA")
+    ultimos_digitos = models.CharField(max_length=4, blank=True)
+    limite = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dia_fechamento = models.IntegerField(default=1)  # Dia que fecha a fatura
+    dia_vencimento = models.IntegerField(default=10)  # Dia que vence a fatura
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nome"]
+        verbose_name = "Cartão de Crédito"
+        verbose_name_plural = "Cartões de Crédito"
+
+    def __str__(self):
+        digitos = f" ****{self.ultimos_digitos}" if self.ultimos_digitos else ""
+        return f"{self.nome}{digitos}"

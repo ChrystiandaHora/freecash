@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if modo == 'edit' %}Editar Cartão{% else %}Novo Cartão{% endif %} - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <!-- Header -->
+  <div class="mb-8">
+    <a href="{% url 'cartoes' %}" class="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mb-4 transition-colors">
+      <i class="fa-solid fa-arrow-left"></i>
+      <span>Voltar para Cartões</span>
+    </a>
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+      {% if modo == 'edit' %}Editar Cartão{% else %}Novo Cartão{% endif %}
+    </h1>
+  </div>
+
+  <!-- Form -->
+  <form method="post" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
+    {% csrf_token %}
+
+    <!-- Nome do Cartão -->
+    <div class="mb-6 space-y-1.5">
+      <label for="nome" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+        <i class="fa-regular fa-credit-card text-gray-400 dark:text-gray-500"></i>
+        Nome do Cartão <span class="text-red-500">*</span>
+      </label>
+      <input type="text" name="nome" id="nome" 
+             value="{% if cartao %}{{ cartao.nome }}{% endif %}"
+             placeholder="Ex: Nubank, Inter, C6..."
+             class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+             required>
+    </div>
+
+    <!-- Bandeira e Últimos Dígitos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="space-y-1.5">
+        <label for="bandeira" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+          <i class="fa-regular fa-flag text-gray-400 dark:text-gray-500"></i>
+          Bandeira
+        </label>
+        <select name="bandeira" id="bandeira" 
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+          {% for value, label in bandeiras %}
+          <option value="{{ value }}" {% if cartao and cartao.bandeira == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="ultimos_digitos" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+          <i class="fa-regular fa-keyboard text-gray-400 dark:text-gray-500"></i>
+          Últimos 4 Dígitos
+        </label>
+        <input type="text" name="ultimos_digitos" id="ultimos_digitos" 
+               value="{% if cartao %}{{ cartao.ultimos_digitos }}{% endif %}"
+               placeholder="1234"
+               maxlength="4"
+               pattern="[0-9]{0,4}"
+               class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-mono tracking-widest">
+      </div>
+    </div>
+
+    <!-- Limite -->
+    <div class="mb-6 space-y-1.5">
+      <label for="limite" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+        <i class="fa-regular fa-money-bill-1 text-gray-400 dark:text-gray-500"></i>
+        Limite do Cartão
+      </label>
+      <div class="relative">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">R$</span>
+        <input type="text" name="limite" id="limite" 
+               value="{% if cartao.limite %}{{ cartao.limite|floatformat:2 }}{% endif %}"
+               placeholder="0,00"
+               class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Deixe vazio se não quiser acompanhar limite</p>
+    </div>
+
+    <!-- Dias de Fechamento e Vencimento -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="space-y-1.5">
+        <label for="dia_fechamento" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+          <i class="fa-regular fa-calendar-minus text-gray-400 dark:text-gray-500"></i>
+          Dia de Fechamento
+        </label>
+        <select name="dia_fechamento" id="dia_fechamento" 
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+          <option value="1" {% if cartao.dia_fechamento == 1 %}selected{% endif %}>01</option>
+          <option value="2" {% if cartao.dia_fechamento == 2 %}selected{% endif %}>02</option>
+          <option value="3" {% if cartao.dia_fechamento == 3 %}selected{% endif %}>03</option>
+          <option value="4" {% if cartao.dia_fechamento == 4 %}selected{% endif %}>04</option>
+          <option value="5" {% if cartao.dia_fechamento == 5 %}selected{% endif %}>05</option>
+          <option value="6" {% if cartao.dia_fechamento == 6 %}selected{% endif %}>06</option>
+          <option value="7" {% if cartao.dia_fechamento == 7 %}selected{% endif %}>07</option>
+          <option value="8" {% if cartao.dia_fechamento == 8 %}selected{% endif %}>08</option>
+          <option value="9" {% if cartao.dia_fechamento == 9 %}selected{% endif %}>09</option>
+          <option value="10" {% if cartao.dia_fechamento == 10 or not cartao %}selected{% endif %}>10</option>
+          <option value="11" {% if cartao.dia_fechamento == 11 %}selected{% endif %}>11</option>
+          <option value="12" {% if cartao.dia_fechamento == 12 %}selected{% endif %}>12</option>
+          <option value="13" {% if cartao.dia_fechamento == 13 %}selected{% endif %}>13</option>
+          <option value="14" {% if cartao.dia_fechamento == 14 %}selected{% endif %}>14</option>
+          <option value="15" {% if cartao.dia_fechamento == 15 %}selected{% endif %}>15</option>
+          <option value="16" {% if cartao.dia_fechamento == 16 %}selected{% endif %}>16</option>
+          <option value="17" {% if cartao.dia_fechamento == 17 %}selected{% endif %}>17</option>
+          <option value="18" {% if cartao.dia_fechamento == 18 %}selected{% endif %}>18</option>
+          <option value="19" {% if cartao.dia_fechamento == 19 %}selected{% endif %}>19</option>
+          <option value="20" {% if cartao.dia_fechamento == 20 %}selected{% endif %}>20</option>
+          <option value="21" {% if cartao.dia_fechamento == 21 %}selected{% endif %}>21</option>
+          <option value="22" {% if cartao.dia_fechamento == 22 %}selected{% endif %}>22</option>
+          <option value="23" {% if cartao.dia_fechamento == 23 %}selected{% endif %}>23</option>
+          <option value="24" {% if cartao.dia_fechamento == 24 %}selected{% endif %}>24</option>
+          <option value="25" {% if cartao.dia_fechamento == 25 %}selected{% endif %}>25</option>
+          <option value="26" {% if cartao.dia_fechamento == 26 %}selected{% endif %}>26</option>
+          <option value="27" {% if cartao.dia_fechamento == 27 %}selected{% endif %}>27</option>
+          <option value="28" {% if cartao.dia_fechamento == 28 %}selected{% endif %}>28</option>
+          <option value="29" {% if cartao.dia_fechamento == 29 %}selected{% endif %}>29</option>
+          <option value="30" {% if cartao.dia_fechamento == 30 %}selected{% endif %}>30</option>
+          <option value="31" {% if cartao.dia_fechamento == 31 %}selected{% endif %}>31</option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Dia em que a fatura fecha</p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="dia_vencimento" class="text-sm font-medium text-gray-700 dark:text-gray-300 ml-1 flex items-center gap-2">
+          <i class="fa-regular fa-calendar-check text-gray-400 dark:text-gray-500"></i>
+          Dia de Vencimento
+        </label>
+        <select name="dia_vencimento" id="dia_vencimento" 
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+          <option value="1" {% if cartao.dia_vencimento == 1 %}selected{% endif %}>01</option>
+          <option value="2" {% if cartao.dia_vencimento == 2 %}selected{% endif %}>02</option>
+          <option value="3" {% if cartao.dia_vencimento == 3 %}selected{% endif %}>03</option>
+          <option value="4" {% if cartao.dia_vencimento == 4 %}selected{% endif %}>04</option>
+          <option value="5" {% if cartao.dia_vencimento == 5 %}selected{% endif %}>05</option>
+          <option value="6" {% if cartao.dia_vencimento == 6 %}selected{% endif %}>06</option>
+          <option value="7" {% if cartao.dia_vencimento == 7 %}selected{% endif %}>07</option>
+          <option value="8" {% if cartao.dia_vencimento == 8 %}selected{% endif %}>08</option>
+          <option value="9" {% if cartao.dia_vencimento == 9 %}selected{% endif %}>09</option>
+          <option value="10" {% if cartao.dia_vencimento == 10 %}selected{% endif %}>10</option>
+          <option value="11" {% if cartao.dia_vencimento == 11 %}selected{% endif %}>11</option>
+          <option value="12" {% if cartao.dia_vencimento == 12 %}selected{% endif %}>12</option>
+          <option value="13" {% if cartao.dia_vencimento == 13 %}selected{% endif %}>13</option>
+          <option value="14" {% if cartao.dia_vencimento == 14 %}selected{% endif %}>14</option>
+          <option value="15" {% if cartao.dia_vencimento == 15 or not cartao %}selected{% endif %}>15</option>
+          <option value="16" {% if cartao.dia_vencimento == 16 %}selected{% endif %}>16</option>
+          <option value="17" {% if cartao.dia_vencimento == 17 %}selected{% endif %}>17</option>
+          <option value="18" {% if cartao.dia_vencimento == 18 %}selected{% endif %}>18</option>
+          <option value="19" {% if cartao.dia_vencimento == 19 %}selected{% endif %}>19</option>
+          <option value="20" {% if cartao.dia_vencimento == 20 %}selected{% endif %}>20</option>
+          <option value="21" {% if cartao.dia_vencimento == 21 %}selected{% endif %}>21</option>
+          <option value="22" {% if cartao.dia_vencimento == 22 %}selected{% endif %}>22</option>
+          <option value="23" {% if cartao.dia_vencimento == 23 %}selected{% endif %}>23</option>
+          <option value="24" {% if cartao.dia_vencimento == 24 %}selected{% endif %}>24</option>
+          <option value="25" {% if cartao.dia_vencimento == 25 %}selected{% endif %}>25</option>
+          <option value="26" {% if cartao.dia_vencimento == 26 %}selected{% endif %}>26</option>
+          <option value="27" {% if cartao.dia_vencimento == 27 %}selected{% endif %}>27</option>
+          <option value="28" {% if cartao.dia_vencimento == 28 %}selected{% endif %}>28</option>
+          <option value="29" {% if cartao.dia_vencimento == 29 %}selected{% endif %}>29</option>
+          <option value="30" {% if cartao.dia_vencimento == 30 %}selected{% endif %}>30</option>
+          <option value="31" {% if cartao.dia_vencimento == 31 %}selected{% endif %}>31</option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Dia em que a fatura vence</p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
+      {% if modo == 'edit' %}
+      <form action="{% url 'cartao_apagar' pk=cartao.pk %}" method="post" class="inline">
+        {% csrf_token %}
+        <button type="submit" 
+                onclick="return confirm('Tem certeza que deseja remover este cartão?')"
+                class="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
+          <i class="fa-solid fa-trash-can mr-2"></i>Remover
+        </button>
+      </form>
+      {% else %}
+      <div></div>
+      {% endif %}
+
+      <div class="flex gap-3">
+        <a href="{% url 'cartoes' %}" 
+           class="px-6 py-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors">
+          Cancelar
+        </a>
+        <button type="submit" 
+                class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105">
+          <i class="fa-solid fa-check mr-2"></i>
+          {% if modo == 'edit' %}Salvar Alterações{% else %}Cadastrar Cartão{% endif %}
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

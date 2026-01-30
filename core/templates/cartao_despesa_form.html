@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Despesa - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6">
+    <!-- Header -->
+    <div class="mb-8 flex justify-between items-center">
+        <a href="{% url 'cartao_despesas' pk=cartao.pk %}" 
+           class="text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+    </div>
+
+    <!-- Card Form -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-emerald-500 to-teal-500">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 flex items-center justify-center bg-white/20 rounded-xl text-white">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-white">Editar Despesa</h2>
+                    <p class="text-emerald-100 text-sm">{{ cartao.nome }} •••• {{ cartao.ultimos_digitos }}</p>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            <!-- Descrição -->
+            <div class="space-y-1.5">
+                <label for="descricao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                    <i class="fa-solid fa-tag text-gray-400 dark:text-slate-500"></i>
+                    Descrição
+                </label>
+                <input type="text" name="descricao" id="descricao" value="{{ despesa.descricao }}" required
+                       class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                       placeholder="Ex: Restaurante">
+            </div>
+
+            <!-- Valor -->
+            <div class="space-y-1.5">
+                <label for="valor" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                    <i class="fa-solid fa-dollar-sign text-gray-400 dark:text-slate-500"></i>
+                    Valor (R$)
+                </label>
+                <input type="text" name="valor" id="valor" required
+                       value="{{ despesa.valor|floatformat:2 }}"
+                       class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
+                       placeholder="0,00">
+            </div>
+
+            <!-- Datas (somente leitura para referência) -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                        <i class="fa-solid fa-bag-shopping text-gray-400 dark:text-slate-500"></i>
+                        Data da Compra
+                    </label>
+                    <div class="w-full bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-600 dark:text-slate-400">
+                        {% if despesa.data_compra %}
+                            {{ despesa.data_compra|date:"d/m/Y" }}
+                        {% else %}
+                            {{ despesa.data_prevista|date:"d/m/Y" }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-check text-gray-400 dark:text-slate-500"></i>
+                        Vencimento da Fatura
+                    </label>
+                    <div class="w-full bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-600 dark:text-slate-400">
+                        {{ despesa.data_prevista|date:"d/m/Y" }}
+                    </div>
+                </div>
+            </div>
+            <!-- Hidden field to preserve data_prevista -->
+            <input type="hidden" name="data_prevista" value="{{ despesa.data_prevista|date:'Y-m-d' }}">
+
+            <!-- Categoria -->
+            <div class="space-y-1.5">
+                <label for="categoria_cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                    <i class="fa-solid fa-folder text-gray-400 dark:text-slate-500"></i>
+                    Categoria
+                </label>
+                <select name="categoria_cartao" id="categoria_cartao"
+                        class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer">
+                    <option value="">Selecione uma categoria...</option>
+                    {% for cat in categorias_cartao %}
+                        <option value="{{ cat.id }}" {% if despesa.categoria_cartao_id == cat.id %}selected{% endif %}>
+                            {{ cat.emoji }} {{ cat.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Info de parcelamento (se for parcelada) -->
+            {% if despesa.eh_parcelada %}
+            <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 flex items-center justify-center bg-amber-100 dark:bg-amber-800 rounded-lg text-amber-600 dark:text-amber-400">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                    <div>
+                        <p class="text-amber-800 dark:text-amber-300 font-medium">
+                            Parcela {{ despesa.parcela_numero }}/{{ despesa.parcela_total }}
+                        </p>
+                        <p class="text-amber-600 dark:text-amber-400 text-sm">
+                            Compra parcelada - editando apenas esta parcela
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="flex gap-3 pt-4">
+                <a href="{% url 'cartao_despesas' pk=cartao.pk %}" 
+                   class="flex-1 px-6 py-3 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors text-center">
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i>
+                    Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

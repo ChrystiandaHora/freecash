@@ -91,6 +91,24 @@ def restore_user_data_fcbk(data_dict, user):
     uuid_to_id = {}
     total_restored = 0
 
+    def get_model_field_names(model):
+        """Retorna os nomes de campos válidos do modelo."""
+        return {
+            f.name
+            for f in model._meta.get_fields()
+            if hasattr(f, "column") or f.name in ["id"]
+        }
+
+    def filter_valid_fields(model, row):
+        """Filtra apenas campos que existem no modelo atual."""
+        valid_fields = get_model_field_names(model)
+        # Também incluir campos de FK com sufixo _id
+        valid_fk_fields = {
+            f"{f.name}_id" for f in model._meta.fields if isinstance(f, ForeignKey)
+        }
+        all_valid = valid_fields | valid_fk_fields
+        return {k: v for k, v in row.items() if k in all_valid}
+
     with transaction.atomic():
         # 1. DELETE EXISTING
         for model in reversed(backup_models):
@@ -138,6 +156,9 @@ def restore_user_data_fcbk(data_dict, user):
                             row[f"{field.name}_id"] = local_id
                         else:
                             row[f"{field.name}_id"] = None
+
+                # Filtrar campos que não existem mais no modelo
+                row = filter_valid_fields(model, row)
 
                 # Upsert/Create
                 try:

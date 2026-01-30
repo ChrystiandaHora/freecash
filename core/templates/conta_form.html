@@ -97,6 +97,22 @@
             </select>
         </div>
 
+        <!-- Categoria do Gasto (MCC) -->
+        {% if categorias_cartao %}
+        <div class="space-y-1.5">
+            <label for="categoria_cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
+                Categoria do Gasto
+                <span class="text-xs text-gray-400 dark:text-slate-500">(opcional)</span>
+            </label>
+            <select name="categoria_cartao" id="categoria_cartao" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <option value="">Selecione uma categoria...</option>
+                {% for cat in categorias_cartao %}
+                    <option value="{{ cat.id }}" {% if conta.categoria_cartao_id == cat.id %}selected{% endif %}>{{ cat.emoji }} {{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
         <div class="border-t border-gray-100 dark:border-slate-800 my-6"></div>
 
         <!-- Advanced Options (Recurrence) - Only for new Despesas -->

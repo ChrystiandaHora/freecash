@@ -41,7 +41,11 @@ class TransacoesView(View):
 
         qs = (
             Conta.objects.filter(usuario=usuario, transacao_realizada=True)
-            .select_related("categoria", "forma_pagamento")
+            .filter(
+                # Exclui despesas de cartão individuais (apenas faturas aparecem)
+                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+            )
+            .select_related("categoria", "forma_pagamento", "cartao")
             # Timeline: Apenas passado até hoje (inclusive)
             .filter(data_realizacao__lte=hoje)
             .order_by("-data_realizacao", "-atualizada_em", "-id")

@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Despesas do Cartão - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <a href="{% url 'cartoes' %}" class="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 mb-3 transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Voltar para Cartões</span>
+      </a>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ cartao.nome }}</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">
+        {{ cartao.get_bandeira_display }}
+        {% if cartao.ultimos_digitos %} •••• {{ cartao.ultimos_digitos }}{% endif %}
+      </p>
+    </div>
+
+    <!-- KPI Card -->
+    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl shadow-emerald-500/25">
+      <p class="text-white/80 text-sm font-medium">Total {{ filtros.mes|default:hoje.month }}/{{ filtros.ano|default:hoje.year }}</p>
+      <p class="text-3xl font-bold mt-1">R$ {{ total_mes|floatformat:2 }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Formulário Nova Despesa -->
+    <div class="lg:col-span-1">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 border border-gray-200 dark:border-gray-700 sticky top-6">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-plus text-emerald-500"></i>
+          Nova Despesa
+        </h2>
+
+        <form method="post" action="{% url 'cartao_despesa_nova' pk=cartao.pk %}">
+          {% csrf_token %}
+
+          <!-- Descrição -->
+          <div class="mb-4">
+            <label for="descricao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+              <i class="fa-solid fa-tag text-gray-400"></i>
+              Descrição
+            </label>
+            <input type="text" name="descricao" id="descricao" 
+                   placeholder="Ex: Supermercado, Uber..."
+                   class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                   required>
+          </div>
+
+          <!-- Valor -->
+          <div class="mb-4">
+            <label for="valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+              <i class="fa-regular fa-dollar-sign text-gray-400 dark:text-gray-500"></i>
+              Valor
+            </label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">R$</span>
+              <input type="text" name="valor" id="valor" 
+                     placeholder="0,00"
+                     class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                     required>
+            </div>
+          </div>
+
+          <!-- Data da Compra -->
+          <div class="mb-4">
+            <label for="data_compra" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+              <i class="fa-regular fa-calendar text-gray-400 dark:text-gray-500"></i>
+              Data da Compra
+            </label>
+            <input type="date" name="data_compra" id="data_compra" 
+                   value="{{ hoje|date:'Y-m-d' }}"
+                   class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                   required>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              A data de vencimento será calculada automaticamente baseada no fechamento do cartão.
+            </p>
+          </div>
+
+          <!-- Categoria -->
+          <div class="mb-4">
+            <label for="categoria_cartao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+              <i class="fa-regular fa-folder text-gray-400 dark:text-gray-500"></i>
+              Categoria
+            </label>
+            <select name="categoria_cartao" id="categoria_cartao" 
+                    class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+              <option value="">Selecione...</option>
+              {% for cat in categorias_cartao %}
+              <option value="{{ cat.id }}">{{ cat.emoji }} {{ cat.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Parcelamento Toggle -->
+          <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" name="parcelado" value="1" id="parcelado_toggle"
+                     class="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-emerald-500 focus:ring-emerald-500">
+              <span class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <i class="fa-regular fa-credit-card text-gray-400 dark:text-gray-500"></i>
+                Parcelar compra
+              </span>
+            </label>
+            
+            <!-- Número de parcelas (hidden by default) -->
+            <div id="parcelas_container" class="mt-4 hidden">
+              <label for="numero_parcelas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Número de parcelas
+              </label>
+              <select name="numero_parcelas" id="numero_parcelas" 
+                      class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                {% for i in "234567891011121314151617181920212223241"|make_list %}
+                  {% if forloop.counter >= 2 and forloop.counter <= 24 %}
+                  <option value="{{ forloop.counter }}">{{ forloop.counter }}x</option>
+                  {% endif %}
+                {% endfor %}
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+                <option value="5">5x</option>
+                <option value="6">6x</option>
+                <option value="7">7x</option>
+                <option value="8">8x</option>
+                <option value="9">9x</option>
+                <option value="10">10x</option>
+                <option value="11">11x</option>
+                <option value="12">12x</option>
+                <option value="18">18x</option>
+                <option value="24">24x</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" 
+                  class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus"></i>
+            Adicionar Despesa
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Lista de Despesas -->
+    <div class="lg:col-span-2">
+      <!-- Filtros -->
+      <form method="get" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 mb-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex flex-wrap gap-4 items-end">
+          <div class="flex-1 min-w-[140px]">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Filtrar por</label>
+            <select name="filtro_data" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500">
+              <option value="vencimento" {% if filtros.filtro_data == 'vencimento' or not filtros.filtro_data %}selected{% endif %}>📅 Vencimento</option>
+              <option value="compra" {% if filtros.filtro_data == 'compra' %}selected{% endif %}>🛍️ Data Compra</option>
+            </select>
+          </div>
+          <div class="flex-1 min-w-[100px]">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ano</label>
+            <select name="ano" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500">
+              {% for a in anos %}
+              <option value="{{ a }}" {% if filtros.ano == a|stringformat:"i" %}selected{% endif %}>{{ a }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="flex-1 min-w-[100px]">
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Mês</label>
+            <select name="mes" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500">
+              {% for m in meses %}
+              <option value="{{ m }}" {% if filtros.mes == m|stringformat:"i" %}selected{% endif %}>{{ m|stringformat:"02d" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
+            <i class="fa-solid fa-filter"></i>Filtrar
+          </button>
+        </div>
+      </form>
+
+      <!-- Card da Fatura -->
+      {% if fatura %}
+      <div class="mb-6 bg-gradient-to-r {% if fatura.transacao_realizada %}from-green-500 to-emerald-600{% else %}from-amber-500 to-orange-500{% endif %} rounded-2xl shadow-xl p-5 text-white">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+              {% if fatura.transacao_realizada %}
+                <i class="fa-solid fa-check-circle text-2xl"></i>
+              {% else %}
+                <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
+              {% endif %}
+            </div>
+            <div>
+              <h3 class="text-lg font-bold">{{ fatura.descricao }}</h3>
+              <p class="text-white/80 text-sm">
+                Vencimento: {{ fatura.data_prevista|date:"d/m/Y" }}
+                {% if fatura.transacao_realizada %}
+                  • Pago em {{ fatura.data_realizacao|date:"d/m/Y" }}
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-3xl font-bold">R$ {{ fatura.valor|floatformat:2 }}</p>
+            <form method="post" action="{% url 'fatura_pagar' pk=cartao.id fatura_id=fatura.id %}" class="mt-2">
+              {% csrf_token %}
+              {% if fatura.transacao_realizada %}
+                <input type="hidden" name="acao" value="desfazer">
+                <button type="submit" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fa-solid fa-undo mr-1"></i> Desfazer Pagamento
+                </button>
+              {% else %}
+                <button type="submit" class="px-4 py-2 bg-white text-orange-600 hover:bg-orange-100 rounded-lg text-sm font-bold transition-colors">
+                  <i class="fa-solid fa-credit-card mr-1"></i> Pagar Fatura
+                </button>
+              {% endif %}
+            </form>
+          </div>
+        </div>
+      </div>
+      {% elif total_mes > 0 %}
+      <div class="mb-6 bg-gray-100 dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-4 text-gray-500 dark:text-gray-400">
+          <i class="fa-solid fa-info-circle text-xl"></i>
+          <p>Nenhuma fatura encontrada para este período. Adicione uma despesa para criar a fatura automaticamente.</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Despesas List -->
+      {% if despesas_page %}
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div class="divide-y divide-gray-100 dark:divide-gray-700">
+          {% for despesa in despesas_page %}
+          <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-4 flex-1">
+                <!-- Ícone da categoria -->
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0
+                  {% if despesa.categoria_cartao %}bg-emerald-100 dark:bg-emerald-900/30{% else %}bg-gray-100 dark:bg-gray-700{% endif %}">
+                  {% if despesa.categoria_cartao %}
+                    {{ despesa.categoria_cartao.emoji }}
+                  {% else %}
+                    <i class="fa-solid fa-tag text-gray-400"></i>
+                  {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-gray-900 dark:text-white truncate flex items-center gap-2">
+                    {{ despesa.descricao|default:"Sem descrição" }}
+                    {% if despesa.eh_parcelada %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                      <i class="fa-solid fa-boxes-stacked text-xs"></i>
+                      {{ despesa.parcela_numero }}/{{ despesa.parcela_total }}
+                    </span>
+                    {% endif %}
+                  </p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {% if despesa.data_compra %}
+                      <i class="fa-solid fa-bag-shopping text-xs mr-1"></i>{{ despesa.data_compra|date:"d/m/Y" }}
+                    {% endif %}
+                    <span class="mx-1">•</span>
+                    <i class="fa-solid fa-calendar-check text-xs mr-1"></i>Venc: {{ despesa.data_prevista|date:"d/m/Y" }}
+                    {% if despesa.categoria_cartao %} • {{ despesa.categoria_cartao.nome }}{% endif %}
+                  </p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-4">
+                <!-- Valor -->
+                <p class="font-semibold text-red-600 dark:text-red-400 text-right">- R$ {{ despesa.valor|floatformat:2 }}</p>
+                
+                <!-- Ações -->
+                <div class="flex items-center gap-1">
+                  {% if fatura and fatura.transacao_realizada %}
+                    <!-- Fatura paga - Botões desabilitados -->
+                    <span class="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed" title="Fatura já paga">
+                      <i class="fa-solid fa-pen"></i>
+                    </span>
+                    <span class="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed" title="Fatura já paga">
+                      <i class="fa-solid fa-trash"></i>
+                    </span>
+                  {% else %}
+                    <!-- Editar -->
+                    <a href="{% url 'cartao_despesa_editar' pk=cartao.pk despesa_id=despesa.id %}" 
+                       class="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
+                       title="Editar">
+                      <i class="fa-solid fa-pen"></i>
+                    </a>
+                    
+                    <!-- Excluir -->
+                    <form method="post" action="{% url 'cartao_despesa_apagar' pk=cartao.pk despesa_id=despesa.id %}" 
+                          class="inline"
+                          onsubmit="return confirm('{% if despesa.eh_parcelada %}Deseja excluir apenas esta parcela ou todas? Para excluir TODAS as parcelas, clique em cancelar e segure SHIFT ao clicar no botão excluir.{% else %}Deseja realmente excluir esta despesa?{% endif %}');">
+                      {% csrf_token %}
+                      {% if despesa.eh_parcelada %}
+                      <input type="hidden" name="apagar_grupo" id="apagar_grupo_{{ despesa.id }}" value="0">
+                      {% endif %}
+                      <button type="submit" 
+                              class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                              title="Excluir"
+                              {% if despesa.eh_parcelada %}
+                              onclick="if(event.shiftKey) { document.getElementById('apagar_grupo_{{ despesa.id }}').value='1'; return confirm('Excluir TODAS as {{ despesa.parcela_total }} parcelas?'); }"
+                              {% endif %}>
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if despesas_page.has_other_pages %}
+        <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex justify-center">
+          <nav class="flex gap-1">
+            {% if despesas_page.has_previous %}
+            <a href="?page={{ despesas_page.previous_page_number }}&ano={{ filtros.ano }}&mes={{ filtros.mes }}" 
+               class="px-3 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <i class="fa-solid fa-chevron-left"></i>
+            </a>
+            {% endif %}
+
+            <span class="px-4 py-2 text-gray-700 dark:text-gray-300 font-medium">
+              {{ despesas_page.number }} / {{ despesas_page.paginator.num_pages }}
+            </span>
+
+            {% if despesas_page.has_next %}
+            <a href="?page={{ despesas_page.next_page_number }}&ano={{ filtros.ano }}&mes={{ filtros.mes }}" 
+               class="px-3 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+              <i class="fa-solid fa-chevron-right"></i>
+            </a>
+            {% endif %}
+          </nav>
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <!-- Empty State -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
+        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-receipt text-2xl text-gray-400"></i>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Nenhuma despesa encontrada</h3>
+        <p class="text-gray-500 dark:text-gray-400">Adicione sua primeira despesa usando o formulário ao lado.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Toggle parcelamento
+  document.getElementById('parcelado_toggle').addEventListener('change', function() {
+    const container = document.getElementById('parcelas_container');
+    if (this.checked) {
+      container.classList.remove('hidden');
+    } else {
+      container.classList.add('hidden');
+    }
+  });
+</script>
+{% endblock %}

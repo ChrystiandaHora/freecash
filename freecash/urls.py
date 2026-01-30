@@ -34,6 +34,17 @@ from core.views.logout_export import LogoutView
 from core.views.receitas import ReceitasView, ReceitaUpdateView, ReceitaCreateView
 from core.views.transacoes import TransacoesView
 from core.views.lote import ContaLoteCreateView, ReceitaLoteCreateView
+from core.views.cartoes import (
+    CartoesListView,
+    CartaoCreateView,
+    CartaoUpdateView,
+    CartaoDeleteView,
+    CartaoDespesasView,
+    CartaoDespesaCreateView,
+    CartaoDespesaUpdateView,
+    CartaoDespesaDeleteView,
+    FaturaPagarView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -84,4 +95,37 @@ urlpatterns += [
         "contas/<int:conta_id>/apagar/", ApagarContaView.as_view(), name="apagar_conta"
     ),
     path("contas/lote/", ContaLoteCreateView.as_view(), name="conta_lote"),
+]
+
+# Cartões de Crédito
+urlpatterns += [
+    path("cartoes/", CartoesListView.as_view(), name="cartoes"),
+    path("cartoes/novo/", CartaoCreateView.as_view(), name="cartao_novo"),
+    path("cartoes/<int:pk>/editar/", CartaoUpdateView.as_view(), name="cartao_editar"),
+    path("cartoes/<int:pk>/apagar/", CartaoDeleteView.as_view(), name="cartao_apagar"),
+    path(
+        "cartoes/<int:pk>/despesas/",
+        CartaoDespesasView.as_view(),
+        name="cartao_despesas",
+    ),
+    path(
+        "cartoes/<int:pk>/despesas/nova/",
+        CartaoDespesaCreateView.as_view(),
+        name="cartao_despesa_nova",
+    ),
+    path(
+        "cartoes/<int:pk>/despesas/<int:despesa_id>/editar/",
+        CartaoDespesaUpdateView.as_view(),
+        name="cartao_despesa_editar",
+    ),
+    path(
+        "cartoes/<int:pk>/despesas/<int:despesa_id>/apagar/",
+        CartaoDespesaDeleteView.as_view(),
+        name="cartao_despesa_apagar",
+    ),
+    path(
+        "cartoes/<int:pk>/fatura/<int:fatura_id>/pagar/",
+        FaturaPagarView.as_view(),
+        name="fatura_pagar",
+    ),
 ]

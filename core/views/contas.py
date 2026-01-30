@@ -10,9 +10,9 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q
 
-from core.models import Conta, Categoria, FormaPagamento
+from core.models import Conta, Categoria, FormaPagamento, CategoriaCartao
 
 
 def parse_date_flexible(date_str: str) -> date | None:
@@ -45,24 +45,34 @@ class ContasPagarView(View):
         hoje = timezone.localdate()
 
         # Pendentes: despesas ainda não realizadas
+        # Exclui despesas de cartão individuais (apenas faturas são mostradas)
         qs_pendentes = (
             Conta.objects.filter(
                 usuario=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=False,
             )
-            .select_related("categoria", "forma_pagamento")
+            .filter(
+                # Apenas contas sem cartão OU faturas de cartão
+                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+            )
+            .select_related("categoria", "forma_pagamento", "cartao")
             .order_by("data_prevista", "id")
         )
 
         # Pagas: despesas realizadas
+        # Exclui despesas de cartão individuais (apenas faturas são mostradas)
         qs_pagas = (
             Conta.objects.filter(
                 usuario=usuario,
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=True,
             )
-            .select_related("categoria", "forma_pagamento")
+            .filter(
+                # Apenas contas sem cartão OU faturas de cartão
+                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+            )
+            .select_related("categoria", "forma_pagamento", "cartao")
             .order_by("-data_realizacao", "-id")
         )
 
@@ -259,6 +269,14 @@ class CadastrarContaPagarView(View):
             ).first()
         )
 
+        # FK categoria_cartao (MCC category - optional)
+        categoria_cartao_id = (request.POST.get("categoria_cartao") or "").strip()
+        categoria_cartao = (
+            CategoriaCartao.objects.filter(id=int(categoria_cartao_id)).first()
+            if categoria_cartao_id.isdigit()
+            else None
+        )
+
         def add_months(d: date, months: int) -> date:
             y = d.year + (d.month - 1 + months) // 12
             m = (d.month - 1 + months) % 12 + 1
@@ -295,6 +313,7 @@ class CadastrarContaPagarView(View):
                             data_realizacao=venc if pago else None,
                             categoria=categoria,
                             forma_pagamento=forma_pagamento,
+                            categoria_cartao=categoria_cartao,
                             eh_parcelada=False,
                             parcela_numero=None,
                             parcela_total=None,
@@ -334,6 +353,7 @@ class CadastrarContaPagarView(View):
                     data_realizacao=data_prevista if pago else None,
                     categoria=categoria,
                     forma_pagamento=forma_pagamento,
+                    categoria_cartao=categoria_cartao,
                     eh_parcelada=True,
                     parcela_numero=1,
                     parcela_total=n,
@@ -360,6 +380,7 @@ class CadastrarContaPagarView(View):
                             data_realizacao=venc if pago else None,
                             categoria=categoria,
                             forma_pagamento=forma_pagamento,
+                            categoria_cartao=categoria_cartao,
                             eh_parcelada=True,
                             parcela_numero=i,
                             parcela_total=n,
@@ -384,6 +405,7 @@ class CadastrarContaPagarView(View):
             data_realizacao=data_prevista if pago else None,
             categoria=categoria,
             forma_pagamento=forma_pagamento,
+            categoria_cartao=categoria_cartao,
             eh_parcelada=False,
             parcela_numero=None,
             parcela_total=None,
@@ -404,12 +426,14 @@ class ContaCreateView(View):
             usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).order_by("nome")
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
+        categorias_cartao = CategoriaCartao.objects.all()
         return render(
             request,
             self.template_name,
             {
                 "categorias": categorias,
                 "formas": formas,
+                "categorias_cartao": categorias_cartao,
                 "modo": "create",
                 "tipo": "despesa",
             },
@@ -430,6 +454,7 @@ class ContaUpdateView(View):
 
         categorias = Categoria.objects.filter(usuario=usuario).order_by("nome")
         formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
+        categorias_cartao = CategoriaCartao.objects.all()
 
         return render(
             request,
@@ -438,6 +463,7 @@ class ContaUpdateView(View):
                 "conta": conta,
                 "categorias": categorias,
                 "formas": formas,
+                "categorias_cartao": categorias_cartao,
                 "modo": "edit",
                 "tipo": "receita" if conta.tipo == Conta.TIPO_RECEITA else "despesa",
             },
@@ -495,6 +521,14 @@ class ContaUpdateView(View):
             else None
         )
 
+        # categoria_cartao (MCC category - optional)
+        categoria_cartao_id = (request.POST.get("categoria_cartao") or "").strip()
+        categoria_cartao = (
+            CategoriaCartao.objects.filter(id=int(categoria_cartao_id)).first()
+            if categoria_cartao_id.isdigit()
+            else None
+        )
+
         # Se marcou aplicar no grupo, e a conta é parcelada, atualiza o grupo inteiro
         if aplicar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
             gid = conta.grupo_parcelamento
@@ -504,6 +538,7 @@ class ContaUpdateView(View):
                 descricao=descricao,
                 categoria=categoria,
                 forma_pagamento=forma_pagamento,
+                categoria_cartao=categoria_cartao,
             )
 
             # individual edit: mantém o resto só para a parcela atual
@@ -523,6 +558,7 @@ class ContaUpdateView(View):
         conta.data_prevista = data_prevista
         conta.categoria = categoria
         conta.forma_pagamento = forma_pagamento
+        conta.categoria_cartao = categoria_cartao
         conta.transacao_realizada = pago
         conta.data_realizacao = data_prevista if pago else None
         conta.save()

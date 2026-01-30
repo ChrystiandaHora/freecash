@@ -4,7 +4,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.db.models.functions import TruncDay, TruncMonth
 from django.shortcuts import render
 from django.utils import timezone
@@ -29,7 +29,7 @@ def totals_for_range_competencia(usuario, inicio: date, fim: date):
         usuario=usuario,
         data_prevista__gte=inicio,
         data_prevista__lt=fim,
-    )
+    ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
     receitas = (
         qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"] or 0
     )
@@ -47,6 +47,7 @@ def serie_por_dia_competencia(usuario, tipo, inicio: date, fim: date, ultimo_dia
             data_prevista__gte=inicio,
             data_prevista__lt=fim,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .annotate(dia=TruncDay("data_prevista"))
         .values("dia")
         .annotate(total=Sum("valor"))
@@ -76,6 +77,7 @@ def serie_6m_competencia(usuario, tipo, inicio_ref: date, fim_ref: date):
             data_prevista__gte=inicio_janela,
             data_prevista__lt=fim_ref,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .annotate(mes=TruncMonth("data_prevista"))
         .values("mes")
         .annotate(total=Sum("valor"))
@@ -105,6 +107,7 @@ def breakdown_despesas_competencia(
             data_prevista__gte=inicio,
             data_prevista__lt=fim,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .values("categoria__nome")
         .annotate(total=Sum("valor"))
         .order_by("-total")
@@ -201,7 +204,7 @@ def totals_for_range_realizadas(usuario, inicio: date, fim: date):
         transacao_realizada=True,
         data_realizacao__gte=inicio,
         data_realizacao__lt=fim,
-    )
+    ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
 
     receitas = (
         qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"] or 0
@@ -224,6 +227,7 @@ def serie_por_dia_realizadas(usuario, tipo, inicio: date, fim: date, ultimo_dia:
             data_realizacao__gte=inicio,
             data_realizacao__lt=fim,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .annotate(dia=TruncDay("data_realizacao"))
         .values("dia")
         .annotate(total=Sum("valor"))
@@ -257,6 +261,7 @@ def serie_6m_realizadas(usuario, tipo, inicio_ref: date, fim_ref: date):
             data_realizacao__gte=inicio_janela,
             data_realizacao__lt=fim_ref,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .annotate(mes=TruncMonth("data_realizacao"))
         .values("mes")
         .annotate(total=Sum("valor"))
@@ -290,6 +295,7 @@ def breakdown_despesas_realizadas(
             data_realizacao__gte=inicio,
             data_realizacao__lt=fim,
         )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
         .values("categoria__nome")
         .annotate(total=Sum("valor"))
         .order_by("-total")
@@ -353,7 +359,7 @@ def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date):
             usuario=usuario,
             data_prevista__gte=inicio_mes,
             data_prevista__lt=fim_mes,
-        )
+        ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
 
         receita = (
             qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"]
@@ -437,7 +443,7 @@ class DashboardView(View):
             tipo=Conta.TIPO_DESPESA,
             data_prevista__gte=periodo.inicio,
             data_prevista__lt=periodo.fim,
-        )
+        ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
 
         contas_pendentes = contas_mes.filter(transacao_realizada=False).count()
         contas_pagas = contas_mes.filter(transacao_realizada=True).count()
@@ -452,6 +458,7 @@ class DashboardView(View):
                 tipo=Conta.TIPO_DESPESA,
                 transacao_realizada=False,
             )
+            .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
             .select_related("categoria", "forma_pagamento")
             .order_by("data_prevista")[:5]
         )
@@ -459,6 +466,7 @@ class DashboardView(View):
         # Transações recentes continuam por CAIXA (realizadas)
         ultimas_transacoes = (
             Conta.objects.filter(usuario=usuario, transacao_realizada=True)
+            .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
             .select_related("categoria", "forma_pagamento")
             .order_by("-data_realizacao", "-id")[:7]
         )

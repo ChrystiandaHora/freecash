@@ -175,6 +175,18 @@
             <span class="font-medium text-sm tracking-wide">Contas a Pagar</span>
           </a>
 
+          <!-- Item: Cartões -->
+          {% url 'cartoes' as url_cartoes %}
+          <a
+            href="{{ url_cartoes }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'cartoes' in request.path %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-credit-card text-[18px] transition-transform duration-300 {% if 'cartoes' in request.path %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Cartões</span>
+          </a>
+
           <!-- Item: Receitas -->
           {% url 'receitas' as url_receitas %}
           <a
