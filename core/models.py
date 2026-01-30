@@ -373,6 +373,14 @@ class ExtratoImportado(AuditoriaModel):
     linhas_encontradas = models.IntegerField(default=0)
     linhas_importadas = models.IntegerField(default=0)
     erro_mensagem = models.TextField(blank=True)
+    cartao = models.ForeignKey(
+        "core.CartaoCredito",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="extratos",
+        help_text="Cartão de crédito associado a este extrato (opcional)",
+    )
 
     class Meta:
         ordering = ["-criada_em"]

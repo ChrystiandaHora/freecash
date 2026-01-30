@@ -10,7 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
-from core.models import Conta, ExtratoImportado, LinhaExtrato
+from core.models import Conta, ExtratoImportado, LinhaExtrato, CartaoCredito
 from core.services.extrato_parser import processar_pdf
 
 
@@ -27,6 +27,9 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
             "conciliacao_upload.html",
             {
                 "extratos": extratos,
+                "cartoes": CartaoCredito.objects.filter(usuario=request.user).order_by(
+                    "nome"
+                ),
             },
         )
 
@@ -52,11 +55,19 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
                 },
             )
 
+        cartao_id = request.POST.get("cartao")
+        cartao = None
+        if cartao_id:
+            cartao = CartaoCredito.objects.filter(
+                id=cartao_id, usuario=request.user
+            ).first()
+
         # Criar registro do extrato
         extrato = ExtratoImportado.objects.create(
             usuario=request.user,
             arquivo_nome=arquivo.name,
             banco=banco,
+            cartao=cartao,
             status="pendente",
         )
 
@@ -134,15 +145,32 @@ class ConciliacaoStagingView(LoginRequiredMixin, View):
                     )
 
                     # Criar Conta
+                    # Criar Conta
                     tipo_conta = "R" if linha.tipo == "C" else "D"
+
+                    # Se tiver cartão, é despesa de cartão (não realizada/paga ainda)
+                    transacao_realizada = True
+                    data_prevista = linha.data
+                    data_compra = None
+
+                    if extrato.cartao and tipo_conta == "D":
+                        transacao_realizada = False
+                        data_compra = linha.data
+                        # Tentar chutar vencimento aprox (30 dias)
+                        from datetime import timedelta
+
+                        data_prevista = linha.data + timedelta(days=30)
+
                     conta = Conta.objects.create(
                         usuario=request.user,
                         tipo=tipo_conta,
                         descricao=linha.descricao,
                         valor=linha.valor,
-                        data_prevista=linha.data,
-                        transacao_realizada=True,
-                        data_realizacao=linha.data,
+                        data_prevista=data_prevista,
+                        transacao_realizada=transacao_realizada,
+                        data_realizacao=linha.data if transacao_realizada else None,
+                        cartao=extrato.cartao,
+                        data_compra=data_compra,
                     )
 
                     linha.status = "importado"
