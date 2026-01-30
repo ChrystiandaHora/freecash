@@ -59,6 +59,26 @@
           </select>
         </div>
 
+        <!-- Cartão (Opcional) -->
+        <div class="space-y-1.5">
+          <label for="cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
+            Vincular a Cartão de Crédito (Opcional)
+          </label>
+          <select
+            name="cartao"
+            id="cartao"
+            class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+          >
+            <option value="">Não vincular (Conta Corrente)</option>
+            {% for c in cartoes %}
+            <option value="{{ c.id }}">{{ c.nome }} (Final {{ c.ultimos_digitos }})</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-gray-500 dark:text-slate-400 ml-1">
+            Selecione este campo se o PDF for uma <strong>fatura de cartão</strong>.
+          </p>
+        </div>
+
         <!-- Upload -->
         <div class="space-y-1.5">
           <label for="arquivo" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
