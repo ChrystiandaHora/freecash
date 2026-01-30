@@ -181,9 +181,9 @@ def _extrair_linha(
         return None
 
 
-def parse_pdf_santander(pdf_path: str) -> List[Dict[str, Any]]:
+def parse_layout_colunas(pdf_path: str) -> List[Dict[str, Any]]:
     """
-    Parser específico para Faturas de Cartão Santander (Formato com colunas).
+    Parser para extratos com layout em colunas (ex: Santander, alguns cartões de crédito).
     Busca linhas no formato: [Indice] Data Descrição [Parcela] Valor
     """
     linhas = []
@@ -279,9 +279,25 @@ def processar_pdf(pdf_path: str, banco: str = "generico") -> List[Dict[str, Any]
     """
     parsers = {
         "nubank": parse_pdf_nubank,
-        "santander": parse_pdf_santander,
+        "santander": parse_layout_colunas,
         "generico": parse_pdf_generico,
     }
+
+    if banco == "generico":
+        # Estratégia de Fallback: Tenta um por um até achar linhas
+        # 1. Tenta parser genérico (linha a linha simples)
+        linhas = parse_pdf_generico(pdf_path)
+        if linhas:
+            return linhas
+
+        # 2. Tenta parser de colunas (layout tabular complexo)
+        linhas = parse_layout_colunas(pdf_path)
+        if linhas:
+            return linhas
+
+        # 3. Tenta Nubank (formato específico DD MMM)
+        linhas = parse_pdf_nubank(pdf_path)
+        return linhas
 
     parser = parsers.get(banco, parse_pdf_generico)
     return parser(pdf_path)
