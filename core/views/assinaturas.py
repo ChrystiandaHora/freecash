@@ -151,7 +151,11 @@ class AssinaturaDeleteView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         assinatura = get_object_or_404(Assinatura, pk=pk, usuario=request.user)
+        cartao_id = assinatura.cartao.id if assinatura.cartao else None
         assinatura.delete()
+
+        if cartao_id:
+            return redirect("cartao_despesas", pk=cartao_id)
         return redirect("assinaturas")
 
 

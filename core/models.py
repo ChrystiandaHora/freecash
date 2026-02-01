@@ -324,6 +324,14 @@ class Assinatura(AuditoriaModel):
         blank=True,
         related_name="assinaturas",
     )
+    cartao = models.ForeignKey(
+        "core.CartaoCredito",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assinaturas",
+        help_text="Cartão de crédito onde a assinatura é cobrada",
+    )
     ativa = models.BooleanField(default=True, db_index=True)
     proxima_geracao = models.DateField(
         help_text="Data da próxima geração automática de conta"

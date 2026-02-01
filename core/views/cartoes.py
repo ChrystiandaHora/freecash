@@ -2,19 +2,25 @@
 Views para gerenciamento de Cartões de Crédito.
 """
 
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from decimal import Decimal, InvalidOperation
-from datetime import date, datetime
-
-from django.views import View
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.utils import timezone
 from django.db.models import Sum
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views import View
 
-from core.models import CartaoCredito, CategoriaCartao, Conta
+from core.models import (
+    CartaoCredito,
+    Categoria,
+    CategoriaCartao,
+    Conta,
+    Assinatura,
+)
 from core.services.fatura_service import (
     obter_ou_criar_fatura,
     atualizar_valor_fatura,
@@ -290,9 +296,9 @@ class CartaoDespesasView(View):
         page = paginator.get_page(request.GET.get("page") or 1)
 
         categorias_cartao = CategoriaCartao.objects.all()
-        anos = list(range(hoje.year - 3, hoje.year + 1))
-        anos.reverse()
-        meses = list(range(1, 13))
+        assinaturas = Assinatura.objects.filter(
+            usuario=usuario, cartao=cartao, ativa=True
+        ).order_by("dia_vencimento")
 
         return render(
             request,
@@ -300,13 +306,18 @@ class CartaoDespesasView(View):
             {
                 "cartao": cartao,
                 "despesas_page": page,
+                "paginator": paginator,
                 "total_mes": total_mes,
-                "fatura": fatura,
-                "categorias_cartao": categorias_cartao,
-                "anos": anos,
-                "meses": meses,
-                "filtros": {"ano": ano, "mes": mes, "filtro_data": filtro_data},
                 "hoje": hoje,
+                "anos": reversed(range(2020, 2031)),
+                "meses": range(1, 13),
+                "filtros": {
+                    "ano": ano,
+                    "mes": mes,
+                },
+                "categorias_cartao": categorias_cartao,
+                "fatura": fatura,
+                "assinaturas": assinaturas,
             },
         )
 
@@ -331,6 +342,9 @@ class CartaoDespesaCreateView(View):
         # Parcelamento
         parcelado = (request.POST.get("parcelado") or "") == "1"
         numero_parcelas_raw = (request.POST.get("numero_parcelas") or "2").strip()
+
+        # Recorrente (Assinatura)
+        recorrente = request.POST.get("recorrente") == "on"
 
         if not descricao or not valor_raw or not data_raw:
             messages.error(request, "Preencha todos os campos obrigatórios.")
@@ -542,6 +556,30 @@ class CartaoDespesaCreateView(View):
         atualizar_valor_fatura(fatura)
 
         messages.success(request, "Despesa adicionada ao cartão!")
+
+        if recorrente:
+            try:
+                cat_geral = None
+                if categoria_cartao:
+                    cat_geral = Categoria.objects.filter(
+                        usuario=usuario, nome__iexact=categoria_cartao.nome
+                    ).first()
+
+                Assinatura.objects.create(
+                    usuario=usuario,
+                    descricao=descricao,
+                    valor=valor_total,
+                    tipo=Assinatura.TIPO_DESPESA,
+                    dia_vencimento=data_compra.day,
+                    categoria=cat_geral,
+                    ativa=True,
+                    proxima_geracao=data_compra + relativedelta(months=1),
+                    cartao=cartao,
+                )
+                messages.info(request, "Assinatura recorrente criada com sucesso!")
+            except Exception as e:
+                messages.warning(request, f"Erro ao criar assinatura: {e}")
+
         return redirect("cartao_despesas", pk=pk)
 
 
