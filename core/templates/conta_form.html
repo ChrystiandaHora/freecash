@@ -229,9 +229,11 @@
             <h3 class="text-rose-600 dark:text-rose-400 font-semibold">Zona de Perigo</h3>
             <p class="text-gray-500 dark:text-slate-500 text-sm">Esta ação não pode ser desfeita.</p>
         </div>
-        <form method="post" action="{% url 'apagar_conta' conta.id %}" onsubmit="return confirm('Tem certeza que deseja excluir esta conta permanentemente?');">
+        <form id="form-excluir-conta" method="post" action="{% url 'apagar_conta' conta.id %}">
             {% csrf_token %}
-            <button type="submit" class="px-5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-sm font-medium flex items-center gap-2">
+            <button type="button" 
+                    onclick="confirmDelete(document.getElementById('form-excluir-conta'), '{{ conta.descricao|escapejs }}')"
+                    class="px-5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-sm font-medium flex items-center gap-2">
                 <i class="fa-regular fa-trash-can"></i> Excluir permanentemente
             </button>
         </form>

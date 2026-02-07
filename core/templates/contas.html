@@ -201,9 +201,9 @@
                     <!-- Value & Actions -->
                     <div class="text-right">
                         <p class="font-bold text-gray-900 dark:text-white text-lg">R$ {{ c.valor|floatformat:2 }}</p>
-                        <form method="post" action="{% url 'marcar_conta_paga' c.id %}" onclick="event.stopPropagation()" class="mt-1">
+                        <form id="form-pagar-conta-{{ c.id }}" method="post" action="{% url 'marcar_conta_paga' c.id %}" onclick="event.stopPropagation()" class="mt-1">
                             {% csrf_token %}
-                            <button type="submit" class="text-xs font-bold flex items-center justify-end gap-1
+                            <button type="button" onclick="confirmPayment(document.getElementById('form-pagar-conta-{{ c.id }}'), '{{ c.descricao|escapejs }}')" class="text-xs font-bold flex items-center justify-end gap-1
                                                          {% if c.esta_atrasada %}text-rose-700 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300
                                                          {% elif c.data_prevista == hoje %}text-amber-700 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300
                                                          {% else %}text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300{% endif %}">

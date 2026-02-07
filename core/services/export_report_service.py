@@ -200,7 +200,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
 
         table_data.append(
             [
-                mov.data_prevista.strftime("%d/%m"),
+                mov.data_prevista.strftime("%d/%m/%Y"),
                 tipo_label,
                 descricao,
                 categoria_nome[:15],

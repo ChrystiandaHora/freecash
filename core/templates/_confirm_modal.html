@@ -1,0 +1,133 @@
+<!-- Modal de Confirmação Genérico -->
+<div id="confirmModal" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div id="confirmModalBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+  
+  <!-- Modal -->
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full transform transition-all">
+      <!-- Header -->
+      <div class="p-6 pb-4">
+        <div class="flex items-center gap-3">
+          <div id="confirmModalIcon" class="w-12 h-12 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30">
+            <i class="fa-solid fa-triangle-exclamation text-2xl text-red-600 dark:text-red-400"></i>
+          </div>
+          <h3 id="confirmModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Ação</h3>
+        </div>
+        <p id="confirmModalMessage" class="mt-4 text-gray-600 dark:text-slate-300">Deseja realmente executar esta ação?</p>
+      </div>
+      
+      <!-- Actions -->
+      <div class="p-6 pt-2 flex gap-3 justify-end">
+        <button id="confirmModalCancel" type="button" class="px-4 py-2.5 rounded-xl font-medium bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+          Cancelar
+        </button>
+        <button id="confirmModalConfirm" type="button" class="px-4 py-2.5 rounded-xl font-medium bg-red-600 text-white hover:bg-red-700 transition-colors">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Modal de Confirmação Global
+window.confirmModal = {
+  show: function(options) {
+    const modal = document.getElementById('confirmModal');
+    const title = document.getElementById('confirmModalTitle');
+    const message = document.getElementById('confirmModalMessage');
+    const confirmBtn = document.getElementById('confirmModalConfirm');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    const icon = document.getElementById('confirmModalIcon');
+    
+    // Configurar textos
+    title.textContent = options.title || 'Confirmar Ação';
+    message.textContent = options.message || 'Deseja realmente executar esta ação?';
+    confirmBtn.textContent = options.confirmText || 'Confirmar';
+    cancelBtn.textContent = options.cancelText || 'Cancelar';
+    
+    // Estilo do botão baseado no tipo
+    if (options.type === 'danger') {
+      confirmBtn.className = 'px-4 py-2.5 rounded-xl font-medium bg-red-600 text-white hover:bg-red-700 transition-colors';
+      icon.className = 'w-12 h-12 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/30';
+      icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-2xl text-red-600 dark:text-red-400"></i>';
+    } else if (options.type === 'success') {
+      confirmBtn.className = 'px-4 py-2.5 rounded-xl font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors';
+      icon.className = 'w-12 h-12 rounded-full flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/30';
+      icon.innerHTML = '<i class="fa-solid fa-check text-2xl text-emerald-600 dark:text-emerald-400"></i>';
+    } else if (options.type === 'warning') {
+      confirmBtn.className = 'px-4 py-2.5 rounded-xl font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors';
+      icon.className = 'w-12 h-12 rounded-full flex items-center justify-center bg-amber-100 dark:bg-amber-900/30';
+      icon.innerHTML = '<i class="fa-solid fa-exclamation text-2xl text-amber-600 dark:text-amber-400"></i>';
+    } else {
+      confirmBtn.className = 'px-4 py-2.5 rounded-xl font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors';
+      icon.className = 'w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/30';
+      icon.innerHTML = '<i class="fa-solid fa-question text-2xl text-blue-600 dark:text-blue-400"></i>';
+    }
+    
+    // Mostrar modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Limpar eventos anteriores
+    const cleanup = () => {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+      document.getElementById('confirmModalBackdrop').onclick = null;
+    };
+    
+    // Handlers
+    confirmBtn.onclick = () => {
+      cleanup();
+      if (options.onConfirm) options.onConfirm();
+    };
+    
+    cancelBtn.onclick = () => {
+      cleanup();
+      if (options.onCancel) options.onCancel();
+    };
+    
+    document.getElementById('confirmModalBackdrop').onclick = cancelBtn.onclick;
+    
+    // Fechar com ESC
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        cancelBtn.click();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  },
+  
+  hide: function() {
+    const modal = document.getElementById('confirmModal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+};
+
+// Função helper para confirmar exclusão de forms
+window.confirmDelete = function(form, itemName) {
+  confirmModal.show({
+    title: 'Confirmar Exclusão',
+    message: `Tem certeza que deseja excluir "${itemName}"? Esta ação não pode ser desfeita.`,
+    type: 'danger',
+    confirmText: 'Excluir',
+    onConfirm: () => form.submit()
+  });
+};
+
+// Função helper para confirmar pagamento
+window.confirmPayment = function(form, itemName) {
+  confirmModal.show({
+    title: 'Confirmar Pagamento',
+    message: `Deseja marcar "${itemName}" como pago?`,
+    type: 'success',
+    confirmText: 'Pagar',
+    onConfirm: () => form.submit()
+  });
+};
+</script>

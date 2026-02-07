@@ -69,12 +69,14 @@ def get_backupable_models():
         "ConfigUsuario": 1,
         "Categoria": 2,
         "FormaPagamento": 3,
+        "CartaoCredito": 4,
         "ClasseAtivo": 5,
         "CategoriaAtivo": 6,
         "SubcategoriaAtivo": 7,
         "Ativo": 8,
-        "Conta": 9,
-        "Transacao": 10,
+        "Assinatura": 9,
+        "Conta": 10,
+        "Transacao": 11,
     }
 
     def get_priority(m):

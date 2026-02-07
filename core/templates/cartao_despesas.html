@@ -169,9 +169,10 @@
                        title="Editar">
                         <i class="fa-solid fa-pen"></i>
                     </a>
-                    <form method="post" action="{% url 'assinatura_apagar' pk=ass.id %}" onsubmit="return confirm('Tem certeza que deseja cancelar esta recorrência?');" class="inline">
+                    <form id="form-cancelar-assinatura-{{ ass.id }}" method="post" action="{% url 'assinatura_apagar' pk=ass.id %}" class="inline">
                         {% csrf_token %}
-                        <button type="submit" 
+                        <button type="button" 
+                                onclick="confirmModal.show({ title: 'Cancelar Recorrência', message: 'Tem certeza que deseja cancelar a recorrência \"{{ ass.descricao|escapejs }}\"?', type: 'warning', confirmText: 'Cancelar', onConfirm: () => document.getElementById('form-cancelar-assinatura-{{ ass.id }}').submit() })"
                                 class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                                 title="Cancelar recorrência">
                             <i class="fa-solid fa-trash"></i>
@@ -245,15 +246,15 @@
           </div>
           <div class="text-right">
             <p class="text-3xl font-bold">R$ {{ fatura.valor|floatformat:2 }}</p>
-            <form method="post" action="{% url 'fatura_pagar' pk=cartao.id fatura_id=fatura.id %}" class="mt-2">
+            <form id="form-pagar-fatura" method="post" action="{% url 'fatura_pagar' pk=cartao.id fatura_id=fatura.id %}" class="mt-2">
               {% csrf_token %}
               {% if fatura.transacao_realizada %}
                 <input type="hidden" name="acao" value="desfazer">
-                <button type="submit" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
+                <button type="button" onclick="confirmModal.show({ title: 'Desfazer Pagamento', message: 'Deseja desfazer o pagamento da fatura {{ fatura.descricao|escapejs }}?', type: 'warning', confirmText: 'Desfazer', onConfirm: () => document.getElementById('form-pagar-fatura').submit() })" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
                   <i class="fa-solid fa-undo mr-1"></i> Desfazer Pagamento
                 </button>
               {% else %}
-                <button type="submit" class="px-4 py-2 bg-white text-orange-600 hover:bg-orange-100 rounded-lg text-sm font-bold transition-colors">
+                <button type="button" onclick="confirmPayment(document.getElementById('form-pagar-fatura'), 'Fatura {{ cartao.nome|escapejs }}')" class="px-4 py-2 bg-white text-orange-600 hover:bg-orange-100 rounded-lg text-sm font-bold transition-colors">
                   <i class="fa-solid fa-credit-card mr-1"></i> Pagar Fatura
                 </button>
               {% endif %}
@@ -331,19 +332,15 @@
                     </a>
                     
                     <!-- Excluir -->
-                    <form method="post" action="{% url 'cartao_despesa_apagar' pk=cartao.pk despesa_id=despesa.id %}" 
-                          class="inline"
-                          onsubmit="return confirm('{% if despesa.eh_parcelada %}Deseja excluir apenas esta parcela ou todas? Para excluir TODAS as parcelas, clique em cancelar e segure SHIFT ao clicar no botão excluir.{% else %}Deseja realmente excluir esta despesa?{% endif %}');">
+                    <form id="form-excluir-despesa-{{ despesa.id }}" method="post" action="{% url 'cartao_despesa_apagar' pk=cartao.pk despesa_id=despesa.id %}" class="inline">
                       {% csrf_token %}
                       {% if despesa.eh_parcelada %}
                       <input type="hidden" name="apagar_grupo" id="apagar_grupo_{{ despesa.id }}" value="0">
                       {% endif %}
-                      <button type="submit" 
+                      <button type="button" 
                               class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                               title="Excluir"
-                              {% if despesa.eh_parcelada %}
-                              onclick="if(event.shiftKey) { document.getElementById('apagar_grupo_{{ despesa.id }}').value='1'; return confirm('Excluir TODAS as {{ despesa.parcela_total }} parcelas?'); }"
-                              {% endif %}>
+                              onclick="{% if despesa.eh_parcelada %}if(event.shiftKey) { document.getElementById('apagar_grupo_{{ despesa.id }}').value='1'; confirmModal.show({ title: 'Excluir Todas Parcelas', message: 'Excluir TODAS as {{ despesa.parcela_total }} parcelas de \"{{ despesa.descricao|escapejs }}\"?', type: 'danger', confirmText: 'Excluir Todas', onConfirm: () => document.getElementById('form-excluir-despesa-{{ despesa.id }}').submit() }); } else { confirmModal.show({ title: 'Excluir Parcela', message: 'Excluir apenas esta parcela ({{ despesa.parcela_numero }}/{{ despesa.parcela_total }}) de \"{{ despesa.descricao|escapejs }}\"? Para excluir todas, segure SHIFT.', type: 'danger', confirmText: 'Excluir Parcela', onConfirm: () => document.getElementById('form-excluir-despesa-{{ despesa.id }}').submit() }); }{% else %}confirmDelete(document.getElementById('form-excluir-despesa-{{ despesa.id }}'), '{{ despesa.descricao|escapejs }}'){% endif %}">
                         <i class="fa-solid fa-trash"></i>
                       </button>
                     </form>

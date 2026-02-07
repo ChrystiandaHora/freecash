@@ -156,9 +156,9 @@
               Erro
             </span>
             {% endif %}
-            <form method="post" action="{% url 'conciliacao_delete' extrato.pk %}" class="inline">
+            <form id="form-excluir-extrato-{{ extrato.pk }}" method="post" action="{% url 'conciliacao_delete' extrato.pk %}" class="inline">
               {% csrf_token %}
-              <button type="submit" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Remover">
+              <button type="button" onclick="confirmDelete(document.getElementById('form-excluir-extrato-{{ extrato.pk }}'), '{{ extrato.arquivo_nome|escapejs }}')" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Remover">
                 <i class="fa-solid fa-trash text-sm"></i>
               </button>
             </form>

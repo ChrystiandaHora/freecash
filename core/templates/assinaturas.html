@@ -72,11 +72,12 @@
           <!-- Ações -->
           <div class="flex items-center gap-2">
             <!-- Gerar Conta -->
-            <form method="post" action="{% url 'assinatura_gerar' assinatura.pk %}" class="inline">
+            <form id="form-gerar-assinatura-{{ assinatura.pk }}" method="post" action="{% url 'assinatura_gerar' assinatura.pk %}" class="inline">
               {% csrf_token %}
               <button
-                type="submit"
+                type="button"
                 title="Gerar conta agora"
+                onclick="confirmModal.show({ title: 'Gerar Conta', message: 'Deseja gerar a conta de \"{{ assinatura.descricao|escapejs }}\" para este mês?', type: 'success', confirmText: 'Gerar', onConfirm: () => document.getElementById('form-gerar-assinatura-{{ assinatura.pk }}').submit() })"
                 class="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
               >
                 <i class="fa-solid fa-bolt"></i>
@@ -93,11 +94,12 @@
             </a>
 
             <!-- Apagar -->
-            <form method="post" action="{% url 'assinatura_apagar' assinatura.pk %}" class="inline" onsubmit="return confirm('Remover esta assinatura?')">
+            <form id="form-remover-assinatura-{{ assinatura.pk }}" method="post" action="{% url 'assinatura_apagar' assinatura.pk %}" class="inline">
               {% csrf_token %}
               <button
-                type="submit"
+                type="button"
                 title="Remover"
+                onclick="confirmDelete(document.getElementById('form-remover-assinatura-{{ assinatura.pk }}'), '{{ assinatura.descricao|escapejs }}')"
                 class="p-2 rounded-lg text-gray-400 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
               >
                 <i class="fa-solid fa-trash"></i>
