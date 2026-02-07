@@ -111,6 +111,9 @@
               <label for="numero_parcelas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Número de Parcelas
               </label>
+            <select name="numero_parcelas" id="numero_parcelas" 
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-emerald-500 focus:border-emerald-500">
+                <option value="2">2x</option>
                 <option value="3">3x</option>
                 <option value="4">4x</option>
                 <option value="5">5x</option>
@@ -392,14 +395,86 @@
 </div>
 
 <script>
-  // Toggle parcelamento
-  document.getElementById('parcelado_toggle').addEventListener('change', function() {
-    const container = document.getElementById('parcelas_container');
-    if (this.checked) {
-      container.classList.remove('hidden');
-    } else {
-      container.classList.add('hidden');
+  document.addEventListener('DOMContentLoaded', () => {
+    const chkParcelado = document.getElementById('parcelado_toggle');
+    const boxParcelas = document.getElementById('campos_parcelamento');
+    const selParcelas = document.getElementById('numero_parcelas');
+    const chkRecorrente = document.getElementById('recorrente');
+    const valorInput = document.getElementById('valor');
+
+    // Helper: parse valor para centavos
+    function parseToCents(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim().replace(/\s/g, '');
+      if (s.includes(',')) {
+        s = s.replace(/\./g, '');
+        s = s.replace(',', '.');
+      }
+      const num = Number(s);
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return Math.round(num * 100);
     }
+
+    function centsToBRL(cents) {
+      return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    }
+
+    function splitCents(totalCents, n) {
+      const base = Math.floor(totalCents / n);
+      const resto = totalCents % n;
+      return base + (1 <= resto ? 1 : 0);
+    }
+
+    // Atualizar texto das opções do select com valores calculados
+    function updateParcelasOptions() {
+      if (!selParcelas || !valorInput) return;
+      const totalCents = parseToCents(valorInput.value);
+      const options = Array.from(selParcelas.options);
+
+      options.forEach(opt => {
+        const n = parseInt(opt.value, 10);
+        if (!opt.hasAttribute('data-original-text')) {
+          opt.setAttribute('data-original-text', opt.textContent);
+        }
+        if (!totalCents) {
+          opt.textContent = opt.getAttribute('data-original-text');
+          return;
+        }
+        const valorParcela = splitCents(totalCents, n);
+        opt.textContent = `${n}x de R$ ${centsToBRL(valorParcela)}`;
+      });
+    }
+
+    // Toggle parcelamento e exclusividade mútua
+    function updateUI() {
+      // Mutuamente exclusivos
+      if (chkParcelado && chkParcelado.checked && chkRecorrente && chkRecorrente.checked) {
+        if (document.activeElement === chkParcelado) chkRecorrente.checked = false;
+        if (document.activeElement === chkRecorrente) chkParcelado.checked = false;
+      }
+
+      if (boxParcelas) {
+        if (chkParcelado && chkParcelado.checked) {
+          boxParcelas.classList.remove('hidden');
+        } else {
+          boxParcelas.classList.add('hidden');
+        }
+      }
+
+      if (selParcelas) {
+        selParcelas.disabled = !chkParcelado || !chkParcelado.checked;
+      }
+
+      updateParcelasOptions();
+    }
+
+    // Event listeners
+    if (chkParcelado) chkParcelado.addEventListener('change', updateUI);
+    if (chkRecorrente) chkRecorrente.addEventListener('change', updateUI);
+    if (valorInput) valorInput.addEventListener('input', updateParcelasOptions);
+
+    // Inicial
+    updateUI();
   });
 </script>
 {% endblock %}
