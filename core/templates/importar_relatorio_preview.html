@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Revisar Importação - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-2">
+      <a href="{% url 'importar_relatorio' %}" class="text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+        Revisar Importação
+      </h1>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-slate-400">
+      Confira os dados antes de confirmar a importação
+    </p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+          <i class="fa-solid fa-list"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ resumo.quantidade }}</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Registros</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+          <i class="fa-solid fa-arrow-up"></i>
+        </div>
+        <div>
+          <p class="text-lg font-bold text-green-600 dark:text-green-400">R$ {{ resumo.total_receitas|floatformat:2 }}</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Receitas</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <div>
+          <p class="text-lg font-bold text-red-600 dark:text-red-400">R$ {{ resumo.total_despesas|floatformat:2 }}</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Despesas</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 flex items-center justify-center rounded-lg {% if resumo.saldo >= 0 %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% else %}bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400{% endif %}">
+          <i class="fa-solid fa-scale-balanced"></i>
+        </div>
+        <div>
+          <p class="text-lg font-bold {% if resumo.saldo >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}">R$ {{ resumo.saldo|floatformat:2 }}</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Saldo</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fa-solid fa-table text-blue-500"></i>
+        Dados a Importar
+      </h2>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+        <thead class="bg-gray-50 dark:bg-slate-700/50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Data</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Tipo</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Descrição</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Categoria</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Valor</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Validação</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
+          {% for item in dados %}
+          <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+              {{ item.data|date:"d/m/Y" }}
+            </td>
+            <td class="px-4 py-3 text-sm whitespace-nowrap">
+              {% if item.tipo == 'R' %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                <i class="fa-solid fa-arrow-up mr-1"></i> Receita
+              </span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                <i class="fa-solid fa-arrow-down mr-1"></i> Despesa
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs truncate" title="{{ item.descricao }}">
+              {{ item.descricao }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
+              {% if item.categoria_existe %}
+              <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
+                {{ item.categoria_nome|default:"Sem categoria" }}
+              </span>
+              {% else %}
+              <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                <i class="fa-solid fa-exclamation-circle text-xs"></i>
+                {{ item.categoria_nome }} <span class="text-xs">(nova)</span>
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-sm font-medium text-right whitespace-nowrap {% if item.tipo == 'R' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+              R$ {{ item.valor|floatformat:2 }}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              {% if item.realizada %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                <i class="fa-solid fa-check mr-1"></i> OK
+              </span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                <i class="fa-solid fa-clock mr-1"></i> Pend.
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              {% if item.existe_duplicado %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" title="Já existe registro com mesma data, descrição e valor">
+                <i class="fa-solid fa-clone mr-1"></i> Duplicado
+              </span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                <i class="fa-solid fa-circle-check mr-1"></i> OK
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">
+              Nenhum registro encontrado no arquivo.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Import Form -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fa-solid fa-cog text-blue-500"></i>
+        Opções de Importação
+      </h2>
+    </div>
+
+    <div class="p-6">
+      {% if error %}
+      <div class="mb-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+          <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="confirmar" value="1" />
+
+        <!-- Import Mode -->
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+            <i class="fa-solid fa-arrows-rotate text-gray-400 dark:text-gray-500"></i>
+            Modo de Importação
+          </label>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Create New -->
+            <div 
+              id="option-criar" 
+              onclick="selectMode('criar')"
+              class="mode-option selected flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-pointer transition-all hover:border-blue-400"
+            >
+              <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                <i class="fa-solid fa-plus text-xl"></i>
+              </div>
+              <div class="text-center">
+                <p class="font-semibold text-gray-900 dark:text-white">Criar Novos</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Ignora registros duplicados</p>
+              </div>
+            </div>
+
+            <!-- Overwrite -->
+            <div 
+              id="option-sobrescrever"
+              onclick="selectMode('sobrescrever')"
+              class="mode-option flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 cursor-pointer transition-all hover:border-gray-300 dark:hover:border-slate-500"
+            >
+              <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                <i class="fa-solid fa-arrows-rotate text-xl"></i>
+              </div>
+              <div class="text-center">
+                <p class="font-semibold text-gray-900 dark:text-white">Atualizar Existentes</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Sobrescreve registros duplicados</p>
+              </div>
+            </div>
+          </div>
+          
+          <input type="hidden" name="modo" id="modo-input" value="criar" />
+        </div>
+
+        <!-- Password Confirmation -->
+        <div class="space-y-1.5">
+          <label for="password" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+            <i class="fa-solid fa-lock text-gray-400 dark:text-gray-500"></i>
+            Confirme sua Senha
+          </label>
+          <div class="relative">
+            <input
+              type="password"
+              name="password"
+              id="password"
+              required
+              class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all pr-12"
+              placeholder="Digite sua senha para confirmar"
+            />
+            <div class="absolute inset-y-0 right-0 flex items-center pr-4">
+              <i class="fa-solid fa-key text-gray-400"></i>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-slate-400 ml-1">
+            Por segurança, confirme sua senha para realizar a importação
+          </p>
+        </div>
+
+        <!-- Warning -->
+        <div class="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <div class="flex items-start gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+            <div>
+              <p class="font-semibold text-amber-900 dark:text-amber-200 text-sm">Atenção</p>
+              <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                Esta ação irá adicionar {{ resumo.quantidade }} registro(s) ao seu sistema.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a
+            href="{% url 'importar_relatorio' %}"
+            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-6 py-3 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
+          >
+            <i class="fa-solid fa-xmark"></i>
+            Cancelar
+          </a>
+          <button
+            type="submit"
+            class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-3 text-sm font-bold text-white hover:from-blue-600 hover:to-indigo-700 active:scale-[0.98] transition-all shadow-lg shadow-blue-500/30"
+          >
+            <i class="fa-solid fa-file-import"></i>
+            Confirmar Importação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function selectMode(mode) {
+  // Atualiza o input hidden
+  document.getElementById('modo-input').value = mode;
+  
+  // Remove seleção de todos
+  document.querySelectorAll('.mode-option').forEach(el => {
+    el.classList.remove('selected', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+    el.classList.add('border-gray-200', 'dark:border-slate-600', 'bg-white', 'dark:bg-slate-700');
+  });
+  
+  // Adiciona seleção ao clicado
+  const selected = document.getElementById('option-' + mode);
+  selected.classList.add('selected', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+  selected.classList.remove('border-gray-200', 'dark:border-slate-600', 'bg-white', 'dark:bg-slate-700');
+}
+</script>
+{% endblock %}

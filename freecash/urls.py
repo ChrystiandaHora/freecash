@@ -28,7 +28,11 @@ from core.views.contas import (
 from core.views.dashboard import DashboardView
 from core.views.exportar import ExportarView, ExportarRelatorioView
 from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagamentoView
-from core.views.importar import ImportarView
+from core.views.importar import (
+    ImportarView,
+    ImportarRelatorioView,
+    ImportarRelatorioPreviewView,
+)
 from core.views.lading import LadingPageView
 from core.views.logout_export import LogoutView
 from core.views.receitas import ReceitasView, ReceitaUpdateView, ReceitaCreateView
@@ -68,6 +72,16 @@ urlpatterns += [
     path("logout/", LogoutView.as_view(), name="logout"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("importar/", ImportarView.as_view(), name="importar"),
+    path(
+        "importar/relatorio/",
+        ImportarRelatorioView.as_view(),
+        name="importar_relatorio",
+    ),
+    path(
+        "importar/relatorio/preview/",
+        ImportarRelatorioPreviewView.as_view(),
+        name="importar_relatorio_preview",
+    ),
     path("exportar/", ExportarView.as_view(), name="exportar"),
     path(
         "exportar/relatorio/",
