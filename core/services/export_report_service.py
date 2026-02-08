@@ -366,10 +366,12 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
 
 def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
     """
-    Gera arquivo PDF com as movimentações do período.
+    Gera arquivo PDF com as movimentações, investimentos e transações do período.
     Retorna bytes do arquivo.
     """
     movimentacoes = get_movimentacoes(usuario, data_inicio, data_fim)
+    investimentos = get_investimentos(usuario, data_inicio, data_fim)
+    transacoes_invest = get_transacoes_investimento(usuario, data_inicio, data_fim)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -384,7 +386,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
     elements = []
     styles = getSampleStyleSheet()
 
-    # Título
+    # Estilo de título
     title_style = ParagraphStyle(
         "Title",
         parent=styles["Heading1"],
@@ -392,14 +394,31 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
         spaceAfter=20,
         alignment=1,  # Center
     )
+
+    # Estilo de seção
+    section_style = ParagraphStyle(
+        "Section",
+        parent=styles["Heading2"],
+        fontSize=12,
+        spaceAfter=10,
+        spaceBefore=15,
+        textColor=colors.HexColor("#1F2937"),
+    )
+
+    # =====================
+    # SEÇÃO 1: MOVIMENTAÇÕES
+    # =====================
     title = Paragraph(
-        f"Relatório de Movimentações<br/>{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}",
+        f"Relatório Financeiro<br/>{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}",
         title_style,
     )
     elements.append(title)
-    elements.append(Spacer(1, 10 * mm))
+    elements.append(Spacer(1, 5 * mm))
 
-    # Tabela de dados
+    section_mov = Paragraph("📊 Movimentações", section_style)
+    elements.append(section_mov)
+
+    # Tabela de movimentações
     table_data = [["Data", "Tipo", "Descrição", "Categoria", "Valor", "Status"]]
 
     total_receitas = Decimal("0.00")
@@ -415,7 +434,6 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
         else:
             total_despesas += mov.valor
 
-        # Truncar descrição se muito longa
         descricao = (
             mov.descricao[:30] + "..." if len(mov.descricao) > 30 else mov.descricao
         )
@@ -433,7 +451,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
             ]
         )
 
-    # Adicionar resumo
+    # Resumo de movimentações
     table_data.append(["", "", "", "", "", ""])
     table_data.append(
         [
@@ -471,40 +489,221 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
         ]
     )
 
-    # Criar tabela
     col_widths = [45, 50, 120, 80, 70, 40]
     table = Table(table_data, colWidths=col_widths)
 
     table_style = TableStyle(
         [
-            # Header
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#10B981")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, 0), 9),
             ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            # Body
             ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
             ("FONTSIZE", (0, 1), (-1, -1), 8),
-            ("ALIGN", (4, 1), (4, -1), "RIGHT"),  # Valores à direita
-            ("ALIGN", (5, 1), (5, -1), "CENTER"),  # Status centralizado
-            # Grid
+            ("ALIGN", (4, 1), (4, -1), "RIGHT"),
+            ("ALIGN", (5, 1), (5, -1), "CENTER"),
             ("GRID", (0, 0), (-1, -5), 0.5, colors.grey),
-            # Alternating rows
             (
                 "ROWBACKGROUNDS",
                 (0, 1),
                 (-1, -5),
                 [colors.white, colors.HexColor("#F0FDF4")],
             ),
-            # Summary styling
             ("FONTNAME", (3, -3), (4, -1), "Helvetica-Bold"),
             ("ALIGN", (3, -3), (3, -1), "RIGHT"),
         ]
     )
     table.setStyle(table_style)
-
     elements.append(table)
+
+    # =====================
+    # SEÇÃO 2: INVESTIMENTOS
+    # =====================
+    if investimentos.exists():
+        elements.append(Spacer(1, 10 * mm))
+        section_invest = Paragraph("📈 Carteira de Investimentos", section_style)
+        elements.append(section_invest)
+
+        invest_data = [["Ticker", "Nome", "Classe", "Qtd", "PM", "Valor"]]
+        total_carteira = Decimal("0.00")
+
+        for ativo in investimentos:
+            classe = ""
+            if ativo.subcategoria:
+                classe = ativo.subcategoria.categoria.classe.nome[:10]
+
+            valor_posicao = ativo.quantidade * ativo.preco_medio
+            total_carteira += valor_posicao
+
+            nome = (
+                ativo.nome[:20] + "..."
+                if ativo.nome and len(ativo.nome) > 20
+                else (ativo.nome or "")
+            )
+
+            invest_data.append(
+                [
+                    ativo.ticker,
+                    nome,
+                    classe,
+                    f"{ativo.quantidade:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    f"R$ {ativo.preco_medio:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    f"R$ {valor_posicao:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                ]
+            )
+
+        # Total
+        invest_data.append(["", "", "", "", "", ""])
+        invest_data.append(
+            [
+                "",
+                "",
+                "",
+                "",
+                "Total:",
+                f"R$ {total_carteira:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+
+        invest_widths = [50, 90, 60, 55, 70, 80]
+        invest_table = Table(invest_data, colWidths=invest_widths)
+
+        invest_style = TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3B82F6")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("ALIGN", (3, 1), (5, -1), "RIGHT"),
+                ("GRID", (0, 0), (-1, -3), 0.5, colors.grey),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -3),
+                    [colors.white, colors.HexColor("#EFF6FF")],
+                ),
+                ("FONTNAME", (4, -1), (5, -1), "Helvetica-Bold"),
+            ]
+        )
+        invest_table.setStyle(invest_style)
+        elements.append(invest_table)
+
+    # ================================
+    # SEÇÃO 3: TRANSAÇÕES INVESTIMENTO
+    # ================================
+    if transacoes_invest.exists():
+        elements.append(Spacer(1, 10 * mm))
+        section_trans = Paragraph("💰 Transações de Investimento", section_style)
+        elements.append(section_trans)
+
+        trans_data = [["Data", "Ticker", "Tipo", "Qtd", "Preço", "Total"]]
+        total_compras = Decimal("0.00")
+        total_vendas = Decimal("0.00")
+        total_proventos = Decimal("0.00")
+
+        for trans in transacoes_invest:
+            tipo_label = trans.get_tipo_display()
+
+            if trans.tipo == TransacaoInvestimento.TIPO_COMPRA:
+                total_compras += trans.valor_total
+            elif trans.tipo == TransacaoInvestimento.TIPO_VENDA:
+                total_vendas += trans.valor_total
+            else:
+                total_proventos += trans.valor_total
+
+            trans_data.append(
+                [
+                    trans.data.strftime("%d/%m/%Y"),
+                    trans.ativo.ticker,
+                    tipo_label[:10],
+                    f"{trans.quantidade:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    f"R$ {trans.preco_unitario:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    f"R$ {trans.valor_total:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                ]
+            )
+
+        # Resumo
+        trans_data.append(["", "", "", "", "", ""])
+        trans_data.append(
+            [
+                "",
+                "",
+                "",
+                "",
+                "Compras:",
+                f"R$ {total_compras:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+        trans_data.append(
+            [
+                "",
+                "",
+                "",
+                "",
+                "Vendas:",
+                f"R$ {total_vendas:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+        trans_data.append(
+            [
+                "",
+                "",
+                "",
+                "",
+                "Proventos:",
+                f"R$ {total_proventos:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+
+        trans_widths = [50, 50, 55, 55, 70, 80]
+        trans_table = Table(trans_data, colWidths=trans_widths)
+
+        trans_style = TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#8B5CF6")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 8),
+                ("ALIGN", (3, 1), (5, -1), "RIGHT"),
+                ("GRID", (0, 0), (-1, -5), 0.5, colors.grey),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -5),
+                    [colors.white, colors.HexColor("#F5F3FF")],
+                ),
+                ("FONTNAME", (4, -3), (5, -1), "Helvetica-Bold"),
+            ]
+        )
+        trans_table.setStyle(trans_style)
+        elements.append(trans_table)
 
     # Build PDF
     doc.build(elements)
