@@ -18,6 +18,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 from core.models import Conta
+from investimento.models import Ativo, Transacao as TransacaoInvestimento
 
 
 def get_movimentacoes(usuario, data_inicio: date, data_fim: date):
@@ -41,21 +42,61 @@ def get_movimentacoes(usuario, data_inicio: date, data_fim: date):
     return qs
 
 
+def get_investimentos(usuario, data_inicio: date, data_fim: date):
+    """
+    Busca ativos do usuário que têm transações no período ou posição > 0.
+    """
+    # Ativos com posição > 0 ou com transações no período
+    ativos_com_transacoes = TransacaoInvestimento.objects.filter(
+        usuario=usuario,
+        data__gte=data_inicio,
+        data__lte=data_fim,
+    ).values_list("ativo_id", flat=True)
+
+    qs = (
+        Ativo.objects.filter(
+            Q(usuario=usuario) & (Q(quantidade__gt=0) | Q(id__in=ativos_com_transacoes))
+        )
+        .select_related("subcategoria__categoria__classe")
+        .order_by("ticker")
+    )
+    return qs
+
+
+def get_transacoes_investimento(usuario, data_inicio: date, data_fim: date):
+    """
+    Busca transações de investimento do usuário no período.
+    """
+    qs = (
+        TransacaoInvestimento.objects.filter(
+            usuario=usuario,
+            data__gte=data_inicio,
+            data__lte=data_fim,
+        )
+        .select_related("ativo")
+        .order_by("data", "id")
+    )
+    return qs
+
+
 def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
     """
-    Gera arquivo Excel com as movimentações do período.
+    Gera arquivo Excel com as movimentações, investimentos e transações do período.
     Retorna bytes do arquivo.
     """
     movimentacoes = get_movimentacoes(usuario, data_inicio, data_fim)
+    investimentos = get_investimentos(usuario, data_inicio, data_fim)
+    transacoes_invest = get_transacoes_investimento(usuario, data_inicio, data_fim)
 
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Movimentações"
 
-    # Estilos
+    # Estilos comuns
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(
         start_color="10B981", end_color="10B981", fill_type="solid"
+    )
+    header_fill_blue = PatternFill(
+        start_color="3B82F6", end_color="3B82F6", fill_type="solid"
     )
     header_alignment = Alignment(horizontal="center", vertical="center")
     thin_border = Border(
@@ -64,6 +105,12 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
         top=Side(style="thin"),
         bottom=Side(style="thin"),
     )
+
+    # =====================
+    # ABA 1: MOVIMENTAÇÕES
+    # =====================
+    ws = wb.active
+    ws.title = "Movimentações"
 
     # Título
     ws.merge_cells("A1:F1")
@@ -134,6 +181,181 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
     column_widths = [12, 10, 40, 20, 15, 12]
     for i, width in enumerate(column_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = width
+
+    # =====================
+    # ABA 2: INVESTIMENTOS
+    # =====================
+    ws_invest = wb.create_sheet("Investimentos")
+
+    # Título
+    ws_invest.merge_cells("A1:H1")
+    ws_invest["A1"] = f"Carteira de Investimentos - {data_fim.strftime('%d/%m/%Y')}"
+    ws_invest["A1"].font = Font(bold=True, size=14)
+    ws_invest["A1"].alignment = Alignment(horizontal="center")
+
+    # Cabeçalhos
+    invest_headers = [
+        "Ticker",
+        "Nome",
+        "Classe",
+        "Categoria",
+        "Subcategoria",
+        "Quantidade",
+        "Preço Médio",
+        "Valor Posição",
+    ]
+    for col, header in enumerate(invest_headers, 1):
+        cell = ws_invest.cell(row=3, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill_blue
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Dados
+    total_carteira = Decimal("0.00")
+    row_num = 4
+
+    for ativo in investimentos:
+        classe = ""
+        categoria = ""
+        subcategoria = ""
+
+        if ativo.subcategoria:
+            subcategoria = ativo.subcategoria.nome
+            categoria = ativo.subcategoria.categoria.nome
+            classe = ativo.subcategoria.categoria.classe.nome
+
+        valor_posicao = ativo.quantidade * ativo.preco_medio
+        total_carteira += valor_posicao
+
+        data = [
+            ativo.ticker,
+            ativo.nome or "",
+            classe,
+            categoria,
+            subcategoria,
+            float(ativo.quantidade),
+            float(ativo.preco_medio),
+            float(valor_posicao),
+        ]
+
+        for col, value in enumerate(data, 1):
+            cell = ws_invest.cell(row=row_num, column=col, value=value)
+            cell.border = thin_border
+            if col in [6, 7, 8]:  # Colunas numéricas
+                cell.number_format = "#,##0.00" if col != 6 else "#,##0.00000000"
+                cell.alignment = Alignment(horizontal="right")
+
+        row_num += 1
+
+    # Total da carteira
+    if investimentos.exists():
+        ws_invest.cell(row=row_num + 1, column=7, value="Total Carteira:").font = Font(
+            bold=True
+        )
+        total_cell = ws_invest.cell(
+            row=row_num + 1, column=8, value=float(total_carteira)
+        )
+        total_cell.number_format = "#,##0.00"
+        total_cell.font = Font(bold=True, color="3B82F6")
+
+    # Ajustar largura das colunas
+    invest_widths = [12, 30, 15, 15, 15, 15, 15, 18]
+    for i, width in enumerate(invest_widths, 1):
+        ws_invest.column_dimensions[get_column_letter(i)].width = width
+
+    # ================================
+    # ABA 3: TRANSAÇÕES INVESTIMENTO
+    # ================================
+    ws_trans = wb.create_sheet("Transações Invest.")
+
+    # Título
+    ws_trans.merge_cells("A1:G1")
+    ws_trans["A1"] = (
+        f"Transações de Investimento - {data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}"
+    )
+    ws_trans["A1"].font = Font(bold=True, size=14)
+    ws_trans["A1"].alignment = Alignment(horizontal="center")
+
+    # Cabeçalhos
+    trans_headers = [
+        "Data",
+        "Ticker",
+        "Tipo",
+        "Quantidade",
+        "Preço Unit.",
+        "Taxas",
+        "Valor Total",
+    ]
+    for col, header in enumerate(trans_headers, 1):
+        cell = ws_trans.cell(row=3, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill_blue
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Dados
+    row_num = 4
+    total_compras = Decimal("0.00")
+    total_vendas = Decimal("0.00")
+    total_proventos = Decimal("0.00")
+
+    for trans in transacoes_invest:
+        tipo_label = trans.get_tipo_display()
+
+        if trans.tipo == TransacaoInvestimento.TIPO_COMPRA:
+            total_compras += trans.valor_total
+        elif trans.tipo == TransacaoInvestimento.TIPO_VENDA:
+            total_vendas += trans.valor_total
+        else:
+            total_proventos += trans.valor_total
+
+        data = [
+            trans.data.strftime("%d/%m/%Y"),
+            trans.ativo.ticker,
+            tipo_label,
+            float(trans.quantidade),
+            float(trans.preco_unitario),
+            float(trans.taxas),
+            float(trans.valor_total),
+        ]
+
+        for col, value in enumerate(data, 1):
+            cell = ws_trans.cell(row=row_num, column=col, value=value)
+            cell.border = thin_border
+            if col >= 4:  # Colunas numéricas
+                cell.number_format = "#,##0.00" if col != 4 else "#,##0.00000000"
+                cell.alignment = Alignment(horizontal="right")
+
+        row_num += 1
+
+    # Resumo
+    if transacoes_invest.exists():
+        ws_trans.cell(row=row_num + 1, column=6, value="Total Compras:").font = Font(
+            bold=True
+        )
+        ws_trans.cell(
+            row=row_num + 1, column=7, value=float(total_compras)
+        ).number_format = "#,##0.00"
+
+        ws_trans.cell(row=row_num + 2, column=6, value="Total Vendas:").font = Font(
+            bold=True
+        )
+        ws_trans.cell(
+            row=row_num + 2, column=7, value=float(total_vendas)
+        ).number_format = "#,##0.00"
+
+        ws_trans.cell(row=row_num + 3, column=6, value="Total Proventos:").font = Font(
+            bold=True
+        )
+        ws_trans.cell(
+            row=row_num + 3, column=7, value=float(total_proventos)
+        ).number_format = "#,##0.00"
+
+    # Ajustar largura das colunas
+    trans_widths = [12, 12, 18, 15, 15, 12, 18]
+    for i, width in enumerate(trans_widths, 1):
+        ws_trans.column_dimensions[get_column_letter(i)].width = width
 
     # Salvar em bytes
     output = io.BytesIO()

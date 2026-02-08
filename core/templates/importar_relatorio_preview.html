@@ -28,7 +28,7 @@
         </div>
         <div>
           <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ resumo.quantidade }}</p>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Registros</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Movimentações</p>
         </div>
       </div>
     </div>
@@ -57,6 +57,19 @@
       </div>
     </div>
 
+    {% if tem_investimentos %}
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+          <i class="fa-solid fa-chart-pie"></i>
+        </div>
+        <div>
+          <p class="text-lg font-bold text-purple-600 dark:text-purple-400">R$ {{ resumo_invest.total_carteira|floatformat:2 }}</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Carteira</p>
+        </div>
+      </div>
+    </div>
+    {% else %}
     <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 flex items-center justify-center rounded-lg {% if resumo.saldo >= 0 %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% else %}bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400{% endif %}">
@@ -68,100 +81,192 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
 
-  <!-- Data Table -->
-  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden mb-6">
-    <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <i class="fa-solid fa-table text-blue-500"></i>
-        Dados a Importar
-      </h2>
-    </div>
-    
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-        <thead class="bg-gray-50 dark:bg-slate-700/50">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Data</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Tipo</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Descrição</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Categoria</th>
-            <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Valor</th>
-            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
-            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Validação</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-          {% for item in dados %}
-          <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
-            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">
-              {{ item.data|date:"d/m/Y" }}
-            </td>
-            <td class="px-4 py-3 text-sm whitespace-nowrap">
-              {% if item.tipo == 'R' %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                <i class="fa-solid fa-arrow-up mr-1"></i> Receita
-              </span>
-              {% else %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                <i class="fa-solid fa-arrow-down mr-1"></i> Despesa
-              </span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs truncate" title="{{ item.descricao }}">
-              {{ item.descricao }}
-            </td>
-            <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
-              {% if item.categoria_existe %}
-              <span class="flex items-center gap-1.5">
-                <i class="fa-solid fa-check-circle text-green-500 text-xs"></i>
-                {{ item.categoria_nome|default:"Sem categoria" }}
-              </span>
-              {% else %}
-              <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                <i class="fa-solid fa-exclamation-circle text-xs"></i>
-                {{ item.categoria_nome }} <span class="text-xs">(nova)</span>
-              </span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-sm font-medium text-right whitespace-nowrap {% if item.tipo == 'R' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
-              R$ {{ item.valor|floatformat:2 }}
-            </td>
-            <td class="px-4 py-3 text-center whitespace-nowrap">
-              {% if item.realizada %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                <i class="fa-solid fa-check mr-1"></i> OK
-              </span>
-              {% else %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                <i class="fa-solid fa-clock mr-1"></i> Pend.
-              </span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-center whitespace-nowrap">
-              {% if item.existe_duplicado %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" title="Já existe registro com mesma data, descrição e valor">
-                <i class="fa-solid fa-clone mr-1"></i> Duplicado
-              </span>
-              {% else %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                <i class="fa-solid fa-circle-check mr-1"></i> OK
-              </span>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">
-              Nenhum registro encontrado no arquivo.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- Tabs Navigation -->
+  <div class="mb-6">
+    <div class="border-b border-gray-200 dark:border-slate-700">
+      <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+        <button
+          onclick="showTab('movimentacoes')"
+          id="tab-movimentacoes"
+          class="tab-button active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm border-blue-500 text-blue-600 dark:text-blue-400"
+        >
+          <i class="fa-solid fa-wallet mr-2"></i>
+          Movimentações ({{ resumo.quantidade }})
+        </button>
+        {% if tem_investimentos %}
+        <button
+          onclick="showTab('investimentos')"
+          id="tab-investimentos"
+          class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+        >
+          <i class="fa-solid fa-chart-pie mr-2"></i>
+          Investimentos ({{ resumo_invest.quantidade }})
+        </button>
+        <button
+          onclick="showTab('transacoes')"
+          id="tab-transacoes"
+          class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
+        >
+          <i class="fa-solid fa-exchange-alt mr-2"></i>
+          Transações Invest. ({{ resumo_trans.quantidade }})
+        </button>
+        {% endif %}
+      </nav>
     </div>
   </div>
+
+  <!-- Tab: Movimentações -->
+  <div id="panel-movimentacoes" class="tab-panel">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden mb-6">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+          <thead class="bg-gray-50 dark:bg-slate-700/50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Data</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Tipo</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Descrição</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Categoria</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Valor</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
+            {% for item in dados %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+              <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ item.data|date:"d/m/Y" }}</td>
+              <td class="px-4 py-3 text-sm">
+                {% if item.tipo == 'R' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                  <i class="fa-solid fa-arrow-up mr-1"></i> Receita
+                </span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                  <i class="fa-solid fa-arrow-down mr-1"></i> Despesa
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-xs truncate">{{ item.descricao }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">{{ item.categoria_nome|default:"Sem categoria" }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-right {% if item.tipo == 'R' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                R$ {{ item.valor|floatformat:2 }}
+              </td>
+              <td class="px-4 py-3 text-center">
+                {% if item.realizada %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">OK</span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">Pend.</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">
+                Nenhuma movimentação encontrada.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Investimentos -->
+  {% if tem_investimentos %}
+  <div id="panel-investimentos" class="tab-panel hidden">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden mb-6">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+          <thead class="bg-gray-50 dark:bg-slate-700/50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Ticker</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Nome</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Classe</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Qtd</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">PM</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Valor</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
+            {% for item in dados_invest %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+              <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ item.ticker }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">{{ item.nome|truncatechars:25 }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">{{ item.classe }}</td>
+              <td class="px-4 py-3 text-sm text-right text-gray-900 dark:text-white">{{ item.quantidade|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-sm text-right text-gray-600 dark:text-slate-300">R$ {{ item.preco_medio|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-right text-purple-600 dark:text-purple-400">R$ {{ item.valor_posicao|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-center">
+                {% if item.ativo_existe %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">Existe</span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Novo</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">
+                Nenhum investimento encontrado.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Transações Investimento -->
+  <div id="panel-transacoes" class="tab-panel hidden">
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden mb-6">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+          <thead class="bg-gray-50 dark:bg-slate-700/50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Data</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Ticker</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Tipo</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Qtd</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Preço</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-slate-300 uppercase">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
+            {% for item in dados_trans %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+              <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ item.data|date:"d/m/Y" }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ item.ticker }}</td>
+              <td class="px-4 py-3 text-sm">
+                {% if item.tipo == 'C' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Compra</span>
+                {% elif item.tipo == 'V' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">Venda</span>
+                {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Provento</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-sm text-right text-gray-900 dark:text-white">{{ item.quantidade|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-sm text-right text-gray-600 dark:text-slate-300">R$ {{ item.preco_unitario|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-sm font-medium text-right text-purple-600 dark:text-purple-400">R$ {{ item.valor_total|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">
+                Nenhuma transação de investimento encontrada.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Import Form -->
   <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
@@ -194,7 +299,6 @@
           </label>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Create New -->
             <div 
               id="option-criar" 
               onclick="selectMode('criar')"
@@ -205,11 +309,10 @@
               </div>
               <div class="text-center">
                 <p class="font-semibold text-gray-900 dark:text-white">Criar Novos</p>
-                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Ignora registros duplicados</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Ignora duplicados</p>
               </div>
             </div>
 
-            <!-- Overwrite -->
             <div 
               id="option-sobrescrever"
               onclick="selectMode('sobrescrever')"
@@ -219,8 +322,8 @@
                 <i class="fa-solid fa-arrows-rotate text-xl"></i>
               </div>
               <div class="text-center">
-                <p class="font-semibold text-gray-900 dark:text-white">Atualizar Existentes</p>
-                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Sobrescreve registros duplicados</p>
+                <p class="font-semibold text-gray-900 dark:text-white">Atualizar</p>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Sobrescreve duplicados</p>
               </div>
             </div>
           </div>
@@ -247,9 +350,6 @@
               <i class="fa-solid fa-key text-gray-400"></i>
             </div>
           </div>
-          <p class="text-xs text-gray-500 dark:text-slate-400 ml-1">
-            Por segurança, confirme sua senha para realizar a importação
-          </p>
         </div>
 
         <!-- Warning -->
@@ -259,7 +359,8 @@
             <div>
               <p class="font-semibold text-amber-900 dark:text-amber-200 text-sm">Atenção</p>
               <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                Esta ação irá adicionar {{ resumo.quantidade }} registro(s) ao seu sistema.
+                Esta ação irá processar {{ resumo.quantidade }} movimentação(ões)
+                {% if tem_investimentos %}, {{ resumo_invest.quantidade }} ativo(s) e {{ resumo_trans.quantidade }} transação(ões) de investimento{% endif %}.
               </p>
             </div>
           </div>
@@ -289,19 +390,34 @@
 
 <script>
 function selectMode(mode) {
-  // Atualiza o input hidden
   document.getElementById('modo-input').value = mode;
   
-  // Remove seleção de todos
   document.querySelectorAll('.mode-option').forEach(el => {
     el.classList.remove('selected', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
     el.classList.add('border-gray-200', 'dark:border-slate-600', 'bg-white', 'dark:bg-slate-700');
   });
   
-  // Adiciona seleção ao clicado
   const selected = document.getElementById('option-' + mode);
   selected.classList.add('selected', 'border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
   selected.classList.remove('border-gray-200', 'dark:border-slate-600', 'bg-white', 'dark:bg-slate-700');
+}
+
+function showTab(tabName) {
+  // Hide all panels
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.add('hidden'));
+  
+  // Show selected panel
+  document.getElementById('panel-' + tabName).classList.remove('hidden');
+  
+  // Update tab buttons
+  document.querySelectorAll('.tab-button').forEach(el => {
+    el.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+    el.classList.add('border-transparent', 'text-gray-500', 'dark:text-slate-400');
+  });
+  
+  const activeTab = document.getElementById('tab-' + tabName);
+  activeTab.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+  activeTab.classList.remove('border-transparent', 'text-gray-500', 'dark:text-slate-400');
 }
 </script>
 {% endblock %}
