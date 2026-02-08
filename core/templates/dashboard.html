@@ -109,9 +109,15 @@
       </div>
       {% if taxa_poupanca != None %}
       <div class="mt-2 flex items-center text-xs">
+        {% if taxa_poupanca >= 0 %}
         <span class="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
           {{ taxa_poupanca|floatformat:0 }}% poupança
         </span>
+        {% else %}
+        <span class="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+          <i class="fa-solid fa-arrow-down mr-1"></i>Saldo negativo
+        </span>
+        {% endif %}
       </div>
       {% endif %}
     </div>
@@ -277,7 +283,7 @@
           <p class="text-gray-500 dark:text-slate-400">Pendentes</p>
         </div>
         <div>
-          <p class="text-lg font-bold text-red-600 dark:text-red-400">{{ contas_atrasadas|default:0 }}</p>
+          <p class="text-lg font-bold {% if contas_atrasadas > 0 %}text-red-600 dark:text-red-400{% else %}text-gray-400 dark:text-slate-500{% endif %}">{{ contas_atrasadas|default:0 }}</p>
           <p class="text-gray-500 dark:text-slate-400">Atrasadas</p>
         </div>
       </div>
@@ -348,6 +354,19 @@
 <script>
   const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   
+  // Abbreviate large values for chart labels
+  function formatAbbreviated(value) {
+    const absVal = Math.abs(value);
+    if (absVal >= 1_000_000_000) {
+      return `R$ ${(value / 1_000_000_000).toFixed(1).replace('.', ',')} bi`;
+    } else if (absVal >= 1_000_000) {
+      return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')} mi`;
+    } else if (absVal >= 1_000) {
+      return `R$ ${(value / 1_000).toFixed(1).replace('.', ',')} mil`;
+    }
+    return brl.format(value);
+  }
+  
   function setPeriodo(value) {
     const url = new URL(window.location.href);
     url.searchParams.set("periodo", value);
@@ -382,7 +401,7 @@
       fontFamily: 'Inter, sans-serif',
       background: 'transparent'
     },
-    colors: ['#10b981', '#ef4444', '#3b82f6'],
+    colors: ['#10b981', '#ef4444', '#60a5fa'],
     plotOptions: {
       bar: {
         horizontal: false,
@@ -437,7 +456,7 @@
     xaxis: {
       categories: diasLabels,
       labels: { 
-        style: { colors: textColor, fontSize: '10px' },
+        style: { colors: textColor, fontSize: '12px' },
         rotate: 0,
         hideOverlappingLabels: true
       },
@@ -446,7 +465,7 @@
     },
     yaxis: {
       labels: {
-        style: { colors: textColor, fontSize: '10px' },
+        style: { colors: textColor, fontSize: '12px' },
         formatter: val => brl.format(val)
       }
     },
@@ -483,9 +502,9 @@
             total: {
               show: true,
               label: 'Total',
-              fontSize: '12px',
+              fontSize: '11px',
               color: textColor,
-              formatter: w => brl.format(w.globals.seriesTotals.reduce((a, b) => a + b, 0))
+              formatter: w => formatAbbreviated(w.globals.seriesTotals.reduce((a, b) => a + b, 0))
             }
           }
         }
