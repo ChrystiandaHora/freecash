@@ -138,6 +138,10 @@ class Ativo(AuditoriaModel):
         unique_together = ("usuario", "ticker")
         ordering = ["ticker"]
 
+    @property
+    def valor_total(self):
+        return self.quantidade * self.preco_medio
+
     def __str__(self):
         return f"{self.ticker} ({self.quantidade})"
 
