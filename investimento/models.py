@@ -150,6 +150,13 @@ class Ativo(AuditoriaModel):
         return self.quantidade * self.preco_medio
 
     @property
+    def cotacao_atual(self):
+        ultima = self.cotacoes.order_by("-data", "-criada_em").first()
+        if ultima:
+            return ultima.valor
+        return None
+
+    @property
     def valor_total_atual(self):
         # Se houver cotação recente, usa-a.
         # Caso contrário, fallback para preço médio (ou 0, ou lança aviso? Vamos usar 0 se não tiver cotação e não for renda fixa com lógica própria)

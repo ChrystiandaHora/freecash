@@ -1,674 +1,792 @@
-{% extends 'base.html' %} {% load humanize %} {% block title %}Dashboard de
-Investimentos | FreeCash{% endblock %} {% block content %}
+{% extends 'base.html' %} {% load humanize %}
+{% block title %}
+  Dashboard de Investimentos | FreeCash
+{% endblock %}
+{% block content %}
+  <!-- JSON Data for Charts -->
+  {{ allocation_labels|json_script:"allocationLabels" }}
+  {{ allocation_values|json_script:"allocationValues" }}
+  {{ category_labels|json_script:"categoryLabels" }}
+  {{ category_values|json_script:"categoryValues" }}
 
-<!-- JSON Data for Charts -->
-{{ allocation_labels|json_script:"allocationLabels" }}
-{{allocation_values|json_script:"allocationValues" }}
-{{category_labels|json_script:"categoryLabels" }}
-{{category_values|json_script:"categoryValues" }}
+  <div class="max-w-8xl mx-auto space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div
+      class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+    >
+      <div class="space-y-1">
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
+          <i class="fa-solid fa-chart-pie mr-2 text-emerald-500"></i>
+          Dashboard de Investimentos
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-slate-300">
+          Acompanhe sua carteira e alocação de ativos
+        </p>
+      </div>
 
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div class="space-y-1">
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
-        <i class="fa-solid fa-chart-pie text-emerald-500 mr-2"></i>
-        Dashboard de Investimentos
-      </h1>
-      <p class="text-sm text-gray-500 dark:text-slate-300">
-        Acompanhe sua carteira e alocação de ativos
-      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <a
+          href="{% url 'investimento:atualizar_cotacoes' %}"
+          class="inline-flex items-center justify-center rounded-xl bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+        >
+          <i class="fa-solid fa-sync mr-2"></i> Atualizar Cotações
+        </a>
+        <a
+          href="{% url 'investimento:ativo_listar' %}"
+          class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-black dark:bg-slate-700 dark:text-gray-100 dark:hover:bg-slate-600"
+        >
+          <i class="fa-solid fa-list mr-2"></i> Meus Ativos
+        </a>
+        <a
+          href="{% url 'investimento:transacao_criar' %}"
+          class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-700"
+        >
+          <i class="fa-solid fa-plus mr-2"></i> Nova Transação
+        </a>
+      </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2">
-      <a
-        href="{% url 'investimento:atualizar_cotacoes' %}"
-        class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors"
+    <!-- KPI Cards Grid -->
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <!-- Patrimônio Investido -->
+      <div
+        class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
       >
-        <i class="fa-solid fa-sync mr-2"></i> Atualizar Cotações
-      </a>
+        <div
+          class="absolute right-0 top-0 p-4 opacity-5 transition-opacity group-hover:opacity-10"
+        >
+          <i
+            class="fa-solid fa-money-bill-transfer text-6xl text-blue-600 dark:text-blue-400"
+          ></i>
+        </div>
+        <div class="relative z-10">
+          <p class="mb-1 text-sm font-medium text-gray-500 dark:text-slate-400">
+            Patrimônio Investido
+          </p>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+            R$ {{ total_investido|floatformat:2|intcomma }}
+          </h3>
+          <p class="mt-2 text-xs text-gray-400">Custo de aquisição</p>
+        </div>
+      </div>
+
+      <!-- Rentabilidade -->
+      <div
+        class="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div
+          class="absolute right-0 top-0 p-4 opacity-5 transition-opacity group-hover:opacity-10"
+        >
+          <i
+            class="fa-solid fa-chart-line {% if total_rentabilidade >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} text-6xl"
+          ></i>
+        </div>
+        <div class="relative z-10">
+          <p class="mb-1 text-sm font-medium text-gray-500 dark:text-slate-400">
+            Rentabilidade
+          </p>
+          <div class="flex items-baseline gap-2">
+            <h3
+              class="{% if total_rentabilidade >= 0 %}text-emerald-600
+              dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %} text-2xl font-bold"
+            >
+              {% if total_rentabilidade > 0 %}+{% endif %}R$
+              {{ total_rentabilidade|floatformat:2|intcomma }}
+            </h3>
+          </div>
+          <p
+            class="{% if total_rentabilidade >= 0 %}text-emerald-600
+            dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %} mt-2 text-xs font-semibold"
+          >
+            {% if total_rentabilidade > 0 %}+{% endif %}
+            {{ total_rentabilidade_percentual|floatformat:2 }}%
+          </p>
+        </div>
+      </div>
+
+      <!-- Patrimônio Total -->
+      <div
+        class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-5 text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:shadow-xl"
+      >
+        <div
+          class="absolute right-0 top-0 -mr-8 -mt-8 h-32 w-32 rounded-full bg-white/10 blur-2xl"
+        ></div>
+        <div class="relative z-10">
+          <p class="mb-1 text-sm font-medium text-emerald-100">
+            <i class="fa-solid fa-wallet mr-2"></i>Patrimônio Total
+          </p>
+          <h3 class="mb-1 text-3xl font-bold">
+            R$ {{ total_patrimonio|floatformat:2|intcomma }}
+          </h3>
+          <p class="mt-2 text-xs text-emerald-200/80">Valor atual de mercado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts & Details Grid -->
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <!-- Allocation Chart (Class) -->
+      <div
+        class="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div class="mb-4">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            Alocação por Classe
+          </h2>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+            Distribuição do patrimônio
+          </p>
+        </div>
+        {% if allocation_labels %}
+          <div id="chartAllocation" style="height: 220px;"></div>
+          <div class="mt-4 space-y-2">
+            {% for label, value in allocation_data %}
+              <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-2">
+                  <span
+                    class="h-3 w-3 rounded-full"
+                    style="background-color: var(--chart-color-{{ forloop.counter0 }});"
+                  ></span>
+                  <span class="text-gray-700 dark:text-slate-300"
+                    >{{ label }}</span
+                  >
+                </span>
+                <span class="font-semibold text-gray-900 dark:text-white"
+                  >R$ {{ value|floatformat:2|intcomma }}</span
+                >
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div
+            class="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+          >
+            <i class="fa-solid fa-chart-pie mb-3 text-4xl opacity-30"></i>
+            <p class="text-sm">Nenhum ativo cadastrado</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Top 5 Ativos -->
+      <div
+        class="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div class="mb-4">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            <i class="fa-solid fa-trophy mr-2 text-amber-500"></i>Top 5 Posições
+          </h2>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+            Maiores valores investidos
+          </p>
+        </div>
+        {% if top_5_ativos %}
+          <div class="space-y-3">
+            {% for ativo in top_5_ativos %}
+              <div
+                class="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
+                onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  >
+                    {{ forloop.counter }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{ ativo.ticker }}
+                    </p>
+                    {% if ativo.subcategoria %}
+                      <p class="text-xs text-gray-600 dark:text-slate-300">
+                        {{ ativo.subcategoria.categoria.classe.nome }}
+                      </p>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p
+                    class="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400"
+                  >
+                    R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
+                  </p>
+                  {% if total_patrimonio > 0 %}
+                    <p class="text-xs text-gray-600 dark:text-slate-300">
+                      {{ ativo.percentual|floatformat:1 }}% do total
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div
+            class="flex h-48 flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+          >
+            <i class="fa-solid fa-trophy mb-3 text-4xl opacity-30"></i>
+            <p class="text-sm">Nenhum ativo ainda</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Allocation Chart (Category) -->
+      <div
+        class="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div class="mb-4">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            Alocação por Categoria
+          </h2>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+            Diversificação dentro das classes
+          </p>
+        </div>
+        {% if category_labels %}
+          <div id="chartCategory" style="height: 220px;"></div>
+          <div class="custom-scrollbar mt-4 max-h-32 space-y-2 overflow-y-auto">
+            {% for label, value in category_data %}
+              <div class="flex items-center justify-between text-xs">
+                <span class="flex items-center gap-2">
+                  <span
+                    class="h-3 w-3 rounded-full"
+                    style="background-color: var(--cat-color-{{ forloop.counter0 }});"
+                  ></span>
+                  <span
+                    class="max-w-[120px] truncate text-gray-700 dark:text-slate-300"
+                    >{{ label }}</span
+                  >
+                </span>
+                <span
+                  class="font-semibold tabular-nums text-gray-900 dark:text-white"
+                  >R$ {{ value|floatformat:0|intcomma }}</span
+                >
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div
+            class="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+          >
+            <i class="fa-solid fa-layer-group mb-3 text-4xl opacity-30"></i>
+            <p class="text-sm">Nenhuma categoria</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Próximos Vencimentos & Table Row -->
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <!-- Top Ativos Rentabilidade -->
+      <div
+        class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div class="mb-4">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            <i class="fa-solid fa-arrow-trend-up mr-2 text-emerald-500"></i
+            >Maior Rentabilidade
+          </h2>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+            Top ganhos em valor (R$)
+          </p>
+        </div>
+        {% if top_rentabilidade %}
+          <div class="space-y-3">
+            {% for ativo in top_rentabilidade %}
+              <div
+                class="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
+                onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  >
+                    {{ forloop.counter }}
+                  </div>
+                  <div>
+                    <p
+                      class="text-sm font-semibold text-gray-900 dark:text-white"
+                    >
+                      {{ ativo.ticker }}
+                    </p>
+                    <p class="text-xs text-gray-600 dark:text-slate-300">
+                      {{ ativo.nome|truncatechars:20 }}
+                    </p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p
+                    class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                    dark:text-emerald-400{% else %}text-red-600
+                    dark:text-red-400{% endif %} text-sm font-bold"
+                  >
+                    R$ {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
+                  </p>
+                  <p
+                    class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                    dark:text-emerald-400{% else %}text-red-600
+                    dark:text-red-400{% endif %} text-xs"
+                  >
+                    {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
+                  </p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div
+            class="flex h-32 flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+          >
+            <i class="fa-solid fa-chart-line mb-2 text-3xl opacity-30"></i>
+            <p class="text-sm">Sem dados de rentabilidade</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Assets Table -->
+      <div
+        class="overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-800 xl:col-span-2"
+      >
+        <div
+          class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-slate-700"
+        >
+          <div>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+              Carteira Completa
+            </h2>
+            <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+              Todos os ativos ativos
+            </p>
+          </div>
+          <a
+            href="{% url 'investimento:ativo_criar' %}"
+            class="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+          >
+            <i class="fa-solid fa-plus mr-1"></i> Novo Ativo
+          </a>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="sticky top-0 bg-gray-50 dark:bg-slate-700/50">
+              <tr>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Ativo
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Classe
+                </th>
+                <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Qtd
+                </th>
+                <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  PM
+                </th>
+                <th
+              class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+            >
+              Preço Atual
+            </th>
+            <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Valor Atual
+                </th>
+                <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Rentab.
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+              {% for ativo in ativos_page %}
+                <tr
+                  class="cursor-pointer transition-colors hover:bg-gray-50/60 dark:hover:bg-slate-700/30"
+                  onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+                >
+                  <td class="px-5 py-3">
+                    <div>
+                      <p
+                        class="text-sm font-semibold text-gray-900 dark:text-white"
+                      >
+                        {{ ativo.ticker }}
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-slate-300">
+                        {{ ativo.nome|truncatechars:18 }}
+                      </p>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3">
+                    {% if ativo.subcategoria %}
+                      <span
+                        class="{% if ativo.subcategoria.categoria.classe.nome == 'Renda Fixa' %}
+                          bg-blue-100 dark:bg-blue-900/30 text-blue-700
+                          dark:text-blue-400
+                        {% elif ativo.subcategoria.categoria.classe.nome == 'Renda Variável' %}
+                          bg-purple-100 dark:bg-purple-900/30 text-purple-700
+                          dark:text-purple-400
+                        {% elif ativo.subcategoria.categoria.classe.nome == 'Multimercado' %}
+                          bg-amber-100 dark:bg-amber-900/30 text-amber-700
+                          dark:text-amber-400
+                        {% else %}
+                          bg-slate-100 dark:bg-slate-600 text-slate-700
+                          dark:text-slate-200
+                        {% endif %} inline-flex rounded-full px-2 py-1 text-xs font-medium"
+                      >
+                        {{ ativo.subcategoria.categoria.classe.nome }}
+                      </span>
+                    {% else %}
+                      <span class="text-xs text-gray-400">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <span
+                      class="text-sm tabular-nums text-gray-900 dark:text-white"
+                      >{{ ativo.quantidade|floatformat:2 }}</span
+                    >
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <span
+                      class="text-sm tabular-nums text-gray-500 dark:text-slate-300"
+                      >R$ {{ ativo.preco_medio|floatformat:2 }}</span
+                    >
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    {% if ativo.cotacao_atual %}
+                      <span
+                        class="text-sm font-medium tabular-nums text-gray-900 dark:text-white"
+                      >
+                        R$ {{ ativo.cotacao_atual|floatformat:2|intcomma }}
+                      </span>
+                    {% else %}
+                      <span class="text-xs text-gray-400">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <span
+                      class="text-sm font-semibold tabular-nums text-gray-900 dark:text-white"
+                    >
+                      R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
+                    </span>
+                    <div class="text-xs text-gray-500 dark:text-slate-400">
+                      Investido:
+                      {{ ativo.valor_investido|floatformat:2|intcomma }}
+                    </div>
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <div class="flex flex-col items-end">
+                      <span
+                        class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                        dark:text-emerald-400{% else %}text-red-600
+                        dark:text-red-400{% endif %} text-sm font-bold tabular-nums"
+                      >
+                        R$
+                        {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
+                      </span>
+                      <span
+                        class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                        dark:text-emerald-400{% else %}text-red-600
+                        dark:text-red-400{% endif %} text-xs tabular-nums"
+                      >
+                        {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="px-5 py-12 text-center">
+                    <div
+                      class="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+                    >
+                      <i
+                        class="fa-solid fa-wallet mb-3 text-4xl opacity-30"
+                      ></i>
+                      <p class="text-sm">Nenhum ativo na carteira</p>
+                      <a
+                        href="{% url 'investimento:ativo_criar' %}"
+                        class="mt-3 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                      >
+                        Cadastre um ativo para começar
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if ativos_page.paginator.num_pages > 1 %}{% include "_pagination.html" with page=ativos_page %}{% endif %}
+        {% if ativos_page %}
+          <div
+            class="border-t border-gray-100 bg-gray-50/50 px-5 py-3 dark:border-slate-700 dark:bg-slate-700/30"
+          >
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500 dark:text-slate-300"
+                >{{ ativos|length }}
+                ativo{{ ativos|length|pluralize:"s" }}</span
+              >
+              <a
+                href="{% url 'investimento:ativo_listar' %}"
+                class="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+              >
+                Ver todos <i class="fa-solid fa-arrow-right ml-1"></i>
+              </a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <a
         href="{% url 'investimento:ativo_listar' %}"
-        class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-bold bg-gray-900 dark:bg-slate-700 text-white dark:text-gray-100 hover:bg-black dark:hover:bg-slate-600 transition-colors shadow-sm"
+        class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/80"
       >
-        <i class="fa-solid fa-list mr-2"></i> Meus Ativos
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30"
+        >
+          <i class="fa-solid fa-list text-blue-600 dark:text-blue-400"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            Ativos
+          </p>
+          <p class="text-xs text-gray-500 dark:text-slate-300">Gerenciar</p>
+        </div>
+      </a>
+      <a
+        href="{% url 'investimento:transacao_listar' %}"
+        class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/80"
+      >
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30"
+        >
+          <i
+            class="fa-solid fa-right-left text-orange-600 dark:text-orange-400"
+          ></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            Transações
+          </p>
+          <p class="text-xs text-gray-500 dark:text-slate-300">Histórico</p>
+        </div>
       </a>
       <a
         href="{% url 'investimento:transacao_criar' %}"
-        class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-colors"
+        class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/80"
       >
-        <i class="fa-solid fa-plus mr-2"></i> Nova Transação
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30"
+        >
+          <i
+            class="fa-solid fa-plus text-emerald-600 dark:text-emerald-400"
+          ></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            Nova Transação
+          </p>
+          <p class="text-xs text-gray-500 dark:text-slate-300">Compra/Venda</p>
+        </div>
+      </a>
+      <a
+        href="{% url 'investimento:classe_listar' %}"
+        class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/80"
+      >
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30"
+        >
+          <i
+            class="fa-solid fa-layer-group text-purple-600 dark:text-purple-400"
+          ></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
+            Classes
+          </p>
+          <p class="text-xs text-gray-500 dark:text-slate-300">Categorizar</p>
+        </div>
       </a>
     </div>
   </div>
 
-  <!-- KPI Cards Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <!-- Patrimônio Investido -->
-    <div
-      class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-100 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"
-      >
-        <i
-          class="fa-solid fa-money-bill-transfer text-6xl text-blue-600 dark:text-blue-400"
-        ></i>
-      </div>
-      <div class="relative z-10">
-        <p class="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">
-          Patrimônio Investido
-        </p>
-        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
-          R$ {{ total_investido|floatformat:2|intcomma }}
-        </h3>
-        <p class="text-xs text-gray-400 mt-2">Custo de aquisição</p>
-      </div>
-    </div>
+  <script>
+    // Parse JSON data
+    const allocationLabels = JSON.parse(
+      document.getElementById("allocationLabels").textContent || "[]",
+    );
+    const allocationValues = JSON.parse(
+      document.getElementById("allocationValues").textContent || "[]",
+    ).map((v) => Number(v) || 0);
+    const categoryLabels = JSON.parse(
+      document.getElementById("categoryLabels").textContent || "[]",
+    );
+    const categoryValues = JSON.parse(
+      document.getElementById("categoryValues").textContent || "[]",
+    ).map((v) => Number(v) || 0);
 
-    <!-- Rentabilidade -->
-    <div
-      class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-100 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"
-      >
-        <i
-          class="fa-solid fa-chart-line text-6xl {% if total_rentabilidade >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}"
-        ></i>
-      </div>
-      <div class="relative z-10">
-        <p class="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">
-          Rentabilidade
-        </p>
-        <div class="flex items-baseline gap-2">
-          <h3
-            class="text-2xl font-bold {% if total_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}"
-          >
-            {% if total_rentabilidade > 0 %}+{% endif %}R$ {{total_rentabilidade|floatformat:2|intcomma }}
-          </h3>
-        </div>
-        <p
-          class="text-xs font-semibold mt-2 {% if total_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}"
-        >
-          {% if total_rentabilidade > 0 %}+{% endif %}
-          {{total_rentabilidade_percentual|floatformat:2 }}%
-        </p>
-      </div>
-    </div>
+    // Theme detection
+    const isDark = document.documentElement.classList.contains("dark");
+    const textColor = isDark ? "#94a3b8" : "#64748b";
 
-    <!-- Patrimônio Total -->
-    <div
-      class="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-5 shadow-lg shadow-emerald-500/20 relative overflow-hidden text-white group hover:shadow-xl transition-all duration-300"
-    >
-      <div
-        class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8"
-      ></div>
-      <div class="relative z-10">
-        <p class="text-emerald-100 text-sm font-medium mb-1">
-          <i class="fa-solid fa-wallet mr-2"></i>Patrimônio Total
-        </p>
-        <h3 class="text-3xl font-bold mb-1">
-          R$ {{ total_patrimonio|floatformat:2|intcomma }}
-        </h3>
-        <p class="text-xs text-emerald-200/80 mt-2">Valor atual de mercado</p>
-      </div>
-    </div>
-  </div>
+    // Chart colors
+    const chartColors = [
+      "#10b981",
+      "#3b82f6",
+      "#f59e0b",
+      "#ef4444",
+      "#8b5cf6",
+      "#ec4899",
+      "#14b8a6",
+      "#f97316",
+    ];
+    const catColors = [
+      "#6366f1",
+      "#f43f5e",
+      "#0ea5e9",
+      "#84cc16",
+      "#a855f7",
+      "#22d3ee",
+      "#eab308",
+      "#fb923c",
+      "#06b6d4",
+      "#d946ef",
+    ];
 
-  <!-- Charts & Details Grid -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <!-- Allocation Chart (Class) -->
-    <div
-      class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 overflow-hidden"
-    >
-      <div class="mb-4">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Alocação por Classe
-        </h2>
-        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
-          Distribuição do patrimônio
-        </p>
-      </div>
-      {% if allocation_labels %}
-      <div id="chartAllocation" style="height: 220px;"></div>
-      <div class="mt-4 space-y-2">
-        {% for label, value in allocation_data %}
-        <div class="flex items-center justify-between text-xs">
-          <span class="flex items-center gap-2">
-            <span
-              class="w-3 h-3 rounded-full"
-              style="background-color: var(--chart-color-{{ forloop.counter0 }});"
-            ></span>
-            <span class="text-gray-700 dark:text-slate-300">{{ label }}</span>
-          </span>
-          <span class="font-semibold text-gray-900 dark:text-white"
-            >R$ {{ value|floatformat:2|intcomma }}</span
-          >
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div
-        class="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-slate-500"
-      >
-        <i class="fa-solid fa-chart-pie text-4xl mb-3 opacity-30"></i>
-        <p class="text-sm">Nenhum ativo cadastrado</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Top 5 Ativos -->
-    <div
-      class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 overflow-hidden"
-    >
-      <div class="mb-4">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-          <i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Top 5 Posições
-        </h2>
-        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
-          Maiores valores investidos
-        </p>
-      </div>
-      {% if top_5_ativos %}
-      <div class="space-y-3">
-        {% for ativo in top_5_ativos %}
-        <div
-          class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-          onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
-        >
-          <div class="flex items-center gap-3">
-            <div
-              class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400"
-            >
-              {{ forloop.counter }}
-            </div>
-            <div>
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ ativo.ticker }}
-              </p>
-              {% if ativo.subcategoria %}
-              <p class="text-xs text-gray-600 dark:text-slate-300">
-                {{ ativo.subcategoria.categoria.classe.nome }}
-              </p>
-              {% endif %}
-            </div>
-          </div>
-          <div class="text-right">
-            <p
-              class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums"
-            >
-              R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
-            </p>
-            {% if total_patrimonio > 0 %}
-            <p class="text-xs text-gray-600 dark:text-slate-300">
-              {{ ativo.percentual|floatformat:1 }}% do total
-            </p>
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div
-        class="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500"
-      >
-        <i class="fa-solid fa-trophy text-4xl mb-3 opacity-30"></i>
-        <p class="text-sm">Nenhum ativo ainda</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Allocation Chart (Category) -->
-    <div
-      class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 overflow-hidden"
-    >
-      <div class="mb-4">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-          Alocação por Categoria
-        </h2>
-        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
-          Diversificação dentro das classes
-        </p>
-      </div>
-      {% if category_labels %}
-      <div id="chartCategory" style="height: 220px;"></div>
-      <div class="mt-4 space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-        {% for label, value in category_data %}
-        <div class="flex items-center justify-between text-xs">
-          <span class="flex items-center gap-2">
-            <span
-              class="w-3 h-3 rounded-full"
-              style="background-color: var(--cat-color-{{ forloop.counter0 }});"
-            ></span>
-            <span
-              class="text-gray-700 dark:text-slate-300 truncate max-w-[120px]"
-              >{{ label }}</span
-            >
-          </span>
-          <span class="font-semibold text-gray-900 dark:text-white tabular-nums"
-            >R$ {{ value|floatformat:0|intcomma }}</span
-          >
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div
-        class="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-slate-500"
-      >
-        <i class="fa-solid fa-layer-group text-4xl mb-3 opacity-30"></i>
-        <p class="text-sm">Nenhuma categoria</p>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Próximos Vencimentos & Table Row -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-    <!-- Top Ativos Rentabilidade -->
-    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
-      <div class="mb-4">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-          <i class="fa-solid fa-arrow-trend-up text-emerald-500 mr-2"></i>Maior Rentabilidade
-        </h2>
-        <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
-          Top ganhos em valor (R$)
-        </p>
-      </div>
-      {% if top_rentabilidade %}
-      <div class="space-y-3">
-        {% for ativo in top_rentabilidade %}
-        <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer" onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'">
-          <div class="flex items-center gap-3">
-             <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              {{ forloop.counter }}
-            </div>
-            <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ ativo.ticker }}
-                </p>
-                <p class="text-xs text-gray-600 dark:text-slate-300">
-                {{ ativo.nome|truncatechars:20 }}
-                </p>
-            </div>
-          </div>
-          <div class="text-right">
-            <p class="text-sm font-bold {% if ativo.cached_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}">
-              R$ {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
-            </p>
-            <p class="text-xs {% if ativo.cached_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}">
-              {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
-            </p>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-slate-500">
-        <i class="fa-solid fa-chart-line text-3xl mb-2 opacity-30"></i>
-        <p class="text-sm">Sem dados de rentabilidade</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Assets Table -->
-    <div
-      class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl overflow-hidden"
-    >
-      <div
-        class="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between"
-      >
-        <div>
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-            Carteira Completa
-          </h2>
-          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
-            Todos os ativos ativos
-          </p>
-        </div>
-        <a
-          href="{% url 'investimento:ativo_criar' %}"
-          class="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium"
-        >
-          <i class="fa-solid fa-plus mr-1"></i> Novo Ativo
-        </a>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50 dark:bg-slate-700/50 sticky top-0">
-            <tr>
-              <th
-                class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                Ativo
-              </th>
-              <th
-                class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                Classe
-              </th>
-              <th
-                class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                Qtd
-              </th>
-              <th
-                class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                PM
-              </th>
-              <th
-                class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                Valor Atual
-              </th>
-              <th
-                class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-              >
-                Rentab.
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-            {% for ativo in ativos_page %}
-            <tr
-              class="hover:bg-gray-50/60 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
-              onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
-            >
-              <td class="px-5 py-3">
-                <div>
-                  <p
-                    class="text-sm font-semibold text-gray-900 dark:text-white"
-                  >
-                    {{ ativo.ticker }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-slate-300">
-                    {{ ativo.nome|truncatechars:18 }}
-                  </p>
-                </div>
-              </td>
-              <td class="px-5 py-3">
-                {% if ativo.subcategoria %}
-                <span
-                  class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
-                  {% if ativo.subcategoria.categoria.classe.nome == 'Renda Fixa' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
-                  {% elif ativo.subcategoria.categoria.classe.nome == 'Renda Variável' %}bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400
-                  {% elif ativo.subcategoria.categoria.classe.nome == 'Multimercado' %}bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400
-                  {% else %}bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-200{% endif %}"
-                >
-                  {{ ativo.subcategoria.categoria.classe.nome }}
-                </span>
-                {% else %}
-                <span class="text-xs text-gray-400">—</span>
-                {% endif %}
-              </td>
-              <td class="px-5 py-3 text-right">
-                <span class="text-sm text-gray-900 dark:text-white tabular-nums"
-                  >{{ ativo.quantidade|floatformat:2 }}</span
-                >
-              </td>
-              <td class="px-5 py-3 text-right">
-                <span
-                  class="text-sm text-gray-500 dark:text-slate-300 tabular-nums"
-                  >R$ {{ ativo.preco_medio|floatformat:2 }}</span
-                >
-              </td>
-              <td class="px-5 py-3 text-right">
-                <span
-                  class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums"
-                >
-                  R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
-                </span>
-                <div class="text-xs text-gray-500 dark:text-slate-400">
-                  Investido: {{ ativo.valor_investido|floatformat:2|intcomma }}
-                </div>
-              </td>
-              <td class="px-5 py-3 text-right">
-                <div class="flex flex-col items-end">
-                  <span
-                    class="text-sm font-bold tabular-nums {% if ativo.cached_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}"
-                  >
-                    R$ {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
-                  </span>
-                  <span
-                    class="text-xs tabular-nums {% if ativo.cached_rentabilidade >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}"
-                  >
-                    {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
-                  </span>
-                </div>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="5" class="px-5 py-12 text-center">
-                <div
-                  class="flex flex-col items-center justify-center text-gray-400 dark:text-slate-500"
-                >
-                  <i class="fa-solid fa-wallet text-4xl mb-3 opacity-30"></i>
-                  <p class="text-sm">Nenhum ativo na carteira</p>
-                  <a
-                    href="{% url 'investimento:ativo_criar' %}"
-                    class="mt-3 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-                  >
-                    Cadastre um ativo para começar
-                  </a>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      {% if ativos_page.paginator.num_pages > 1 %} {% include "_pagination.html" with page=ativos_page %} {% endif %} {% if ativos_page %}
-      <div
-        class="px-5 py-3 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/30"
-      >
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-gray-500 dark:text-slate-300"
-            >{{ ativos|length }} ativo{{ ativos|length|pluralize:"s" }}</span
-          >
-          <a
-            href="{% url 'investimento:ativo_listar' %}"
-            class="text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
-          >
-            Ver todos <i class="fa-solid fa-arrow-right ml-1"></i>
-          </a>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Quick Links -->
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <a
-      href="{% url 'investimento:ativo_listar' %}"
-      class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md"
-    >
-      <div
-        class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
-      >
-        <i class="fa-solid fa-list text-blue-600 dark:text-blue-400"></i>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">Ativos</p>
-        <p class="text-xs text-gray-500 dark:text-slate-300">Gerenciar</p>
-      </div>
-    </a>
-    <a
-      href="{% url 'investimento:transacao_listar' %}"
-      class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md"
-    >
-      <div
-        class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center"
-      >
-        <i
-          class="fa-solid fa-right-left text-orange-600 dark:text-orange-400"
-        ></i>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">
-          Transações
-        </p>
-        <p class="text-xs text-gray-500 dark:text-slate-300">Histórico</p>
-      </div>
-    </a>
-    <a
-      href="{% url 'investimento:transacao_criar' %}"
-      class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md"
-    >
-      <div
-        class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"
-      >
-        <i class="fa-solid fa-plus text-emerald-600 dark:text-emerald-400"></i>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">
-          Nova Transação
-        </p>
-        <p class="text-xs text-gray-500 dark:text-slate-300">Compra/Venda</p>
-      </div>
-    </a>
-    <a
-      href="{% url 'investimento:classe_listar' %}"
-      class="flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/80 transition-all shadow-sm hover:shadow-md"
-    >
-      <div
-        class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center"
-      >
-        <i
-          class="fa-solid fa-layer-group text-purple-600 dark:text-purple-400"
-        ></i>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">Classes</p>
-        <p class="text-xs text-gray-500 dark:text-slate-300">Categorizar</p>
-      </div>
-    </a>
-  </div>
-</div>
-
-<script>
-  // Parse JSON data
-  const allocationLabels = JSON.parse(document.getElementById("allocationLabels").textContent || '[]');
-  const allocationValues = JSON.parse(document.getElementById("allocationValues").textContent || '[]').map(v => Number(v) || 0);
-  const categoryLabels = JSON.parse(document.getElementById("categoryLabels").textContent || '[]');
-  const categoryValues = JSON.parse(document.getElementById("categoryValues").textContent || '[]').map(v => Number(v) || 0);
-
-  // Theme detection
-  const isDark = document.documentElement.classList.contains('dark');
-  const textColor = isDark ? '#94a3b8' : '#64748b';
-
-  // Chart colors
-  const chartColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-  const catColors = ['#6366f1', '#f43f5e', '#0ea5e9', '#84cc16', '#a855f7', '#22d3ee', '#eab308', '#fb923c', '#06b6d4', '#d946ef'];
-
-  // Set CSS variables for legend colors
-  chartColors.forEach((color, i) => {
-    document.documentElement.style.setProperty(`--chart-color-${i}`, color);
-  });
-  catColors.forEach((color, i) => {
-    document.documentElement.style.setProperty(`--cat-color-${i}`, color);
-  });
-
-  // Currency formatter
-  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-
-  // Allocation Donut Chart (Class)
-  if (allocationLabels.length > 0 && document.getElementById("chartAllocation")) {
-    const allocationChart = new ApexCharts(document.getElementById("chartAllocation"), {
-      series: allocationValues,
-      labels: allocationLabels,
-      chart: {
-        type: 'donut',
-        height: 220,
-        fontFamily: 'Inter, sans-serif'
-      },
-      colors: chartColors.slice(0, allocationLabels.length),
-      plotOptions: {
-        pie: {
-          donut: {
-            size: '70%',
-            labels: {
-              show: true,
-              name: { show: true, fontSize: '11px', color: textColor },
-              value: {
-                show: true,
-                fontSize: '14px',
-                fontWeight: 'bold',
-                color: isDark ? '#fff' : '#1f2937',
-                formatter: val => brl.format(val)
-              },
-              total: {
-                show: true,
-                label: 'Total',
-                fontSize: '11px',
-                color: textColor,
-                formatter: w => brl.format(w.globals.seriesTotals.reduce((a, b) => a + b, 0))
-              }
-            }
-          }
-        }
-      },
-      legend: { show: false },
-      dataLabels: { enabled: false },
-      stroke: { show: false },
-      tooltip: {
-        theme: isDark ? 'dark' : 'light',
-        y: { formatter: val => brl.format(val) }
-      }
+    // Set CSS variables for legend colors
+    chartColors.forEach((color, i) => {
+      document.documentElement.style.setProperty(`--chart-color-${i}`, color);
     });
-    allocationChart.render();
-  }
-
-  // Category Donut Chart
-  if (categoryLabels.length > 0 && document.getElementById("chartCategory")) {
-    const categoryChart = new ApexCharts(document.getElementById("chartCategory"), {
-      series: categoryValues,
-      labels: categoryLabels,
-      chart: {
-        type: 'donut',
-        height: 220,
-        fontFamily: 'Inter, sans-serif'
-      },
-      colors: catColors.slice(0, categoryLabels.length),
-      plotOptions: {
-        pie: {
-          donut: {
-            size: '70%',
-            labels: {
-              show: true,
-              name: { show: true, fontSize: '11px', color: textColor },
-              value: {
-                show: true,
-                fontSize: '14px',
-                fontWeight: 'bold',
-                color: isDark ? '#fff' : '#1f2937',
-                formatter: val => brl.format(val)
-              },
-              total: {
-                show: true,
-                label: 'Total',
-                fontSize: '11px',
-                color: textColor,
-                formatter: w => brl.format(w.globals.seriesTotals.reduce((a, b) => a + b, 0))
-              }
-            }
-          }
-        }
-      },
-      legend: { show: false },
-      dataLabels: { enabled: false },
-      stroke: { show: false },
-      tooltip: {
-        theme: isDark ? 'dark' : 'light',
-        y: { formatter: val => brl.format(val) }
-      }
+    catColors.forEach((color, i) => {
+      document.documentElement.style.setProperty(`--cat-color-${i}`, color);
     });
-    categoryChart.render();
-  }
-</script>
 
+    // Currency formatter
+    const brl = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+
+    // Allocation Donut Chart (Class)
+    if (
+      allocationLabels.length > 0 &&
+      document.getElementById("chartAllocation")
+    ) {
+      const allocationChart = new ApexCharts(
+        document.getElementById("chartAllocation"),
+        {
+          series: allocationValues,
+          labels: allocationLabels,
+          chart: {
+            type: "donut",
+            height: 220,
+            fontFamily: "Inter, sans-serif",
+          },
+          colors: chartColors.slice(0, allocationLabels.length),
+          plotOptions: {
+            pie: {
+              donut: {
+                size: "70%",
+                labels: {
+                  show: true,
+                  name: { show: true, fontSize: "11px", color: textColor },
+                  value: {
+                    show: true,
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    color: isDark ? "#fff" : "#1f2937",
+                    formatter: (val) => brl.format(val),
+                  },
+                  total: {
+                    show: true,
+                    label: "Total",
+                    fontSize: "11px",
+                    color: textColor,
+                    formatter: (w) =>
+                      brl.format(
+                        w.globals.seriesTotals.reduce((a, b) => a + b, 0),
+                      ),
+                  },
+                },
+              },
+            },
+          },
+          legend: { show: false },
+          dataLabels: { enabled: false },
+          stroke: { show: false },
+          tooltip: {
+            theme: isDark ? "dark" : "light",
+            y: { formatter: (val) => brl.format(val) },
+          },
+        },
+      );
+      allocationChart.render();
+    }
+
+    // Category Donut Chart
+    if (categoryLabels.length > 0 && document.getElementById("chartCategory")) {
+      const categoryChart = new ApexCharts(
+        document.getElementById("chartCategory"),
+        {
+          series: categoryValues,
+          labels: categoryLabels,
+          chart: {
+            type: "donut",
+            height: 220,
+            fontFamily: "Inter, sans-serif",
+          },
+          colors: catColors.slice(0, categoryLabels.length),
+          plotOptions: {
+            pie: {
+              donut: {
+                size: "70%",
+                labels: {
+                  show: true,
+                  name: { show: true, fontSize: "11px", color: textColor },
+                  value: {
+                    show: true,
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    color: isDark ? "#fff" : "#1f2937",
+                    formatter: (val) => brl.format(val),
+                  },
+                  total: {
+                    show: true,
+                    label: "Total",
+                    fontSize: "11px",
+                    color: textColor,
+                    formatter: (w) =>
+                      brl.format(
+                        w.globals.seriesTotals.reduce((a, b) => a + b, 0),
+                      ),
+                  },
+                },
+              },
+            },
+          },
+          legend: { show: false },
+          dataLabels: { enabled: false },
+          stroke: { show: false },
+          tooltip: {
+            theme: isDark ? "dark" : "light",
+            y: { formatter: (val) => brl.format(val) },
+          },
+        },
+      );
+      categoryChart.render();
+    }
+  </script>
 {% endblock %}
