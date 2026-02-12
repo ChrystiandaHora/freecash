@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.contrib import messages
 from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
+from .services import atualizar_cotacoes
 from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
 
 
@@ -60,14 +61,29 @@ def dashboard(request):
         .order_by("subcategoria__categoria__classe__nome", "ticker")
     )
 
+    # Convert to list to persist attributes set in loop
+    ativos = list(ativos)
+
     # Calculate portfolio value and build allocation data
     total_patrimonio = 0
+    total_investido = 0
     allocation_by_class = {}
     allocation_by_category = {}
 
     for a in ativos:
-        a.valor_atual = a.quantidade * a.preco_medio
-        total_patrimonio += a.valor_atual
+        # Calcula valores usando as properties do model (que buscam cotação)
+        # O ideal seria otimizar para evitar N+1 queries de cotação com prefetch,
+        # mas por simplicidade usaremos as properties por enquanto.
+        val_atual = a.valor_total_atual
+        val_investido = a.valor_investido
+
+        # Injeta no objeto para uso no template sem recalcular
+        a.cached_valor_atual = val_atual
+        a.cached_rentabilidade = a.rentabilidade
+        a.cached_rentabilidade_percentual = a.rentabilidade_percentual
+
+        total_patrimonio += val_atual
+        total_investido += val_investido
 
         # Aggregate by Class
         if (
@@ -83,10 +99,10 @@ def dashboard(request):
 
         allocation_by_class[class_name] = allocation_by_class.get(
             class_name, 0
-        ) + float(a.valor_atual)
+        ) + float(val_atual)
         allocation_by_category[cat_name] = allocation_by_category.get(
             cat_name, 0
-        ) + float(a.valor_atual)
+        ) + float(val_atual)
 
     allocation_labels = list(allocation_by_class.keys())
     allocation_values = list(allocation_by_class.values())
@@ -95,14 +111,20 @@ def dashboard(request):
 
     # Top 5 ativos by value
     ativos_with_value = list(ativos)
-    ativos_with_value.sort(key=lambda x: x.valor_atual, reverse=True)
+    ativos_with_value.sort(key=lambda x: x.cached_valor_atual, reverse=True)
     top_5_ativos = ativos_with_value[:5]
 
     for a in top_5_ativos:
         if total_patrimonio > 0:
-            a.percentual = (float(a.valor_atual) / float(total_patrimonio)) * 100
+            a.percentual = (float(a.cached_valor_atual) / float(total_patrimonio)) * 100
         else:
             a.percentual = 0
+
+    # Top Ativos by Rentabilidade
+    # Clone list to sort by profitability
+    ativos_by_rent = list(ativos)
+    ativos_by_rent.sort(key=lambda x: x.cached_rentabilidade, reverse=True)
+    top_rentabilidade = ativos_by_rent[:5]
 
     # Última transação
     ultima_transacao = (
@@ -129,10 +151,19 @@ def dashboard(request):
     page_number = request.GET.get("page")
     ativos_page = paginator.get_page(page_number)
 
+    # Rentabilidade Global
+    total_rentabilidade = total_patrimonio - total_investido
+    total_rentabilidade_percentual = 0
+    if total_investido > 0:
+        total_rentabilidade_percentual = (total_rentabilidade / total_investido) * 100
+
     context = {
         "ativos": ativos,  # Keep full list for charts
         "ativos_page": ativos_page,  # Paginated list for table
         "total_patrimonio": total_patrimonio,
+        "total_investido": total_investido,
+        "total_rentabilidade": total_rentabilidade,
+        "total_rentabilidade_percentual": total_rentabilidade_percentual,
         "allocation_labels": allocation_labels,
         "allocation_values": allocation_values,
         "allocation_data": list(zip(allocation_labels, allocation_values)),
@@ -140,6 +171,7 @@ def dashboard(request):
         "category_values": category_values,
         "category_data": list(zip(category_labels, category_values)),
         "top_5_ativos": top_5_ativos,
+        "top_rentabilidade": top_rentabilidade,
         "ultima_transacao": ultima_transacao,
         "proximos_vencimentos": proximos_vencimentos,
     }
@@ -241,6 +273,33 @@ def ativo_excluir(request, pk):
         messages.success(request, "Ativo excluído!")
         return redirect("investimento:ativo_listar")
     return render(request, "ativo_confirm_delete.html", {"ativo": ativo})
+
+
+@login_required
+def atualizar_cotacoes_view(request):
+    """
+    View para disparar atualização manual de cotações.
+    """
+    count, errors = atualizar_cotacoes()
+
+    if count > 0:
+        messages.success(request, f"{count} cotações atualizadas com sucesso!")
+
+    if errors:
+        # Mostra os 3 primeiros erros para não poluir
+        for err in errors[:3]:
+            messages.warning(request, err)
+        if len(errors) > 3:
+            messages.warning(request, f"E mais {len(errors) - 3} erros...")
+
+    if count == 0 and not errors:
+        messages.info(
+            request, "Nenhuma cotação nova encontrada ou nenhum ativo com ticker."
+        )
+
+    # Redireciona de volta para onde veio ou dashboard
+    next_url = request.META.get("HTTP_REFERER", "investimento:dashboard")
+    return redirect(next_url)
 
 
 # ==========================

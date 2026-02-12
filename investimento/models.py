@@ -145,6 +145,48 @@ class Ativo(AuditoriaModel):
     def __str__(self):
         return f"{self.ticker} ({self.quantidade})"
 
+    @property
+    def valor_investido(self):
+        return self.quantidade * self.preco_medio
+
+    @property
+    def valor_total_atual(self):
+        # Se houver cotação recente, usa-a.
+        # Caso contrário, fallback para preço médio (ou 0, ou lança aviso? Vamos usar 0 se não tiver cotação e não for renda fixa com lógica própria)
+        # Para Renda Fixa, a "cotação" pode ser calculada de outra forma, mas assumindo que Cotacao também sirva para RFs marcados a mercado ou atualizados manualmente.
+        # Simplificação: pega a última cotação registrada.
+        ultima = self.cotacoes.order_by("-data", "-criada_em").first()
+        if ultima:
+            return self.quantidade * ultima.valor
+        return self.valor_investido  # Fallback conservador: vale o que pagou
+
+    @property
+    def rentabilidade(self):
+        return self.valor_total_atual - self.valor_investido
+
+    @property
+    def rentabilidade_percentual(self):
+        if self.valor_investido == 0:
+            return 0
+        return (self.rentabilidade / self.valor_investido) * 100
+
+
+class Cotacao(AuditoriaModel):
+    ativo = models.ForeignKey(
+        Ativo,
+        on_delete=models.CASCADE,
+        related_name="cotacoes",
+    )
+    data = models.DateField()
+    valor = models.DecimalField(max_digits=19, decimal_places=4)
+
+    class Meta:
+        ordering = ["-data", "-criada_em"]
+        unique_together = ("ativo", "data")
+
+    def __str__(self):
+        return f"{self.ativo.ticker} - {self.data} - {self.valor}"
+
 
 class Transacao(AuditoriaModel):
     TIPO_COMPRA = "C"

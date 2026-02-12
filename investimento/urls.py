@@ -26,4 +26,8 @@ urlpatterns = [
         views.transacao_excluir,
         name="transacao_excluir",
     ),
+    # Cotações
+    path(
+        "cotacoes/atualizar/", views.atualizar_cotacoes_view, name="atualizar_cotacoes"
+    ),
 ]
