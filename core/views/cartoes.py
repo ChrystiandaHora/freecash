@@ -63,6 +63,7 @@ class CartoesListView(View):
                 tipo=Conta.TIPO_DESPESA,
                 data_prevista__year=hoje.year,
                 data_prevista__month=hoje.month,
+                eh_fatura_cartao=False,
             ).aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
 
             cartoes_com_gasto.append(
