@@ -114,15 +114,17 @@ class ExportarRelatorioView(View):
 
         from core.services.export_report_service import gerar_excel, gerar_pdf
 
-        timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+        timestamp_inicio = data_inicio.strftime("%d-%m-%Y")
+        timestamp_fim = data_fim.strftime("%d-%m-%Y")
+        base_filename = f"Relatório Financeiro {timestamp_inicio} a {timestamp_fim}"
 
         if formato == "pdf":
             content = gerar_pdf(request.user, data_inicio, data_fim)
-            filename = f"relatorio_freecash_{timestamp}.pdf"
+            filename = f"{base_filename}.pdf"
             content_type = "application/pdf"
         else:
             content = gerar_excel(request.user, data_inicio, data_fim)
-            filename = f"relatorio_freecash_{timestamp}.xlsx"
+            filename = f"{base_filename}.xlsx"
             content_type = (
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )

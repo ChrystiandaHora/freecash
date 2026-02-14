@@ -15,7 +15,14 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+    PageBreak,
+)
 
 from core.models import Conta
 from investimento.models import Ativo, Transacao as TransacaoInvestimento
@@ -89,6 +96,8 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
     transacoes_invest = get_transacoes_investimento(usuario, data_inicio, data_fim)
 
     wb = Workbook()
+    wb.properties.title = f"Relatório Financeiro {data_inicio.strftime('%d-%m-%Y')} a {data_fim.strftime('%d-%m-%Y')}"
+    wb.properties.creator = "FreeCash"
 
     # Estilos comuns
     header_font = Font(bold=True, color="FFFFFF")
@@ -202,7 +211,9 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
         "Subcategoria",
         "Quantidade",
         "Preço Médio",
-        "Valor Posição",
+        "Valor Investido",
+        "Rentabilidade",
+        "Valor Mercado",
     ]
     for col, header in enumerate(invest_headers, 1):
         cell = ws_invest.cell(row=3, column=col, value=header)
@@ -212,7 +223,8 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
         cell.border = thin_border
 
     # Dados
-    total_carteira = Decimal("0.00")
+    total_investido = Decimal("0.00")
+    total_mercado = Decimal("0.00")
     row_num = 4
 
     for ativo in investimentos:
@@ -225,8 +237,11 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
             categoria = ativo.subcategoria.categoria.nome
             classe = ativo.subcategoria.categoria.classe.nome
 
-        valor_posicao = ativo.quantidade * ativo.preco_medio
-        total_carteira += valor_posicao
+        valor_investido = ativo.valor_investido
+        total_investido += valor_investido
+        valor_mercado = ativo.valor_total_atual
+        total_mercado += valor_mercado
+        rentabilidade = ativo.rentabilidade
 
         data = [
             ativo.ticker,
@@ -236,13 +251,15 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
             subcategoria,
             float(ativo.quantidade),
             float(ativo.preco_medio),
-            float(valor_posicao),
+            float(valor_investido),
+            float(rentabilidade),
+            float(valor_mercado),
         ]
 
         for col, value in enumerate(data, 1):
             cell = ws_invest.cell(row=row_num, column=col, value=value)
             cell.border = thin_border
-            if col in [6, 7, 8]:  # Colunas numéricas
+            if col in [6, 7, 8, 9, 10]:  # Colunas numéricas
                 cell.number_format = "#,##0.00" if col != 6 else "#,##0.00000000"
                 cell.alignment = Alignment(horizontal="right")
 
@@ -250,17 +267,36 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date) -> bytes:
 
     # Total da carteira
     if investimentos.exists():
-        ws_invest.cell(row=row_num + 1, column=7, value="Total Carteira:").font = Font(
+        ws_invest.cell(row=row_num + 1, column=7, value="Total Investido:").font = Font(
             bold=True
         )
-        total_cell = ws_invest.cell(
-            row=row_num + 1, column=8, value=float(total_carteira)
+        total_inv_cell = ws_invest.cell(
+            row=row_num + 1, column=8, value=float(total_investido)
         )
-        total_cell.number_format = "#,##0.00"
-        total_cell.font = Font(bold=True, color="3B82F6")
+        total_inv_cell.number_format = "#,##0.00"
+        total_inv_cell.font = Font(bold=True)
+
+        ws_invest.cell(row=row_num + 2, column=7, value="Total Mercado:").font = Font(
+            bold=True
+        )
+        total_merc_cell = ws_invest.cell(
+            row=row_num + 2, column=8, value=float(total_mercado)
+        )
+        total_merc_cell.number_format = "#,##0.00"
+        total_merc_cell.font = Font(bold=True, color="3B82F6")
+
+        rent_total = total_mercado - total_investido
+        ws_invest.cell(row=row_num + 3, column=7, value="Rentabilidade:").font = Font(
+            bold=True
+        )
+        rent_cell = ws_invest.cell(row=row_num + 3, column=8, value=float(rent_total))
+        rent_cell.number_format = "#,##0.00"
+        rent_cell.font = Font(
+            bold=True, color="10B981" if rent_total >= 0 else "EF4444"
+        )
 
     # Ajustar largura das colunas
-    invest_widths = [12, 30, 15, 15, 15, 15, 15, 18]
+    invest_widths = [12, 30, 15, 15, 15, 15, 15, 18, 15, 18]
     for i, width in enumerate(invest_widths, 1):
         ws_invest.column_dimensions[get_column_letter(i)].width = width
 
@@ -377,10 +413,12 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=15 * mm,
-        leftMargin=15 * mm,
-        topMargin=15 * mm,
-        bottomMargin=15 * mm,
+        rightMargin=10 * mm,
+        leftMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+        title=f"Relatório Financeiro {data_inicio.strftime('%d-%m-%Y')} a {data_fim.strftime('%d-%m-%Y')}",
+        author="FreeCash",
     )
 
     elements = []
@@ -489,26 +527,28 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
         ]
     )
 
-    col_widths = [45, 50, 120, 80, 70, 40]
+    col_widths = [50, 60, 180, 100, 85, 60]
     table = Table(table_data, colWidths=col_widths)
 
     table_style = TableStyle(
         [
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#10B981")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 2 * mm),
+            ("TOPPADDING", (0, 0), (-1, 0), 2 * mm),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#10B981")),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 9),
+            ("FONTSIZE", (0, 0), (-1, 0), 10),
             ("ALIGN", (0, 0), (-1, 0), "CENTER"),
             ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
             ("FONTSIZE", (0, 1), (-1, -1), 8),
             ("ALIGN", (4, 1), (4, -1), "RIGHT"),
             ("ALIGN", (5, 1), (5, -1), "CENTER"),
-            ("GRID", (0, 0), (-1, -5), 0.5, colors.grey),
+            ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#10B981")),
+            ("LINEBELOW", (0, 1), (-1, -1), 0.1, colors.grey),
             (
                 "ROWBACKGROUNDS",
                 (0, 1),
-                (-1, -5),
-                [colors.white, colors.HexColor("#F0FDF4")],
+                (-1, -1),
+                [colors.white, colors.HexColor("#e5e5e5")],
             ),
             ("FONTNAME", (3, -3), (4, -1), "Helvetica-Bold"),
             ("ALIGN", (3, -3), (3, -1), "RIGHT"),
@@ -521,20 +561,20 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
     # SEÇÃO 2: INVESTIMENTOS
     # =====================
     if investimentos.exists():
-        elements.append(Spacer(1, 10 * mm))
+        elements.append(PageBreak())
         section_invest = Paragraph("📈 Carteira de Investimentos", section_style)
         elements.append(section_invest)
 
-        invest_data = [["Ticker", "Nome", "Classe", "Qtd", "PM", "Valor"]]
-        total_carteira = Decimal("0.00")
+        invest_data = [["Ticker", "Nome", "Qtd", "PM", "Rentab.", "Mercado"]]
+        total_investido = Decimal("0.00")
+        total_mercado = Decimal("0.00")
 
         for ativo in investimentos:
-            classe = ""
-            if ativo.subcategoria:
-                classe = ativo.subcategoria.categoria.classe.nome[:10]
-
-            valor_posicao = ativo.quantidade * ativo.preco_medio
-            total_carteira += valor_posicao
+            valor_investido = ativo.valor_investido
+            total_investido += valor_investido
+            valor_mercado = ativo.valor_total_atual
+            total_mercado += valor_mercado
+            rentabilidade = ativo.rentabilidade
 
             nome = (
                 ativo.nome[:20] + "..."
@@ -546,55 +586,84 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
                 [
                     ativo.ticker,
                     nome,
-                    classe,
                     f"{ativo.quantidade:,.2f}".replace(",", "X")
                     .replace(".", ",")
                     .replace("X", "."),
                     f"R$ {ativo.preco_medio:,.2f}".replace(",", "X")
                     .replace(".", ",")
                     .replace("X", "."),
-                    f"R$ {valor_posicao:,.2f}".replace(",", "X")
+                    f"R$ {rentabilidade:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    f"R$ {valor_mercado:,.2f}".replace(",", "X")
                     .replace(".", ",")
                     .replace("X", "."),
                 ]
             )
 
-        # Total
+        # Totais
         invest_data.append(["", "", "", "", "", ""])
         invest_data.append(
             [
                 "",
                 "",
                 "",
+                "Total Investido:",
                 "",
-                "Total:",
-                f"R$ {total_carteira:,.2f}".replace(",", "X")
+                f"R$ {total_investido:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+        invest_data.append(
+            [
+                "",
+                "",
+                "",
+                "Total Mercado:",
+                "",
+                f"R$ {total_mercado:,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", "."),
+            ]
+        )
+        rent_total = total_mercado - total_investido
+        invest_data.append(
+            [
+                "",
+                "",
+                "",
+                "Rentabilidade:",
+                "",
+                f"R$ {rent_total:,.2f}".replace(",", "X")
                 .replace(".", ",")
                 .replace("X", "."),
             ]
         )
 
-        invest_widths = [50, 90, 60, 55, 70, 80]
+        invest_widths = [70, 145, 80, 80, 80, 80]
         invest_table = Table(invest_data, colWidths=invest_widths)
 
         invest_style = TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3B82F6")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 2 * mm),
+                ("TOPPADDING", (0, 0), (-1, 0), 2 * mm),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#3B82F6")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                 ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ("ALIGN", (3, 1), (5, -1), "RIGHT"),
-                ("GRID", (0, 0), (-1, -3), 0.5, colors.grey),
+                ("ALIGN", (2, 1), (5, -1), "RIGHT"),
+                ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#3B82F6")),
+                ("LINEBELOW", (0, 1), (-1, -1), 0.1, colors.grey),
                 (
                     "ROWBACKGROUNDS",
                     (0, 1),
-                    (-1, -3),
-                    [colors.white, colors.HexColor("#EFF6FF")],
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#e5e5e5")],
                 ),
-                ("FONTNAME", (4, -1), (5, -1), "Helvetica-Bold"),
+                ("FONTNAME", (3, -3), (5, -1), "Helvetica-Bold"),
             ]
         )
         invest_table.setStyle(invest_style)
@@ -604,7 +673,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
     # SEÇÃO 3: TRANSAÇÕES INVESTIMENTO
     # ================================
     if transacoes_invest.exists():
-        elements.append(Spacer(1, 10 * mm))
+        elements.append(PageBreak())
         section_trans = Paragraph("💰 Transações de Investimento", section_style)
         elements.append(section_trans)
 
@@ -679,25 +748,27 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date) -> bytes:
             ]
         )
 
-        trans_widths = [50, 50, 55, 55, 70, 80]
+        trans_widths = [60, 70, 95, 100, 100, 110]
         trans_table = Table(trans_data, colWidths=trans_widths)
 
         trans_style = TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#8B5CF6")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 2 * mm),
+                ("TOPPADDING", (0, 0), (-1, 0), 2 * mm),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#8B5CF6")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                 ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                 ("FONTSIZE", (0, 1), (-1, -1), 8),
                 ("ALIGN", (3, 1), (5, -1), "RIGHT"),
-                ("GRID", (0, 0), (-1, -5), 0.5, colors.grey),
+                ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#8B5CF6")),
+                ("LINEBELOW", (0, 1), (-1, -1), 0.1, colors.grey),
                 (
                     "ROWBACKGROUNDS",
                     (0, 1),
-                    (-1, -5),
-                    [colors.white, colors.HexColor("#F5F3FF")],
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#e5e5e5")],
                 ),
                 ("FONTNAME", (4, -3), (5, -1), "Helvetica-Bold"),
             ]
