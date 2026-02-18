@@ -2,7 +2,7 @@
 Views para gerenciamento de Cartões de Crédito.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal, InvalidOperation
 from django.contrib import messages
@@ -54,27 +54,43 @@ class CartoesListView(View):
             "nome"
         )
 
-        # Calcular gasto total de cada cartão no mês atual
+        # Calcular gasto total e do ciclo de cada cartão
         cartoes_com_gasto = []
         for cartao in cartoes:
-            gasto_mes = Conta.objects.filter(
+            # Gasto TOTAL (não pago) = para calcular o limite disponível atual
+            gasto_total = Conta.objects.filter(
                 usuario=usuario,
                 cartao=cartao,
                 tipo=Conta.TIPO_DESPESA,
-                data_prevista__year=hoje.year,
-                data_prevista__month=hoje.month,
+                transacao_realizada=False,
+                eh_fatura_cartao=False,
+            ).aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+
+            # Gasto do CICLO (para exibir como "Gasto este mês" no template)
+            # Se hoje > dia_vencimento, o "mês de referência" é o próximo
+            if hoje.day > cartao.dia_vencimento:
+                data_referencia = hoje + relativedelta(months=1)
+            else:
+                data_referencia = hoje
+
+            gasto_ciclo = Conta.objects.filter(
+                usuario=usuario,
+                cartao=cartao,
+                tipo=Conta.TIPO_DESPESA,
+                data_prevista__year=data_referencia.year,
+                data_prevista__month=data_referencia.month,
                 eh_fatura_cartao=False,
             ).aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
 
             cartoes_com_gasto.append(
                 {
                     "cartao": cartao,
-                    "gasto_mes": gasto_mes,
+                    "gasto_mes": gasto_ciclo,
                     "limite_disponivel": (
-                        cartao.limite - gasto_mes if cartao.limite else None
+                        cartao.limite - gasto_total if cartao.limite else None
                     ),
                     "percentual_usado": (
-                        (gasto_mes / cartao.limite * 100) if cartao.limite else None
+                        (gasto_ciclo / cartao.limite * 100) if cartao.limite else None
                     ),
                 }
             )
@@ -467,6 +483,15 @@ class CartaoDespesaCreateView(View):
                 messages.error(request, "Número de parcelas deve ser entre 2 e 24.")
                 return redirect("cartao_despesas", pk=pk)
 
+            # Validar se a primeira fatura já está paga
+            fatura_1 = obter_ou_criar_fatura(usuario, cartao, data_vencimento)
+            if fatura_1.transacao_realizada:
+                messages.error(
+                    request,
+                    f"Não é possível adicionar despesas a uma fatura já paga ({data_vencimento.strftime('%m/%Y')}).",
+                )
+                return redirect("cartao_despesas", pk=pk)
+
             total_cents = int((valor_total * 100).to_integral_value())
             base = total_cents // n
             resto = total_cents % n
@@ -480,7 +505,6 @@ class CartaoDespesaCreateView(View):
                 cents_1 = base + (1 if 1 <= resto else 0)
 
                 # Obter fatura para a primeira parcela
-                fatura_1 = obter_ou_criar_fatura(usuario, cartao, data_vencimento)
                 faturas_afetadas.add(fatura_1.id)
 
                 primeira = Conta.objects.create(
@@ -539,6 +563,14 @@ class CartaoDespesaCreateView(View):
 
         # Obter ou criar a fatura para este cartão/vencimento
         fatura = obter_ou_criar_fatura(usuario, cartao, data_vencimento)
+
+        # Validar se a fatura já está paga
+        if fatura.transacao_realizada:
+            messages.error(
+                request,
+                f"Não é possível adicionar despesas a uma fatura já paga ({data_vencimento.strftime('%m/%Y')}).",
+            )
+            return redirect("cartao_despesas", pk=pk)
 
         # Compra normal (sem parcelamento)
         Conta.objects.create(

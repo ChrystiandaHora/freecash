@@ -1,3 +1,5 @@
+from decimal import Decimal
+from django.db.models import Sum
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -151,19 +153,34 @@ def dashboard(request):
     page_number = request.GET.get("page")
     ativos_page = paginator.get_page(page_number)
 
-    # Rentabilidade Global
-    total_rentabilidade = total_patrimonio - total_investido
+    # Rentabilidade Global (Incluindo Realizados e Dividendos)
+    transacoes_todas = Transacao.objects.filter(usuario=request.user)
+    total_compras = transacoes_todas.filter(tipo=Transacao.TIPO_COMPRA).aggregate(
+        total=Sum("valor_total")
+    )["total"] or Decimal(0)
+    total_vendas = transacoes_todas.filter(tipo=Transacao.TIPO_VENDA).aggregate(
+        total=Sum("valor_total")
+    )["total"] or Decimal(0)
+    total_dividendos = transacoes_todas.filter(tipo=Transacao.TIPO_DIVIDENDO).aggregate(
+        total=Sum("valor_total")
+    )["total"] or Decimal(0)
+
+    # Rentabilidade Total = (Patrimônio Atual + Vendas + Dividendos) - Compras
+    total_rentabilidade = (
+        Decimal(total_patrimonio) + total_vendas + total_dividendos
+    ) - total_compras
     total_rentabilidade_percentual = 0
-    if total_investido > 0:
-        total_rentabilidade_percentual = (total_rentabilidade / total_investido) * 100
+    if total_compras > 0:
+        total_rentabilidade_percentual = (total_rentabilidade / total_compras) * 100
 
     context = {
         "ativos": ativos,  # Keep full list for charts
         "ativos_page": ativos_page,  # Paginated list for table
         "total_patrimonio": total_patrimonio,
         "total_investido": total_investido,
-        "total_rentabilidade": total_rentabilidade,
-        "total_rentabilidade_percentual": total_rentabilidade_percentual,
+        "total_rentabilidade": float(total_rentabilidade),
+        "total_rentabilidade_percentual": float(total_rentabilidade_percentual),
+        "total_dividendos": float(total_dividendos),
         "allocation_labels": allocation_labels,
         "allocation_values": allocation_values,
         "allocation_data": list(zip(allocation_labels, allocation_values)),
