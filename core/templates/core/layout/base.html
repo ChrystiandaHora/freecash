@@ -1,0 +1,509 @@
+{% load static %}
+<html lang="pt-br" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}FreeCash{% endblock %}</title>
+
+    <!-- Dark Mode Detection (runs before page renders) -->
+    <script>
+      (function () {
+        const theme = localStorage.getItem("theme");
+        if (
+          theme === "dark" ||
+          (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
+      })();
+    </script>
+
+    <!-- Tailwind with dark mode -->
+    <!-- Tailwind (local) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
+    
+    <!-- FontAwesome (local) -->
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}">
+
+    <!-- Inter Font (local) -->
+    <link rel="stylesheet" href="{% static 'fonts/inter.css' %}">
+
+    <!-- ApexCharts (local) -->
+    <script src="{% static 'vendor/apexcharts.min.js' %}"></script>
+    <!-- Flowbite (local) -->
+    <script src="{% static 'vendor/flowbite.min.js' %}"></script>
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="{% static 'freecash/freecash_icon_512_dark.png' %}"
+    />
+    
+    <!-- Alpine.js (local) -->
+    <script defer src="{% static 'vendor/alpine-collapse.min.js' %}"></script>
+    <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
+
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="bg-gray-100 dark:bg-gray-900 transition-colors">
+    <div class="flex h-screen">
+      <!-- MESSAGES -->
+      {% if messages %}
+      <div
+        id="toast-stack"
+        class="fixed top-4 right-4 z-50 w-full max-w-sm space-y-3 px-4 sm:px-0"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {% for msg in messages %}
+        <div
+          class="toast-item pointer-events-auto w-full rounded-2xl border p-4 shadow-lg bg-white/95 backdrop-blur flex items-start gap-3 opacity-0 translate-y-2 transition duration-300 ease-out {% if msg.tags == 'success' %} border-emerald-200 {% elif msg.tags == 'error' %} border-red-200 {% elif msg.tags == 'warning' %} border-amber-200 {% else %} border-gray-200 {% endif %}"
+          data-timeout="4500"
+          role="alert"
+        >
+          <!-- Icon -->
+          <div
+            class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl {% if msg.tags == 'success' %} bg-emerald-50 text-emerald-700 {% elif msg.tags == 'error' %} bg-red-50 text-red-700 {% elif msg.tags == 'warning' %} bg-amber-50 text-amber-700 {% else %} bg-gray-50 text-gray-700 {% endif %}"
+          >
+            {% if msg.tags == "success" %}
+            <i
+              class="fa-solid fa-circle-check text-emerald-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% elif msg.tags == "error" %}
+            <i
+              class="fa-solid fa-circle-xmark text-red-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% elif msg.tags == "warning" %}
+            <i
+              class="fa-solid fa-triangle-exclamation text-yellow-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% else %}
+            <i
+              class="fa-solid fa-circle-info text-sky-400 text-[20px]"
+              aria-hidden="true"
+            ></i>
+            {% endif %}
+          </div>
+
+          <!-- Content -->
+          <div class="min-w-0 flex-1">
+            <!-- prettier-ignore -->
+            <p class="text-sm font-semibold text-gray-900">{% if msg.tags == "success" %}Sucesso{% elif msg.tags == "error" %}Erro{% elif msg.tags == "warning" %}Atenção{% else %}Aviso{% endif %}</p>
+            <p class="mt-0.5 text-sm text-gray-600 break-words">{{ msg }}</p>
+
+            <!-- Progress bar -->
+            <div
+              class="mt-3 h-1 w-full overflow-hidden rounded-full bg-gray-100"
+            >
+              <div
+                class="toast-bar h-1 w-full {% if msg.tags == 'success' %} bg-emerald-500 {% elif msg.tags == 'error' %} bg-red-500 {% elif msg.tags == 'warning' %} bg-amber-500 {% else %} bg-gray-500 {% endif %}"
+                style="transform: translateX(-100%)"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Close -->
+          <button
+            type="button"
+            class="toast-close -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+            aria-label="Fechar"
+          >
+            <i class="fa-solid fa-xmark text-[20px]" aria-hidden="true"></i>
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- SIDEBAR PREMIUM -->
+      <aside class="w-72 bg-slate-950 text-slate-300 flex flex-col shadow-2xl z-20 transition-all duration-300 border-r border-slate-800/50">
+        <!-- Logo Header -->
+        <div class="px-8 py-8 mb-6">
+          <div class="flex items-center gap-4 group">
+            <div class="relative">
+              <div class="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <img
+                src="{% static 'freecash/Icon.png' %}"
+                alt="FreeCash"
+                class="w-12 h-12 relative z-10 drop-shadow-lg transition-transform duration-300 group-hover:scale-110"
+              />
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
+                FreeCash
+              </h1>
+              <p class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mt-0.5">Financeiro</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+          <!-- Item: Dashboard -->
+          {% url 'dashboard' as url_dashboard %}
+          <a
+            href="{{ url_dashboard }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_dashboard %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-chart-line text-[18px] transition-transform duration-300 {% if request.path == url_dashboard %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Dashboard</span>
+            {% if request.path == url_dashboard %}
+            <div class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg shadow-white/50 animate-pulse"></div>
+            {% endif %}
+          </a>
+
+          <!-- Divider -->
+          <div class="px-4 py-3">
+            <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Gestão</p>
+          </div>
+
+          <!-- Item: Contas -->
+          {% url 'contas_pagar' as url_contas %}
+          <a
+            href="{{ url_contas }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_contas %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-regular fa-file-lines text-[18px] transition-transform duration-300 {% if request.path == url_contas %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Contas a Pagar</span>
+          </a>
+
+          <!-- Item: Cartões -->
+          {% url 'cartoes' as url_cartoes %}
+          <a
+            href="{{ url_cartoes }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'cartoes' in request.path %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-credit-card text-[18px] transition-transform duration-300 {% if 'cartoes' in request.path %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Cartões</span>
+          </a>
+
+          <!-- Item: Receitas -->
+          {% url 'receitas' as url_receitas %}
+          <a
+            href="{{ url_receitas }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_receitas %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-coins text-[18px] transition-transform duration-300 {% if request.path == url_receitas %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Receitas</span>
+          </a>
+
+          <!-- Item: Transações -->
+          {% url 'transacoes' as url_transacoes %}
+          <a
+            href="{{ url_transacoes }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_transacoes %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-list-ul text-[18px] transition-transform duration-300 {% if request.path == url_transacoes %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Transações</span>
+          </a>
+
+
+
+          <!-- Divider -->
+          <div class="px-4 py-3">
+            <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Investimentos</p>
+          </div>
+
+          <!-- Investimentos Dropdown -->
+          <div x-data="{ open: {% if 'investimento' in request.resolver_match.app_names or 'investimento' in request.path %}true{% else %}false{% endif %} }" class="relative">
+            <button
+              @click="open = !open"
+              class="w-full group flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'investimento' in request.resolver_match.app_names or 'investimento' in request.path %}bg-slate-800/80 text-white border-slate-700{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-6 flex justify-center">
+                  <i class="fa-solid fa-chart-pie text-[18px] transition-transform duration-300 {% if 'investimento' in request.resolver_match.app_names %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %}"></i>
+                </div>
+                <span class="font-medium text-sm tracking-wide">Investimentos</span>
+              </div>
+              <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform duration-300" :class="{ 'rotate-180': open }"></i>
+            </button>
+
+            <!-- Submenu -->
+            <div
+              x-show="open"
+              x-collapse
+              class="mt-1 space-y-1 px-2"
+              x-cloak
+            >
+              {% url 'investimento:dashboard' as url_inv_dash %}
+              <a href="{{ url_inv_dash }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_dash %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
+                <span class="truncate">Dashboard</span>
+              </a>
+
+              {% url 'investimento:ativo_listar' as url_inv_ativos %}
+              <a href="{{ url_inv_ativos }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_ativos %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
+                <span class="truncate">Meus Ativos</span>
+              </a>
+
+              {% url 'investimento:transacao_listar' as url_inv_trans %}
+              <a href="{{ url_inv_trans }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_trans %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
+                <span class="truncate">Histórico</span>
+              </a>
+
+              {% url 'investimento:classe_listar' as url_inv_classes %}
+              <a href="{{ url_inv_classes }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_classes %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
+                <span class="truncate">Classes</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="px-4 py-3">
+            <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Configurações</p>
+          </div>
+
+          <!-- Item: Importar -->
+          {% url 'importar' as url_importar %}
+          <a
+            href="{{ url_importar }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_importar %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-cloud-arrow-up text-[18px] transition-transform duration-300 {% if request.path == url_importar %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Importar Dados</span>
+          </a>
+
+          <!-- Item: Conciliação -->
+          {% url 'conciliacao' as url_conciliacao %}
+          <a
+            href="{{ url_conciliacao }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'conciliacao' in request.path %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-file-pdf text-[18px] transition-transform duration-300 {% if 'conciliacao' in request.path %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Conciliação</span>
+          </a>
+
+          <!-- Item: Exportar -->
+          {% url 'exportar' as url_exportar %}
+          <a
+            href="{{ url_exportar }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_exportar %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-download text-[18px] transition-transform duration-300 {% if request.path == url_exportar %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Backup</span>
+          </a>
+
+          <!-- Item: Relatórios -->
+          {% url 'exportar_relatorio' as url_relatorio %}
+          <a
+            href="{{ url_relatorio }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_relatorio %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-file-export text-[18px] transition-transform duration-300 {% if request.path == url_relatorio %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Relatórios</span>
+          </a>
+
+          <!-- Item: Pagamentos -->
+          {% url 'formas_pagamento' as url_pgto %}
+          <a
+            href="{{ url_pgto }}"
+            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_pgto %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-regular fa-credit-card text-[18px] transition-transform duration-300 {% if request.path == url_pgto %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+            </div>
+            <span class="font-medium text-sm tracking-wide">Pagamentos</span>
+          </a>
+        </nav>
+
+        <!-- Footer Actions -->
+        <div class="p-4 bg-slate-900/50 border-t border-slate-800/50 backdrop-blur-sm">
+          <!-- Theme Toggle -->
+          <button
+            id="theme-toggle"
+            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-all duration-200 border border-slate-700 group"
+          >
+            <div class="w-6 flex justify-center">
+              <i id="theme-icon-light" class="fa-regular fa-sun hidden group-hover:rotate-45 transition-transform duration-300"></i>
+              <i id="theme-icon-dark" class="fa-regular fa-moon hidden group-hover:-rotate-12 transition-transform duration-300"></i>
+            </div>
+            <span class="text-sm font-medium flex-1 text-left">Tema <span id="theme-label" class="text-xs opacity-50 ml-1"></span></span>
+          </button>
+
+          <!-- Logout -->
+          <a
+            href="{% url 'logout' %}"
+            class="mt-3 flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200 border border-transparent hover:border-red-500/20"
+          >
+            <div class="w-6 flex justify-center">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </div>
+            <span class="text-sm font-medium">Sair</span>
+          </a>
+
+          <!-- Last Update (Tiny) -->
+          <div class="mt-4 text-center">
+            <p class="text-[10px] text-slate-600 uppercase tracking-wider font-semibold">Atualizado</p>
+            <p class="text-[10px] text-slate-500 font-mono mt-0.5">
+              {% if request.user.config.atualizada_em %}
+              {{ request.user.config.atualizada_em|date:"d/m H:i" }}
+              {% else %}--/-- --:--{% endif %}
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ÁREA PRINCIPAL -->
+      <main class="flex-1 p-6 overflow-y-auto">
+        {% block content %} {% endblock %}
+      </main>
+    </div>
+
+    <script>
+      const ultimaAtualizacao =
+        "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!ultimaAtualizacao) return;
+
+        const dot = document.getElementById("atualizacao-dot");
+        if (!dot) return;
+
+        const agora = new Date();
+        const ultima = new Date(ultimaAtualizacao);
+        const diffMs = agora - ultima;
+        const diffMin = diffMs / 60000;
+
+        if (diffMin <= 5) {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-emerald-400");
+        } else if (diffMin <= 1440) {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-yellow-400");
+        } else {
+          dot.classList.remove("bg-slate-500");
+          dot.classList.add("bg-red-500");
+        }
+      });
+    </script>
+    <script>
+      (function () {
+        const stack = document.getElementById("toast-stack");
+        if (!stack) return;
+
+        const toasts = Array.from(stack.querySelectorAll(".toast-item"));
+
+        function showToast(el) {
+          // anima entrada
+          requestAnimationFrame(() => {
+            el.classList.remove("opacity-0", "translate-y-2");
+            el.classList.add("opacity-100", "translate-y-0");
+          });
+
+          // anima barra de tempo
+          const ms = parseInt(el.getAttribute("data-timeout") || "4500", 10);
+          const bar = el.querySelector(".toast-bar");
+          if (bar) {
+            bar.style.transition = `transform ${ms}ms linear`;
+            requestAnimationFrame(() => {
+              bar.style.transform = "translateX(0)";
+            });
+          }
+
+          // auto-dismiss
+          const t = setTimeout(() => dismissToast(el), ms);
+
+          // botão fechar
+          const btn = el.querySelector(".toast-close");
+          if (btn) {
+            btn.addEventListener("click", () => {
+              clearTimeout(t);
+              dismissToast(el);
+            });
+          }
+        }
+
+        function dismissToast(el) {
+          el.classList.remove("opacity-100", "translate-y-0");
+          el.classList.add("opacity-0", "translate-y-2");
+
+          // remove do DOM após transição
+          setTimeout(() => {
+            el.remove();
+            // se não sobrar nenhum, remove o container
+            if (stack.querySelectorAll(".toast-item").length === 0) {
+              stack.remove();
+            }
+          }, 250);
+        }
+
+        toasts.forEach(showToast);
+      })();
+    </script>
+
+    <!-- Theme Toggle Script -->
+    <script>
+      (function () {
+        const toggleBtn = document.getElementById("theme-toggle");
+        const iconLight = document.getElementById("theme-icon-light");
+        const iconDark = document.getElementById("theme-icon-dark");
+        const themeLabel = document.getElementById("theme-label");
+
+        function updateThemeUI() {
+          const isDark = document.documentElement.classList.contains("dark");
+          if (isDark) {
+            iconLight?.classList.add("hidden");
+            iconDark?.classList.remove("hidden");
+            if (themeLabel) themeLabel.textContent = "Escuro";
+          } else {
+            iconLight?.classList.remove("hidden");
+            iconDark?.classList.add("hidden");
+            if (themeLabel) themeLabel.textContent = "Claro";
+          }
+        }
+
+        function toggleTheme() {
+          const isDark = document.documentElement.classList.contains("dark");
+          if (isDark) {
+            document.documentElement.classList.remove("dark");
+            localStorage.setItem("theme", "light");
+          } else {
+            document.documentElement.classList.add("dark");
+            localStorage.setItem("theme", "dark");
+          }
+          updateThemeUI();
+        }
+
+        // Initial UI update
+        updateThemeUI();
+
+        // Toggle on click
+        toggleBtn?.addEventListener("click", toggleTheme);
+      })();
+    </script>
+
+    <!-- Flowbite Initialization -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (typeof initFlowbite === "function") {
+          initFlowbite();
+        }
+      });
+    </script>
+
+    {% include "core/layout/_confirm_modal.html" %}
+  </body>
+</html>

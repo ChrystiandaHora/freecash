@@ -25,7 +25,7 @@ class AssinaturasListView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "assinaturas.html",
+            "cadastros/assinaturas.html",
             {
                 "assinaturas": assinaturas,
             },

@@ -1,0 +1,162 @@
+{% extends "core/layout/base.html" %}
+
+{% block title %}Exportar Relatório - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-2">
+      <a href="{% url 'dashboard' %}" class="text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+        Exportar Relatório
+      </h1>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-slate-400">
+      Exporte suas movimentações financeiras em PDF ou Excel
+    </p>
+  </div>
+
+  <!-- Export Form Card -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+    <!-- Card Header -->
+    <div class="px-6 py-5 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-emerald-500 to-teal-500">
+      <div class="flex items-center gap-4">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white">
+          <i class="fa-solid fa-file-export text-xl"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white">Gerar Relatório</h2>
+          <p class="text-emerald-100 text-sm">Selecione o período e formato desejado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Body -->
+    <div class="p-6">
+      {% if error %}
+      <div class="mb-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+          <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Period Selection -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label for="data_inicio" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+              <i class="fa-regular fa-calendar text-gray-400 dark:text-gray-500"></i>
+              Data Início
+            </label>
+            <input
+              type="date"
+              name="data_inicio"
+              id="data_inicio"
+              value="{{ data_inicio }}"
+              required
+              class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="data_fim" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+              <i class="fa-regular fa-calendar-check text-gray-400 dark:text-gray-500"></i>
+              Data Fim
+            </label>
+            <input
+              type="date"
+              name="data_fim"
+              id="data_fim"
+              value="{{ data_fim }}"
+              required
+              class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+            />
+          </div>
+        </div>
+
+        <!-- Format Selection -->
+        <div class="space-y-3">
+          <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+            <i class="fa-regular fa-file text-gray-400 dark:text-gray-500"></i>
+            Formato do Arquivo
+          </label>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Excel Option -->
+            <label class="relative">
+              <input type="radio" name="formato" value="excel" checked class="peer sr-only" />
+              <div class="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 cursor-pointer transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20 hover:border-gray-300 dark:hover:border-slate-500">
+                <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                  <i class="fa-solid fa-file-excel text-2xl"></i>
+                </div>
+                <div class="text-center">
+                  <p class="font-semibold text-gray-900 dark:text-white">Excel</p>
+                  <p class="text-xs text-gray-500 dark:text-slate-400">.xlsx</p>
+                </div>
+              </div>
+            </label>
+
+            <!-- PDF Option -->
+            <label class="relative">
+              <input type="radio" name="formato" value="pdf" class="peer sr-only" />
+              <div class="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 cursor-pointer transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20 hover:border-gray-300 dark:hover:border-slate-500">
+                <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                  <i class="fa-solid fa-file-pdf text-2xl"></i>
+                </div>
+                <div class="text-center">
+                  <p class="font-semibold text-gray-900 dark:text-white">PDF</p>
+                  <p class="text-xs text-gray-500 dark:text-slate-400">.pdf</p>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-900/20 p-4">
+          <div class="flex items-start gap-3">
+            <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+            <div>
+              <p class="font-semibold text-blue-900 dark:text-blue-200 text-sm">O que será exportado?</p>
+              <ul class="text-xs text-blue-800 dark:text-blue-300 mt-1 space-y-1">
+                <li>• Receitas e despesas do período</li>
+                <li>• Faturas de cartão consolidadas</li>
+                <li>• Resumo com totais e saldo</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 text-base font-bold text-white hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-emerald-500/30"
+        >
+          <i class="fa-solid fa-download"></i>
+          Exportar Relatório
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+    <a href="{% url 'importar_relatorio' %}" class="text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2">
+      <i class="fa-solid fa-file-import"></i>
+      Importar Relatório
+    </a>
+    <span class="text-gray-300 dark:text-slate-600">|</span>
+    <a href="{% url 'exportar' %}" class="text-gray-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-2">
+      <i class="fa-solid fa-shield-halved"></i>
+      Backup Seguro (.fcbk)
+    </a>
+  </div>
+</div>
+{% endblock %}

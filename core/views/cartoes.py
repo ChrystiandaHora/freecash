@@ -44,7 +44,7 @@ def parse_date_flexible(date_str: str) -> date | None:
 class CartoesListView(View):
     """Lista todos os cartões de crédito do usuário."""
 
-    template_name = "cartoes.html"
+    template_name = "core/cartoes/cartoes.html"
 
     def get(self, request):
         usuario = request.user
@@ -109,7 +109,7 @@ class CartoesListView(View):
 class CartaoCreateView(View):
     """Cria um novo cartão de crédito."""
 
-    template_name = "cartao_form.html"
+    template_name = "core/cartoes/cartao_form.html"
 
     def get(self, request):
         return render(
@@ -175,7 +175,7 @@ class CartaoCreateView(View):
 class CartaoUpdateView(View):
     """Edita um cartão de crédito existente."""
 
-    template_name = "cartao_form.html"
+    template_name = "core/cartao_form.html"
 
     def get(self, request, pk):
         usuario = request.user
@@ -259,7 +259,7 @@ class CartaoDeleteView(View):
 class CartaoDespesasView(View):
     """Lista despesas de um cartão específico."""
 
-    template_name = "cartao_despesas.html"
+    template_name = "core/cartoes/cartao_despesas.html"
 
     def get(self, request, pk):
         usuario = request.user
@@ -620,7 +620,7 @@ class CartaoDespesaCreateView(View):
 class CartaoDespesaUpdateView(View):
     """Edita uma despesa do cartão."""
 
-    template_name = "cartao_despesa_form.html"
+    template_name = "core/cartoes/cartao_despesa_form.html"
 
     def get(self, request, pk, despesa_id):
         usuario = request.user

@@ -1,0 +1,570 @@
+{% extends "core/layout/base.html" %}
+{% block content %}
+
+<!-- JSON Data for Charts -->
+{{ meses_labels|json_script:"mesesLabels" }}
+{{ receitas_6m|json_script:"receitas6m" }}
+{{ despesas_6m|json_script:"despesas6m" }}
+{{ saldos_6m|json_script:"saldos6m" }}
+{{ dias_labels|json_script:"diasLabels" }}
+{{ receitas_dias|json_script:"receitasDias" }}
+{{ despesas_dias|json_script:"despesasDias" }}
+
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+  <!-- Header -->
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-emerald-500"></i> Dashboard
+        <span class="text-sm font-normal text-gray-500 dark:text-slate-400">• {{ periodo_label }}</span>
+      </h1>
+    </div>
+    <div class="flex flex-wrap items-center gap-4">
+      <!-- Period Selector -->
+      <select
+        class="text-xs border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        onchange="setPeriodo(this.value)"
+      >
+        <option value="0" {% if periodo == 0 %}selected{% endif %}>Mês atual</option>
+        <option value="1" {% if periodo == 1 %}selected{% endif %}>Mês passado</option>
+        <option value="2" {% if periodo == 2 %}selected{% endif %}>Mês retrasado</option>
+      </select>
+
+      <!-- Divisor -->
+      <div class="h-6 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block"></div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center gap-2">
+        <a href="{% url 'receita_nova' %}" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-all shadow-sm shadow-emerald-500/20">
+          <i class="fa-solid fa-plus mr-1.5"></i> Receita
+        </a>
+        <a href="{% url 'conta_nova' %}" class="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-500 transition-all shadow-sm shadow-rose-500/20">
+          <i class="fa-solid fa-plus mr-1.5"></i> Conta
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <!-- Receitas -->
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i class="fa-solid fa-arrow-trend-up text-white"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Receitas</p>
+          <p class="text-lg font-bold text-gray-900 dark:text-white truncate">R$ {{ total_receitas|floatformat:2 }}</p>
+        </div>
+      </div>
+      {% if receitas_pct != None %}
+      <div class="mt-2 flex items-center text-xs">
+        <span class="{% if receitas_pct >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">
+          <i class="fa-solid {% if receitas_pct >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %} mr-1"></i>
+          {{ receitas_pct|floatformat:0 }}%
+        </span>
+        <span class="text-gray-400 dark:text-slate-500 ml-1">vs mês anterior</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Despesas -->
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-rose-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/20">
+          <i class="fa-solid fa-arrow-trend-down text-white"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Despesas</p>
+          <p class="text-lg font-bold text-gray-900 dark:text-white truncate">R$ {{ total_despesas|floatformat:2 }}</p>
+        </div>
+      </div>
+      {% if despesas_pct != None %}
+      <div class="mt-2 flex items-center text-xs">
+        <span class="{% if despesas_pct <= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">
+          <i class="fa-solid {% if despesas_pct <= 0 %}fa-arrow-down{% else %}fa-arrow-up{% endif %} mr-1"></i>
+          {{ despesas_pct|floatformat:0 }}%
+        </span>
+        <span class="text-gray-400 dark:text-slate-500 ml-1">vs mês anterior</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Saldo -->
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-blue-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-colors"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-wallet text-white"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Saldo</p>
+          <p class="text-lg font-bold {% if saldo_mes >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %} truncate">
+            R$ {{ saldo_mes|floatformat:2 }}
+          </p>
+        </div>
+      </div>
+      {% if taxa_poupanca != None %}
+      <div class="mt-2 flex items-center text-xs">
+        {% if taxa_poupanca >= 0 %}
+        <span class="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+          {{ taxa_poupanca|floatformat:0 }}% poupança
+        </span>
+        {% else %}
+        <span class="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+          <i class="fa-solid fa-arrow-down mr-1"></i>Saldo negativo
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Contas Pendentes -->
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-purple-500/30 transition-colors">
+      <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-500/10 blur-2xl group-hover:bg-purple-500/20 transition-colors"></div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i class="fa-regular fa-clock text-white"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400">Pendentes</p>
+          <p class="text-lg font-bold text-gray-900 dark:text-white">{{ contas_pendentes|default:0 }}</p>
+        </div>
+      </div>
+      {% if contas_atrasadas > 0 %}
+      <div class="mt-2 flex items-center text-xs">
+        <span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+          <i class="fa-solid fa-exclamation-triangle mr-1"></i>{{ contas_atrasadas }} atrasada{{ contas_atrasadas|pluralize:"s" }}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+    <!-- Upcoming Bills -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Próximas Contas</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Vencimentos futuros</p>
+      </div>
+      <a href="{% url 'contas_pagar' %}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium">
+        Ver todas <i class="fa-solid fa-arrow-right ml-1"></i>
+      </a>
+    </div>
+    {% if upcoming_bills %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {% for c in upcoming_bills %}
+      <a href="{% url 'conta_editar' c.id %}" 
+         class="block p-3 rounded-xl border transition-all duration-200
+                {% if c.esta_atrasada %}
+                  bg-rose-50/40 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900/30 hover:shadow-md hover:shadow-rose-500/10
+                {% elif c.data_prevista == hoje %}
+                  bg-amber-50/40 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30 hover:shadow-md hover:shadow-amber-500/10
+                {% else %}
+                  bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 shadow-sm
+                {% endif %}">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-emerald-600 transition-colors">{{ c.descricao }}</p>
+            <p class="text-xs mt-1
+              {% if c.esta_atrasada %}text-rose-700 dark:text-rose-400 font-bold
+              {% elif c.data_prevista == hoje %}text-amber-700 dark:text-amber-400 font-bold
+              {% else %}text-gray-500 dark:text-slate-400{% endif %}">
+              <i class="fa-solid 
+                {% if c.esta_atrasada %}fa-calendar-xmark
+                {% elif c.data_prevista == hoje %}fa-calendar-day
+                {% else %}fa-calendar{% endif %} mr-1"></i>
+              {{ c.data_prevista|date:"d/m" }}
+              {% if c.data_prevista == hoje %}<span class="ml-1 uppercase text-[10px] bg-amber-100 dark:bg-amber-500/20 px-1 rounded">Hoje</span>{% endif %}
+            </p>
+          </div>
+          <p class="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">R$ {{ c.valor|floatformat:2 }}</p>
+        </div>
+        {% if c.categoria %}
+        <span class="inline-block mt-2 px-2 py-0.5 text-[10px] rounded-full font-medium border
+          {% if c.esta_atrasada %}bg-rose-100/50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border-rose-200/50 dark:border-rose-800/50
+          {% elif c.data_prevista == hoje %}bg-amber-100/50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-200/50 dark:border-amber-800/50
+          {% else %}bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-400 border-transparent{% endif %}">
+          {{ c.categoria.nome|truncatechars:15 }}
+        </span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-8 text-gray-400 dark:text-slate-500">
+      <i class="fa-regular fa-calendar-check text-3xl mb-2 opacity-30"></i>
+      <p class="text-sm">Nenhuma conta pendente</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <!-- Main Chart: 6-Month Bar Chart (spans 2 columns) -->
+    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo de Caixa</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Últimos 6 meses</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span> Receitas</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-500"></span> Despesas</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-blue-500"></span> Saldo</span>
+        </div>
+      </div>
+      <div id="chartCashFlow" style="height: 280px;"></div>
+    </div>
+
+    <!-- Expense Breakdown Donut -->
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
+      <div class="mb-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Despesas por Categoria</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Distribuição do período</p>
+      </div>
+      {% if breakdown_items %}
+      <div id="chartCategories" style="height: 200px;"></div>
+      <div class="mt-3 space-y-2">
+        {% for item in breakdown_items %}
+        <div class="flex items-center justify-between text-xs">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full {% if forloop.counter0 == 0 %}bg-orange-500{% elif forloop.counter0 == 1 %}bg-amber-500{% elif forloop.counter0 == 2 %}bg-yellow-500{% else %}bg-gray-400{% endif %}"></span>
+            <span class="text-gray-700 dark:text-slate-300">{{ item.nome|truncatechars:15 }}</span>
+          </span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ item.pct|floatformat:0 }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500">
+        <i class="fa-solid fa-chart-pie text-3xl mb-2 opacity-30"></i>
+        <p class="text-sm">Sem despesas no período</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Second Row: Daily + Status -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <!-- Daily Movement Chart -->
+    <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Movimento Diário</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Receitas e Despesas do período</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span> Receitas</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-orange-500"></span> Despesas</span>
+        </div>
+      </div>
+      <div id="chartDaily" style="height: 200px;"></div>
+    </div>
+
+    <!-- Bill Status Radial -->
+    <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
+      <div class="mb-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Status das Contas</h2>
+        <p class="text-xs text-gray-500 dark:text-slate-400">{{ contas_pagas|default:0|add:contas_pendentes|add:contas_atrasadas }} contas no mês</p>
+      </div>
+      <div id="chartStatus" style="height: 180px;"></div>
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+        <div>
+          <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ contas_pagas|default:0 }}</p>
+          <p class="text-gray-500 dark:text-slate-400">Pagas</p>
+        </div>
+        <div>
+          <p class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ contas_pendentes|default:0 }}</p>
+          <p class="text-gray-500 dark:text-slate-400">Pendentes</p>
+        </div>
+        <div>
+          <p class="text-lg font-bold {% if contas_atrasadas > 0 %}text-red-600 dark:text-red-400{% else %}text-gray-400 dark:text-slate-500{% endif %}">{{ contas_atrasadas|default:0 }}</p>
+          <p class="text-gray-500 dark:text-slate-400">Atrasadas</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <a href="{% url 'contas_pagar' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-file-invoice-dollar text-blue-600 dark:text-blue-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Contas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Gerenciar</p>
+      </div>
+    </a>
+    <a href="{% url 'receitas' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-coins text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Receitas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Gerenciar</p>
+      </div>
+    </a>
+    <a href="{% url 'formas_pagamento' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-credit-card text-purple-600 dark:text-purple-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Pagamentos</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Formas</p>
+      </div>
+    </a>
+    <a href="{% url 'transacoes' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-list text-orange-600 dark:text-orange-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Transações</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Histórico</p>
+      </div>
+    </a>
+    <!-- Lote Contas -->
+    <a href="{% url 'conta_lote' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-layer-group text-rose-600 dark:text-rose-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Lote Contas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Cadastrar</p>
+      </div>
+    </a>
+    <!-- Lote Receitas -->
+    <a href="{% url 'receita_lote' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
+      <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+        <i class="fa-solid fa-layer-group text-emerald-600 dark:text-emerald-400"></i>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">Lote Receitas</p>
+        <p class="text-xs text-gray-500 dark:text-slate-400">Cadastrar</p>
+      </div>
+    </a>
+  </div>
+</div>
+
+<script>
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  
+  // Abbreviate large values for chart labels
+  function formatAbbreviated(value) {
+    const absVal = Math.abs(value);
+    if (absVal >= 1_000_000_000) {
+      return `R$ ${(value / 1_000_000_000).toFixed(1).replace('.', ',')} bi`;
+    } else if (absVal >= 1_000_000) {
+      return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')} mi`;
+    } else if (absVal >= 1_000) {
+      return `R$ ${(value / 1_000).toFixed(1).replace('.', ',')} mil`;
+    }
+    return brl.format(value);
+  }
+  
+  function setPeriodo(value) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("periodo", value);
+    window.location.href = url.toString();
+  }
+
+  // Parse JSON data
+  const mesesLabels = JSON.parse(document.getElementById("mesesLabels").textContent);
+  const receitas6m = JSON.parse(document.getElementById("receitas6m").textContent).map(v => Number(v) || 0);
+  const despesas6m = JSON.parse(document.getElementById("despesas6m").textContent).map(v => Number(v) || 0);
+  const saldos6m = JSON.parse(document.getElementById("saldos6m").textContent).map(v => Number(v) || 0);
+  const diasLabels = JSON.parse(document.getElementById("diasLabels").textContent);
+  const receitasDias = JSON.parse(document.getElementById("receitasDias").textContent).map(v => Number(v) || 0);
+  const despesasDias = JSON.parse(document.getElementById("despesasDias").textContent).map(v => Number(v) || 0);
+
+  // Theme detection
+  const isDark = document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 1)';
+
+  // 1. Cash Flow - Grouped Bar Chart
+  const cashFlowChart = new ApexCharts(document.getElementById("chartCashFlow"), {
+    series: [
+      { name: 'Receitas', data: receitas6m },
+      { name: 'Despesas', data: despesas6m },
+      { name: 'Saldo', data: saldos6m }
+    ],
+    chart: {
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+      background: 'transparent'
+    },
+    colors: ['#10b981', '#ef4444', '#60a5fa'],
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '70%',
+        borderRadius: 4,
+        borderRadiusApplication: 'end'
+      }
+    },
+    dataLabels: { enabled: false },
+    stroke: { show: true, width: 2, colors: ['transparent'] },
+    xaxis: {
+      categories: mesesLabels,
+      labels: { style: { colors: textColor, fontSize: '11px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: '11px' },
+        formatter: val => brl.format(val)
+      }
+    },
+    grid: { borderColor: gridColor, strokeDashArray: 4 },
+    legend: { show: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: val => brl.format(val) }
+    }
+  });
+  cashFlowChart.render();
+
+  // 2. Daily Movement - Combined Area Chart
+  const dailyChart = new ApexCharts(document.getElementById("chartDaily"), {
+    series: [
+      { name: 'Receitas', data: receitasDias },
+      { name: 'Despesas', data: despesasDias }
+    ],
+    chart: {
+      type: 'area',
+      height: 200,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+      background: 'transparent'
+    },
+    colors: ['#10b981', '#f97316'],
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 }
+    },
+    stroke: { curve: 'smooth', width: 2 },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: diasLabels,
+      labels: { 
+        style: { colors: textColor, fontSize: '12px' },
+        rotate: 0,
+        hideOverlappingLabels: true
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: '12px' },
+        formatter: val => brl.format(val)
+      }
+    },
+    grid: { borderColor: gridColor, strokeDashArray: 4 },
+    legend: { show: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      x: { formatter: (val, opts) => `Dia ${diasLabels[opts.dataPointIndex]}` },
+      y: { formatter: val => brl.format(val) }
+    }
+  });
+  dailyChart.render();
+
+  // 3. Categories Donut (if data exists)
+  {% if breakdown_items %}
+  const categoryData = [{% for item in breakdown_items %}{{ item.valor }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+  const categoryLabels = [{% for item in breakdown_items %}"{{ item.nome|truncatechars:12 }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+  
+  const categoriesChart = new ApexCharts(document.getElementById("chartCategories"), {
+    series: categoryData,
+    labels: categoryLabels,
+    chart: {
+      type: 'donut',
+      height: 200,
+      fontFamily: 'Inter, sans-serif'
+    },
+    colors: ['#f97316', '#f59e0b', '#eab308', '#9ca3af'],
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '70%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total',
+              fontSize: '11px',
+              color: textColor,
+              formatter: w => formatAbbreviated(w.globals.seriesTotals.reduce((a, b) => a + b, 0))
+            }
+          }
+        }
+      }
+    },
+    legend: { show: false },
+    dataLabels: { enabled: false },
+    stroke: { show: false },
+    tooltip: {
+      theme: isDark ? 'dark' : 'light',
+      y: { formatter: val => brl.format(val) }
+    }
+  });
+  categoriesChart.render();
+  {% endif %}
+
+  // 4. Status Radial Bar
+  const totalContas = {{ contas_pagas|default:0 }} + {{ contas_pendentes|default:0 }} + {{ contas_atrasadas|default:0 }};
+  const pagasPct = totalContas > 0 ? ({{ contas_pagas|default:0 }} / totalContas * 100) : 0;
+  const pendentesPct = totalContas > 0 ? ({{ contas_pendentes|default:0 }} / totalContas * 100) : 0;
+  const atrasadasPct = totalContas > 0 ? ({{ contas_atrasadas|default:0 }} / totalContas * 100) : 0;
+
+  const statusChart = new ApexCharts(document.getElementById("chartStatus"), {
+    series: [pagasPct, pendentesPct, atrasadasPct],
+    chart: {
+      type: 'radialBar',
+      height: 180,
+      fontFamily: 'Inter, sans-serif'
+    },
+    plotOptions: {
+      radialBar: {
+        offsetY: 0,
+        startAngle: 0,
+        endAngle: 270,
+        hollow: {
+          margin: 5,
+          size: '30%',
+          background: 'transparent'
+        },
+        dataLabels: {
+          name: { show: false },
+          value: { show: false }
+        },
+        barLabels: {
+          enabled: true,
+          useSeriesColors: true,
+          offsetX: -8,
+          fontSize: '11px',
+          formatter: (seriesName, opts) => {
+            const labels = ['Pagas', 'Pendentes', 'Atrasadas'];
+            return labels[opts.seriesIndex] + ': ' + opts.w.globals.series[opts.seriesIndex].toFixed(0) + '%';
+          }
+        }
+      }
+    },
+    colors: ['#10b981', '#3b82f6', '#ef4444'],
+    labels: ['Pagas', 'Pendentes', 'Atrasadas'],
+    legend: { show: false }
+  });
+  statusChart.render();
+</script>
+
+{% endblock %}

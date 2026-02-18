@@ -1,0 +1,51 @@
+{% extends 'core/layout/base.html' %}
+
+{% block title %}Excluir Classe | FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+  <!-- Confirmation Card -->
+  <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm p-8 text-center">
+
+    <div class="mb-6">
+      <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
+        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Excluir Classe?</h2>
+      <p class="text-gray-500 dark:text-gray-400">
+        Você tem certeza que deseja excluir a classe <span class="font-semibold text-gray-900 dark:text-white">"{{ object.nome }}"</span>?
+      </p>
+    </div>
+
+    <!-- Alert Box -->
+    <div class="bg-gray-50 dark:bg-slate-700/50 rounded-xl p-4 mb-6 text-left">
+      <div class="flex items-start gap-3">
+        <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+        <div class="text-sm text-gray-600 dark:text-gray-300">
+          <p class="font-medium text-gray-900 dark:text-white mb-1">Atenção:</p>
+          <ul class="list-disc list-inside space-y-1">
+            <li>Isso excluirá todas as <strong>categorias</strong> vinculadas.</li>
+            <li>Isso excluirá todas as <strong>subcategorias</strong> vinculadas.</li>
+            <li>Isso excluirá todos os <strong>ativos e transações</strong> vinculados.</li>
+            <li class="text-red-600 dark:text-red-400 font-medium">Esta ação não pode ser desfeita.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" class="flex items-center justify-center gap-3">
+      {% csrf_token %}
+      <button type="submit" 
+              class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600/20 shadow-lg shadow-red-900/20 transition-all">
+        <i class="fa-solid fa-trash mr-2"></i> Confirmar Exclusão
+      </button>
+      <a href="{% url 'investimento:classe_listar' %}" 
+         class="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all">
+        Cancelar
+      </a>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

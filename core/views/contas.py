@@ -39,7 +39,7 @@ def clamp_per_page(raw, default=5, min_v=5, max_v=50):
 
 @method_decorator(login_required, name="dispatch")
 class ContasPagarView(View):
-    template_name = "contas.html"
+    template_name = "core/cadastros/contas.html"
 
     def get(self, request):
         usuario = request.user
@@ -429,7 +429,7 @@ class CadastrarContaPagarView(View):
 
 @method_decorator(login_required, name="dispatch")
 class ContaCreateView(View):
-    template_name = "conta_form.html"
+    template_name = "core/financeiro/conta_form.html"
 
     def get(self, request):
         usuario = request.user
@@ -457,7 +457,7 @@ class ContaCreateView(View):
 
 @method_decorator(login_required, name="dispatch")
 class ContaUpdateView(View):
-    template_name = "conta_form.html"
+    template_name = "core/financeiro/conta_form.html"
 
     def get(self, request, conta_id):
         usuario = request.user

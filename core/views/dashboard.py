@@ -386,7 +386,7 @@ def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date):
 
 @method_decorator(login_required, name="dispatch")
 class DashboardView(View):
-    template_name = "dashboard.html"
+    template_name = "core/dashboard/dashboard.html"
 
     def get(self, request):
         usuario = request.user

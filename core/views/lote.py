@@ -31,7 +31,7 @@ def parse_date_flexible(date_str: str):
 class ContaLoteCreateView(View):
     """View para cadastro em lote de despesas."""
 
-    template_name = "conta_lote_form.html"
+    template_name = "core/financeiro/conta_lote_form.html"
 
     def get(self, request):
         usuario = request.user
@@ -155,7 +155,7 @@ class ContaLoteCreateView(View):
 class ReceitaLoteCreateView(View):
     """View para cadastro em lote de receitas."""
 
-    template_name = "conta_lote_form.html"
+    template_name = "core/financeiro/conta_lote_form.html"
 
     def get(self, request):
         usuario = request.user

@@ -8,7 +8,7 @@ from core.models import FormaPagamento
 
 @method_decorator(login_required, name="dispatch")
 class FormasPagamentoView(View):
-    template_name = "formas_pagamento.html"
+    template_name = "core/cadastros/formas_pagamento.html"
 
     def get(self, request):
         q = (request.GET.get("q") or "").strip()
@@ -39,7 +39,7 @@ class FormasPagamentoView(View):
 
 @method_decorator(login_required, name="dispatch")
 class EditarFormaPagamentoView(View):
-    template_name = "formas_pagamento_editar.html"
+    template_name = "core/cadastros/formas_pagamento_editar.html"
 
     def get(self, request, pk):
         forma = get_object_or_404(FormaPagamento, pk=pk, usuario=request.user)

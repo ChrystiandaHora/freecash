@@ -17,7 +17,7 @@ from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
 @login_required
 def classe_listar(request):
     classes = ClasseAtivo.objects.filter(usuario=request.user)
-    return render(request, "classe_list.html", {"classes": classes})
+    return render(request, "investimento/classes/classe_list.html", {"classes": classes})
 
 
 @login_required
@@ -29,7 +29,7 @@ def classe_criar(request):
         classe.save()
         messages.success(request, "Classe criada com sucesso!")
         return redirect("investimento:classe_listar")
-    return render(request, "classe_form.html", {"form": form})
+    return render(request, "investimento/classes/classe_form.html", {"form": form})
 
 
 @login_required
@@ -40,7 +40,7 @@ def classe_editar(request, pk):
         form.save()
         messages.success(request, "Classe atualizada!")
         return redirect("investimento:classe_listar")
-    return render(request, "classe_form.html", {"form": form})
+    return render(request, "investimento/classe_form.html", {"form": form})
 
 
 @login_required
@@ -50,7 +50,7 @@ def classe_excluir(request, pk):
         classe.delete()
         messages.success(request, "Classe excluída!")
         return redirect("investimento:classe_listar")
-    return render(request, "classe_confirm_delete.html", {"classe": classe})
+    return render(request, "investimento/classes/classe_confirm_delete.html", {"classe": classe})
 
 
 @login_required
@@ -192,7 +192,7 @@ def dashboard(request):
         "ultima_transacao": ultima_transacao,
         "proximos_vencimentos": proximos_vencimentos,
     }
-    return render(request, "investimento/dashboard.html", context)
+    return render(request, "investimento/dashboard/dashboard.html", context)
 
 
 # ==========================
@@ -203,7 +203,7 @@ def dashboard(request):
 @login_required
 def ativo_listar(request):
     ativos = Ativo.objects.filter(usuario=request.user)
-    return render(request, "ativo_list.html", {"ativos": ativos})
+    return render(request, "investimento/ativos/ativo_list.html", {"ativos": ativos})
 
 
 @login_required
@@ -289,7 +289,7 @@ def ativo_excluir(request, pk):
         ativo.delete()
         messages.success(request, "Ativo excluído!")
         return redirect("investimento:ativo_listar")
-    return render(request, "ativo_confirm_delete.html", {"ativo": ativo})
+    return render(request, "investimento/ativos/ativo_confirm_delete.html", {"ativo": ativo})
 
 
 @login_required
@@ -327,7 +327,7 @@ def atualizar_cotacoes_view(request):
 @login_required
 def transacao_listar(request):
     transacoes = Transacao.objects.filter(usuario=request.user)
-    return render(request, "transacao_list.html", {"transacoes": transacoes})
+    return render(request, "investimento/transacoes/transacao_list.html", {"transacoes": transacoes})
 
 
 @login_required
@@ -344,7 +344,7 @@ def transacao_criar(request):
         transacao.save()
         messages.success(request, "Transação registrada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "transacao_form.html", {"form": form})
+    return render(request, "investimento/transacao_form.html", {"form": form})
 
 
 @login_required
@@ -362,7 +362,7 @@ def transacao_editar(request, pk):
         form.save()
         messages.success(request, "Transação atualizada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "transacao_form.html", {"form": form})
+    return render(request, "investimento/transacao_form.html", {"form": form})
 
 
 @login_required
@@ -372,4 +372,4 @@ def transacao_excluir(request, pk):
         t.delete()
         messages.success(request, "Transação excluída!")
         return redirect("investimento:transacao_listar")
-    return render(request, "transacao_confirm_delete.html", {"object": t})
+    return render(request, "investimento/transacao_confirm_delete.html", {"object": t})

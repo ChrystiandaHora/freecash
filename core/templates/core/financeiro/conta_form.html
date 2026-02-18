@@ -1,0 +1,365 @@
+{% extends "core/layout/base.html" %}
+{% load static %}
+{% load l10n %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+  <!-- Breadcrumb/Back -->
+  <div class="mb-6 flex items-center justify-between">
+    <a href="javascript:history.back()" class="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
+        <i class="fa-solid fa-arrow-left"></i> Voltar
+    </a>
+    {% if object %}
+    <span class="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400">
+        Editando #{{ object.id }}
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Main Form Card -->
+  <div class="relative bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-3xl shadow-xl dark:shadow-2xl overflow-hidden">
+
+    <form method="post" enctype="multipart/form-data" class="p-8 space-y-8" novalidate>
+      {% csrf_token %}
+
+      <!-- Header -->
+      <div class="text-center space-y-2">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+            {% if tipo == 'receita' %}
+                {% if conta %}Editar Receita{% else %}Nova Receita{% endif %}
+            {% else %}
+                {% if conta %}Editar Conta{% else %}Nova Conta{% endif %}
+            {% endif %}
+        </h1>
+        <p class="text-gray-500 dark:text-slate-400">
+            {% if tipo == 'receita' %}
+                Registre suas entradas de dinheiro.
+            {% else %}
+                Registre suas despesas e contas a pagar.
+            {% endif %}
+        </p>
+      </div>
+
+      <!-- Errors (Django messages are handled in base.html, but if manual errors passed in context?) -->
+      {% if error_message %}
+      <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm">
+        {{ error_message }}
+      </div>
+      {% endif %}
+
+      <!-- Main Fields -->
+      <div class="space-y-6">
+        
+        <!-- Descrição -->
+        <div class="space-y-1.5">
+            <label for="descricao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Descrição</label>
+            <input type="text" name="descricao" id="descricao" required
+                   value="{{ conta.descricao|default:'' }}"
+                   placeholder="Ex: Conta de Luz, Salário..."
+                   class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium">
+        </div>
+
+        <!-- Row: Valor, Moeda & Data -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="space-y-1.5">
+                <label for="valor" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor</label>
+                <div class="relative">
+                    <span id="moedaSymbol" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
+                    <!-- Using type="number" step="0.01" for better mobile keyboard, relying on unlocalize for dot format -->
+                    <input type="number" step="0.01" name="valor" id="valor" required
+                           value="{{ conta.valor|unlocalize }}"
+                           placeholder="0.00"
+                           class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-bold text-lg">
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label for="moeda" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Moeda</label>
+                <select name="moeda" id="moeda" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                    <option value="BRL" {% if conta.moeda == 'BRL' or not conta %}selected{% endif %}>🇧🇷 BRL (R$)</option>
+                    <option value="USD" {% if conta.moeda == 'USD' %}selected{% endif %}>🇺🇸 USD (US$)</option>
+                    <option value="EUR" {% if conta.moeda == 'EUR' %}selected{% endif %}>🇪🇺 EUR (€)</option>
+                    <option value="GBP" {% if conta.moeda == 'GBP' %}selected{% endif %}>🇬🇧 GBP (£)</option>
+                </select>
+            </div>
+
+            <div class="space-y-1.5">
+                <label for="data_prevista" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Data de Vencimento</label>
+                <div class="relative">
+                     <i class="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"></i>
+                    <!-- Use explicit Y-m-d format for type="date" -->
+                    <input type="date" name="data_prevista" id="data_prevista" required
+                           value="{{ conta.data_prevista|date:'Y-m-d' }}"
+                           class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all datepicker-input">
+                </div>
+            </div>
+        </div>
+
+        <!-- Forma de Pagamento (full width since category is auto-set by form type) -->
+        <div class="space-y-1.5">
+            <label for="forma_pagamento" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
+            <select name="forma_pagamento" id="forma_pagamento" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <option value="">Selecione...</option>
+                {% for f in formas %}
+                    <option value="{{ f.id }}" {% if conta.forma_pagamento_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Categoria do Gasto (MCC) -->
+        {% if categorias_cartao %}
+        <div class="space-y-1.5">
+            <label for="categoria_cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
+                Categoria do Gasto
+                <span class="text-xs text-gray-400 dark:text-slate-500">(opcional)</span>
+            </label>
+            <select name="categoria_cartao" id="categoria_cartao" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <option value="">Selecione uma categoria...</option>
+                {% for cat in categorias_cartao %}
+                    <option value="{{ cat.id }}" {% if conta.categoria_cartao_id == cat.id %}selected{% endif %}>{{ cat.emoji }} {{ cat.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="border-t border-gray-100 dark:border-slate-800 my-6"></div>
+
+        <!-- Advanced Options (Recurrence) - Only for new Despesas -->
+        {% if not conta and tipo != 'receita' %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            
+            <!-- Parcelado Card -->
+            <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <div class="flex items-center gap-3 mb-3">
+                    <input type="checkbox" name="parcelado" id="parcelado" value="1" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600">
+                    <label for="parcelado" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">É uma compra parcelada?</label>
+                </div>
+                
+                <div id="parcelasBox" class="hidden pl-8 space-y-2 animate-fadeIn">
+                    <p class="text-xs text-gray-500 dark:text-slate-500">Selecione o número de parcelas:</p>
+                    <div class="relative">
+                        <select name="numero_parcelas" id="numero_parcelas" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500">
+                             <!-- Loop manual if no helper filter -->
+                             <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
+                             <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
+                             <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+                             <option value="12">12x</option><option value="18">18x</option><option value="24">24x</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repetir Card -->
+            <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
+                <div class="flex items-center gap-3 mb-3">
+                    <input type="checkbox" name="multiplicar" id="multiplicar" value="1" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600">
+                    <label for="multiplicar" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">Repetir mensalmente?</label>
+                </div>
+                
+                <div id="multiplicaBox" class="hidden pl-8 space-y-2 animate-fadeIn">
+                     <p class="text-xs text-gray-500 dark:text-slate-500">Repetir por quantos meses?</p>
+                    <div class="relative">
+                        <select name="numero_multiplicacoes" id="numero_multiplicacoes" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500">
+                            <!-- Manual loop -->
+                            <option value="2">2 meses</option><option value="3">3 meses</option><option value="4">4 meses</option>
+                            <option value="5">5 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+                        </select>
+                         <p class="text-[10px] text-amber-500/80 mt-1">Cria registros separados.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {% endif %}
+
+        {% if conta and conta.eh_parcelada and conta.grupo_parcelamento %}
+        <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <label class="flex items-center gap-3">
+            <input id="aplicar_grupo" type="checkbox" name="aplicar_grupo" value="1"
+                   class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer">
+            <div>
+              <p class="text-sm font-semibold text-amber-800 dark:text-amber-300 cursor-pointer">Aplicar em todas as parcelas</p>
+              <p class="text-xs text-amber-600 dark:text-amber-400">Atualiza descrição, categoria e forma de pagamento</p>
+            </div>
+          </label>
+        </div>
+        {% endif %}
+
+        <!-- Observação & Checkboxes -->
+        <div class="space-y-4">
+             <div class="space-y-1.5">
+                <label for="observacao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Observações</label>
+                <textarea name="observacao" id="observacao" rows="3" placeholder="Detalhes adicionais..."
+                          class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-sm">{{ conta.observacao|default:'' }}</textarea>
+            </div>
+
+            <!-- Status Checkbox -->
+            <!-- If editing, check if transacao_realizada is true. If creating, usually false unless supported. -->
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800">
+                <input type="checkbox" name="pago" id="pago" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
+                {% if conta.transacao_realizada %}checked{% endif %}>
+                <label for="pago" class="text-sm font-medium text-gray-700 dark:text-slate-300 cursor-pointer select-none">
+                    Marcar como <span class="text-emerald-600 dark:text-emerald-400 font-bold">Pago / Recebido</span>
+                </label>
+            </div>
+            
+        </div>
+
+      </div>
+
+      <!-- Actions Footer -->
+      <div class="pt-6 flex flex-col-reverse sm:flex-row gap-4 sm:items-center sm:justify-end">
+        <a href="javascript:history.back()" class="px-6 py-3 rounded-xl border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-gray-100 font-bold hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-center">
+            Cancelar
+        </a>
+        <button type="submit" class="px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transform hover:-translate-y-0.5 transition-all text-center">
+            <i class="fa-regular fa-floppy-disk mr-2"></i> Salvar Lançamento
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Danger Zone (Delete) -->
+  {% if conta %}
+  <div class="mt-12 pt-8 border-t border-gray-200 dark:border-slate-800">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10">
+        <div>
+            <h3 class="text-rose-600 dark:text-rose-400 font-semibold">Zona de Perigo</h3>
+            <p class="text-gray-500 dark:text-slate-500 text-sm">Esta ação não pode ser desfeita.</p>
+        </div>
+        <form id="form-excluir-conta" method="post" action="{% url 'apagar_conta' conta.id %}">
+            {% csrf_token %}
+            <button type="button" 
+                    onclick="confirmDelete(document.getElementById('form-excluir-conta'), '{{ conta.descricao|escapejs }}')"
+                    class="px-5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-sm font-medium flex items-center gap-2">
+                <i class="fa-regular fa-trash-can"></i> Excluir permanentemente
+            </button>
+        </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Logic for parcelas/multiplication -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const chkParcelado = document.getElementById("parcelado");
+    const boxParcelas = document.getElementById("parcelasBox");
+    const selParcelas = document.getElementById("numero_parcelas"); // might stay null if editing
+
+    const chkMultiplicar = document.getElementById("multiplicar");
+    const boxMultiplica = document.getElementById("multiplicaBox");
+    const selMultiplica = document.getElementById("numero_multiplicacoes"); // might stay null if editing
+
+    const valorInput = document.getElementById("valor");
+
+    // Helper: format money
+    function parseToCents(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim().replace(/\s/g, "");
+      // Brazilian format usually uses comma for decimals
+      if (s.includes(",")) {
+        s = s.replace(/\./g, ""); // remove thousands separator
+        s = s.replace(",", ".");  // replace decimal comma with dot
+      }
+      const num = Number(s);
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return Math.round(num * 100);
+    }
+
+    function centsToBRL(cents) {
+        return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    }
+
+    function splitCents(totalCents, n) {
+      const base = Math.floor(totalCents / n);
+      const resto = totalCents % n;
+      const parcelas = [];
+      for (let i = 1; i <= n; i++) {
+        parcelas.push(base + (i <= resto ? 1 : 0));
+      }
+      return parcelas;
+    }
+
+    function setVisible(el, visible) {
+      if(!el) return;
+      if (visible) {
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    }
+
+    // Update the text in the select options to show Parcel Value
+    function updateParcelasOptions() {
+      if (!selParcelas || !valorInput) return;
+      
+      const totalCents = parseToCents(valorInput.value);
+      const options = Array.from(selParcelas.options);
+
+      options.forEach(opt => {
+        const n = parseInt(opt.value, 10);
+        if (!totalCents) {
+          // Reset to simple text if no value
+          if (!opt.hasAttribute('data-original-text')) {
+              opt.setAttribute('data-original-text', opt.textContent.split('x')[0] + 'x');
+          }
+          opt.textContent = opt.getAttribute('data-original-text');
+          return;
+        }
+        const parcelas = splitCents(totalCents, n); // calc partition
+        opt.textContent = `${n}x de R$ ${centsToBRL(parcelas[0])}`;
+      });
+    }
+
+    function updateUI() {
+      // Logic: Mutually exclusive checkboxes
+      if (chkParcelado && chkParcelado.checked && chkMultiplicar && chkMultiplicar.checked) {
+         // If user checks one, uncheck the other? Or just valid?
+         // Usually mutually exclusive in logic. Let's force it.
+         // If I just clicked Parcelado, uncheck Multiplicar
+         if (document.activeElement === chkParcelado) chkMultiplicar.checked = false;
+         if (document.activeElement === chkMultiplicar) chkParcelado.checked = false;
+      }
+
+      if (chkParcelado) setVisible(boxParcelas, chkParcelado.checked);
+      if (chkMultiplicar) setVisible(boxMultiplica, chkMultiplicar.checked);
+
+      if (selParcelas) selParcelas.disabled = !chkParcelado.checked;
+      if (selMultiplica) selMultiplica.disabled = !chkMultiplicar.checked;
+
+      updateParcelasOptions();
+    }
+
+    // Bind events
+    if (chkParcelado) chkParcelado.addEventListener("change", updateUI);
+    if (chkMultiplicar) chkMultiplicar.addEventListener("change", updateUI);
+    if (valorInput) valorInput.addEventListener("input", updateParcelasOptions);
+
+    // Initial run
+    updateUI();
+  });
+</script>
+
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+        animation: fadeIn 0.3s ease-out forwards;
+    }
+    
+    /* Custom Datepicker indicator fix */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.5); /* Neutral gray */
+        cursor: pointer;
+    }
+    .dark input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1) opacity(0.7); /* White-ish in dark mode */
+    }
+</style>
+{% endblock %}

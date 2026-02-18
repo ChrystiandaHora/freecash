@@ -8,7 +8,7 @@ from core.services.criar_usuario import criar_usuario_com_ecosistema
 
 
 class LadingPageView(View):
-    template_name = "ladingPage.html"
+    template_name = "core/dashboard/ladingPage.html"
 
     def get(self, request):
         # Apenas exibe a landing page

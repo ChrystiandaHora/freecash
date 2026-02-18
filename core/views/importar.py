@@ -10,7 +10,7 @@ from core.services.import_service import importar_universal
 
 @method_decorator(login_required, name="dispatch")
 class ImportarView(View):
-    template_name = "importar.html"
+    template_name = "core/servicos/importar.html"
 
     def get(self, request):
         return render(request, self.template_name)
@@ -46,7 +46,7 @@ class ImportarView(View):
 class ImportarRelatorioView(View):
     """Importa relatório de movimentações a partir de arquivo Excel."""
 
-    template_name = "importar_relatorio.html"
+    template_name = "core/servicos/importar_relatorio.html"
 
     def get(self, request):
         # Limpa dados de sessão anteriores
@@ -169,7 +169,7 @@ class ImportarRelatorioView(View):
 class ImportarRelatorioPreviewView(View):
     """Preview dos dados a serem importados."""
 
-    template_name = "importar_relatorio_preview.html"
+    template_name = "core/servicos/importar_relatorio_preview.html"
 
     def get(self, request):
         from datetime import date

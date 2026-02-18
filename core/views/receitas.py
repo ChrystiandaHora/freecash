@@ -37,7 +37,7 @@ def parse_date_flexible(date_str: str) -> date | None:
 
 @method_decorator(login_required, name="dispatch")
 class ReceitasView(View):
-    template_name = "receitas.html"
+    template_name = "core/financeiro/receitas.html"
 
     def get(self, request):
         usuario = request.user
@@ -139,7 +139,7 @@ class ReceitasView(View):
 
 @method_decorator(login_required, name="dispatch")
 class ReceitaCreateView(View):
-    template_name = "conta_form.html"
+    template_name = "core/financeiro/conta_form.html"
 
     def get(self, request):
         usuario = request.user
@@ -358,7 +358,7 @@ class ReceitaCreateView(View):
 
 @method_decorator(login_required, name="dispatch")
 class ReceitaUpdateView(View):
-    template_name = "conta_form.html"
+    template_name = "core/financeiro/conta_form.html"
 
     def get(self, request, pk):
         usuario = request.user

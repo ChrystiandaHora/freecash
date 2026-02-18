@@ -1,0 +1,121 @@
+{% extends "core/layout/base.html" %}
+{% load static %}
+
+{% block title %}Cartões - FreeCash{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Cartões de Crédito</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Gerencie seus cartões e acompanhe os gastos</p>
+    </div>
+    <a href="{% url 'cartao_novo' %}" 
+       class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-105">
+      <i class="fa-solid fa-plus"></i>
+      <span>Novo Cartão</span>
+    </a>
+  </div>
+
+  <!-- Cards Grid -->
+  {% if cartoes %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in cartoes %}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
+      <!-- Card Header - Gradient based on bandeira -->
+      <div class="p-6 bg-gradient-to-br 
+        {% if item.cartao.bandeira == 'VISA' %}from-blue-500 to-blue-700
+        {% elif item.cartao.bandeira == 'MASTERCARD' %}from-orange-500 to-red-600
+        {% elif item.cartao.bandeira == 'ELO' %}from-yellow-400 to-yellow-600
+        {% elif item.cartao.bandeira == 'AMEX' %}from-gray-600 to-gray-800
+        {% elif item.cartao.bandeira == 'HIPERCARD' %}from-red-500 to-red-700
+        {% else %}from-emerald-500 to-teal-600{% endif %}
+        text-white">
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <p class="text-white/80 text-sm font-medium">{{ item.cartao.get_bandeira_display }}</p>
+            <h3 class="text-xl font-bold mt-1">{{ item.cartao.nome }}</h3>
+          </div>
+          <i class="fa-regular fa-credit-card text-3xl text-white/80"></i>
+        </div>
+
+        {% if item.cartao.ultimos_digitos %}
+        <div class="font-mono tracking-widest text-lg text-white/90">
+          •••• •••• •••• {{ item.cartao.ultimos_digitos }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Card Body -->
+      <div class="p-6">
+        <!-- Gasto do mês -->
+        <div class="mb-4">
+          <div class="flex justify-between items-center text-sm mb-2">
+            <span class="text-gray-500 dark:text-gray-400">Gasto este mês</span>
+            <span class="font-semibold text-gray-900 dark:text-white">R$ {{ item.gasto_mes|floatformat:2 }}</span>
+          </div>
+
+          {% if item.cartao.limite %}
+          <!-- Progress bar -->
+          <div class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div class="h-full transition-all duration-500 rounded-full
+              {% if item.percentual_usado < 50 %}bg-emerald-500
+              {% elif item.percentual_usado < 80 %}bg-yellow-500
+              {% else %}bg-red-500{% endif %}"
+              style="width: {% if item.percentual_usado %}{{ item.percentual_usado|floatformat:0 }}%{% else %}0%{% endif %}">
+            </div>
+          </div>
+          <div class="flex justify-between items-center text-xs mt-2 text-gray-500 dark:text-gray-400">
+            <span>{{ item.percentual_usado|floatformat:0 }}% usado</span>
+            <span>Limite: R$ {{ item.cartao.limite|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div>
+            <span class="block text-gray-400 dark:text-gray-500 text-xs">Fechamento</span>
+            <span class="font-medium text-gray-700 dark:text-gray-300">Dia {{ item.cartao.dia_fechamento }}</span>
+          </div>
+          <div>
+            <span class="block text-gray-400 dark:text-gray-500 text-xs">Vencimento</span>
+            <span class="font-medium text-gray-700 dark:text-gray-300">Dia {{ item.cartao.dia_vencimento }}</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <a href="{% url 'cartao_despesas' pk=item.cartao.pk %}" 
+             class="flex-1 text-center py-2.5 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+            <i class="fa-solid fa-list-ul mr-2"></i>Ver Gastos
+          </a>
+          <a href="{% url 'cartao_editar' pk=item.cartao.pk %}" 
+             class="py-2.5 px-4 text-gray-500 hover:text-gray-700 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <i class="fa-solid fa-pen"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
+    <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+      <i class="fa-regular fa-credit-card text-3xl text-emerald-600 dark:text-emerald-400"></i>
+    </div>
+    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Nenhum cartão cadastrado</h2>
+    <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+      Adicione seu primeiro cartão de crédito para começar a acompanhar seus gastos de forma organizada.
+    </p>
+    <a href="{% url 'cartao_novo' %}" 
+       class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 hover:scale-105">
+      <i class="fa-solid fa-plus"></i>
+      <span>Adicionar Cartão</span>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

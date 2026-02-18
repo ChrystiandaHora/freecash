@@ -1,0 +1,181 @@
+{% extends "core/layout/base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+      Formas de Pagamento
+    </h1>
+    <p class="mt-2 text-sm text-gray-500 dark:text-slate-300">
+      Cadastre e gerencie as formas utilizadas nas transações e contas.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: List (2 cols) -->
+    <div class="lg:col-span-2">
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-6 py-5 border-b border-gray-100 dark:border-slate-700">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30">
+                <i class="fa-solid fa-wallet text-xl"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Lista de Formas</h2>
+                <p class="text-sm text-gray-500 dark:text-slate-300">{{ formas|length }} cadastrada(s)</p>
+              </div>
+            </div>
+
+            <!-- Search -->
+            <form method="get" class="hidden sm:flex items-center gap-2">
+              <input type="search" name="q" value="{{ request.GET.q }}"
+                     placeholder="Buscar..."
+                     class="w-40 rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-3 py-2 text-sm shadow-sm focus:border-purple-500 focus:ring-purple-500">
+              <button class="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <i class="fa-solid fa-search"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-gray-50 dark:bg-slate-700/50">
+              <tr class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider">
+                <th class="px-6 py-3">Nome</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
+              {% for f in formas %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                  onclick="window.location='{% url 'editar_forma_pagamento' f.id %}'">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                      <i class="fa-solid fa-credit-card text-sm"></i>
+                    </div>
+                    <div>
+                      <div class="font-semibold text-gray-900 dark:text-white">{{ f.nome }}</div>
+                      <div class="text-xs text-gray-500 dark:text-slate-300">ID #{{ f.id }}</div>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="px-6 py-4">
+                  {% if f.ativa %}
+                  <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    <i class="fa-solid fa-check-circle mr-1.5"></i> Ativa
+                  </span>
+                  {% else %}
+                  <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-gray-500 dark:text-slate-300">
+                    <i class="fa-solid fa-minus-circle mr-1.5"></i> Inativa
+                  </span>
+                  {% endif %}
+                </td>
+
+                <td class="px-6 py-4 text-right" onclick="event.stopPropagation()">
+                  <a href="{% url 'editar_forma_pagamento' f.id %}"
+                     class="inline-flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+                    <i class="fa-solid fa-pen mr-1.5"></i> Editar
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="px-6 py-12 text-center">
+                  <div class="flex flex-col items-center">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 mb-3">
+                      <i class="fa-solid fa-wallet text-2xl"></i>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Nenhuma forma cadastrada</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-slate-300">Use o formulário ao lado para criar uma.</p>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Form (1 col) -->
+    <div class="lg:col-span-1 space-y-4">
+      <!-- Create Form Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900 dark:text-white">Nova Forma</h3>
+            <p class="text-xs text-gray-500 dark:text-slate-300">Ex: Pix, Cartão, Boleto</p>
+          </div>
+        </div>
+
+        <form method="post" action="#" class="space-y-4">
+          {% csrf_token %}
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-1">Nome *</label>
+            <input type="text" name="nome" required
+                   placeholder="Digite o nome"
+                   class="block w-full rounded-xl border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-4 py-3 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm">
+          </div>
+
+          <button type="submit"
+                  class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-violet-600 px-4 py-3 text-sm font-bold text-white hover:from-purple-600 hover:to-violet-700 shadow-lg shadow-purple-500/30 transition-all">
+            <i class="fa-solid fa-plus"></i>
+            Cadastrar
+          </button>
+        </form>
+      </div>
+
+      <!-- Info Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+            <i class="fa-solid fa-info-circle"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Dica</h3>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-slate-300">
+          Formas de pagamento ajudam a categorizar suas transações e analisar como você movimenta seu dinheiro.
+        </p>
+      </div>
+
+      <!-- Stats Card -->
+      <div class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Resumo</h3>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-slate-300">Total</span>
+            <span class="font-semibold text-gray-900 dark:text-white">{{ formas|length }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500 dark:text-slate-300">Ativas</span>
+            <span class="font-semibold text-emerald-600 dark:text-emerald-400">
+              {% with ativas=formas|dictsort:"ativa"|last %}{{ formas|length }}{% endwith %}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

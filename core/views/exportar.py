@@ -21,7 +21,7 @@ def parse_date(date_str: str):
 
 @method_decorator(login_required, name="dispatch")
 class ExportarView(View):
-    template_name = "exportar.html"
+    template_name = "core/servicos/exportar.html"
 
     def get(self, request):
         config = ConfigUsuario.objects.filter(usuario=request.user).first()
@@ -66,7 +66,7 @@ class ExportarView(View):
 class ExportarRelatorioView(View):
     """Exporta relatório de movimentações em PDF ou Excel."""
 
-    template_name = "exportar_relatorio.html"
+    template_name = "core/servicos/exportar_relatorio.html"
 
     def get(self, request):
         hoje = timezone.localdate()
