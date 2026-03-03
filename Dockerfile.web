@@ -1,3 +1,21 @@
+# Stage 1: Build dependencies
+FROM python:3.14-slim AS builder
+
+WORKDIR /app
+
+# Instalar dependências de compilação
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Criar pacotes wheel (pré-compilados) para não precisar do gcc no runtime
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# Stage 2: Runtime Image
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -5,14 +23,23 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y gcc g++ libpq-dev postgresql-client nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar Node.js, npm, e as bibliotecas mínimas do postgres
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    postgresql-client \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm cache clean --force
 
-COPY requirements.txt .
+# Copiar os bibliotecas wheel pré-compiladas
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
 
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+# Instalar a partir dos pacotes wheel sem cache de pip
+RUN pip install --no-cache /wheels/* \
+    && rm -rf /wheels \
+    && rm requirements.txt
 
 COPY . .
 
