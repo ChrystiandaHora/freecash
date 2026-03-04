@@ -39,7 +39,7 @@ def classe_editar(request, pk):
         form.save()
         messages.success(request, "Classe atualizada!")
         return redirect("investimento:classe_listar")
-    return render(request, "investimento/classe_form.html", {"form": form})
+    return render(request, "investimento/classes/classe_form.html", {"form": form})
 
 
 @login_required
@@ -113,7 +113,7 @@ def ativo_criar(request):
 
     return render(
         request,
-        "ativo_form.html",
+        "investimento/ativos/ativo_form.html",
         {"form": form, "hierarchy_data": hierarchy},
     )
 
@@ -150,7 +150,7 @@ def ativo_editar(request, pk):
 
     return render(
         request,
-        "ativo_form.html",
+        "investimento/ativos/ativo_form.html",
         {"form": form, "hierarchy_data": hierarchy},
     )
 
@@ -223,7 +223,9 @@ def transacao_criar(request):
         transacao.save()
         messages.success(request, "Transação registrada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_form.html", {"form": form})
+    return render(
+        request, "investimento/transacoes/transacao_form.html", {"form": form}
+    )
 
 
 @login_required
@@ -241,7 +243,9 @@ def transacao_editar(request, pk):
         form.save()
         messages.success(request, "Transação atualizada!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_form.html", {"form": form})
+    return render(
+        request, "investimento/transacoes/transacao_form.html", {"form": form}
+    )
 
 
 @login_required
@@ -251,4 +255,6 @@ def transacao_excluir(request, pk):
         t.delete()
         messages.success(request, "Transação excluída!")
         return redirect("investimento:transacao_listar")
-    return render(request, "investimento/transacao_confirm_delete.html", {"object": t})
+    return render(
+        request, "investimento/transacoes/transacao_confirm_delete.html", {"object": t}
+    )

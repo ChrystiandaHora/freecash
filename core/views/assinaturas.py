@@ -25,7 +25,7 @@ class AssinaturasListView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "cadastros/assinaturas.html",
+            "core/cadastros/assinaturas.html",
             {
                 "assinaturas": assinaturas,
             },
@@ -50,7 +50,7 @@ class AssinaturaCreateView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "assinatura_form.html",
+            "core/cadastros/assinatura_form.html",
             {
                 "categorias": categorias,
                 "formas_pagamento": formas_pagamento,
@@ -82,7 +82,7 @@ class AssinaturaCreateView(LoginRequiredMixin, View):
         except Exception as e:
             return render(
                 request,
-                "assinatura_form.html",
+                "core/cadastros/assinatura_form.html",
                 {
                     "error": str(e),
                     "is_edit": False,
@@ -105,7 +105,7 @@ class AssinaturaUpdateView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "assinatura_form.html",
+            "core/cadastros/assinatura_form.html",
             {
                 "assinatura": assinatura,
                 "categorias": categorias,
@@ -137,7 +137,7 @@ class AssinaturaUpdateView(LoginRequiredMixin, View):
         except Exception as e:
             return render(
                 request,
-                "assinatura_form.html",
+                "core/cadastros/assinatura_form.html",
                 {
                     "assinatura": assinatura,
                     "error": str(e),

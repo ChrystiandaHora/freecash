@@ -175,7 +175,7 @@ class CartaoCreateView(View):
 class CartaoUpdateView(View):
     """Edita um cartão de crédito existente."""
 
-    template_name = "core/cartao_form.html"
+    template_name = "core/cartoes/cartao_form.html"
 
     def get(self, request, pk):
         usuario = request.user
