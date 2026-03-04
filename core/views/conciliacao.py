@@ -24,7 +24,7 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "conciliacao_upload.html",
+            "core/servicos/conciliacao_upload.html",
             {
                 "extratos": extratos,
                 "cartoes": CartaoCredito.objects.filter(usuario=request.user).order_by(
@@ -40,7 +40,7 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
         if not arquivo:
             return render(
                 request,
-                "conciliacao_upload.html",
+                "core/servicos/conciliacao_upload.html",
                 {
                     "error": "Selecione um arquivo PDF",
                 },
@@ -49,7 +49,7 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
         if not arquivo.name.lower().endswith(".pdf"):
             return render(
                 request,
-                "conciliacao_upload.html",
+                "core/servicos/conciliacao_upload.html",
                 {
                     "error": "O arquivo deve ser um PDF",
                 },
@@ -108,7 +108,7 @@ class ConciliacaoUploadView(LoginRequiredMixin, View):
 
             return render(
                 request,
-                "conciliacao_upload.html",
+                "core/servicos/conciliacao_upload.html",
                 {
                     "error": f"Erro ao processar PDF: {e}",
                 },
@@ -124,7 +124,7 @@ class ConciliacaoStagingView(LoginRequiredMixin, View):
 
         return render(
             request,
-            "conciliacao_staging.html",
+            "core/servicos/conciliacao_staging.html",
             {
                 "extrato": extrato,
                 "linhas": linhas,
