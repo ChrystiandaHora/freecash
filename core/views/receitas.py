@@ -1,4 +1,3 @@
-import calendar
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
@@ -10,9 +9,13 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.db.models import Sum
-from django.db import transaction
 
 from core.models import Conta, Categoria, FormaPagamento
+from core.services.conta_service import (
+    criar_contas_multiplicadas,
+    criar_contas_parceladas,
+)
+from core.forms import ContaForm
 
 
 def clamp_per_page(raw, default=5, min_v=5, max_v=200):
@@ -151,12 +154,14 @@ class ReceitaCreateView(View):
             "nome"
         )
 
+        form = ContaForm(usuario=usuario, tipo=Conta.TIPO_RECEITA)
         return render(
             request,
             self.template_name,
             {
                 "categorias": categorias,
                 "formas": formas,
+                "form": form,
                 "modo": "create",
                 "titulo": "Nova Receita",
                 "conta": None,
@@ -168,169 +173,69 @@ class ReceitaCreateView(View):
     def post(self, request):
         usuario = request.user
 
-        descricao = (request.POST.get("descricao") or "").strip()
-        valor_raw = (request.POST.get("valor") or "").strip()
-        data_input = request.POST.get("data_prevista") or ""
-
-        # Campos de recorrência (Multiplicar)
-        multiplicar = (request.POST.get("multiplicar") or "").strip() == "1"
-        numero_multiplicacoes_raw = (
-            request.POST.get("numero_multiplicacoes") or ""
-        ).strip()
-
-        # Campos de Parcelamento
-        parcelado = (request.POST.get("parcelado") or "").strip() == "1"
-        numero_parcelas_raw = (request.POST.get("numero_parcelas") or "").strip()
-
-        if parcelado and multiplicar:
+        form = ContaForm(request.POST, usuario=usuario, tipo=Conta.TIPO_RECEITA)
+        if not form.is_valid():
             messages.error(
-                request, "Escolha apenas uma opção: parcelar ou multiplicar."
+                request, "Erro na validação do formulário. Verifique os dados."
             )
             return redirect("receita_nova")
 
-        if not descricao or not valor_raw or not data_input:
-            messages.error(request, "Preencha todos os campos obrigatórios.")
-            return redirect("receita_nova")
+        cd = form.cleaned_data
+        descricao = cd.get("descricao")
+        valor = cd.get("valor")
+        data_date = cd.get("data_prevista")
+        forma_pagamento = cd.get("forma_pagamento")
+        categoria = cd.get("categoria")
 
-        try:
-            valor_norm = (
-                valor_raw.replace(".", "").replace(",", ".")
-                if "," in valor_raw
-                else valor_raw
-            )
-            valor = Decimal(valor_norm)
-        except (InvalidOperation, TypeError):
-            messages.error(request, "Valor inválido.")
-            return redirect("receita_nova")
-
-        # Se for receita, data_prevista = data_realizacao (pois já entra como realizado)
-        data_date = parse_date_flexible(data_input)
-        if not data_date:
-            messages.error(request, "Data inválida.")
-            return redirect("receita_nova")
-
-        categoria_id = (request.POST.get("categoria") or "").strip()
-        forma_id = (request.POST.get("forma_pagamento") or "").strip()
-
-        categoria = (
-            Categoria.objects.filter(usuario=usuario, id=categoria_id).first()
-            if categoria_id.isdigit()
-            else None
-        )
-        forma_pagamento = (
-            FormaPagamento.objects.filter(usuario=usuario, id=forma_id).first()
-            if forma_id.isdigit()
-            else None
-        )
-
-        def add_months(d: date, months: int) -> date:
-            y = d.year + (d.month - 1 + months) // 12
-            m = (d.month - 1 + months) % 12 + 1
-            last_day = calendar.monthrange(y, m)[1]
-            day = min(d.day, last_day)
-            return date(y, m, day)
+        parcelado = cd.get("parcelado")
+        numero_parcelas = cd.get("numero_parcelas", 2)
+        multiplicar = cd.get("multiplicar")
+        numero_multiplicacoes = cd.get("numero_multiplicacoes", 2)
 
         # Lógica de Multiplicar
         if multiplicar:
-            try:
-                n = int(numero_multiplicacoes_raw or "2")
-            except ValueError:
-                n = 2
+            n = numero_multiplicacoes
 
             if n < 2 or n > 12:
                 messages.error(request, "Quantidade deve ser entre 2 e 12.")
                 return redirect("receita_nova")
 
-            with transaction.atomic():
-                receitas = []
-                for i in range(1, n + 1):
-                    # Calcula data para cada mês
-                    venc = add_months(data_date, i - 1)
-
-                    receitas.append(
-                        Conta(
-                            usuario=usuario,
-                            tipo=Conta.TIPO_RECEITA,
-                            descricao=descricao,
-                            valor=valor,
-                            data_prevista=venc,
-                            transacao_realizada=True,
-                            data_realizacao=venc,
-                            categoria=categoria,
-                            forma_pagamento=forma_pagamento,
-                        )
-                    )
-                Conta.objects.bulk_create(receitas)
+            criar_contas_multiplicadas(
+                n=n,
+                usuario=usuario,
+                tipo=Conta.TIPO_RECEITA,
+                descricao=descricao,
+                valor_total=valor,
+                data_prevista=data_date,
+                pago=True,
+                categoria=categoria,
+                forma_pagamento=forma_pagamento,
+                categoria_cartao=None,
+            )
 
             messages.success(request, f"Receita registrada {n} vezes.")
             return redirect("receitas")
 
-        def cents_to_decimal(cents: int) -> Decimal:
-            return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
-
         # Lógica de Parcelar
         if parcelado:
-            try:
-                n = int(numero_parcelas_raw or "2")
-            except ValueError:
-                n = 2
+            n = numero_parcelas
 
             if n < 2 or n > 12:
                 messages.error(request, "Número de parcelas deve ser entre 2 e 12.")
                 return redirect("receita_nova")
 
-            total_cents = int((valor * 100).to_integral_value())
-            base = total_cents // n
-            resto = total_cents % n
-
-            with transaction.atomic():
-                cents_1 = base + (1 if 1 <= resto else 0)
-
-                # Cria a primeira para gerar o ID do grupo
-                primeira = Conta.objects.create(
-                    usuario=usuario,
-                    tipo=Conta.TIPO_RECEITA,
-                    descricao=descricao,
-                    valor=cents_to_decimal(cents_1),
-                    data_prevista=data_date,
-                    transacao_realizada=True,
-                    data_realizacao=data_date,
-                    categoria=categoria,
-                    forma_pagamento=forma_pagamento,
-                    eh_parcelada=True,
-                    parcela_numero=1,
-                    parcela_total=n,
-                    grupo_parcelamento=None,
-                )
-
-                gid = primeira.id
-                primeira.grupo_parcelamento = gid
-                primeira.save(update_fields=["grupo_parcelamento"])
-
-                receitas = []
-                for i in range(2, n + 1):
-                    cents = base + (1 if i <= resto else 0)
-                    venc = add_months(data_date, i - 1)
-
-                    receitas.append(
-                        Conta(
-                            usuario=usuario,
-                            tipo=Conta.TIPO_RECEITA,
-                            descricao=descricao,
-                            valor=cents_to_decimal(cents),
-                            data_prevista=venc,
-                            transacao_realizada=True,
-                            data_realizacao=venc,
-                            categoria=categoria,
-                            forma_pagamento=forma_pagamento,
-                            eh_parcelada=True,
-                            parcela_numero=i,
-                            parcela_total=n,
-                            grupo_parcelamento=gid,
-                        )
-                    )
-                if receitas:
-                    Conta.objects.bulk_create(receitas)
+            criar_contas_parceladas(
+                n=n,
+                usuario=usuario,
+                tipo=Conta.TIPO_RECEITA,
+                descricao=descricao,
+                valor_total=valor,
+                data_prevista=data_date,
+                pago=True,
+                categoria=categoria,
+                forma_pagamento=forma_pagamento,
+                categoria_cartao=None,
+            )
 
             messages.success(request, f"Receita registrada em {n} parcelas.")
             return redirect("receitas")
@@ -341,9 +246,9 @@ class ReceitaCreateView(View):
             tipo=Conta.TIPO_RECEITA,
             descricao=descricao,
             valor=valor,
-            data_prevista=data_input,
+            data_prevista=data_date,
             transacao_realizada=True,
-            data_realizacao=data_input,
+            data_realizacao=data_date,
             categoria=categoria,
             forma_pagamento=forma_pagamento,
             eh_parcelada=False,
@@ -376,6 +281,8 @@ class ReceitaUpdateView(View):
             "nome"
         )
 
+        form = ContaForm(instance=conta, usuario=usuario, tipo=Conta.TIPO_RECEITA)
+
         return render(
             request,
             self.template_name,
@@ -383,6 +290,7 @@ class ReceitaUpdateView(View):
                 "conta": conta,
                 "categorias": categorias,
                 "formas": formas,
+                "form": form,
                 "modo": "edit",
                 "titulo": "Editar Receita",
                 "is_receita": True,
@@ -396,56 +304,23 @@ class ReceitaUpdateView(View):
             Conta, id=pk, usuario=usuario, tipo=Conta.TIPO_RECEITA
         )
 
-        descricao = (request.POST.get("descricao") or "").strip()
-        valor_raw = (request.POST.get("valor") or "").strip()
-
-        # Tenta pegar data de data_prevista (padrao form) ou data_realizacao
-        data_input = (
-            request.POST.get("data_prevista")
-            or request.POST.get("data_realizacao")
-            or ""
+        form = ContaForm(
+            request.POST, instance=conta, usuario=usuario, tipo=Conta.TIPO_RECEITA
         )
-
-        # Pago checkbox
-        pago = (request.POST.get("pago") or "").strip() == "on"
-
-        try:
-            valor_norm = (
-                valor_raw.replace(".", "").replace(",", ".")
-                if "," in valor_raw
-                else valor_raw
-            )
-            valor = Decimal(valor_norm)
-        except (InvalidOperation, TypeError):
-            messages.error(request, "Valor inválido.")
+        if not form.is_valid():
+            messages.error(request, "Erros no formulário.")
             return redirect("receita_editar", pk=conta.id)
 
-        categoria_id = (request.POST.get("categoria") or "").strip()
-        forma_id = (request.POST.get("forma_pagamento") or "").strip()
-
-        categoria = (
-            Categoria.objects.filter(usuario=usuario, id=categoria_id).first()
-            if categoria_id.isdigit()
-            else None
-        )
-        forma_pagamento = (
-            FormaPagamento.objects.filter(usuario=usuario, id=forma_id).first()
-            if forma_id.isdigit()
-            else None
-        )
-
-        # Atualiza
-        conta.descricao = descricao
-        conta.valor = valor
+        cd = form.cleaned_data
+        conta = form.save(commit=False)
+        pago = cd.get("pago")
 
         # Para receitas, usamos data_prevista = data_realizacao
-        if data_input:
-            conta.data_prevista = data_input
-            conta.data_realizacao = data_input if pago else None
+        data_prevista = cd.get("data_prevista")
+        if data_prevista:
+            conta.data_realizacao = data_prevista if pago else None
 
         conta.transacao_realizada = pago
-        conta.categoria = categoria
-        conta.forma_pagamento = forma_pagamento
         conta.save()
 
         messages.success(request, "Receita atualizada.")

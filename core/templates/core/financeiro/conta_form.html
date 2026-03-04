@@ -1,6 +1,7 @@
 {% extends "core/layout/base.html" %}
 {% load static %}
 {% load l10n %}
+{% load widget_tweaks %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -53,73 +54,52 @@
         
         <!-- Descrição -->
         <div class="space-y-1.5">
-            <label for="descricao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Descrição</label>
-            <input type="text" name="descricao" id="descricao" required
-                   value="{{ conta.descricao|default:'' }}"
-                   placeholder="Ex: Conta de Luz, Salário..."
-                   class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium">
+            <label for="{{ form.descricao.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Descrição</label>
+            {% render_field form.descricao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium" placeholder="Ex: Conta de Luz, Salário..." %}
         </div>
 
         <!-- Row: Valor, Moeda & Data -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div class="space-y-1.5">
-                <label for="valor" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor</label>
+                <label for="{{ form.valor.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor</label>
                 <div class="relative">
                     <span id="moedaSymbol" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
-                    <!-- Using type="number" step="0.01" for better mobile keyboard, relying on unlocalize for dot format -->
-                    <input type="number" step="0.01" name="valor" id="valor" required
-                           value="{{ conta.valor|unlocalize }}"
-                           placeholder="0.00"
-                           class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-bold text-lg">
+                    {% render_field form.valor type="number" step="0.01" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-bold text-lg" placeholder="0.00" %}
                 </div>
             </div>
 
             <div class="space-y-1.5">
-                <label for="moeda" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Moeda</label>
-                <select name="moeda" id="moeda" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                    <option value="BRL" {% if conta.moeda == 'BRL' or not conta %}selected{% endif %}>🇧🇷 BRL (R$)</option>
-                    <option value="USD" {% if conta.moeda == 'USD' %}selected{% endif %}>🇺🇸 USD (US$)</option>
-                    <option value="EUR" {% if conta.moeda == 'EUR' %}selected{% endif %}>🇪🇺 EUR (€)</option>
-                    <option value="GBP" {% if conta.moeda == 'GBP' %}selected{% endif %}>🇬🇧 GBP (£)</option>
-                </select>
+                <label for="{{ form.moeda.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Moeda</label>
+                {% render_field form.moeda class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
             </div>
 
             <div class="space-y-1.5">
-                <label for="data_prevista" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Data de Vencimento</label>
+                <label for="{{ form.data_prevista.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Data de Vencimento</label>
                 <div class="relative">
                      <i class="fa-regular fa-calendar absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"></i>
-                    <!-- Use explicit Y-m-d format for type="date" -->
-                    <input type="date" name="data_prevista" id="data_prevista" required
-                           value="{{ conta.data_prevista|date:'Y-m-d' }}"
-                           class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all datepicker-input">
+                    {% render_field form.data_prevista class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all datepicker-input" %}
                 </div>
             </div>
         </div>
 
         <!-- Forma de Pagamento (full width since category is auto-set by form type) -->
         <div class="space-y-1.5">
-            <label for="forma_pagamento" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
-            <select name="forma_pagamento" id="forma_pagamento" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                <option value="">Selecione...</option>
-                {% for f in formas %}
-                    <option value="{{ f.id }}" {% if conta.forma_pagamento_id == f.id %}selected{% endif %}>{{ f.nome }}</option>
-                {% endfor %}
-            </select>
+            <label for="{{ form.forma_pagamento.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
+            {% render_field form.forma_pagamento class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
+        </div>
+        
+        <div class="space-y-1.5">
+            <label for="{{ form.categoria.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Categoria Principal</label>
+            {% render_field form.categoria class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
         </div>
 
         <!-- Categoria do Gasto (MCC) -->
         {% if categorias_cartao %}
         <div class="space-y-1.5">
-            <label for="categoria_cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
-                Categoria do Gasto
-                <span class="text-xs text-gray-400 dark:text-slate-500">(opcional)</span>
+            <label for="{{ form.categoria_cartao.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
+                Categoria do Gasto <span class="text-xs text-gray-400 dark:text-slate-500">(opcional)</span>
             </label>
-            <select name="categoria_cartao" id="categoria_cartao" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                <option value="">Selecione uma categoria...</option>
-                {% for cat in categorias_cartao %}
-                    <option value="{{ cat.id }}" {% if conta.categoria_cartao_id == cat.id %}selected{% endif %}>{{ cat.emoji }} {{ cat.nome }}</option>
-                {% endfor %}
-            </select>
+            {% render_field form.categoria_cartao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
         </div>
         {% endif %}
 
@@ -132,20 +112,14 @@
             <!-- Parcelado Card -->
             <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
                 <div class="flex items-center gap-3 mb-3">
-                    <input type="checkbox" name="parcelado" id="parcelado" value="1" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600">
-                    <label for="parcelado" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">É uma compra parcelada?</label>
+                    {% render_field form.parcelado class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
+                    <label for="{{ form.parcelado.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">É uma compra parcelada?</label>
                 </div>
                 
                 <div id="parcelasBox" class="hidden pl-8 space-y-2 animate-fadeIn">
                     <p class="text-xs text-gray-500 dark:text-slate-500">Selecione o número de parcelas:</p>
                     <div class="relative">
-                        <select name="numero_parcelas" id="numero_parcelas" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500">
-                             <!-- Loop manual if no helper filter -->
-                             <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option>
-                             <option value="5">5x</option><option value="6">6x</option><option value="7">7x</option>
-                             <option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
-                             <option value="12">12x</option><option value="18">18x</option><option value="24">24x</option>
-                        </select>
+                        {% render_field form.numero_parcelas class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
                     </div>
                 </div>
             </div>
@@ -153,18 +127,14 @@
             <!-- Repetir Card -->
             <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
                 <div class="flex items-center gap-3 mb-3">
-                    <input type="checkbox" name="multiplicar" id="multiplicar" value="1" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600">
-                    <label for="multiplicar" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">Repetir mensalmente?</label>
+                    {% render_field form.multiplicar class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
+                    <label for="{{ form.multiplicar.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">Repetir mensalmente?</label>
                 </div>
                 
                 <div id="multiplicaBox" class="hidden pl-8 space-y-2 animate-fadeIn">
                      <p class="text-xs text-gray-500 dark:text-slate-500">Repetir por quantos meses?</p>
                     <div class="relative">
-                        <select name="numero_multiplicacoes" id="numero_multiplicacoes" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500">
-                            <!-- Manual loop -->
-                            <option value="2">2 meses</option><option value="3">3 meses</option><option value="4">4 meses</option>
-                            <option value="5">5 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
-                        </select>
+                        {% render_field form.numero_multiplicacoes class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
                          <p class="text-[10px] text-amber-500/80 mt-1">Cria registros separados.</p>
                     </div>
                 </div>
@@ -189,17 +159,14 @@
         <!-- Observação & Checkboxes -->
         <div class="space-y-4">
              <div class="space-y-1.5">
-                <label for="observacao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Observações</label>
-                <textarea name="observacao" id="observacao" rows="3" placeholder="Detalhes adicionais..."
-                          class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-sm">{{ conta.observacao|default:'' }}</textarea>
+                <label for="{{ form.observacao.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Observações</label>
+                {% render_field form.observacao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-sm" placeholder="Detalhes da transação..." %}
             </div>
 
             <!-- Status Checkbox -->
-            <!-- If editing, check if transacao_realizada is true. If creating, usually false unless supported. -->
             <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800">
-                <input type="checkbox" name="pago" id="pago" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
-                {% if conta.transacao_realizada %}checked{% endif %}>
-                <label for="pago" class="text-sm font-medium text-gray-700 dark:text-slate-300 cursor-pointer select-none">
+                {% render_field form.pago class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
+                <label for="{{ form.pago.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 cursor-pointer select-none">
                     Marcar como <span class="text-emerald-600 dark:text-emerald-400 font-bold">Pago / Recebido</span>
                 </label>
             </div>

@@ -21,10 +21,14 @@ from core.models import (
     Conta,
     Assinatura,
 )
+from core.forms import CartaoCreditoForm, ContaForm
 from core.services.fatura_service import (
     obter_ou_criar_fatura,
     atualizar_valor_fatura,
     despesa_pode_ser_editada,
+    calcular_vencimento_fatura,
+    add_months,
+    cents_to_decimal,
 )
 
 
@@ -112,60 +116,28 @@ class CartaoCreateView(View):
     template_name = "core/cartoes/cartao_form.html"
 
     def get(self, request):
+        form = CartaoCreditoForm()
         return render(
             request,
             self.template_name,
             {
                 "modo": "create",
+                "form": form,
                 "bandeiras": CartaoCredito.BANDEIRA_CHOICES,
             },
         )
 
     def post(self, request):
         usuario = request.user
+        form = CartaoCreditoForm(request.POST, usuario=usuario)
 
-        nome = (request.POST.get("nome") or "").strip()
-        bandeira = (request.POST.get("bandeira") or "OUTRO").strip()
-        ultimos_digitos = (request.POST.get("ultimos_digitos") or "").strip()[:4]
-        limite_raw = (request.POST.get("limite") or "").strip()
-        dia_fechamento = (request.POST.get("dia_fechamento") or "1").strip()
-        dia_vencimento = (request.POST.get("dia_vencimento") or "10").strip()
-
-        if not nome:
-            messages.error(request, "O nome do cartão é obrigatório.")
+        if not form.is_valid():
+            messages.error(request, "Erro ao validar o formulário. Verifique os dados.")
             return redirect("cartao_novo")
 
-        # Parse limite
-        limite = None
-        if limite_raw:
-            try:
-                limite_raw = (
-                    limite_raw.replace(".", "").replace(",", ".")
-                    if "," in limite_raw
-                    else limite_raw
-                )
-                limite = Decimal(limite_raw).quantize(Decimal("0.01"))
-            except (InvalidOperation, ValueError):
-                messages.error(request, "Limite inválido.")
-                return redirect("cartao_novo")
-
-        # Dias
-        try:
-            dia_fechamento = max(1, min(31, int(dia_fechamento)))
-            dia_vencimento = max(1, min(31, int(dia_vencimento)))
-        except ValueError:
-            dia_fechamento = 1
-            dia_vencimento = 10
-
-        CartaoCredito.objects.create(
-            usuario=usuario,
-            nome=nome,
-            bandeira=bandeira,
-            ultimos_digitos=ultimos_digitos,
-            limite=limite,
-            dia_fechamento=dia_fechamento,
-            dia_vencimento=dia_vencimento,
-        )
+        cartao = form.save(commit=False)
+        cartao.usuario = usuario
+        cartao.save()
 
         messages.success(request, "Cartão cadastrado com sucesso!")
         return redirect("cartoes")
@@ -180,6 +152,7 @@ class CartaoUpdateView(View):
     def get(self, request, pk):
         usuario = request.user
         cartao = get_object_or_404(CartaoCredito, pk=pk, usuario=usuario)
+        form = CartaoCreditoForm(instance=cartao)
 
         return render(
             request,
@@ -187,6 +160,7 @@ class CartaoUpdateView(View):
             {
                 "modo": "edit",
                 "cartao": cartao,
+                "form": form,
                 "bandeiras": CartaoCredito.BANDEIRA_CHOICES,
             },
         )
@@ -195,46 +169,12 @@ class CartaoUpdateView(View):
         usuario = request.user
         cartao = get_object_or_404(CartaoCredito, pk=pk, usuario=usuario)
 
-        nome = (request.POST.get("nome") or "").strip()
-        bandeira = (request.POST.get("bandeira") or "OUTRO").strip()
-        ultimos_digitos = (request.POST.get("ultimos_digitos") or "").strip()[:4]
-        limite_raw = (request.POST.get("limite") or "").strip()
-        dia_fechamento = (request.POST.get("dia_fechamento") or "1").strip()
-        dia_vencimento = (request.POST.get("dia_vencimento") or "10").strip()
-
-        if not nome:
-            messages.error(request, "O nome do cartão é obrigatório.")
+        form = CartaoCreditoForm(request.POST, instance=cartao, usuario=usuario)
+        if not form.is_valid():
+            messages.error(request, "Erro ao validar o formulário. Verifique os dados.")
             return redirect("cartao_editar", pk=pk)
 
-        # Parse limite
-        limite = None
-        if limite_raw:
-            try:
-                limite_raw = (
-                    limite_raw.replace(".", "").replace(",", ".")
-                    if "," in limite_raw
-                    else limite_raw
-                )
-                limite = Decimal(limite_raw).quantize(Decimal("0.01"))
-            except (InvalidOperation, ValueError):
-                messages.error(request, "Limite inválido.")
-                return redirect("cartao_editar", pk=pk)
-
-        # Dias
-        try:
-            dia_fechamento = max(1, min(31, int(dia_fechamento)))
-            dia_vencimento = max(1, min(31, int(dia_vencimento)))
-        except ValueError:
-            dia_fechamento = 1
-            dia_vencimento = 10
-
-        cartao.nome = nome
-        cartao.bandeira = bandeira
-        cartao.ultimos_digitos = ultimos_digitos
-        cartao.limite = limite
-        cartao.dia_fechamento = dia_fechamento
-        cartao.dia_vencimento = dia_vencimento
-        cartao.save()
+        form.save()
 
         messages.success(request, "Cartão atualizado com sucesso!")
         return redirect("cartoes")
@@ -344,8 +284,6 @@ class CartaoDespesaCreateView(View):
     """Cria uma nova despesa no cartão, com suporte a parcelamento."""
 
     def post(self, request, pk):
-        import calendar
-
         usuario = request.user
         cartao = get_object_or_404(CartaoCredito, pk=pk, usuario=usuario)
 
@@ -396,78 +334,7 @@ class CartaoDespesaCreateView(View):
                 id=int(categoria_cartao_id)
             ).first()
 
-        def add_months(d: date, months: int) -> date:
-            y = d.year + (d.month - 1 + months) // 12
-            m = (d.month - 1 + months) % 12 + 1
-            last_day = calendar.monthrange(y, m)[1]
-            day = min(d.day, last_day)
-            return date(y, m, day)
-
-        def calcular_vencimento_fatura(
-            data_compra: date, dia_fechamento: int, dia_vencimento: int
-        ) -> date:
-            """
-            Calcula a data de vencimento da fatura baseado na data da compra.
-
-            Lógica:
-            1. Primeiro, determina a qual ciclo de fechamento a compra pertence:
-               - Se comprou ATÉ o dia de fechamento: pertence ao fechamento do mês atual
-               - Se comprou DEPOIS do dia de fechamento: pertence ao fechamento do próximo mês
-
-            2. Depois, calcula quando essa fatura vence:
-               - Se dia_vencimento > dia_fechamento: vence no MESMO mês do fechamento
-               - Se dia_vencimento <= dia_fechamento: vence no MÊS SEGUINTE ao fechamento
-
-            Exemplo 1 (fecha 10, vence 15):
-            - Compra 05/01: fechamento Jan → vence 15/01
-            - Compra 15/01: fechamento Fev → vence 15/02
-
-            Exemplo 2 (fecha 20, vence 5):
-            - Compra 05/01: fechamento Jan → vence 05/02
-            - Compra 25/01: fechamento Fev → vence 05/03
-            """
-            ano = data_compra.year
-            mes = data_compra.month
-            dia = data_compra.day
-
-            # Passo 1: Determinar mês de fechamento
-            if dia <= dia_fechamento:
-                # Pertence ao fechamento deste mês
-                mes_fechamento = mes
-                ano_fechamento = ano
-            else:
-                # Pertence ao fechamento do próximo mês
-                if mes == 12:
-                    mes_fechamento = 1
-                    ano_fechamento = ano + 1
-                else:
-                    mes_fechamento = mes + 1
-                    ano_fechamento = ano
-
-            # Passo 2: Calcular data de vencimento
-            if dia_vencimento > dia_fechamento:
-                # Vencimento é no mesmo mês do fechamento
-                mes_vencimento = mes_fechamento
-                ano_vencimento = ano_fechamento
-            else:
-                # Vencimento é no mês seguinte ao fechamento
-                if mes_fechamento == 12:
-                    mes_vencimento = 1
-                    ano_vencimento = ano_fechamento + 1
-                else:
-                    mes_vencimento = mes_fechamento + 1
-                    ano_vencimento = ano_fechamento
-
-            # Ajustar dia de vencimento se o mês não tiver tantos dias
-            ultimo_dia_mes = calendar.monthrange(ano_vencimento, mes_vencimento)[1]
-            dia_venc = min(dia_vencimento, ultimo_dia_mes)
-
-            return date(ano_vencimento, mes_vencimento, dia_venc)
-
-        def cents_to_decimal(cents: int) -> Decimal:
-            return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
-
-        # Calcular data de vencimento da primeira parcela
+        #
         data_vencimento = calcular_vencimento_fatura(
             data_compra, cartao.dia_fechamento, cartao.dia_vencimento
         )

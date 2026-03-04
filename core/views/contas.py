@@ -1,4 +1,3 @@
-import calendar
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
@@ -9,11 +8,15 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.db import transaction
 from django.db.models import Sum, Q
 
 from core.models import Conta, Categoria, FormaPagamento, CategoriaCartao
 from core.services.cotacao_service import converter_para_brl
+from core.services.conta_service import (
+    criar_contas_multiplicadas,
+    criar_contas_parceladas,
+)
+from core.forms import ContaForm
 
 
 def parse_date_flexible(date_str: str) -> date | None:
@@ -200,204 +203,76 @@ class CadastrarContaPagarView(View):
     def post(self, request):
         usuario = request.user
 
-        descricao = (request.POST.get("descricao") or "").strip()
-        valor_raw = (request.POST.get("valor") or "").strip()
-        data_prevista_raw = (request.POST.get("data_prevista") or "").strip()
-        forma_pagamento_id = (request.POST.get("forma_pagamento") or "").strip()
-
-        parcelado = (request.POST.get("parcelado") or "").strip() == "1"
-        numero_parcelas_raw = (request.POST.get("numero_parcelas") or "").strip()
-
-        multiplicar = (request.POST.get("multiplicar") or "").strip() == "1"
-        numero_multiplicacoes_raw = (
-            request.POST.get("numero_multiplicacoes") or ""
-        ).strip()
-
-        # Pago checkbox
-        pago = (request.POST.get("pago") or "").strip() == "on"
-
-        # Categoria (user selection)
-        categoria_id = (request.POST.get("categoria") or "").strip()
-
-        if not descricao or not valor_raw or not data_prevista_raw:
-            messages.error(request, "Preencha todos os campos obrigatórios.")
-            return redirect("contas_pagar")
-
-        # Valor
-        try:
-            valor_raw = (
-                valor_raw.replace(".", "").replace(",", ".")
-                if "," in valor_raw
-                else valor_raw
+        form = ContaForm(request.POST, usuario=usuario, tipo=Conta.TIPO_DESPESA)
+        if not form.is_valid():
+            messages.error(
+                request, "Erro na validação do formulário. Verifique os dados."
             )
-            valor_total = Decimal(valor_raw).quantize(Decimal("0.01"))
-        except (InvalidOperation, ValueError):
-            messages.error(request, "Valor inválido.")
             return redirect("contas_pagar")
+
+        cd = form.cleaned_data
+        descricao = cd.get("descricao")
+        valor_total = cd.get("valor")
+        data_prevista = cd.get("data_prevista")
+        forma_pagamento = cd.get("forma_pagamento")
+        categoria = cd.get("categoria")
+        categoria_cartao = cd.get("categoria_cartao")
+
+        parcelado = cd.get("parcelado")
+        numero_parcelas = cd.get("numero_parcelas", 2)
+        multiplicar = cd.get("multiplicar")
+        numero_multiplicacoes = cd.get("numero_multiplicacoes", 2)
+        pago = cd.get("pago", False)
+        moeda = cd.get("moeda", "BRL")
 
         if valor_total <= 0:
             messages.error(request, "O valor precisa ser maior que zero.")
             return redirect("contas_pagar")
 
-        # Data
-        data_prevista = parse_date_flexible(data_prevista_raw)
-        if not data_prevista:
-            messages.error(request, "Data de vencimento inválida.")
-            return redirect("contas_pagar")
-
-        # Não permitir as duas opções ao mesmo tempo
-        if parcelado and multiplicar:
-            messages.error(
-                request, "Escolha apenas uma opção: parcelar ou multiplicar."
-            )
-            return redirect("contas_pagar")
-
-        # FK forma pagamento
-        forma_pagamento = (
-            FormaPagamento.objects.filter(
-                id=forma_pagamento_id, usuario=usuario
-            ).first()
-            if forma_pagamento_id.isdigit()
-            else None
-        )
-
-        # FK categoria (user selection, fallback to default)
-        categoria = (
-            Categoria.objects.filter(id=categoria_id, usuario=usuario).first()
-            if categoria_id.isdigit()
-            else Categoria.objects.filter(
-                usuario=usuario, tipo=Categoria.TIPO_DESPESA
-            ).first()
-        )
-
-        # FK categoria_cartao (MCC category - optional)
-        categoria_cartao_id = (request.POST.get("categoria_cartao") or "").strip()
-        categoria_cartao = (
-            CategoriaCartao.objects.filter(id=int(categoria_cartao_id)).first()
-            if categoria_cartao_id.isdigit()
-            else None
-        )
-
-        # Moeda e conversão
-        moeda = (request.POST.get("moeda") or "BRL").strip().upper()
-        if moeda not in ("BRL", "USD", "EUR", "GBP"):
-            moeda = "BRL"
-
         valor_brl, taxa_cambio = converter_para_brl(valor_total, moeda, data_prevista)
-
-        def add_months(d: date, months: int) -> date:
-            y = d.year + (d.month - 1 + months) // 12
-            m = (d.month - 1 + months) % 12 + 1
-            last_day = calendar.monthrange(y, m)[1]
-            day = min(d.day, last_day)
-            return date(y, m, day)
-
-        def cents_to_decimal(cents: int) -> Decimal:
-            return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
 
         # 1) MULTIPLICAR (criar N contas iguais, vencimentos mensais)
         if multiplicar:
-            try:
-                n = int(numero_multiplicacoes_raw or "2")
-            except ValueError:
-                n = 2
-
+            n = numero_multiplicacoes
             if n < 2 or n > 12:
                 messages.error(request, "Quantidade deve ser entre 2 e 12.")
                 return redirect("contas_pagar")
 
-            with transaction.atomic():
-                contas = []
-                for i in range(1, n + 1):
-                    venc = add_months(data_prevista, i - 1)
-                    contas.append(
-                        Conta(
-                            usuario=usuario,
-                            tipo=Conta.TIPO_DESPESA,
-                            descricao=descricao,
-                            valor=valor_total,
-                            data_prevista=venc,
-                            transacao_realizada=pago,
-                            data_realizacao=venc if pago else None,
-                            categoria=categoria,
-                            forma_pagamento=forma_pagamento,
-                            categoria_cartao=categoria_cartao,
-                            eh_parcelada=False,
-                            parcela_numero=None,
-                            parcela_total=None,
-                            grupo_parcelamento=None,
-                        )
-                    )
-                Conta.objects.bulk_create(contas)
+            criar_contas_multiplicadas(
+                n=n,
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                descricao=descricao,
+                valor_total=valor_total,
+                data_prevista=data_prevista,
+                pago=pago,
+                categoria=categoria,
+                forma_pagamento=forma_pagamento,
+                categoria_cartao=categoria_cartao,
+            )
 
             messages.success(request, f"Conta registrada {n} vezes.")
             return redirect("contas_pagar")
 
         # 2) PARCELAR
         if parcelado:
-            try:
-                n = int(numero_parcelas_raw or "2")
-            except ValueError:
-                n = 2
-
+            n = numero_parcelas
             if n < 2 or n > 12:
                 messages.error(request, "Número de parcelas deve ser entre 2 e 12.")
                 return redirect("contas_pagar")
 
-            total_cents = int((valor_total * 100).to_integral_value())
-            base = total_cents // n
-            resto = total_cents % n
-
-            with transaction.atomic():
-                cents_1 = base + (1 if 1 <= resto else 0)
-
-                primeira = Conta.objects.create(
-                    usuario=usuario,
-                    tipo=Conta.TIPO_DESPESA,
-                    descricao=descricao,
-                    valor=cents_to_decimal(cents_1),
-                    data_prevista=data_prevista,
-                    transacao_realizada=pago,
-                    data_realizacao=data_prevista if pago else None,
-                    categoria=categoria,
-                    forma_pagamento=forma_pagamento,
-                    categoria_cartao=categoria_cartao,
-                    eh_parcelada=True,
-                    parcela_numero=1,
-                    parcela_total=n,
-                    grupo_parcelamento=None,
-                )
-
-                gid = primeira.id
-                primeira.grupo_parcelamento = gid
-                primeira.save(update_fields=["grupo_parcelamento", "atualizada_em"])
-
-                contas = []
-                for i in range(2, n + 1):
-                    cents = base + (1 if i <= resto else 0)
-                    venc = add_months(data_prevista, i - 1)
-
-                    contas.append(
-                        Conta(
-                            usuario=usuario,
-                            tipo=Conta.TIPO_DESPESA,
-                            descricao=descricao,
-                            valor=cents_to_decimal(cents),
-                            data_prevista=venc,
-                            transacao_realizada=pago,
-                            data_realizacao=venc if pago else None,
-                            categoria=categoria,
-                            forma_pagamento=forma_pagamento,
-                            categoria_cartao=categoria_cartao,
-                            eh_parcelada=True,
-                            parcela_numero=i,
-                            parcela_total=n,
-                            grupo_parcelamento=gid,
-                        )
-                    )
-
-                if contas:
-                    Conta.objects.bulk_create(contas)
+            criar_contas_parceladas(
+                n=n,
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                descricao=descricao,
+                valor_total=valor_total,
+                data_prevista=data_prevista,
+                pago=pago,
+                categoria=categoria,
+                forma_pagamento=forma_pagamento,
+                categoria_cartao=categoria_cartao,
+            )
 
             messages.success(request, f"Conta registrada em {n} parcelas.")
             return redirect("contas_pagar")
@@ -433,18 +308,13 @@ class ContaCreateView(View):
 
     def get(self, request):
         usuario = request.user
-        categorias = Categoria.objects.filter(
-            usuario=usuario, tipo=Categoria.TIPO_DESPESA
-        ).order_by("nome")
-        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
-        categorias_cartao = CategoriaCartao.objects.all()
+        form = ContaForm(usuario=usuario, tipo=Conta.TIPO_DESPESA)
         return render(
             request,
             self.template_name,
             {
-                "categorias": categorias,
-                "formas": formas,
-                "categorias_cartao": categorias_cartao,
+                "form": form,
+                "categorias_cartao": CategoriaCartao.objects.all(),
                 "modo": "create",
                 "tipo": "despesa",
             },
@@ -463,18 +333,14 @@ class ContaUpdateView(View):
         usuario = request.user
         conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
-        categorias = Categoria.objects.filter(usuario=usuario).order_by("nome")
-        formas = FormaPagamento.objects.filter(usuario=usuario).order_by("nome")
-        categorias_cartao = CategoriaCartao.objects.all()
-
+        form = ContaForm(instance=conta, usuario=usuario, tipo=conta.tipo)
         return render(
             request,
             self.template_name,
             {
+                "form": form,
                 "conta": conta,
-                "categorias": categorias,
-                "formas": formas,
-                "categorias_cartao": categorias_cartao,
+                "categorias_cartao": CategoriaCartao.objects.all(),
                 "modo": "edit",
                 "tipo": "receita" if conta.tipo == Conta.TIPO_RECEITA else "despesa",
             },
@@ -484,95 +350,45 @@ class ContaUpdateView(View):
         usuario = request.user
         conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
-        aplicar_grupo = (request.POST.get("aplicar_grupo") or "").strip() == "1"
+        form = ContaForm(request.POST, instance=conta, usuario=usuario, tipo=conta.tipo)
 
-        # Pago checkbox
-        pago = (request.POST.get("pago") or "").strip() == "on"
-
-        descricao = (request.POST.get("descricao") or "").strip()
-
-        # valor
-        valor_raw = (request.POST.get("valor") or "").strip()
-        try:
-            valor_raw = (
-                valor_raw.replace(".", "").replace(",", ".")
-                if "," in valor_raw
-                else valor_raw
-            )
-            valor = Decimal(valor_raw).quantize(Decimal("0.01"))
-        except (InvalidOperation, ValueError):
-            messages.error(request, "Valor inválido.")
+        if not form.is_valid():
+            messages.error(request, "Erros no formulário, não foi possível atualizar.")
             return redirect("conta_editar", conta_id=conta.id)
 
-        if valor <= 0:
-            messages.error(request, "O valor precisa ser maior que zero.")
-            return redirect("conta_editar", conta_id=conta.id)
+        cd = form.cleaned_data
+        aplicar_grupo = request.POST.get("aplicar_grupo") == "1"
 
-        # data prevista
-        data_prevista_raw = (request.POST.get("data_prevista") or "").strip()
-        # Data
-        data_prevista = parse_date_flexible(data_prevista_raw)
-        if not data_prevista:
-            messages.error(request, "Data de vencimento inválida.")
-            return redirect("conta_editar", conta_id=conta.id)
+        # Update specific fields controlled outside normal save logic if needed
+        valor_total = cd.get("valor")
+        moeda = cd.get("moeda", "BRL")
+        data_prevista = cd.get("data_prevista")
+        pago = cd.get("pago", False)
 
-        # categoria
-        cat_id = (request.POST.get("categoria") or "").strip()
-        categoria = (
-            Categoria.objects.filter(id=cat_id, usuario=usuario).first()
-            if cat_id.isdigit()
-            else None
-        )
+        valor_brl, taxa_cambio = converter_para_brl(valor_total, moeda, data_prevista)
 
-        # forma de pagamento
-        forma_id = (request.POST.get("forma_pagamento") or "").strip()
-        forma_pagamento = (
-            FormaPagamento.objects.filter(id=forma_id, usuario=usuario).first()
-            if forma_id.isdigit()
-            else None
-        )
-
-        # categoria_cartao (MCC category - optional)
-        categoria_cartao_id = (request.POST.get("categoria_cartao") or "").strip()
-        categoria_cartao = (
-            CategoriaCartao.objects.filter(id=int(categoria_cartao_id)).first()
-            if categoria_cartao_id.isdigit()
-            else None
-        )
-
-        # Se marcou aplicar no grupo, e a conta é parcelada, atualiza o grupo inteiro
-        if aplicar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
-            gid = conta.grupo_parcelamento
-
-            # group edit seguro: só campos compartilháveis
-            Conta.objects.filter(usuario=usuario, grupo_parcelamento=gid).update(
-                descricao=descricao,
-                categoria=categoria,
-                forma_pagamento=forma_pagamento,
-                categoria_cartao=categoria_cartao,
-            )
-
-            # individual edit: mantém o resto só para a parcela atual
-            conta.valor = valor
-            conta.data_prevista = data_prevista
-            conta.save(update_fields=["valor", "data_prevista", "atualizada_em"])
-
-            messages.success(
-                request,
-                "Grupo atualizado (descrição, categoria e forma). Esta parcela teve valor e vencimento atualizados individualmente.",
-            )
-            return redirect("contas_pagar")
-
-        # Edição individual normal
-        conta.descricao = descricao
-        conta.valor = valor
-        conta.data_prevista = data_prevista
-        conta.categoria = categoria
-        conta.forma_pagamento = forma_pagamento
-        conta.categoria_cartao = categoria_cartao
+        conta = form.save(commit=False)
+        conta.moeda = moeda
+        conta.valor_brl = valor_brl
+        conta.taxa_cambio = taxa_cambio
         conta.transacao_realizada = pago
-        conta.data_realizacao = data_prevista if pago else None
+
+        if pago and not conta.data_realizacao:
+            conta.data_realizacao = data_prevista
+        elif not pago:
+            conta.data_realizacao = None
+
         conta.save()
+
+        if aplicar_grupo and conta.eh_parcelada and conta.grupo_parcelamento:
+            Conta.objects.filter(
+                usuario=usuario, grupo_parcelamento=conta.grupo_parcelamento
+            ).update(
+                descricao=conta.descricao,
+                categoria=conta.categoria,
+                forma_pagamento=conta.forma_pagamento,
+                categoria_cartao=conta.categoria_cartao,
+            )
 
         messages.success(request, "Conta atualizada com sucesso.")
         return redirect("contas_pagar")

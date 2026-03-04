@@ -9,6 +9,7 @@ Responsabilidades:
 
 from datetime import date
 from decimal import Decimal
+import calendar
 
 from django.db import transaction
 from django.db.models import Sum
@@ -140,3 +141,53 @@ def despesa_pode_ser_editada(despesa: Conta) -> bool:
     if despesa.fatura and despesa.fatura.transacao_realizada:
         return False
     return True
+
+
+def add_months(d: date, months: int) -> date:
+    """Adiciona n meses a uma data, lidando com o fim do mês corretamente."""
+    y = d.year + (d.month - 1 + months) // 12
+    m = (d.month - 1 + months) % 12 + 1
+    last_day = calendar.monthrange(y, m)[1]
+    day = min(d.day, last_day)
+    return date(y, m, day)
+
+
+def calcular_vencimento_fatura(
+    data_compra: date, dia_fechamento: int, dia_vencimento: int
+) -> date:
+    """Calcula a data de vencimento da fatura baseado na data da compra."""
+    ano = data_compra.year
+    mes = data_compra.month
+    dia = data_compra.day
+
+    if dia <= dia_fechamento:
+        mes_fechamento = mes
+        ano_fechamento = ano
+    else:
+        if mes == 12:
+            mes_fechamento = 1
+            ano_fechamento = ano + 1
+        else:
+            mes_fechamento = mes + 1
+            ano_fechamento = ano
+
+    if dia_vencimento > dia_fechamento:
+        mes_vencimento = mes_fechamento
+        ano_vencimento = ano_fechamento
+    else:
+        if mes_fechamento == 12:
+            mes_vencimento = 1
+            ano_vencimento = ano_fechamento + 1
+        else:
+            mes_vencimento = mes_fechamento + 1
+            ano_vencimento = ano_fechamento
+
+    ultimo_dia_mes = calendar.monthrange(ano_vencimento, mes_vencimento)[1]
+    dia_venc = min(dia_vencimento, ultimo_dia_mes)
+
+    return date(ano_vencimento, mes_vencimento, dia_venc)
+
+
+def cents_to_decimal(cents: int) -> Decimal:
+    """Converte centavos (int) para Decimal monetário."""
+    return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
