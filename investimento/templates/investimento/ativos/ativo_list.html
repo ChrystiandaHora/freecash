@@ -38,6 +38,70 @@ FreeCash {% endblock%} {% block content %}
   <!-- Lista de Ativos -->
   <div
     class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden"
+    x-data="{ 
+      sortBy: 'ticker', 
+      sortAsc: true,
+      filters: { ticker: '', classe: '', quantidade: '', pm: '', preco_atual: '', valor_atual: '', rentabilidade: '' },
+      activeFilters: [],
+      sort(column) {
+        if (this.sortBy === column) {
+          this.sortAsc = !this.sortAsc;
+        } else {
+          this.sortBy = column;
+          this.sortAsc = true;
+        }
+        this.sortTable();
+      },
+      sortTable() {
+        const tbody = this.$refs.tbody;
+        const rows = Array.from(tbody.querySelectorAll('tr[data-ticker]'));
+        
+        rows.sort((a, b) => {
+          let valA = a.dataset[this.sortBy];
+          let valB = b.dataset[this.sortBy];
+          const numA = parseFloat(valA);
+          const numB = parseFloat(valB);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            valA = numA; valB = numB;
+          } else {
+            valA = valA.toLowerCase(); valB = valB.toLowerCase();
+          }
+          if (valA < valB) return this.sortAsc ? -1 : 1;
+          if (valA > valB) return this.sortAsc ? 1 : -1;
+          return 0;
+        });
+        rows.forEach(row => tbody.appendChild(row));
+      },
+      applyFilter(column) {
+        if (this.filters[column].trim()) {
+          if (!this.activeFilters.includes(column)) this.activeFilters.push(column);
+        } else {
+          this.activeFilters = this.activeFilters.filter(c => c !== column);
+        }
+        this.filterTable();
+      },
+      clearFilter(column) {
+        this.filters[column] = '';
+        this.activeFilters = this.activeFilters.filter(c => c !== column);
+        this.filterTable();
+      },
+      filterTable() {
+        const tbody = this.$refs.tbody;
+        const rows = Array.from(tbody.querySelectorAll('tr[data-ticker]'));
+        rows.forEach(row => {
+          let show = true;
+          for (const col of this.activeFilters) {
+            const rowVal = row.dataset[col].toLowerCase();
+            const filterVal = this.filters[col].toLowerCase();
+            if (!rowVal.includes(filterVal)) {
+              show = false;
+              break;
+            }
+          }
+          row.style.display = show ? '' : 'none';
+        });
+      }
+    }"
   >
     <div class="overflow-x-auto">
       <table class="w-full">
@@ -45,40 +109,159 @@ FreeCash {% endblock%} {% block content %}
           class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700"
         >
           <tr>
-            <th
-              class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Ativo
+            <th class="px-5 py-3 text-left">
+              <div class="flex items-center gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('ticker') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute left-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2">
+                    <input type="text" x-model="filters.ticker" @keyup.enter="applyFilter('ticker'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('ticker'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('ticker'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('ticker')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Ativo
+                  <template x-if="sortBy === 'ticker'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-left text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Classe
+            <th class="px-5 py-3 text-left">
+              <div class="flex items-center gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('classe') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute left-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2">
+                    <input type="text" x-model="filters.classe" @keyup.enter="applyFilter('classe'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('classe'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('classe'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('classe')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Classe
+                  <template x-if="sortBy === 'classe'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Qtd
+            <th class="px-5 py-3 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('quantidade') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2 text-left">
+                    <input type="text" x-model="filters.quantidade" @keyup.enter="applyFilter('quantidade'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('quantidade'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('quantidade'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('quantidade')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Qtd
+                  <template x-if="sortBy === 'quantidade'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              PM
+            <th class="px-5 py-3 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('pm') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2 text-left">
+                    <input type="text" x-model="filters.pm" @keyup.enter="applyFilter('pm'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('pm'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('pm'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('pm')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  PM
+                  <template x-if="sortBy === 'pm'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Preço Atual
+            <th class="px-5 py-3 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('preco_atual') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2 text-left">
+                    <input type="text" x-model="filters.preco_atual" @keyup.enter="applyFilter('preco_atual'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('preco_atual'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('preco_atual'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('preco_atual')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Preço Atual
+                  <template x-if="sortBy === 'preco_atual'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Valor Atual
+            <th class="px-5 py-3 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('valor_atual') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2 text-left">
+                    <input type="text" x-model="filters.valor_atual" @keyup.enter="applyFilter('valor_atual'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('valor_atual'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('valor_atual'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('valor_atual')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Valor Atual
+                  <template x-if="sortBy === 'valor_atual'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
-            <th
-              class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
-            >
-              Rentab.
+            <th class="px-5 py-3 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div x-data="{ open: false }" class="relative">
+                  <button @click="open = !open" class="focus:outline-none transition-colors" :class="activeFilters.includes('rentabilidade') ? 'text-emerald-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'">
+                    <i class="fa-solid fa-filter text-xs"></i>
+                  </button>
+                  <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 p-3 space-y-2 text-left">
+                    <input type="text" x-model="filters.rentabilidade" @keyup.enter="applyFilter('rentabilidade'); open = false" class="w-full text-xs px-3 rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" placeholder="Pesquisar...">
+                    <div class="flex gap-2">
+                      <button @click="clearFilter('rentabilidade'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Limpar</button>
+                      <button @click="applyFilter('rentabilidade'); open = false" class="flex-1 text-[10px] font-bold uppercase py-1.5 rounded-lg bg-emerald-500 text-white">Filtrar</button>
+                    </div>
+                  </div>
+                </div>
+                <button @click="sort('rentabilidade')" class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1 hover:text-gray-800 dark:hover:text-white transition-colors">
+                  Rentab.
+                  <template x-if="sortBy === 'rentabilidade'">
+                    <i class="fa-solid" :class="sortAsc ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  </template>
+                </button>
+              </div>
             </th>
             <th
               class="text-right text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider px-5 py-3"
@@ -87,11 +270,18 @@ FreeCash {% endblock%} {% block content %}
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
+        <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm" x-ref="tbody">
           {% for ativo in ativos %}
           <tr
             class="hover:bg-gray-50/60 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
             onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+            data-ticker="{{ ativo.ticker }}"
+            data-classe="{{ ativo.subcategoria.categoria.classe.nome|default:'' }}"
+            data-quantidade="{{ ativo.quantidade|stringformat:'.8f' }}"
+            data-pm="{{ ativo.preco_medio|stringformat:'.4f' }}"
+            data-preco_atual="{{ ativo.cotacao_atual|default:0|stringformat:'.4f' }}"
+            data-valor_atual="{{ ativo.valor_total_atual|stringformat:'.2f' }}"
+            data-rentabilidade="{{ ativo.rentabilidade|stringformat:'.2f' }}"
           >
             <td class="px-5 py-3">
               <div>
