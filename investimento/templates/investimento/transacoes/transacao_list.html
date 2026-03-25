@@ -79,8 +79,7 @@ Transações | FreeCash {% endblock %} {% block content %}
         <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-sm">
           {% for t in transacoes %}
           <tr
-            class="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
-            onclick="window.location='{% url 'investimento:transacao_editar' t.id %}'"
+            class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
           >
             <td class="px-6 py-4">
               <span class="text-gray-900 dark:text-white"
@@ -131,13 +130,22 @@ Transações | FreeCash {% endblock %} {% block content %}
               </span>
             </td>
             <td class="px-6 py-4 text-right" onclick="event.stopPropagation()">
-              <a
-                href="{% url 'investimento:transacao_excluir' t.id %}"
-                class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                title="Excluir"
-              >
-                <i class="fa-solid fa-trash text-xs"></i>
-              </a>
+              <div class="flex items-center justify-end gap-2">
+                <a
+                  href="{% url 'investimento:transacao_editar' t.id %}"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  title="Editar"
+                >
+                  <i class="fa-solid fa-pen text-xs"></i>
+                </a>
+                <a
+                  href="{% url 'investimento:transacao_excluir' t.id %}"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  title="Excluir"
+                >
+                  <i class="fa-solid fa-trash text-xs"></i>
+                </a>
+              </div>
             </td>
           </tr>
           {% empty %}

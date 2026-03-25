@@ -129,8 +129,7 @@
 
       <div class="space-y-3">
         {% for r in page_obj %}
-        <div onclick="window.location='{% url 'receita_editar' r.id %}'" 
-             class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 cursor-pointer shadow-sm dark:shadow-lg hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
+        <div class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 shadow-sm dark:shadow-lg hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
             <!-- Data Strip -->
             <div class="absolute left-0 top-4 bottom-4 w-1 bg-emerald-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
             
@@ -155,10 +154,19 @@
                     </div>
                 </div>
 
-                <!-- Value -->
-                <div class="text-right">
-                    <p class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">+ R$ {{ r.valor|floatformat:2 }}</p>
-                    <p class="text-[10px] text-gray-400 dark:text-slate-600 uppercase font-bold tracking-wider mt-1">Confirmado</p>
+                <!-- Value & Actions -->
+                <div class="flex items-center gap-6">
+                    <div class="text-right">
+                        <p class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">+ R$ {{ r.valor|floatformat:2 }}</p>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-600 uppercase font-bold tracking-wider mt-1">Confirmado</p>
+                    </div>
+
+                    <!-- Action Button -->
+                    <a href="{% url 'receita_editar' r.id %}" 
+                       class="p-2 rounded-xl text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all shadow-sm border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800/30"
+                       title="Editar">
+                        <i class="fa-solid fa-pen-to-square text-lg"></i>
+                    </a>
                 </div>
             </div>
         </div>

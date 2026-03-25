@@ -183,8 +183,7 @@
           <div class="space-y-3">
             {% for ativo in top_5_ativos %}
               <div
-                class="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
-                onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+                class="flex items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
               >
                 <div class="flex items-center gap-3">
                   <div
@@ -205,17 +204,26 @@
                     {% endif %}
                   </div>
                 </div>
-                <div class="text-right">
-                  <p
-                    class="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400"
-                  >
-                    R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
-                  </p>
-                  {% if total_patrimonio > 0 %}
-                    <p class="text-xs text-gray-600 dark:text-slate-300">
-                      {{ ativo.percentual|floatformat:1 }}% do total
-                    </p>
-                  {% endif %}
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p
+                        class="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400"
+                      >
+                        R$ {{ ativo.cached_valor_atual|floatformat:2|intcomma }}
+                      </p>
+                      {% if total_patrimonio > 0 %}
+                        <p class="text-xs text-gray-600 dark:text-slate-300">
+                          {{ ativo.percentual|floatformat:1 }}% do total
+                        </p>
+                      {% endif %}
+                    </div>
+                    
+                    <!-- Edit Button -->
+                    <a href="{% url 'investimento:ativo_editar' ativo.id %}" 
+                       class="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800/30"
+                       title="Editar">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
                 </div>
               </div>
             {% endfor %}
@@ -294,8 +302,7 @@
           <div class="space-y-3">
             {% for ativo in top_rentabilidade %}
               <div
-                class="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
-                onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+                class="flex items-center justify-between rounded-xl bg-gray-50 p-3 transition-colors hover:bg-gray-100 dark:bg-slate-700/50 dark:hover:bg-slate-700"
               >
                 <div class="flex items-center gap-3">
                   <div
@@ -314,21 +321,30 @@
                     </p>
                   </div>
                 </div>
-                <div class="text-right">
-                  <p
-                    class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
-                    dark:text-emerald-400{% else %}text-red-600
-                    dark:text-red-400{% endif %} text-sm font-bold"
-                  >
-                    R$ {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
-                  </p>
-                  <p
-                    class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
-                    dark:text-emerald-400{% else %}text-red-600
-                    dark:text-red-400{% endif %} text-xs"
-                  >
-                    {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
-                  </p>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p
+                        class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                        dark:text-emerald-400{% else %}text-red-600
+                        dark:text-red-400{% endif %} text-sm font-bold"
+                      >
+                        R$ {{ ativo.cached_rentabilidade|floatformat:2|intcomma }}
+                      </p>
+                      <p
+                        class="{% if ativo.cached_rentabilidade >= 0 %}text-emerald-600
+                        dark:text-emerald-400{% else %}text-red-600
+                        dark:text-red-400{% endif %} text-xs"
+                      >
+                        {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
+                      </p>
+                    </div>
+
+                    <!-- Edit Button -->
+                    <a href="{% url 'investimento:ativo_editar' ativo.id %}" 
+                       class="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800/30"
+                       title="Editar">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
                 </div>
               </div>
             {% endfor %}
@@ -405,13 +421,17 @@
                 >
                   Rentab.
                 </th>
+                <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-300"
+                >
+                  Ação
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
               {% for ativo in ativos_page %}
                 <tr
-                  class="cursor-pointer transition-colors hover:bg-gray-50/60 dark:hover:bg-slate-700/30"
-                  onclick="window.location='{% url 'investimento:ativo_editar' ativo.id %}'"
+                  class="transition-colors hover:bg-gray-50/60 dark:hover:bg-slate-700/30"
                 >
                   <td class="px-5 py-3">
                     <div>
@@ -500,6 +520,13 @@
                         {{ ativo.cached_rentabilidade_percentual|floatformat:2 }}%
                       </span>
                     </div>
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <a href="{% url 'investimento:ativo_editar' ativo.id %}" 
+                       class="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-800/30"
+                       title="Editar">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
                   </td>
                 </tr>
                 {% empty %}

@@ -172,8 +172,7 @@
 
             {% for t in group.list %}
             <!-- List Item (Ledger Style) -->
-            <div onclick="window.location='{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% elif t.tipo == 'D' %}{% url 'conta_editar' t.id %}{% else %}{% url 'ativo_list' %}{% endif %}'" 
-                 class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 cursor-pointer shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
+            <div class="group relative bg-white dark:bg-slate-900/50 border border-gray-100 dark:border-slate-800/50 rounded-2xl p-4 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-200 dark:hover:border-slate-700 transition-all duration-300 shadow-sm dark:shadow-md hover:shadow-md dark:hover:shadow-xl hover:-translate-y-1">
                 
                 <div class="flex items-center justify-between gap-4">
                     <!-- Main Info -->
@@ -202,18 +201,27 @@
                         </div>
                     </div>
 
-                    <!-- Value (Right Aligned, Monospace-ish) -->
-                    <div class="text-right whitespace-nowrap">
-                        <p class="font-bold text-base font-mono tracking-tight
-                            {% if t.tipo == 'R' %}text-emerald-600 dark:text-emerald-400
-                            {% elif t.tipo == 'D' %}text-gray-900 dark:text-white
-                            {% else %}text-blue-600 dark:text-blue-400{% endif %}">
-                            {% if t.tipo == 'D' %}- {% elif t.tipo == 'R' %}+ {% endif %}
-                            R$ {{ t.valor|floatformat:2 }}
-                        </p>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-600 uppercase font-bold mt-0.5">
-                            {% if t.forma_pagamento %}{{ t.forma_pagamento.nome|truncatechars:15 }}{% else %}-{% endif %}
-                        </p>
+                    <!-- Value & Actions -->
+                    <div class="flex items-center gap-6">
+                        <div class="text-right whitespace-nowrap">
+                            <p class="font-bold text-base font-mono tracking-tight
+                                {% if t.tipo == 'R' %}text-emerald-600 dark:text-emerald-400
+                                {% elif t.tipo == 'D' %}text-gray-900 dark:text-white
+                                {% else %}text-blue-600 dark:text-blue-400{% endif %}">
+                                {% if t.tipo == 'D' %}- {% elif t.tipo == 'R' %}+ {% endif %}
+                                R$ {{ t.valor|floatformat:2 }}
+                            </p>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-600 uppercase font-bold mt-0.5">
+                                {% if t.forma_pagamento %}{{ t.forma_pagamento.nome|truncatechars:15 }}{% else %}-{% endif %}
+                            </p>
+                        </div>
+
+                        <!-- Action Button -->
+                        <a href="{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% elif t.tipo == 'D' %}{% url 'conta_editar' t.id %}{% else %}{% url 'ativo_list' %}{% endif %}" 
+                           class="p-2 rounded-xl text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all shadow-sm border border-transparent hover:border-violet-100 dark:hover:border-violet-800/30"
+                           title="Editar">
+                            <i class="fa-solid fa-pen-to-square text-lg"></i>
+                        </a>
                     </div>
                 </div>
             </div>
