@@ -1,0 +1,189 @@
+{% extends "core/layout/base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% load core_tags %}
+
+{% block extra_head %}
+<style>
+    .kanban-column {
+        min-width: 320px;
+        max-width: 320px;
+    }
+
+    .kanban-container {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+    }
+    
+    .kanban-container::-webkit-scrollbar {
+        height: 6px;
+    }
+    
+    .kanban-container::-webkit-scrollbar-thumb {
+        background-color: rgba(99, 102, 241, 0.3);
+        border-radius: 20px;
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.2); border-radius: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col space-y-4 px-2">
+    <!-- Top Bar: Title + Controls + Filters integrated -->
+    <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-gray-200 dark:border-slate-800">
+        <div>
+            <h1 class="text-xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+                <span class="w-2 h-8 bg-indigo-600 rounded-full"></span>
+                Pipeline Financeiro
+            </h1>
+            <p class="mt-0.5 text-gray-500 dark:text-slate-400 text-xs">Gestão espacial de contas a pagar.</p>
+        </div>
+
+        <!-- Integrated Filters & Actions -->
+        <div class="flex flex-wrap items-center gap-3">
+            <form method="get" id="filter-form" class="flex flex-wrap items-center gap-2">
+                <div class="relative group">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                    <input type="search" name="q" value="{{ filtros.q }}" placeholder="Buscar conta..."
+                           class="bg-white/50 dark:bg-slate-950 border-none rounded-2xl pl-9 pr-4 py-1.5 text-sm w-48 focus:ring-2 focus:ring-indigo-500/30 transition-all placeholder:text-gray-400">
+                </div>
+                
+                <div class="flex items-center bg-white/50 dark:bg-slate-950 rounded-2xl p-0.5 border border-transparent focus-within:border-indigo-500/30">
+                    <select name="mes" onchange="this.form.submit()" class="bg-transparent border-none text-xs rounded-xl px-3 py-1.5 focus:ring-0 cursor-pointer">
+                        <option value="">Mês</option>
+                        {% for m in meses %} <option value="{{ m }}" {% if filtros.mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>{{ m|month_name }}</option> {% endfor %}
+                    </select>
+                    <div class="w-px h-4 bg-gray-200 dark:bg-slate-800"></div>
+                    <select name="ano" onchange="this.form.submit()" class="bg-transparent border-none text-xs rounded-xl px-3 py-1.5 focus:ring-0 cursor-pointer">
+                        <option value="">Ano</option>
+                        {% for a in anos %} <option value="{{ a }}" {% if filtros.ano|stringformat:"s" == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option> {% endfor %}
+                    </select>
+                </div>
+
+                <a href="{% url 'contas_kanban' %}" class="p-2 rounded-2xl hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-400 transition-colors" title="Limpar Filtros">
+                    <i class="fa-solid fa-rotate-left text-sm"></i>
+                </a>
+            </form>
+
+            <div class="h-6 w-px bg-gray-200 dark:bg-slate-800 hidden md:block"></div>
+
+            <div class="flex items-center gap-2">
+                 <div class="flex bg-gray-100 dark:bg-slate-950 p-1 rounded-2xl border border-gray-200 dark:border-slate-800/50">
+                    <a href="{% url 'contas_pagar' %}" class="px-3 py-1 rounded-xl text-[11px] font-bold text-gray-500 hover:text-gray-700 dark:hover:text-slate-200 transition-all">LISTA</a>
+                    <span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-gray-200 dark:border-slate-700">KANBAN</span>
+                </div>
+                <a href="{% url 'conta_nova' %}" class="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> NOVA CONTA
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Board -->
+    <div class="flex-1 overflow-x-auto kanban-container pb-4 mt-4">
+        <div class="flex gap-4 h-full min-h-[600px]">
+            
+            <!-- Column 1: Atrasado -->
+            <div x-data="{ count: {{ atrasadas.count }} }" class="kanban-column flex flex-col gap-4 group/col">
+                <div class="p-3 border-b-2 border-rose-500 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-bolt-lightning text-rose-500"></i>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm uppercase">Atrasadas</h3>
+                        </div>
+                        <span class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">{{ atrasadas.count }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex-1 space-y-4 overflow-y-auto custom-scroll pr-1">
+                    {% for c in atrasadas %}
+                        {% include "core/financeiro/_kanban_card.html" with conta=c color="rose" urgency=True %}
+                    {% empty %}
+                        <div class="h-32 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-800/50 flex flex-col items-center justify-center text-gray-300 dark:text-slate-700 gap-2 grayscale opacity-50">
+                            <i class="fa-solid fa-cloud-sun text-2xl"></i>
+                            <span class="text-[10px] font-bold uppercase tracking-widest">Nada pendente</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Column 2: Hoje -->
+            <div class="kanban-column flex flex-col gap-4 group/col">
+                <div class="p-3 border-b-2 border-amber-500 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-star text-amber-500"></i>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm uppercase">Vence Hoje</h3>
+                        </div>
+                        <span class="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{{ vence_hoje.count }}</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 space-y-4 overflow-y-auto custom-scroll pr-1">
+                    {% for c in vence_hoje %}
+                        {% include "core/financeiro/_kanban_card.html" with conta=c color="amber" %}
+                    {% empty %}
+                        <div class="h-32 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-800/50 flex flex-col items-center justify-center text-gray-300 dark:text-slate-700 gap-2 grayscale opacity-50">
+                            <i class="fa-solid fa-calendar-check text-2xl"></i>
+                            <span class="text-[10px] font-bold uppercase tracking-widest">Dia tranquilo</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Column 3: Próximos -->
+            <div class="kanban-column flex flex-col gap-4 group/col">
+                <div class="p-3 border-b-2 border-indigo-500 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-plane text-indigo-500"></i>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm uppercase">Próximos</h3>
+                        </div>
+                        <span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{ proximas.count }}</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 space-y-4 overflow-y-auto custom-scroll pr-1">
+                    {% for c in proximas %}
+                        {% include "core/financeiro/_kanban_card.html" with conta=c color="indigo" %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Column 4: Pagos -->
+            <div class="kanban-column flex flex-col gap-4 group/col">
+                <div class="p-3 border-b-2 border-emerald-500 mb-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check-double text-emerald-500"></i>
+                            <h3 class="font-bold text-gray-800 dark:text-gray-200 text-sm uppercase">Liquidados</h3>
+                        </div>
+                        <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ pagas_recentemente.count }}</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 space-y-4 overflow-y-auto custom-scroll pr-1">
+                    {% for c in pagas_recentemente %}
+                        {% include "core/financeiro/_kanban_card.html" with conta=c color="emerald" is_paid=True %}
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function confirmKanbanPayment(formId, descricao) {
+        if (confirm(`Confirmar o pagamento de "${descricao}"?`)) {
+            document.getElementById(formId).submit();
+        }
+    }
+</script>
+{% endblock %}

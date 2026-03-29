@@ -75,3 +75,25 @@ def replace(value, arg):
         # Generic fallback
         return value.replace(old, new)
     return value
+
+
+@register.filter(name="month_name")
+def month_name(month_number):
+    """
+    Converts a month number (1-12) to its Portuguese name.
+    """
+    months = {
+        1: "Janeiro",
+        2: "Fevereiro",
+        3: "Março",
+        4: "Abril",
+        5: "Maio",
+        6: "Junho",
+        7: "Julho",
+        8: "Agosto",
+        9: "Setembro",
+        10: "Outubro",
+        11: "Novembro",
+        12: "Dezembro",
+    }
+    return months.get(int(month_number), month_number)

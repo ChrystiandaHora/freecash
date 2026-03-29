@@ -18,7 +18,10 @@ class ContaForm(forms.ModelForm):
     )
     multiplicar = forms.BooleanField(required=False)
     numero_multiplicacoes = forms.IntegerField(
-        required=False, min_value=2, max_value=12, initial=2
+        required=False, min_value=2, max_value=120, initial=2
+    )
+    data_limite_repeticao = forms.DateField(
+        required=False, widget=forms.DateInput(attrs={"type": "date"})
     )
     pago = forms.BooleanField(required=False)
 

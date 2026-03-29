@@ -112,14 +112,14 @@
             <!-- Parcelado Card -->
             <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
                 <div class="flex items-center gap-3 mb-3">
-                    {% render_field form.parcelado class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
+                    {% render_field form.parcelado id="parcelado" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
                     <label for="{{ form.parcelado.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">É uma compra parcelada?</label>
                 </div>
                 
                 <div id="parcelasBox" class="hidden pl-8 space-y-2 animate-fadeIn">
                     <p class="text-xs text-gray-500 dark:text-slate-500">Selecione o número de parcelas:</p>
                     <div class="relative">
-                        {% render_field form.numero_parcelas class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
+                        {% render_field form.numero_parcelas id="numero_parcelas" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
                     </div>
                 </div>
             </div>
@@ -127,15 +127,31 @@
             <!-- Repetir Card -->
             <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
                 <div class="flex items-center gap-3 mb-3">
-                    {% render_field form.multiplicar class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
+                    {% render_field form.multiplicar id="multiplicar" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
                     <label for="{{ form.multiplicar.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">Repetir mensalmente?</label>
                 </div>
                 
-                <div id="multiplicaBox" class="hidden pl-8 space-y-2 animate-fadeIn">
-                     <p class="text-xs text-gray-500 dark:text-slate-500">Repetir por quantos meses?</p>
-                    <div class="relative">
-                        {% render_field form.numero_multiplicacoes class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
-                         <p class="text-[10px] text-amber-500/80 mt-1">Cria registros separados.</p>
+                <div id="multiplicaBox" class="hidden pl-8 space-y-4 animate-fadeIn">
+                    <div class="space-y-2">
+                        <p class="text-xs text-gray-500 dark:text-slate-500">Repetir por quantos meses?</p>
+                        <div class="relative">
+                            {% render_field form.numero_multiplicacoes id="numero_multiplicacoes" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
+                        </div>
+                    </div>
+                    
+                    <div class="relative flex py-2 items-center">
+                        <div class="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
+                        <span class="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold tracking-widest">ou então</span>
+                        <div class="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
+                    </div>
+
+                    <div class="space-y-2">
+                         <p class="text-xs text-gray-500 dark:text-slate-500">Repetir até qual data?</p>
+                        <div class="relative">
+                            <i class="fa-regular fa-calendar-check absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"></i>
+                            {% render_field form.data_limite_repeticao id="data_limite_repeticao" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg pl-10 pr-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
+                        </div>
+                        <p class="text-[10px] text-amber-500/80 mt-1">Cria registros mensais até o limite.</p>
                     </div>
                 </div>
             </div>
@@ -219,7 +235,8 @@
 
     const chkMultiplicar = document.getElementById("multiplicar");
     const boxMultiplica = document.getElementById("multiplicaBox");
-    const selMultiplica = document.getElementById("numero_multiplicacoes"); // might stay null if editing
+    const selMultiplica = document.getElementById("numero_multiplicacoes"); 
+    const inputLimiteRepeticao = document.getElementById("data_limite_repeticao");
 
     const valorInput = document.getElementById("valor");
 
@@ -296,7 +313,25 @@
       if (chkMultiplicar) setVisible(boxMultiplica, chkMultiplicar.checked);
 
       if (selParcelas) selParcelas.disabled = !chkParcelado.checked;
-      if (selMultiplica) selMultiplica.disabled = !chkMultiplicar.checked;
+      
+      if (selMultiplica && inputLimiteRepeticao) {
+         selMultiplica.disabled = !chkMultiplicar.checked;
+         inputLimiteRepeticao.disabled = !chkMultiplicar.checked;
+
+         // Logic: if date is filled, disable the count select to avoid ambiguity
+         const updateDisabledState = () => {
+             if (inputLimiteRepeticao.value) {
+                 selMultiplica.classList.add('opacity-50', 'pointer-events-none');
+                 selMultiplica.disabled = true;
+             } else {
+                 selMultiplica.classList.remove('opacity-50', 'pointer-events-none');
+                 selMultiplica.disabled = false;
+             }
+         };
+         
+         inputLimiteRepeticao.addEventListener('input', updateDisabledState);
+         updateDisabledState(); // Run immediately to sync state
+      }
 
       updateParcelasOptions();
     }

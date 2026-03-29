@@ -21,6 +21,7 @@ from core.views.contas import (
     CadastrarContaPagarView,
     ContaCreateView,
     ContasPagarView,
+    ContasPagarKanbanView,
     MarcarContaPagaView,
     ContaUpdateView,
     ApagarContaView,
@@ -143,6 +144,7 @@ urlpatterns += [
 
 urlpatterns += [
     path("contas/", ContasPagarView.as_view(), name="contas_pagar"),
+    path("contas/kanban/", ContasPagarKanbanView.as_view(), name="contas_kanban"),
     path("contas/nova/", ContaCreateView.as_view(), name="conta_nova"),
     path(
         "contas/<int:conta_id>/editar/", ContaUpdateView.as_view(), name="conta_editar"

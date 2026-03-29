@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.views import View
 from django.shortcuts import get_object_or_404, render, redirect
@@ -199,6 +199,80 @@ class ContasPagarView(View):
 
 
 @method_decorator(login_required, name="dispatch")
+class ContasPagarKanbanView(View):
+    template_name = "core/cadastros/contas_kanban.html"
+
+    def get(self, request):
+        usuario = request.user
+        hoje = timezone.localdate()
+
+        # Base Queryset: apenas despesas pendentes
+        qs = (
+            Conta.objects.filter(
+                usuario=usuario,
+                tipo=Conta.TIPO_DESPESA,
+                transacao_realizada=False,
+            )
+            .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
+            .select_related("categoria", "forma_pagamento", "cartao")
+        )
+
+        # Filtros
+        q = (request.GET.get("q") or "").strip()
+        ano = (request.GET.get("ano") or "").strip()
+        mes = (request.GET.get("mes") or "").strip()
+        categoria_id = (request.GET.get("categoria") or "").strip()
+
+        if ano.isdigit():
+            qs = qs.filter(data_prevista__year=int(ano))
+        if mes.isdigit():
+            qs = qs.filter(data_prevista__month=int(mes))
+        if categoria_id.isdigit():
+            qs = qs.filter(categoria_id=int(categoria_id))
+        if q:
+            qs = qs.filter(descricao__icontains=q)
+
+        # Agrupamento para Kanban
+        atrasadas = qs.filter(data_prevista__lt=hoje).order_by("data_prevista")
+        vence_hoje = qs.filter(data_prevista=hoje).order_by("id")
+        proximas = qs.filter(data_prevista__gt=hoje).order_by("data_prevista")[:50]
+
+        # Pagas recentemente (opcional, para feedback visual)
+        pagas_recentemente = Conta.objects.filter(
+            usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
+            transacao_realizada=True,
+            data_realizacao__gte=hoje,
+        ).order_by("-data_realizacao")[:10]
+
+        # Dados para filtros
+        categorias = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA
+        ).order_by("nome")
+        anos = list(range(hoje.year - 5, hoje.year + 1))
+        anos.reverse()
+        meses = list(range(1, 13))
+
+        contexto = {
+            "atrasadas": atrasadas,
+            "vence_hoje": vence_hoje,
+            "proximas": proximas,
+            "pagas_recentemente": pagas_recentemente,
+            "categorias": categorias,
+            "anos": anos,
+            "meses": meses,
+            "hoje": hoje,
+            "filtros": {
+                "q": q,
+                "ano": ano,
+                "mes": mes,
+                "categoria": categoria_id,
+            },
+        }
+        return render(request, self.template_name, contexto)
+
+
+@method_decorator(login_required, name="dispatch")
 class CadastrarContaPagarView(View):
     def post(self, request):
         usuario = request.user
@@ -222,6 +296,7 @@ class CadastrarContaPagarView(View):
         numero_parcelas = cd.get("numero_parcelas", 2)
         multiplicar = cd.get("multiplicar")
         numero_multiplicacoes = cd.get("numero_multiplicacoes", 2)
+        data_limite_repeticao = cd.get("data_limite_repeticao")
         pago = cd.get("pago", False)
         moeda = cd.get("moeda", "BRL")
 
@@ -234,8 +309,8 @@ class CadastrarContaPagarView(View):
         # 1) MULTIPLICAR (criar N contas iguais, vencimentos mensais)
         if multiplicar:
             n = numero_multiplicacoes
-            if n < 2 or n > 12:
-                messages.error(request, "Quantidade deve ser entre 2 e 12.")
+            if not data_limite_repeticao and (n < 2 or n > 120):
+                messages.error(request, "Quantidade deve ser entre 2 e 120.")
                 return redirect("contas_pagar")
 
             criar_contas_multiplicadas(
@@ -249,6 +324,7 @@ class CadastrarContaPagarView(View):
                 categoria=categoria,
                 forma_pagamento=forma_pagamento,
                 categoria_cartao=categoria_cartao,
+                data_limite=data_limite_repeticao,
             )
 
             messages.success(request, f"Conta registrada {n} vezes.")
@@ -445,4 +521,8 @@ class MarcarContaPagaView(View):
         )
 
         messages.success(request, "Conta marcada como paga com sucesso.")
+
+        next_url = request.POST.get("next") or request.GET.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect("contas_pagar")

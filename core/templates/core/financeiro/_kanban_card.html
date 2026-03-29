@@ -1,0 +1,57 @@
+<div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 hover:border-gray-300 dark:hover:border-slate-700 transition-colors">
+    
+    <div class="flex flex-col gap-4">
+        <!-- Badge & Action -->
+        <div class="flex items-center justify-between">
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.1em] border
+                        {% if color == 'rose' %} bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30
+                        {% elif color == 'amber' %} bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30
+                        {% elif color == 'emerald' %} bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30
+                        {% else %} bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border-indigo-500/30 {% endif %}">
+                {{ conta.categoria.nome|default:"Geral" }}
+            </span>
+            
+            {% if not is_paid %}
+            <form id="pay-form-{{ conta.id }}" method="post" action="{% url 'marcar_conta_paga' conta.id %}?next={% url 'contas_kanban' %}">
+                {% csrf_token %}
+                <button type="button" onclick="confirmKanbanPayment('pay-form-{{ conta.id }}', '{{ conta.descricao|escapejs }}')"
+                        class="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 text-gray-400 hover:bg-emerald-500 hover:text-white transition-all shadow-md border border-gray-100 dark:border-slate-700 hover:border-emerald-400">
+                    <i class="fa-solid fa-check text-[10px]"></i>
+                </button>
+            </form>
+            {% else %}
+            <div class="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                <i class="fa-solid fa-check-double text-[10px]"></i>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Main Info -->
+        <div class="space-y-1">
+            <h4 class="font-bold text-sm text-gray-900 dark:text-white line-clamp-2 leading-snug min-h-[2.5rem]">{{ conta.descricao }}</h4>
+            <div class="flex items-baseline gap-1">
+                <span class="text-xs font-bold text-gray-400 dark:text-slate-500">R$</span>
+                <span class="text-xl font-black text-gray-900 dark:text-white tracking-tight">{{ conta.valor|floatformat:2 }}</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between pt-4 border-t border-gray-100/50 dark:border-slate-800/50">
+            <div class="flex flex-col">
+                <p class="text-[10px] font-bold text-gray-400 dark:text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                    <i class="fa-regular fa-calendar-alt"></i>
+                    {% if is_paid %}
+                        Pago {{ conta.data_realizacao|date:"d M" }}
+                    {% else %}
+                        Vencimento {{ conta.data_prevista|date:"d M" }}
+                    {% endif %}
+                </p>
+            </div>
+            
+            <a href="{% url 'conta_editar' conta.id %}" 
+               class="text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors p-1">
+                <i class="fa-solid fa-pencil text-[10px]"></i>
+            </a>
+        </div>
+    </div>
+</div>

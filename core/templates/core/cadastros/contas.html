@@ -20,6 +20,14 @@
 
     <div class="flex items-center gap-4">
       <!-- Visão (Refresh) -->
+      <a href="?" class="group p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 transition-all flex items-center gap-2" title="Visão em Lista">
+        <i class="fa-solid fa-list"></i>
+        <span class="text-xs font-medium">Lista</span>
+      </a>
+      <a href="{% url 'contas_kanban' %}" class="group p-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center gap-2" title="Visão Kanban">
+        <i class="fa-solid fa-columns"></i>
+        <span class="text-xs font-medium">Kanban</span>
+      </a>
       <a href="?" class="group p-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all flex items-center gap-2" title="Recarregar Lista">
         <i class="fa-solid fa-rotate group-hover:rotate-180 transition-transform duration-500"></i>
       </a>

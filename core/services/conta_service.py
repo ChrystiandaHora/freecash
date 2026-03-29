@@ -30,8 +30,23 @@ def criar_contas_multiplicadas(
     categoria,
     forma_pagamento,
     categoria_cartao,
+    data_limite=None,
 ):
     with transaction.atomic():
+        # Se houver data limite, calculamos o N dinamicamente
+        if data_limite:
+            # Garantimos que n seja pelo menos 1 (a própria conta atual)
+            # Mas vamos iterar mês a mês até passar o limite
+            n = 0
+            while True:
+                next_date = add_months(data_prevista, n)
+                if next_date > data_limite:
+                    break
+                n += 1
+            
+            if n == 0:
+                n = 1 # Pelo menos a primeira conta se o limite for hoje
+
         contas = []
         for i in range(1, n + 1):
             venc = add_months(data_prevista, i - 1)
