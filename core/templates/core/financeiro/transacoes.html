@@ -217,7 +217,7 @@
                         </div>
 
                         <!-- Action Button -->
-                        <a href="{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% elif t.tipo == 'D' %}{% url 'conta_editar' t.id %}{% else %}{% url 'ativo_list' %}{% endif %}" 
+                        <a href="{% if t.tipo == 'R' %}{% url 'receita_editar' t.id %}{% elif t.tipo == 'D' %}{% url 'conta_editar' t.id %}{% else %}{% url 'ativo_list' %}{% endif %}?next={{ request.get_full_path|urlencode }}" 
                            class="p-2 rounded-xl text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all shadow-sm border border-transparent hover:border-violet-100 dark:hover:border-violet-800/30"
                            title="Editar">
                             <i class="fa-solid fa-pen-to-square text-lg"></i>

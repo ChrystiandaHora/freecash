@@ -167,6 +167,7 @@ class ReceitaCreateView(View):
                 "conta": None,
                 "is_receita": True,
                 "tipo": "receita",
+                "next_url": request.GET.get("next"),
             },
         )
 
@@ -258,6 +259,10 @@ class ReceitaCreateView(View):
         )
 
         messages.success(request, "Receita registrada!")
+
+        next_url = request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect("receitas")
 
 
@@ -295,6 +300,7 @@ class ReceitaUpdateView(View):
                 "titulo": "Editar Receita",
                 "is_receita": True,
                 "tipo": "receita",
+                "next_url": request.GET.get("next"),
             },
         )
 
@@ -324,4 +330,8 @@ class ReceitaUpdateView(View):
         conta.save()
 
         messages.success(request, "Receita atualizada.")
+
+        next_url = request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect("receitas")

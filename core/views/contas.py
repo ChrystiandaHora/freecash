@@ -222,6 +222,7 @@ class ContasPagarKanbanView(View):
         ano = (request.GET.get("ano") or "").strip()
         mes = (request.GET.get("mes") or "").strip()
         categoria_id = (request.GET.get("categoria") or "").strip()
+        forma_id = (request.GET.get("forma_pagamento") or "").strip()
 
         if ano.isdigit():
             qs = qs.filter(data_prevista__year=int(ano))
@@ -229,6 +230,8 @@ class ContasPagarKanbanView(View):
             qs = qs.filter(data_prevista__month=int(mes))
         if categoria_id.isdigit():
             qs = qs.filter(categoria_id=int(categoria_id))
+        if forma_id.isdigit():
+            qs = qs.filter(forma_pagamento_id=int(forma_id))
         if q:
             qs = qs.filter(descricao__icontains=q)
 
@@ -249,6 +252,10 @@ class ContasPagarKanbanView(View):
         categorias = Categoria.objects.filter(
             usuario=usuario, tipo=Categoria.TIPO_DESPESA
         ).order_by("nome")
+        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
+            "nome"
+        )
+
         anos = list(range(hoje.year - 5, hoje.year + 1))
         anos.reverse()
         meses = list(range(1, 13))
@@ -259,6 +266,7 @@ class ContasPagarKanbanView(View):
             "proximas": proximas,
             "pagas_recentemente": pagas_recentemente,
             "categorias": categorias,
+            "formas": formas,
             "anos": anos,
             "meses": meses,
             "hoje": hoje,
@@ -267,6 +275,7 @@ class ContasPagarKanbanView(View):
                 "ano": ano,
                 "mes": mes,
                 "categoria": categoria_id,
+                "forma_pagamento": forma_id,
             },
         }
         return render(request, self.template_name, contexto)
@@ -375,6 +384,10 @@ class CadastrarContaPagarView(View):
         )
 
         messages.success(request, "Conta registrada com sucesso.")
+
+        next_url = request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect("contas_pagar")
 
 
@@ -393,6 +406,7 @@ class ContaCreateView(View):
                 "categorias_cartao": CategoriaCartao.objects.all(),
                 "modo": "create",
                 "tipo": "despesa",
+                "next_url": request.GET.get("next"),
             },
         )
 
@@ -419,6 +433,7 @@ class ContaUpdateView(View):
                 "categorias_cartao": CategoriaCartao.objects.all(),
                 "modo": "edit",
                 "tipo": "receita" if conta.tipo == Conta.TIPO_RECEITA else "despesa",
+                "next_url": request.GET.get("next"),
             },
         )
 
@@ -467,6 +482,10 @@ class ContaUpdateView(View):
             )
 
         messages.success(request, "Conta atualizada com sucesso.")
+
+        next_url = request.POST.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect("contas_pagar")
 
 

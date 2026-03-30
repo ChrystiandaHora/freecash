@@ -43,6 +43,9 @@ class ContaForm(forms.ModelForm):
         self.usuario = kwargs.pop("usuario", None)
         self.tipo_conta = kwargs.pop("tipo", Conta.TIPO_DESPESA)
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["pago"].initial = self.instance.transacao_realizada
+
         if self.usuario:
             self.fields["categoria"].queryset = Categoria.objects.filter(
                 usuario=self.usuario, tipo=self.tipo_conta

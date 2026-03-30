@@ -23,6 +23,9 @@
 
     <form method="post" enctype="multipart/form-data" class="p-8 space-y-8" novalidate>
       {% csrf_token %}
+      {% if next_url %}
+      <input type="hidden" name="next" value="{{ next_url }}">
+      {% endif %}
 
       <!-- Header -->
       <div class="text-center space-y-2">
