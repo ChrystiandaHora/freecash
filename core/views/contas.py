@@ -445,7 +445,9 @@ class ContaUpdateView(View):
         # Captura os dados originais antes da edição
         descricao_antiga = conta.descricao
         valor_antigo = conta.valor
+        data_antiga = conta.data_prevista
         dia_antigo = conta.data_prevista.day
+        tipo_antigo = conta.tipo
 
         form = ContaForm(request.POST, instance=conta, usuario=usuario, tipo=conta.tipo)
 
@@ -493,12 +495,12 @@ class ContaUpdateView(View):
         if atualizar_futuros:
             contas_futuras = Conta.objects.filter(
                 usuario=usuario,
-                tipo=conta.tipo,
-                data_prevista__gt=conta.data_prevista,
+                tipo=tipo_antigo,
+                data_prevista__gt=data_antiga,
                 data_prevista__day=dia_antigo,
                 descricao__iexact=descricao_antiga,
                 valor=valor_antigo,
-            )
+            ).exclude(id=conta.id)
             count = contas_futuras.count()
             if count > 0:
                 contas_futuras.update(

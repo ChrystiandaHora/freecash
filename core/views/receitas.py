@@ -11,6 +11,8 @@ from django.utils.decorators import method_decorator
 from django.db.models import Sum
 
 from core.models import Conta, Categoria, FormaPagamento
+from core.signals import atualizar_config
+from core.services.cotacao_service import converter_para_brl
 from core.services.conta_service import (
     criar_contas_multiplicadas,
     criar_contas_parceladas,
@@ -310,6 +312,13 @@ class ReceitaUpdateView(View):
             Conta, id=pk, usuario=usuario, tipo=Conta.TIPO_RECEITA
         )
 
+        # Captura os dados originais antes da edição
+        descricao_antiga = conta.descricao
+        valor_antigo = conta.valor
+        data_antiga = conta.data_prevista
+        dia_antigo = conta.data_prevista.day
+        tipo_antigo = conta.tipo
+
         form = ContaForm(
             request.POST, instance=conta, usuario=usuario, tipo=Conta.TIPO_RECEITA
         )
@@ -318,18 +327,50 @@ class ReceitaUpdateView(View):
             return redirect("receita_editar", pk=conta.id)
 
         cd = form.cleaned_data
-        conta = form.save(commit=False)
+        
+        valor_total = cd.get("valor")
+        moeda = cd.get("moeda", "BRL")
+        data_prevista_nova = cd.get("data_prevista")
         pago = cd.get("pago")
 
-        # Para receitas, usamos data_prevista = data_realizacao
-        data_prevista = cd.get("data_prevista")
-        if data_prevista:
-            conta.data_realizacao = data_prevista if pago else None
+        # Recalcula BRL e taxas para manter consistência
+        valor_brl, taxa_cambio = converter_para_brl(valor_total, moeda, data_prevista_nova)
+
+        conta = form.save(commit=False)
+        conta.moeda = moeda
+        conta.valor_brl = valor_brl
+        conta.taxa_cambio = taxa_cambio
+        
+        if data_prevista_nova:
+            conta.data_realizacao = data_prevista_nova if pago else None
 
         conta.transacao_realizada = pago
         conta.save()
 
-        messages.success(request, "Receita atualizada.")
+        # 4) ATUALIZAR FUTUROS SEMELHANTES
+        atualizar_futuros = cd.get("atualizar_futuros")
+        msg_adicional = ""
+        if atualizar_futuros:
+            contas_futuras = Conta.objects.filter(
+                usuario=usuario,
+                tipo=tipo_antigo,
+                data_prevista__gt=data_antiga,
+                data_prevista__day=dia_antigo,
+                descricao__iexact=descricao_antiga,
+                valor=valor_antigo,
+            ).exclude(id=conta.id)
+            count = contas_futuras.count()
+            if count > 0:
+                contas_futuras.update(
+                    descricao=conta.descricao,
+                    valor=conta.valor,
+                    valor_brl=conta.valor_brl,
+                    taxa_cambio=conta.taxa_cambio,
+                )
+                atualizar_config(usuario)
+                msg_adicional = f" {count} lançamentos futuros também foram atualizados."
+
+        messages.success(request, f"Receita atualizada.{msg_adicional}")
 
         next_url = request.POST.get("next")
         if next_url:
