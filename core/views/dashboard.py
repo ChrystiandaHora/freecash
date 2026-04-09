@@ -97,6 +97,43 @@ def serie_6m_competencia(usuario, tipo, inicio_ref: date, fim_ref: date):
     return labels, values
 
 
+def serie_fluxo_projetado_competencia(usuario, tipo, inicio_ref: date):
+    """
+    Retorna série de 6 meses no formato [-2, -1, 0, 1, 2, 3] relative to inicio_ref.
+    Sempre por COMPETÊNCIA (data_prevista).
+    """
+    inicio_janela = inicio_ref - relativedelta(months=2)
+    fim_janela = inicio_ref + relativedelta(months=4)  # Até o fim do +3
+
+    qs = (
+        Conta.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            data_prevista__gte=inicio_janela,
+            data_prevista__lt=fim_janela,
+        )
+        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
+        .annotate(mes=TruncMonth("data_prevista"))
+        .values("mes")
+        .annotate(total=Sum("valor"))
+        .order_by("mes")
+    )
+
+    def norm_month(v):
+        return v.date().replace(day=1) if hasattr(v, "date") else v
+
+    mapa = {norm_month(row["mes"]): float(row["total"] or 0) for row in qs}
+
+    labels, values = [], []
+    # Loop de -2 até +3
+    for i in range(-2, 4):
+        ref = (inicio_ref + relativedelta(months=i)).replace(day=1)
+        labels.append(ref.strftime("%b/%Y"))
+        values.append(mapa.get(ref, 0.0))
+
+    return labels, values
+
+
 def breakdown_despesas_competencia(
     usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4
 ):
@@ -416,12 +453,12 @@ class DashboardView(View):
             usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim, periodo.ultimo_dia
         )
 
-        # Séries 6 meses por COMPETÊNCIA
-        meses_labels, receitas_6m = serie_6m_competencia(
-            usuario, Conta.TIPO_RECEITA, periodo.inicio, periodo.fim
+        # Séries 6 meses Projetadas (Janela: -2, -1, 0, +1, +2, +3)
+        meses_labels, receitas_6m = serie_fluxo_projetado_competencia(
+            usuario, Conta.TIPO_RECEITA, periodo.inicio
         )
-        _, despesas_6m = serie_6m_competencia(
-            usuario, Conta.TIPO_DESPESA, periodo.inicio, periodo.fim
+        _, despesas_6m = serie_fluxo_projetado_competencia(
+            usuario, Conta.TIPO_DESPESA, periodo.inicio
         )
         saldos_6m = [r - d for r, d in zip(receitas_6m, despesas_6m)]
 

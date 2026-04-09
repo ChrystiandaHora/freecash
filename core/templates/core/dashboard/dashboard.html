@@ -209,8 +209,8 @@
     <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo de Caixa</h2>
-          <p class="text-xs text-gray-500 dark:text-slate-400">Últimos 6 meses</p>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Fluxo Projetado</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400">6 meses (-2 a +3)</p>
         </div>
         <div class="flex items-center gap-4 text-xs">
           <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500"></span> Receitas</span>
@@ -395,23 +395,22 @@
       { name: 'Saldo', data: saldos6m }
     ],
     chart: {
-      type: 'bar',
+      type: 'line',
       height: 280,
       toolbar: { show: false },
       fontFamily: 'Inter, sans-serif',
       background: 'transparent'
     },
     colors: ['#10b981', '#ef4444', '#60a5fa'],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '70%',
-        borderRadius: 4,
-        borderRadiusApplication: 'end'
-      }
+    stroke: {
+      curve: 'smooth',
+      width: [3, 3, 4]
     },
-    dataLabels: { enabled: false },
-    stroke: { show: true, width: 2, colors: ['transparent'] },
+    markers: {
+      size: 4,
+      strokeWidth: 2,
+      hover: { size: 6 }
+    },
     xaxis: {
       categories: mesesLabels,
       labels: { style: { colors: textColor, fontSize: '11px' } },
