@@ -24,6 +24,7 @@ class ContaForm(forms.ModelForm):
         required=False, widget=forms.DateInput(attrs={"type": "date"})
     )
     pago = forms.BooleanField(required=False)
+    atualizar_futuros = forms.BooleanField(required=False, initial=False)
 
     class Meta:
         model = Conta

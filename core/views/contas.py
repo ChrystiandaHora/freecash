@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 
 from core.models import Conta, Categoria, FormaPagamento, CategoriaCartao
+from core.signals import atualizar_config
 from core.services.cotacao_service import converter_para_brl
 from core.services.conta_service import (
     criar_contas_multiplicadas,
@@ -441,6 +442,11 @@ class ContaUpdateView(View):
         usuario = request.user
         conta = get_object_or_404(Conta, id=conta_id, usuario=usuario)
 
+        # Captura os dados originais antes da edição
+        descricao_antiga = conta.descricao
+        valor_antigo = conta.valor
+        dia_antigo = conta.data_prevista.day
+
         form = ContaForm(request.POST, instance=conta, usuario=usuario, tipo=conta.tipo)
 
         if not form.is_valid():
@@ -481,7 +487,30 @@ class ContaUpdateView(View):
                 categoria_cartao=conta.categoria_cartao,
             )
 
-        messages.success(request, "Conta atualizada com sucesso.")
+        # 4) ATUALIZAR FUTUROS SEMELHANTES
+        atualizar_futuros = cd.get("atualizar_futuros")
+        msg_adicional = ""
+        if atualizar_futuros:
+            contas_futuras = Conta.objects.filter(
+                usuario=usuario,
+                tipo=conta.tipo,
+                data_prevista__gt=conta.data_prevista,
+                data_prevista__day=dia_antigo,
+                descricao__iexact=descricao_antiga,
+                valor=valor_antigo,
+            )
+            count = contas_futuras.count()
+            if count > 0:
+                contas_futuras.update(
+                    descricao=conta.descricao,
+                    valor=conta.valor,
+                    valor_brl=conta.valor_brl,
+                    taxa_cambio=conta.taxa_cambio,
+                )
+                atualizar_config(usuario)
+                msg_adicional = f" {count} lançamentos futuros também foram atualizados."
+
+        messages.success(request, f"Conta atualizada com sucesso.{msg_adicional}")
 
         next_url = request.POST.get("next")
         if next_url:
