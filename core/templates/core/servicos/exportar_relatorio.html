@@ -81,6 +81,58 @@
           </div>
         </div>
 
+        <!-- Scope Selection -->
+        <div class="space-y-3">
+            <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-gray-400 dark:text-gray-500"></i>
+              Escopo do Relatório
+            </label>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <!-- Geral -->
+              <label class="relative cursor-pointer group">
+                <input type="radio" name="escopo" value="geral" class="peer sr-only" />
+                <div class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-slate-500">
+                  <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-600 text-gray-500 dark:text-slate-400 peer-checked:bg-emerald-100 dark:peer-checked:bg-emerald-900/30 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 transition-colors">
+                    <i class="fa-solid fa-wallet text-xl"></i>
+                  </div>
+                  <div class="text-center">
+                    <p class="font-bold text-gray-900 dark:text-white">Geral</p>
+                    <p class="text-[10px] text-gray-500 dark:text-slate-400">Contas e Movimentações</p>
+                  </div>
+                </div>
+              </label>
+  
+              <!-- Investimentos -->
+              <label class="relative cursor-pointer group">
+                <input type="radio" name="escopo" value="investimentos" class="peer sr-only" />
+                <div class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-slate-500">
+                  <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-600 text-gray-500 dark:text-slate-400 peer-checked:bg-emerald-100 dark:peer-checked:bg-emerald-900/30 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 transition-colors">
+                    <i class="fa-solid fa-chart-line text-xl"></i>
+                  </div>
+                  <div class="text-center">
+                    <p class="font-bold text-gray-900 dark:text-white">Investimentos</p>
+                    <p class="text-[10px] text-gray-500 dark:text-slate-400">Carteira e Proventos</p>
+                  </div>
+                </div>
+              </label>
+
+              <!-- Completo -->
+              <label class="relative cursor-pointer group">
+                <input type="radio" name="escopo" value="completo" checked class="peer sr-only" />
+                <div class="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-slate-500">
+                  <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-600 text-gray-500 dark:text-slate-400 peer-checked:bg-emerald-100 dark:peer-checked:bg-emerald-900/30 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 transition-colors">
+                    <i class="fa-solid fa-star text-xl"></i>
+                  </div>
+                  <div class="text-center">
+                    <p class="font-bold text-gray-900 dark:text-white">Completo</p>
+                    <p class="text-[10px] text-gray-500 dark:text-slate-400">Relatório Consolidado</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
         <!-- Format Selection -->
         <div class="space-y-3">
           <label class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
@@ -124,11 +176,11 @@
           <div class="flex items-start gap-3">
             <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
             <div>
-              <p class="font-semibold text-blue-900 dark:text-blue-200 text-sm">O que será exportado?</p>
+              <p class="font-semibold text-blue-900 dark:text-blue-200 text-sm">Novidades no Relatório v2</p>
               <ul class="text-xs text-blue-800 dark:text-blue-300 mt-1 space-y-1">
-                <li>• Receitas e despesas do período</li>
-                <li>• Faturas de cartão consolidadas</li>
-                <li>• Resumo com totais e saldo</li>
+                <li>• <b>Gráficos:</b> Alocação de ativos no PDF</li>
+                <li>• <b>Proventos:</b> Resumo de dividendos e JCP por ativo</li>
+                <li>• <b>Comparativo:</b> Evolução mensal de receitas vs despesas</li>
               </ul>
             </div>
           </div>
