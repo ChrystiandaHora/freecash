@@ -8,6 +8,8 @@
   {{ allocation_values|json_script:"allocationValues" }}
   {{ category_labels|json_script:"categoryLabels" }}
   {{ category_values|json_script:"categoryValues" }}
+  {{ performance_monthly|json_script:"performanceMonthly" }}
+  {{ performance_yearly|json_script:"performanceYearly" }}
 
   <div class="max-w-8xl mx-auto space-y-6 px-4 py-6 sm:px-6 lg:px-8">
     <!-- Header -->
@@ -30,6 +32,12 @@
           class="inline-flex items-center justify-center rounded-xl bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
         >
           <i class="fa-solid fa-sync mr-2"></i> Atualizar Cotações
+        </a>
+        <a
+          href="{% url 'investimento:atualizar_historico_carteira' %}"
+          class="inline-flex items-center justify-center rounded-xl bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+        >
+          <i class="fa-solid fa-clock-rotate-left mr-2"></i> Atualizar Histórico
         </a>
         <a
           href="{% url 'investimento:ativo_listar' %}"
@@ -121,6 +129,76 @@
           <p class="mt-2 text-xs text-emerald-200/80">Valor atual de mercado</p>
         </div>
       </div>
+    </div>
+
+    <!-- Performance Chart -->
+    <div
+      class="overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+    >
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            <i class="fa-solid fa-chart-line mr-2 text-emerald-500"></i>Evolução da Carteira
+          </h2>
+          <p class="text-xs font-medium text-gray-600 dark:text-slate-300">
+            Performance por mês/ano (snapshots)
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="js-performance-mode rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+            data-mode="monthly"
+          >
+            Meses
+          </button>
+          <button
+            type="button"
+            class="js-performance-mode rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+            data-mode="yearly"
+          >
+            Anos
+          </button>
+          <button
+            type="button"
+            class="js-performance-range rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+            data-range="12"
+          >
+            12p
+          </button>
+          <button
+            type="button"
+            class="js-performance-range rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+            data-range="36"
+          >
+            36p
+          </button>
+          <button
+            type="button"
+            class="js-performance-range rounded-lg border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700/50"
+            data-range="all"
+          >
+            Tudo
+          </button>
+        </div>
+      </div>
+
+      {% if performance_monthly %}
+        <div id="chartPerformance" style="height: 280px;"></div>
+      {% else %}
+        <div
+          class="flex h-64 flex-col items-center justify-center text-gray-400 dark:text-slate-500"
+        >
+          <i class="fa-solid fa-chart-line mb-3 text-4xl opacity-30"></i>
+          <p class="text-sm">Nenhum histórico gerado ainda</p>
+          <a
+            href="{% url 'investimento:atualizar_historico_carteira' %}"
+            class="mt-3 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-700"
+          >
+            <i class="fa-solid fa-clock-rotate-left mr-2"></i>Gerar histórico
+          </a>
+        </div>
+      {% endif %}
     </div>
 
     <!-- Charts & Details Grid -->

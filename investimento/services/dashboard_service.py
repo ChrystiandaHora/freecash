@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.db.models import OuterRef, Subquery, Sum
 
 from investimento.models import Ativo, Transacao, Cotacao
+from investimento.services.carteira_historico_service import CarteiraHistoricoService
 
 
 class DashboardInvestimentoService:
@@ -152,6 +153,10 @@ class DashboardInvestimentoService:
         if total_compras > 0:
             total_rentabilidade_percentual = (total_rentabilidade / total_compras) * 100
 
+        historico_service = CarteiraHistoricoService(self.user)
+        performance_monthly = historico_service.series_mensal(meses=36)
+        performance_yearly = historico_service.series_anual(anos=10)
+
         return {
             "ativos": ativos,
             "ativos_page": ativos_page,
@@ -170,4 +175,6 @@ class DashboardInvestimentoService:
             "top_rentabilidade": top_rentabilidade,
             "ultima_transacao": ultima_transacao,
             "proximos_vencimentos": proximos_vencimentos,
+            "performance_monthly": performance_monthly,
+            "performance_yearly": performance_yearly,
         }

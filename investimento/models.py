@@ -237,3 +237,34 @@ class Transacao(AuditoriaModel):
 
     def __str__(self):
         return f"{self.get_tipo_display()} {self.ativo.ticker} - {self.data}"
+
+
+class CarteiraHistorico(AuditoriaModel):
+    """
+    Snapshot diário da carteira (por usuário) para permitir gráficos de evolução
+    por mês/ano sem recomputar tudo a cada acesso.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="carteira_historico",
+    )
+    data = models.DateField()
+
+    patrimonio = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    total_compras = models.DecimalField(max_digits=19, decimal_places=2, default=0)
+    total_vendas = models.DecimalField(max_digits=19, decimal_places=2, default=0)
+    total_dividendos = models.DecimalField(max_digits=19, decimal_places=2, default=0)
+
+    rentabilidade = models.DecimalField(max_digits=19, decimal_places=2, default=0)
+    rentabilidade_percentual = models.DecimalField(
+        max_digits=19, decimal_places=6, default=0
+    )
+
+    class Meta:
+        ordering = ["-data", "-criada_em"]
+        unique_together = ("usuario", "data")
+
+    def __str__(self):
+        return f"{self.usuario_id} - {self.data} - {self.patrimonio}"

@@ -4,6 +4,7 @@ from django.contrib import messages
 from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
 from .calculators import atualizar_cotacoes
 from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
+from investimento.services.carteira_historico_service import CarteiraHistoricoService
 
 
 # ==========================
@@ -190,6 +191,28 @@ def atualizar_cotacoes_view(request):
         )
 
     # Redireciona de volta para onde veio ou dashboard
+    next_url = request.META.get("HTTP_REFERER", "investimento:dashboard")
+    return redirect(next_url)
+
+
+@login_required
+def atualizar_historico_carteira_view(request):
+    """
+    Gera/atualiza snapshots diários da carteira para permitir performance por mês/ano.
+    """
+    try:
+        res = CarteiraHistoricoService(request.user).atualizar()
+        if res.start_date is None:
+            messages.info(request, "Nenhuma transação encontrada para gerar histórico.")
+        else:
+            messages.success(
+                request,
+                f"Histórico atualizado: {res.created} criados, {res.updated} atualizados "
+                f"({res.start_date} até {res.end_date}).",
+            )
+    except Exception as e:
+        messages.error(request, f"Erro ao atualizar histórico da carteira: {str(e)}")
+
     next_url = request.META.get("HTTP_REFERER", "investimento:dashboard")
     return redirect(next_url)
 

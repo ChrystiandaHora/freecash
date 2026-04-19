@@ -30,4 +30,9 @@ urlpatterns = [
     path(
         "cotacoes/atualizar/", views.atualizar_cotacoes_view, name="atualizar_cotacoes"
     ),
+    path(
+        "historico/atualizar/",
+        views.atualizar_historico_carteira_view,
+        name="atualizar_historico_carteira",
+    ),
 ]
