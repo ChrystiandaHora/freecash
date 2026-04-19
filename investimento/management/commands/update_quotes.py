@@ -3,7 +3,7 @@ from investimento.services import atualizar_cotacoes
 
 
 class Command(BaseCommand):
-    help = "Atualiza cotações de ativos via Yahoo Finance"
+    help = "Atualiza cotações de ativos via TradingView Screener"
 
     def handle(self, *args, **options):
         self.stdout.write("Iniciando atualização de cotações...")

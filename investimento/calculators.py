@@ -1,7 +1,10 @@
 from decimal import Decimal
 from django.db.models import Sum, F
-import yfinance as yf
 from investimento.models import Ativo, Transacao, Cotacao
+from investimento.services.tradingview_screener import (
+    fetch_quotes_brazil,
+    _normalize_to_tradingview_symbol,
+)
 
 
 def recalcular_ativo(ativo: Ativo):
@@ -62,53 +65,29 @@ def atualizar_cotacoes():
     """
     ativos = Ativo.objects.filter(ativo=True).exclude(ticker="")
 
-    # Mapeia sufixo .SA para ações brasileiras se necessário,
-    # ou assume que o usuário já cadastrou com .SA ou o ticker correto do Yahoo Finance.
-    # Vamos tentar inferir .SA se não tiver ponto e for tipicamente BR (opcional, mas ajuda na UX).
-    # Por enquanto, vamos assumir que o ticker segue o padrão do Yahoo ou o usuário deve corrigir.
-
     count = 0
     errors = []
 
+    # Busca em lote no TradingView para evitar N requisições.
+    try:
+        tickers = [a.ticker for a in ativos if a.ticker]
+        quotes_by_symbol = fetch_quotes_brazil(tickers)
+    except Exception as e:
+        return 0, [f"Erro ao buscar cotações no TradingView: {str(e)}"]
+
     for ativo in ativos:
-        ticker_symbol = ativo.ticker
-        if not ticker_symbol:
-            continue
-
-        # Tentativa simples de ajuste para BR se falhar?
-        # O melhor é o usuário cadastrar certo (ex: PETR4.SA).
-        # Mas vamos adicionar um fallback se o ticker puro não for encontrado e não tem ponto.
-
         try:
-            # Pega dados do dia
-            ticker_data = yf.Ticker(ticker_symbol)
-            # history(period="1d") retorna dataframe
-            hist = ticker_data.history(period="1d")
+            symbol = _normalize_to_tradingview_symbol(ativo.ticker)
+            quote = quotes_by_symbol.get(symbol)
+            if not quote:
+                errors.append(f"Ativo {ativo.ticker}: Não encontrado no TradingView")
+                continue
 
-            if hist.empty:
-                # Tenta adicionar .SA se não tiver
-                if "." not in ticker_symbol:
-                    ticker_symbol_sa = f"{ticker_symbol}.SA"
-                    ticker_data = yf.Ticker(ticker_symbol_sa)
-                    hist = ticker_data.history(period="1d")
-
-            if not hist.empty:
-                # Pega o último fechamento ou preço atual
-                # 'Close' é o fechamento. Em mercado aberto, pode ser o preço atual (varia).
-                # Yahoo finance geralmente dá o dado mais recente em 'Close' no history().
-                valor_atual = hist["Close"].iloc[-1]
-                data_cotacao = hist.index[-1].date()  # Data do dado
-
-                # Salva cotação
-                # Verifica se já existe cotacao para essa data e ativo
-                Cotacao.objects.update_or_create(
-                    ativo=ativo, data=data_cotacao, defaults={"valor": valor_atual}
-                )
-                count += 1
-            else:
-                errors.append(f"Ativo {ativo.ticker}: Dados não encontrados")
-
+            Cotacao.objects.update_or_create(
+                ativo=ativo, data=quote.as_of, defaults={"valor": quote.close}
+            )
+            count += 1
         except Exception as e:
-            errors.append(f"Ativo {ativo.ticker}: Erro ao buscar cotação ({str(e)})")
+            errors.append(f"Ativo {ativo.ticker}: Erro ao salvar cotação ({str(e)})")
 
     return count, errors
