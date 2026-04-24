@@ -1,262 +1,215 @@
 {% load static %}
-<aside class="w-72 bg-slate-950 text-slate-300 flex flex-col shadow-2xl z-20 transition-all duration-300 border-r border-slate-800/50">
+<aside 
+  x-data="{ 
+    openGroup: null,
+    toggleGroup(group) {
+      this.openGroup = (this.openGroup === group) ? null : group;
+    },
+    init() {
+      const path = window.location.pathname;
+      if (path.includes('investimento')) this.openGroup = 'investimentos';
+      else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes')) this.openGroup = 'financeiro';
+      else if (path.includes('importar') || path.includes('conciliacao') || path.includes('exportar')) {
+        if (path.includes('relatorio')) this.openGroup = 'geral';
+        else this.openGroup = 'ferramentas';
+      }
+      else if (path.includes('pagamento')) this.openGroup = 'ajustes';
+      else if (path === '/' || path.includes('dashboard')) this.openGroup = 'geral';
+    }
+  }"
+  class="w-72 bg-slate-950 text-slate-300 flex flex-col shadow-2xl z-20 transition-all duration-300 border-r border-slate-800/50"
+>
   <!-- Logo Header -->
-  <div class="px-8 py-8 mb-6">
-    <div class="flex items-center gap-4 group">
+  <div class="px-8 py-8 mb-4">
+    <div class="flex items-center gap-4 group cursor-pointer" @click="window.location.href='/'">
       <div class="relative">
         <div class="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-        <img
-          src="{% static 'freecash/Icon.png' %}"
-          alt="FreeCash"
-          class="w-12 h-12 relative z-10 drop-shadow-lg transition-transform duration-300 group-hover:scale-110"
-        />
+        <img src="{% static 'freecash/Icon.png' %}" alt="FreeCash" class="w-11 h-11 relative z-10 drop-shadow-lg transition-transform duration-300 group-hover:scale-110" />
       </div>
       <div>
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-          FreeCash
-        </h1>
-        <p class="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mt-0.5">Financeiro</p>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">FreeCash</h1>
+        <p class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mt-0.5">Gestão Financeira</p>
       </div>
     </div>
   </div>
 
   <!-- Navigation -->
-  <nav class="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-    <!-- Item: Dashboard -->
-    {% url 'dashboard' as url_dashboard %}
-    <a
-      href="{{ url_dashboard }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_dashboard %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-chart-line text-[18px] transition-transform duration-300 {% if request.path == url_dashboard %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Dashboard</span>
-      {% if request.path == url_dashboard %}
-      <div class="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg shadow-white/50 animate-pulse"></div>
-      {% endif %}
-    </a>
+  <nav class="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+    
+    <!-- GRUPO: GERAL -->
+    <div class="space-y-1">
+      <button @click="toggleGroup('geral')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-widest text-slate-600 font-bold hover:text-slate-400 transition-colors">
+        <span>Geral</span>
+        <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="openGroup === 'geral' ? 'rotate-0' : '-rotate-90'"></i>
+      </button>
+      
+      <div x-show="openGroup === 'geral'" x-collapse>
+        {% url 'dashboard' as url_dash %}
+        <a href="{{ url_dash }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_dash %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border border-emerald-500/20{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-chart-line text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Dashboard</span>
+        </a>
 
-    <!-- Divider -->
-    <div class="px-4 py-3">
-      <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Gestão</p>
+        {% url 'exportar_relatorio' as url_rel %}
+        <a href="{{ url_rel }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_rel %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border border-emerald-500/20{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-file-export text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Relatórios</span>
+        </a>
+      </div>
     </div>
 
-    <!-- Item: Contas -->
-    {% url 'contas_pagar' as url_contas %}
-    <a
-      href="{{ url_contas }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_contas %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-regular fa-file-lines text-[18px] transition-transform duration-300 {% if request.path == url_contas %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Contas a Pagar</span>
-    </a>
-
-    <!-- Item: Kanban -->
-    {% url 'contas_kanban' as url_kanban %}
-    <a
-      href="{{ url_kanban }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_kanban %}bg-gradient-to-r from-indigo-600/90 to-purple-600/90 text-white shadow-lg shadow-indigo-900/20 border-indigo-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-columns text-[18px] transition-transform duration-300 {% if request.path == url_kanban %}scale-110{% else %}group-hover:scale-110 group-hover:text-indigo-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Pipeline (Kanban)</span>
-    </a>
-
-    <!-- Item: Cartões -->
-    {% url 'cartoes' as url_cartoes %}
-    <a
-      href="{{ url_cartoes }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'cartoes' in request.path %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-credit-card text-[18px] transition-transform duration-300 {% if 'cartoes' in request.path %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Cartões</span>
-    </a>
-
-    <!-- Item: Receitas -->
-    {% url 'receitas' as url_receitas %}
-    <a
-      href="{{ url_receitas }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_receitas %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-coins text-[18px] transition-transform duration-300 {% if request.path == url_receitas %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Receitas</span>
-    </a>
-
-    <!-- Item: Transações -->
-    {% url 'transacoes' as url_transacoes %}
-    <a
-      href="{{ url_transacoes }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_transacoes %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-list-ul text-[18px] transition-transform duration-300 {% if request.path == url_transacoes %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Transações</span>
-    </a>
-
-
-
-    <!-- Divider -->
-    <div class="px-4 py-3">
-      <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Investimentos</p>
-    </div>
-
-    <!-- Investimentos Dropdown -->
-    <div x-data="{ open: {% if 'investimento' in request.resolver_match.app_names or 'investimento' in request.path %}true{% else %}false{% endif %} }" class="relative">
-      <button
-        @click="open = !open"
-        class="w-full group flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'investimento' in request.resolver_match.app_names or 'investimento' in request.path %}bg-slate-800/80 text-white border-slate-700{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-      >
-        <div class="flex items-center gap-3">
-          <div class="w-6 flex justify-center">
-            <i class="fa-solid fa-chart-pie text-[18px] transition-transform duration-300 {% if 'investimento' in request.resolver_match.app_names %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %}"></i>
-          </div>
-          <span class="font-medium text-sm tracking-wide">Investimentos</span>
-        </div>
-        <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform duration-300" :class="{ 'rotate-180': open }"></i>
+    <!-- GRUPO: FINANCEIRO -->
+    <div class="space-y-1">
+      <button @click="toggleGroup('financeiro')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-widest text-slate-600 font-bold hover:text-slate-400 transition-colors">
+        <span>Financeiro</span>
+        <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="openGroup === 'financeiro' ? 'rotate-0' : '-rotate-90'"></i>
       </button>
 
-      <!-- Submenu -->
-      <div
-        x-show="open"
-        x-collapse
-        class="mt-1 space-y-1 px-2"
-        x-cloak
-      >
+      <div x-show="openGroup === 'financeiro'" x-collapse>
+        {% url 'contas_pagar' as url_contas %}
+        <a href="{{ url_contas }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_contas %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-regular fa-file-lines text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Contas a Pagar</span>
+        </a>
+
+        {% url 'contas_kanban' as url_kanban %}
+        <a href="{{ url_kanban }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_kanban %}bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-columns text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Pipeline Kanban</span>
+        </a>
+
+        {% url 'cartoes' as url_cartoes %}
+        <a href="{{ url_cartoes }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if 'cartoes' in request.path %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-credit-card text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Meus Cartões</span>
+        </a>
+
+        {% url 'receitas' as url_receitas %}
+        <a href="{{ url_receitas }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_receitas %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-coins text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Receitas</span>
+        </a>
+
+        {% url 'transacoes' as url_transacoes %}
+        <a href="{{ url_transacoes }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_transacoes %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-list-ul text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Transações</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- GRUPO: INVESTIMENTOS -->
+    <div class="space-y-1">
+      <button @click="toggleGroup('investimentos')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-widest text-slate-600 font-bold hover:text-slate-400 transition-colors">
+        <span>Investimentos</span>
+        <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="openGroup === 'investimentos' ? 'rotate-0' : '-rotate-90'"></i>
+      </button>
+
+      <div x-show="openGroup === 'investimentos'" x-collapse>
         {% url 'investimento:dashboard' as url_inv_dash %}
-        <a href="{{ url_inv_dash }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_dash %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
-          <span class="truncate">Dashboard</span>
+        <a href="{{ url_inv_dash }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_inv_dash %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-gauge-high text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Dashboard</span>
         </a>
 
         {% url 'investimento:ativo_listar' as url_inv_ativos %}
-        <a href="{{ url_inv_ativos }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_ativos %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
-          <span class="truncate">Meus Ativos</span>
+        <a href="{{ url_inv_ativos }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_inv_ativos %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-gem text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Meus Ativos</span>
         </a>
 
         {% url 'investimento:balanceamento_ativos' as url_inv_bal %}
-        <a href="{{ url_inv_bal }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_bal %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
-          <span class="truncate">Balanceamento</span>
+        <a href="{{ url_inv_bal }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_inv_bal %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-scale-balanced text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Balanceamento</span>
         </a>
 
         {% url 'investimento:transacao_listar' as url_inv_trans %}
-        <a href="{{ url_inv_trans }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_trans %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
-          <span class="truncate">Histórico</span>
+        <a href="{{ url_inv_trans }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_inv_trans %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-clock-rotate-left text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Histórico</span>
         </a>
 
         {% url 'investimento:classe_listar' as url_inv_classes %}
-        <a href="{{ url_inv_classes }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_classes %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
-          <span class="truncate">Classes</span>
+        <a href="{{ url_inv_classes }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_inv_classes %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-layer-group text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Classes</span>
         </a>
       </div>
     </div>
 
-    <!-- Divider -->
-    <div class="px-4 py-3">
-      <p class="text-[10px] uppercase tracking-widest text-slate-600 font-bold">Configurações</p>
+    <!-- GRUPO: FERRAMENTAS -->
+    <div class="space-y-1">
+      <button @click="toggleGroup('ferramentas')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-widest text-slate-600 font-bold hover:text-slate-400 transition-colors">
+        <span>Ferramentas</span>
+        <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="openGroup === 'ferramentas' ? 'rotate-0' : '-rotate-90'"></i>
+      </button>
+
+      <div x-show="openGroup === 'ferramentas'" x-collapse>
+        {% url 'importar' as url_importar %}
+        <a href="{{ url_importar }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_importar %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-cloud-arrow-up text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Importar</span>
+        </a>
+
+        {% url 'conciliacao' as url_conciliacao %}
+        <a href="{{ url_conciliacao }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if 'conciliacao' in request.path %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-file-circle-check text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Conciliação</span>
+        </a>
+
+        {% url 'exportar' as url_exportar %}
+        <a href="{{ url_exportar }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_exportar %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-download text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Backup</span>
+        </a>
+      </div>
     </div>
 
-    <!-- Item: Importar -->
-    {% url 'importar' as url_importar %}
-    <a
-      href="{{ url_importar }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_importar %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-cloud-arrow-up text-[18px] transition-transform duration-300 {% if request.path == url_importar %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Importar Dados</span>
-    </a>
+    <!-- GRUPO: AJUSTES -->
+    <div class="space-y-1">
+      <button @click="toggleGroup('ajustes')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-widest text-slate-600 font-bold hover:text-slate-400 transition-colors">
+        <span>Ajustes</span>
+        <i class="fa-solid fa-chevron-down transition-transform duration-300" :class="openGroup === 'ajustes' ? 'rotate-0' : '-rotate-90'"></i>
+      </button>
 
-    <!-- Item: Conciliação -->
-    {% url 'conciliacao' as url_conciliacao %}
-    <a
-      href="{{ url_conciliacao }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if 'conciliacao' in request.path %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-file-pdf text-[18px] transition-transform duration-300 {% if 'conciliacao' in request.path %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
+      <div x-show="openGroup === 'ajustes'" x-collapse>
+        {% url 'formas_pagamento' as url_pgto %}
+        <a href="{{ url_pgto }}" class="group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all {% if request.path == url_pgto %}bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 font-semibold{% else %}text-slate-400 hover:bg-slate-800/50 hover:text-white{% endif %}">
+          <i class="fa-solid fa-credit-card text-[16px] w-5 text-center"></i>
+          <span class="text-sm font-medium">Pagamentos</span>
+        </a>
       </div>
-      <span class="font-medium text-sm tracking-wide">Conciliação</span>
-    </a>
-
-    <!-- Item: Exportar -->
-    {% url 'exportar' as url_exportar %}
-    <a
-      href="{{ url_exportar }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_exportar %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-download text-[18px] transition-transform duration-300 {% if request.path == url_exportar %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Backup</span>
-    </a>
-
-    <!-- Item: Relatórios -->
-    {% url 'exportar_relatorio' as url_relatorio %}
-    <a
-      href="{{ url_relatorio }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_relatorio %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-file-export text-[18px] transition-transform duration-300 {% if request.path == url_relatorio %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Relatórios</span>
-    </a>
-
-    <!-- Item: Pagamentos -->
-    {% url 'formas_pagamento' as url_pgto %}
-    <a
-      href="{{ url_pgto }}"
-      class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border border-transparent {% if request.path == url_pgto %}bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-lg shadow-emerald-900/20 border-emerald-500/20{% else %}hover:bg-slate-800/50 hover:text-white hover:border-slate-700/50{% endif %}"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-regular fa-credit-card text-[18px] transition-transform duration-300 {% if request.path == url_pgto %}scale-110{% else %}group-hover:scale-110 group-hover:text-emerald-400{% endif %}"></i>
-      </div>
-      <span class="font-medium text-sm tracking-wide">Pagamentos</span>
-    </a>
+    </div>
   </nav>
 
-  <!-- Footer Actions -->
-  <div class="p-4 bg-slate-900/50 border-t border-slate-800/50 backdrop-blur-sm">
-    <!-- Theme Toggle -->
-    <button
-      id="theme-toggle"
-      class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-all duration-200 border border-slate-700 group"
-    >
-      <div class="w-6 flex justify-center">
-        <i id="theme-icon-light" class="fa-regular fa-sun hidden group-hover:rotate-45 transition-transform duration-300"></i>
-        <i id="theme-icon-dark" class="fa-regular fa-moon hidden group-hover:-rotate-12 transition-transform duration-300"></i>
+  <!-- Footer Section -->
+  <div class="p-4 bg-slate-900/40 border-t border-slate-800/50">
+    
+    <!-- User Profile Card -->
+    <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/50 border border-slate-800/50 mb-3 group hover:border-slate-700/50 transition-all">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-900/20">
+        {{ request.user.username|slice:":1"|upper }}
       </div>
-      <span class="text-sm font-medium flex-1 text-left">Tema <span id="theme-label" class="text-xs opacity-50 ml-1"></span></span>
-    </button>
-
-    <!-- Logout -->
-    <a
-      href="{% url 'logout' %}"
-      class="mt-3 flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200 border border-transparent hover:border-red-500/20"
-    >
-      <div class="w-6 flex justify-center">
-        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold text-slate-200 truncate">{{ request.user.username }}</p>
+        <p class="text-[10px] text-slate-500 truncate uppercase tracking-tighter">Membro Premium</p>
       </div>
-      <span class="text-sm font-medium">Sair</span>
-    </a>
-
-    <!-- Last Update (Tiny) -->
-    <div class="mt-4 text-center">
-      <p class="text-[10px] text-slate-600 uppercase tracking-wider font-semibold">Atualizado</p>
-      <p class="text-[10px] text-slate-500 font-mono mt-0.5">
-        {% if request.user.config.atualizada_em %}
-        {{ request.user.config.atualizada_em|date:"d/m H:i" }}
-        {% else %}--/-- --:--{% endif %}
-      </p>
+      <a href="{% url 'logout' %}" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all" title="Sair">
+        <i class="fa-solid fa-power-off text-sm"></i>
+      </a>
     </div>
+
+    <!-- Theme Toggle (Compact & Modern) -->
+    <button id="theme-toggle" class="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-800/40 border border-slate-700/40 text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all group">
+      <div class="flex items-center gap-3">
+        <div class="w-5 flex justify-center">
+          <i id="theme-icon-light" class="fa-regular fa-sun text-sm hidden"></i>
+          <i id="theme-icon-dark" class="fa-regular fa-moon text-sm hidden"></i>
+        </div>
+        <span class="text-xs font-semibold">Tema <span id="theme-label" class="opacity-50 ml-1"></span></span>
+      </div>
+      <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+    </button>
   </div>
 </aside>
