@@ -248,21 +248,32 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date, escopo: str = "compl
     if escopo in ["investimentos", "completo"]:
         investimentos = get_investimentos(usuario, data_inicio, data_fim)
         ws_inv = wb.create_sheet("Carteira")
-        invest_headers = ["Ticker", "Nome", "Classe", "Categoria", "Quantidade", "P. Médio", "Investido", "Mercado", "Lucro/Prej."]
+        invest_headers = ["Ticker", "Nome", "Classe", "Categoria", "Quantidade", "P. Médio", "Investido", "Mercado", "Meta (%)", "Valor Ideal", "Sugestão", "Lucro/Prej."]
         for col, h in enumerate(invest_headers, 1):
             cell = ws_inv.cell(row=1, column=col, value=h)
             cell.font = header_font; cell.fill = header_fill_blue; cell.border = thin_border
 
+        total_portfolio = sum(a.valor_total_atual for a in investimentos)
+
         for row_num, ativo in enumerate(investimentos, 2):
-            val_inv = ativo.valor_investido; val_mer = ativo.valor_total_atual
-            data = [ativo.ticker, ativo.nome or "", 
-                    ativo.subcategoria.categoria.classe.nome if ativo.subcategoria else "",
-                    ativo.subcategoria.categoria.nome if ativo.subcategoria else "",
-                    float(ativo.quantidade), float(ativo.preco_medio), float(val_inv), float(val_mer), float(val_mer - val_inv)]
+            val_inv = ativo.valor_investido
+            val_mer = ativo.valor_total_atual
+            meta = ativo.meta_porcentagem
+            val_ideal = (meta / 100) * total_portfolio if total_portfolio > 0 else 0
+            sugestao = val_ideal - val_mer
+            
+            data = [
+                ativo.ticker, ativo.nome or "", 
+                ativo.subcategoria.categoria.classe.nome if ativo.subcategoria else "",
+                ativo.subcategoria.categoria.nome if ativo.subcategoria else "",
+                float(ativo.quantidade), float(ativo.preco_medio), float(val_inv), 
+                float(val_mer), float(meta), float(val_ideal), float(sugestao), float(val_mer - val_inv)
+            ]
             for col, val in enumerate(data, 1):
                 cell = ws_inv.cell(row=row_num, column=col, value=val)
                 cell.border = thin_border
                 if col >= 5: cell.number_format = "#,##0.00"
+                if col == 9: cell.number_format = "0.00\"%\""
 
         # Aba de Proventos
         proventos = get_proventos_data(usuario, data_inicio, data_fim)
@@ -455,36 +466,6 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
         elements.append(comp_table)
         elements.append(Spacer(1, 10 * mm))
 
-    col_widths = [50, 60, 180, 100, 85, 60]
-    table = Table(table_data, colWidths=col_widths)
-
-    table_style = TableStyle(
-        [
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 2 * mm),
-            ("TOPPADDING", (0, 0), (-1, 0), 2 * mm),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#10B981")),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 8),
-            ("ALIGN", (4, 1), (4, -1), "RIGHT"),
-            ("ALIGN", (5, 1), (5, -1), "CENTER"),
-            ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#10B981")),
-            ("LINEBELOW", (0, 1), (-1, -1), 0.1, colors.grey),
-            (
-                "ROWBACKGROUNDS",
-                (0, 1),
-                (-1, -1),
-                [colors.white, colors.HexColor("#e5e5e5")],
-            ),
-            ("FONTNAME", (3, -3), (4, -1), "Helvetica-Bold"),
-            ("ALIGN", (3, -3), (3, -1), "RIGHT"),
-        ]
-    )
-    table.setStyle(table_style)
-    elements.append(table)
-
     # =====================
     # SEÇÃO 2: INVESTIMENTOS
     # =====================
@@ -501,21 +482,32 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
             elements.append(grafico)
             elements.append(Spacer(1, 5 * mm))
 
-        invest_data = [["Ticker", "Classe", "Qtd", "PM", "Mercado", "Lucro/Prej."]]
-        total_mer = Decimal("0.00")
+        invest_data = [["Ticker", "Classe", "Qtd", "PM", "Mercado", "Meta (%)", "Ideal", "Lucro/P"]]
+        total_mer = sum(a.valor_total_atual for a in investimentos)
+
         for ativo in investimentos:
             vm = ativo.valor_total_atual
-            total_mer += vm
+            meta = ativo.meta_porcentagem
+            val_ideal = (meta / 100) * total_mer if total_mer > 0 else 0
             classe = ativo.subcategoria.categoria.classe.nome if ativo.subcategoria else ""
-            invest_data.append([ativo.ticker, classe[:10], f"{ativo.quantidade:,.2f}", f"R$ {ativo.preco_medio:,.2f}", 
-                                f"R$ {vm:,.2f}", f"R$ {vm - ativo.valor_investido:,.2f}"])
+            invest_data.append([
+                ativo.ticker, 
+                classe[:10], 
+                f"{ativo.quantidade:,.2f}", 
+                f"R$ {ativo.preco_medio:,.2f}", 
+                f"R$ {vm:,.2f}", 
+                f"{meta:,.2f}%",
+                f"R$ {val_ideal:,.2f}",
+                f"R$ {vm - ativo.valor_investido:,.2f}"
+            ])
 
-        table_inv = Table(invest_data, colWidths=[60, 80, 80, 100, 100, 100])
+        # Ajuste de larguras: total ~520 pontos para caber no A4
+        table_inv = Table(invest_data, colWidths=[55, 65, 55, 75, 80, 50, 80, 80])
         table_inv.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#3B82F6")),
             ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),  # Fonte levemente menor para caber tudo
         ]))
         elements.append(table_inv)
         elements.append(Spacer(1, 10 * mm))
