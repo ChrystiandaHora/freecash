@@ -299,13 +299,25 @@ def balanceamento_ativos(request):
     else:
         formset = AtivoMetaFormSet(queryset=ativos_qs)
 
-    # Preparar dados para o template
-    ativos_data = []
+    # Preparar dados para o template agrupados por classe
+    ativos_por_classe = {}
     soma_metas = 0
+    
     for i, ativo in enumerate(ativos_qs):
+        classe_obj = ativo.subcategoria.categoria.classe if (ativo.subcategoria and ativo.subcategoria.categoria) else None
+        classe_nome = classe_obj.nome if classe_obj else "Outros"
+        
+        if classe_nome not in ativos_por_classe:
+            ativos_por_classe[classe_nome] = {
+                "nome": classe_nome,
+                "ativos": [],
+                "soma_classe": 0
+            }
+
         valor_atual = ativo.valor_total_atual
         meta = ativo.meta_porcentagem
         soma_metas += meta
+        ativos_por_classe[classe_nome]["soma_classe"] += meta
 
         # Percentual atual real
         perc_atual = (valor_atual / total_patrimonio * 100) if total_patrimonio > 0 else 0
@@ -316,18 +328,23 @@ def balanceamento_ativos(request):
         # Diferença (quanto comprar ou vender)
         diferenca = valor_ideal - valor_atual
 
-        ativos_data.append({
+        ativos_por_classe[classe_nome]["ativos"].append({
+            "index": i,
             "ativo": ativo,
             "form": formset.forms[i],
             "valor_atual": valor_atual,
             "perc_atual": perc_atual,
+            "preco_atual": ativo.cotacao_atual or 0,
+            "rentabilidade": ativo.rentabilidade,
+            "rentabilidade_perc": ativo.rentabilidade_percentual,
             "valor_ideal": valor_ideal,
             "diferenca": diferenca,
         })
 
     context = {
         "formset": formset,
-        "ativos_data": ativos_data,
+        "ativos_por_classe": ativos_por_classe,
+        "primeira_aba": list(ativos_por_classe.keys())[0] if ativos_por_classe else "",
         "total_patrimonio": total_patrimonio,
         "soma_metas": soma_metas,
     }

@@ -6,6 +6,7 @@
 {% block content %}
 <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6" 
      x-data="{
+        tab: '{{ primeira_aba }}',
         aporteSimulado: 0,
         totalPatrimonioAtual: {{ total_patrimonio|stringformat:'.2f' }},
         get novoTotal() {
@@ -14,8 +15,8 @@
         formatMoeda(valor) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
         },
-        formatPercent(valor) {
-            return valor.toFixed(2).replace('.', ',') + '%';
+        formatQtd(valor) {
+            return valor.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         }
      }">
     
@@ -27,7 +28,7 @@
                 Balanceamento de Ativos
             </h1>
             <p class="text-sm text-gray-500 dark:text-slate-300">
-                Defina suas metas e equilibre sua carteira
+                Gestão completa de equilíbrio, rentabilidade e ordens sugeridas
             </p>
         </div>
 
@@ -38,18 +39,16 @@
         </div>
     </div>
 
-    <!-- Info Cards & Simulator -->
+    <!-- Info Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Patrimônio Total -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
             <p class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Patrimônio Total</p>
             <h3 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="formatMoeda(totalPatrimonioAtual)"></h3>
             <p class="text-xs text-emerald-600 mt-2 font-medium">Baseado nas últimas cotações</p>
         </div>
 
-        <!-- Status da Estratégia -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
-            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Soma das Metas</p>
+            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Soma das Metas Geral</p>
             <div class="flex items-center gap-3">
                 <h3 class="text-2xl font-bold" 
                     :class="Math.abs({{ soma_metas }} - 100) < 0.1 ? 'text-emerald-600' : 'text-amber-500'">
@@ -61,10 +60,9 @@
                     </span>
                 </template>
             </div>
-            <p class="text-xs text-gray-500 mt-2">Sua distribuição ideal de risco</p>
+            <p class="text-xs text-gray-500 mt-2">Distribuição total da carteira</p>
         </div>
 
-        <!-- Simulador de Aporte -->
         <div class="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
             <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">Aporte Simulado</p>
             <div class="relative">
@@ -77,78 +75,120 @@
         </div>
     </div>
 
+    <!-- Tabs Menu -->
+    <div class="flex items-center gap-2 border-b border-gray-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
+        {% for classe_nome in ativos_por_classe.keys %}
+        <button @click="tab = '{{ classe_nome }}'"
+                :class="tab === '{{ classe_nome }}' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                class="px-4 py-2 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200">
+            {{ classe_nome }}
+        </button>
+        {% endfor %}
+    </div>
+
     <!-- Tabela de Balanceamento -->
     <form method="post" class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
         {% csrf_token %}
         {{ formset.management_form }}
         
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
+            <table class="w-full text-xs sm:text-sm text-left">
                 <thead class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300">Ativo</th>
-                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Atual (%)</th>
-                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-center w-32">Meta (%)</th>
-                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Valor Ideal</th>
-                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Sugestão</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300">Ativo</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Preço Unit.</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Saldo Atual</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Rentab.</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Atual (%)</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-center w-24">Meta (%)</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Valor Ideal</th>
+                        <th class="px-4 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Sugestão (Cotas)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
-                    {% for item in ativos_data %}
-                    <tr class="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors"
-                        x-data="{ 
-                            meta: {{ item.ativo.meta_porcentagem|stringformat:'.2f' }},
-                            valorAtual: {{ item.valor_atual|stringformat:'.2f' }},
-                            get ideal() {
-                                return (this.meta / 100) * novoTotal;
-                            },
-                            get diff() {
-                                return this.ideal - this.valorAtual;
-                            }
-                        }">
-                        <td class="px-6 py-4">
-                            <div class="flex flex-col">
-                                <span class="font-bold text-gray-900 dark:text-white">{{ item.ativo.ticker }}</span>
-                                <span class="text-xs text-gray-500 dark:text-slate-400">R$ {{ item.valor_atual|floatformat:2|intcomma }}</span>
-                            </div>
-                            <div class="hidden">{{ item.form.id }}</div>
-                        </td>
-                        <td class="px-6 py-4 text-right font-medium text-gray-600 dark:text-slate-300">
-                            {{ item.perc_atual|floatformat:2 }}%
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex justify-center">
-                                <input type="number" name="form-{{ forloop.counter0 }}-meta_porcentagem" 
-                                       step="0.01" min="0" max="100"
-                                       class="w-20 text-center rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
-                                       x-model="meta"
-                                       value="{{ item.ativo.meta_porcentagem|stringformat:'.2f' }}">
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-right tabular-nums font-medium text-gray-700 dark:text-slate-200" 
-                            x-text="formatMoeda(ideal)">
-                        </td>
-                        <td class="px-6 py-4 text-right tabular-nums font-bold">
-                            <template x-if="diff > 0.01">
-                                <span class="text-emerald-600 dark:text-emerald-400">
-                                    <i class="fa-solid fa-cart-shopping mr-1 text-xs"></i> Comprar <span x-text="formatMoeda(diff)"></span>
-                                </span>
-                            </template>
-                            <template x-if="diff < -0.01">
-                                <span class="text-red-500 dark:text-red-400">
-                                    <i class="fa-solid fa-hand-holding-dollar mr-1 text-xs"></i> Vender <span x-text="formatMoeda(Math.abs(diff))"></span>
-                                </span>
-                            </template>
-                            <template x-if="Math.abs(diff) <= 0.01">
-                                <span class="text-gray-400 dark:text-slate-500">
-                                    <i class="fa-solid fa-check mr-1 text-xs"></i> Em Equilíbrio
-                                </span>
-                            </template>
-                        </td>
-                    </tr>
+                    {% for classe_nome, dados in ativos_por_classe.items %}
+                        {% for item in dados.ativos %}
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors"
+                            x-show="tab === '{{ classe_nome }}'"
+                            x-data="{ 
+                                meta: {{ item.ativo.meta_porcentagem|stringformat:'.2f' }},
+                                valorAtual: {{ item.valor_atual|stringformat:'.2f' }},
+                                precoCota: {{ item.preco_atual|stringformat:'.4f' }},
+                                get ideal() {
+                                    return (this.meta / 100) * novoTotal;
+                                },
+                                get diff() {
+                                    return this.ideal - this.valorAtual;
+                                },
+                                get qtd() {
+                                    return this.precoCota > 0 ? Math.abs(this.diff / this.precoCota) : 0;
+                                }
+                            }">
+                            <td class="px-4 py-4">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-gray-900 dark:text-white">{{ item.ativo.ticker }}</span>
+                                    <span class="text-[10px] text-gray-500 dark:text-slate-400">{{ item.ativo.nome|truncatechars:15 }}</span>
+                                </div>
+                                {{ item.form.id }}
+                            </td>
+                            <td class="px-4 py-4 text-right tabular-nums font-medium text-gray-600 dark:text-slate-300">
+                                R$ {{ item.preco_atual|floatformat:2|intcomma }}
+                            </td>
+                            <td class="px-4 py-4 text-right tabular-nums font-semibold text-gray-900 dark:text-white">
+                                R$ {{ item.valor_atual|floatformat:2|intcomma }}
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <div class="flex flex-col items-end">
+                                    <span class="font-bold {% if item.rentabilidade >= 0 %}text-emerald-600{% else %}text-red-500{% endif %}">
+                                        {{ item.rentabilidade_perc|floatformat:2 }}%
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-right font-medium text-gray-600 dark:text-slate-300 tabular-nums">
+                                {{ item.perc_atual|floatformat:1 }}%
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex justify-center">
+                                    <input type="number" name="form-{{ item.index }}-meta_porcentagem" 
+                                           step="0.01" min="0" max="100"
+                                           class="w-16 text-center rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 text-xs"
+                                           x-model="meta"
+                                           value="{{ item.ativo.meta_porcentagem|stringformat:'.2f' }}">
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-right tabular-nums font-medium text-gray-700 dark:text-slate-200" 
+                                x-text="formatMoeda(ideal)">
+                            </td>
+                            <td class="px-4 py-4 text-right tabular-nums font-bold">
+                                <template x-if="diff > 0.01">
+                                    <div class="flex flex-col items-end text-emerald-600 dark:text-emerald-400">
+                                        <span>+ R$ <span x-text="(diff).toFixed(2)"></span></span>
+                                        <span class="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 px-1.5 rounded" x-text="'~ ' + formatQtd(qtd) + ' cotas'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="diff < -0.01">
+                                    <div class="flex flex-col items-end text-red-500 dark:text-red-400">
+                                        <span>- R$ <span x-text="Math.abs(diff).toFixed(2)"></span></span>
+                                        <span class="text-[10px] bg-red-100 dark:bg-red-900/30 px-1.5 rounded" x-text="'~ ' + formatQtd(qtd) + ' cotas'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="Math.abs(diff) <= 0.01">
+                                    <span class="text-gray-400 dark:text-slate-500">
+                                        <i class="fa-solid fa-check text-[10px]"></i> Ok
+                                    </span>
+                                </template>
+                            </td>
+                        </tr>
+                        {% endfor %}
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div class="hidden">
+            {% for form in formset %}
+                {% if not form.instance.id %} {{ form }} {% endif %}
+            {% endfor %}
         </div>
 
         <div class="px-6 py-4 bg-gray-50 dark:bg-slate-700/50 border-t border-gray-100 dark:border-slate-700 flex justify-end">
