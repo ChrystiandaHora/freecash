@@ -141,6 +141,11 @@
           <span class="truncate">Meus Ativos</span>
         </a>
 
+        {% url 'investimento:balanceamento_ativos' as url_inv_bal %}
+        <a href="{{ url_inv_bal }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_bal %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
+          <span class="truncate">Balanceamento</span>
+        </a>
+
         {% url 'investimento:transacao_listar' as url_inv_trans %}
         <a href="{{ url_inv_trans }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors border-l-2 {% if request.path == url_inv_trans %}border-emerald-500 text-white bg-white/5{% else %}border-slate-800 text-slate-400 hover:text-white hover:bg-white/5 hover:border-slate-600{% endif %}">
           <span class="truncate">Histórico</span>

@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
+from django.forms import modelformset_factory
 
 
 class ClasseAtivoForm(forms.ModelForm):
@@ -195,3 +196,25 @@ class TransacaoForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+class AtivoMetaForm(forms.ModelForm):
+    class Meta:
+        model = Ativo
+        fields = ["meta_porcentagem"]
+        widgets = {
+            "meta_porcentagem": forms.NumberInput(
+                attrs={
+                    "class": "form-control text-center meta-input",
+                    "step": "0.01",
+                    "min": "0",
+                    "max": "100",
+                }
+            ),
+        }
+
+
+AtivoMetaFormSet = modelformset_factory(
+    Ativo,
+    form=AtivoMetaForm,
+    extra=0,
+)

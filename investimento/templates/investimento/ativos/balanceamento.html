@@ -1,0 +1,161 @@
+{% extends 'core/layout/base.html' %} 
+{% load humanize %} 
+
+{% block title %} Balanceamento de Ativos | FreeCash {% endblock %} 
+
+{% block content %}
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6" 
+     x-data="{
+        aporteSimulado: 0,
+        totalPatrimonioAtual: {{ total_patrimonio|stringformat:'.2f' }},
+        get novoTotal() {
+            return parseFloat(this.totalPatrimonioAtual) + (parseFloat(this.aporteSimulado) || 0);
+        },
+        formatMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        },
+        formatPercent(valor) {
+            return valor.toFixed(2).replace('.', ',') + '%';
+        }
+     }">
+    
+    <!-- Top bar -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div class="space-y-1">
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">
+                <i class="fa-solid fa-scale-balanced text-emerald-500 mr-2"></i>
+                Balanceamento de Ativos
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-slate-300">
+                Defina suas metas e equilibre sua carteira
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{% url 'investimento:dashboard' %}" class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+                <i class="fa-solid fa-arrow-left mr-2"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Info Cards & Simulator -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Patrimônio Total -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
+            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Patrimônio Total</p>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="formatMoeda(totalPatrimonioAtual)"></h3>
+            <p class="text-xs text-emerald-600 mt-2 font-medium">Baseado nas últimas cotações</p>
+        </div>
+
+        <!-- Status da Estratégia -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
+            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1">Soma das Metas</p>
+            <div class="flex items-center gap-3">
+                <h3 class="text-2xl font-bold" 
+                    :class="Math.abs({{ soma_metas }} - 100) < 0.1 ? 'text-emerald-600' : 'text-amber-500'">
+                    {{ soma_metas|floatformat:2 }}%
+                </h3>
+                <template x-if="Math.abs({{ soma_metas }} - 100) > 0.1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                        Ajuste para 100%
+                    </span>
+                </template>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Sua distribuição ideal de risco</p>
+        </div>
+
+        <!-- Simulador de Aporte -->
+        <div class="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+            <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">Aporte Simulado</p>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold">R$</span>
+                <input type="number" x-model="aporteSimulado" step="100" 
+                       class="w-full pl-10 bg-white dark:bg-slate-800 border-emerald-200 dark:border-emerald-900/50 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold text-gray-900 dark:text-white"
+                       placeholder="0,00">
+            </div>
+            <p class="text-xs text-emerald-600 mt-2 font-medium">Novo Total: <span x-text="formatMoeda(novoTotal)"></span></p>
+        </div>
+    </div>
+
+    <!-- Tabela de Balanceamento -->
+    <form method="post" class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300">Ativo</th>
+                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Atual (%)</th>
+                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-center w-32">Meta (%)</th>
+                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Valor Ideal</th>
+                        <th class="px-6 py-4 font-semibold text-gray-600 dark:text-slate-300 text-right">Sugestão</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                    {% for item in ativos_data %}
+                    <tr class="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors"
+                        x-data="{ 
+                            meta: {{ item.ativo.meta_porcentagem|stringformat:'.2f' }},
+                            valorAtual: {{ item.valor_atual|stringformat:'.2f' }},
+                            get ideal() {
+                                return (this.meta / 100) * novoTotal;
+                            },
+                            get diff() {
+                                return this.ideal - this.valorAtual;
+                            }
+                        }">
+                        <td class="px-6 py-4">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-gray-900 dark:text-white">{{ item.ativo.ticker }}</span>
+                                <span class="text-xs text-gray-500 dark:text-slate-400">R$ {{ item.valor_atual|floatformat:2|intcomma }}</span>
+                            </div>
+                            <div class="hidden">{{ item.form.id }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right font-medium text-gray-600 dark:text-slate-300">
+                            {{ item.perc_atual|floatformat:2 }}%
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex justify-center">
+                                <input type="number" name="form-{{ forloop.counter0 }}-meta_porcentagem" 
+                                       step="0.01" min="0" max="100"
+                                       class="w-20 text-center rounded-lg border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
+                                       x-model="meta"
+                                       value="{{ item.ativo.meta_porcentagem|stringformat:'.2f' }}">
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right tabular-nums font-medium text-gray-700 dark:text-slate-200" 
+                            x-text="formatMoeda(ideal)">
+                        </td>
+                        <td class="px-6 py-4 text-right tabular-nums font-bold">
+                            <template x-if="diff > 0.01">
+                                <span class="text-emerald-600 dark:text-emerald-400">
+                                    <i class="fa-solid fa-cart-shopping mr-1 text-xs"></i> Comprar <span x-text="formatMoeda(diff)"></span>
+                                </span>
+                            </template>
+                            <template x-if="diff < -0.01">
+                                <span class="text-red-500 dark:text-red-400">
+                                    <i class="fa-solid fa-hand-holding-dollar mr-1 text-xs"></i> Vender <span x-text="formatMoeda(Math.abs(diff))"></span>
+                                </span>
+                            </template>
+                            <template x-if="Math.abs(diff) <= 0.01">
+                                <span class="text-gray-400 dark:text-slate-500">
+                                    <i class="fa-solid fa-check mr-1 text-xs"></i> Em Equilíbrio
+                                </span>
+                            </template>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 dark:bg-slate-700/50 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+            <button type="submit" class="inline-flex items-center px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-900/20 transition-all focus:ring-4 focus:ring-emerald-500/20">
+                <i class="fa-solid fa-save mr-2"></i> Salvar Estratégia
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

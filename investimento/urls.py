@@ -15,6 +15,7 @@ urlpatterns = [
     path("ativos/novo/", views.ativo_criar, name="ativo_criar"),
     path("ativos/<int:pk>/editar/", views.ativo_editar, name="ativo_editar"),
     path("ativos/<int:pk>/excluir/", views.ativo_excluir, name="ativo_excluir"),
+    path("balanceamento/", views.balanceamento_ativos, name="balanceamento_ativos"),
     # Transações
     path("transacoes/", views.transacao_listar, name="transacao_listar"),
     path("transacoes/nova/", views.transacao_criar, name="transacao_criar"),

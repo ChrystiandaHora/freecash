@@ -129,6 +129,13 @@ class Ativo(AuditoriaModel):
 
     moeda = models.CharField(max_length=10, default="BRL")
     ativo = models.BooleanField(default=True)
+    meta_porcentagem = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Meta (%)",
+        help_text="Porcentagem alvo deste ativo na carteira",
+    )
 
     # Campos calculados / Cache
     quantidade = models.DecimalField(max_digits=19, decimal_places=8, default=0)

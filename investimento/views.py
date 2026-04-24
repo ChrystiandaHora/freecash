@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Ativo, Transacao, ClasseAtivo, SubcategoriaAtivo
 from .calculators import atualizar_cotacoes
-from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm
+from .forms import AtivoForm, TransacaoForm, ClasseAtivoForm, AtivoMetaFormSet
 from investimento.services.carteira_historico_service import CarteiraHistoricoService
 
 
@@ -281,3 +281,55 @@ def transacao_excluir(request, pk):
     return render(
         request, "investimento/transacoes/transacao_confirm_delete.html", {"object": t}
     )
+
+@login_required
+def balanceamento_ativos(request):
+    """
+    Painel para definir metas e visualizar rebalanceamento da carteira.
+    """
+    ativos_qs = Ativo.objects.filter(usuario=request.user, ativo=True).order_by("ticker")
+    total_patrimonio = sum(a.valor_total_atual for a in ativos_qs)
+
+    if request.method == "POST":
+        formset = AtivoMetaFormSet(request.POST, queryset=ativos_qs)
+        if formset.is_valid():
+            formset.save()
+            messages.success(request, "Estratégia de balanceamento salva com sucesso!")
+            return redirect("investimento:balanceamento_ativos")
+    else:
+        formset = AtivoMetaFormSet(queryset=ativos_qs)
+
+    # Preparar dados para o template
+    ativos_data = []
+    soma_metas = 0
+    for i, ativo in enumerate(ativos_qs):
+        valor_atual = ativo.valor_total_atual
+        meta = ativo.meta_porcentagem
+        soma_metas += meta
+
+        # Percentual atual real
+        perc_atual = (valor_atual / total_patrimonio * 100) if total_patrimonio > 0 else 0
+        
+        # Valor ideal com base na meta e patrimônio total
+        valor_ideal = (meta / 100) * total_patrimonio
+        
+        # Diferença (quanto comprar ou vender)
+        diferenca = valor_ideal - valor_atual
+
+        ativos_data.append({
+            "ativo": ativo,
+            "form": formset.forms[i],
+            "valor_atual": valor_atual,
+            "perc_atual": perc_atual,
+            "valor_ideal": valor_ideal,
+            "diferenca": diferenca,
+        })
+
+    context = {
+        "formset": formset,
+        "ativos_data": ativos_data,
+        "total_patrimonio": total_patrimonio,
+        "soma_metas": soma_metas,
+    }
+
+    return render(request, "investimento/ativos/balanceamento.html", context)
