@@ -17,10 +17,21 @@
       else if (path === '/' || path.includes('dashboard')) this.openGroup = 'geral';
     }
   }"
-  class="w-72 bg-slate-950 text-slate-300 flex flex-col shadow-2xl z-20 transition-all duration-300 border-r border-slate-800/50"
+  class="w-72 bg-slate-950 text-slate-300 flex flex-col shadow-2xl z-20 transition-all duration-300 border-r border-slate-800/50 h-full overflow-y-auto"
 >
+  <!-- Mobile Close Button -->
+  <div class="lg:hidden flex justify-end px-4 pt-4 pb-0">
+    <button 
+      onclick="closeSidebar()" 
+      class="p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+      aria-label="Fechar menu"
+    >
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+  </div>
+
   <!-- Logo Header -->
-  <div class="px-8 py-8 mb-4">
+  <div class="px-8 py-6 mb-2">
     <div class="flex items-center gap-4 group cursor-pointer" @click="window.location.href='/'">
       <div class="relative">
         <div class="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>

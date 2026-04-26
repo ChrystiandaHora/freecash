@@ -4,12 +4,12 @@
 {% load core_tags %}
 
 {% block content %}
-<div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<div class="max-w-[95%] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
 
   <!-- Header Section -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
         <div class="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 border border-blue-500/20 dark:border-blue-500/30">
             <i class="fa-regular fa-file-lines text-blue-600 dark:text-blue-400"></i>
         </div>
@@ -18,7 +18,7 @@
       <p class="mt-2 text-gray-500 dark:text-slate-300 text-sm">Gerencie seus compromissos financeiros e evite atrasos.</p>
     </div>
 
-    <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
       <!-- Visão (Refresh) -->
       <a href="?" class="group p-2.5 rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 transition-all flex items-center gap-2" title="Visão em Lista">
         <i class="fa-solid fa-list"></i>
@@ -33,15 +33,15 @@
       </a>
       
       <!-- Divisor -->
-      <div class="h-8 w-px bg-gray-200 dark:bg-slate-700"></div>
+      <div class="h-8 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block"></div>
 
       <!-- Ações (Criar) -->
-      <div class="flex gap-2">
-        <a href="{% url 'conta_lote' %}" class="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 text-gray-700 dark:text-slate-300 font-medium transition-all flex items-center gap-2 hover:shadow-sm">
+      <div class="flex gap-2 flex-wrap">
+        <a href="{% url 'conta_lote' %}" class="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 text-gray-700 dark:text-slate-300 font-medium transition-all flex items-center gap-2 hover:shadow-sm text-sm">
           <i class="fa-solid fa-layer-group text-gray-400 dark:text-slate-500"></i>
           <span>Lote</span>
         </a>
-        <a href="{% url 'conta_nova' %}?next={{ request.get_full_path|urlencode }}" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all flex items-center gap-2 hover:-translate-y-0.5 transform">
+        <a href="{% url 'conta_nova' %}?next={{ request.get_full_path|urlencode }}" class="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all flex items-center gap-2 hover:-translate-y-0.5 transform text-sm">
           <i class="fa-solid fa-plus"></i>
           Nova Conta
         </a>
@@ -50,7 +50,7 @@
   </div>
 
   <!-- KPI Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
     <!-- Total Pendente -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-rose-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-rose-500/10 blur-2xl group-hover:bg-rose-500/20 transition-colors"></div>
@@ -92,7 +92,7 @@
   </div>
 
   <!-- Filters Bar -->
-  <div class="p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800 backdrop-blur-md sticky top-4 z-10 shadow-lg dark:shadow-2xl">
+  <div class="p-3 sm:p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-gray-100 dark:border-slate-800 backdrop-blur-md sticky top-14 lg:top-4 z-10 shadow-lg dark:shadow-2xl">
     <form method="get" class="flex flex-col lg:flex-row gap-3">
         <!-- Search -->
         <div class="relative flex-1">
@@ -129,7 +129,7 @@
   </div>
 
   <!-- Content Grid -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
     
     <!-- Pendentes Section -->
     <div class="space-y-4">

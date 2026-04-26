@@ -10,7 +10,7 @@
 {{ receitas_dias|json_script:"receitasDias" }}
 {{ despesas_dias|json_script:"despesasDias" }}
 
-<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+<div class="max-w-8xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 space-y-4">
   <!-- Header -->
   <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <div>
@@ -46,7 +46,7 @@
   </div>
 
   <!-- KPI Cards -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
     <!-- Receitas -->
     <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 p-5 shadow-lg dark:shadow-xl group hover:border-emerald-500/30 transition-colors">
       <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-colors"></div>
@@ -204,7 +204,7 @@
   </div>
 
   <!-- Charts Grid -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
     <!-- Main Chart: 6-Month Bar Chart (spans 2 columns) -->
     <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between mb-4">
@@ -250,7 +250,7 @@
   </div>
 
   <!-- Second Row: Daily + Status -->
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
     <!-- Daily Movement Chart -->
     <div class="xl:col-span-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between mb-4">
@@ -291,7 +291,7 @@
   </div>
 
   <!-- Quick Links -->
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
     <a href="{% url 'contas_pagar' %}" class="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:shadow-md transition-all">
       <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
         <i class="fa-solid fa-file-invoice-dollar text-blue-600 dark:text-blue-400"></i>
@@ -390,12 +390,11 @@
   // 1. Cash Flow - Grouped Bar Chart
   const cashFlowChart = new ApexCharts(document.getElementById("chartCashFlow"), {
     series: [
-      { name: 'Receitas', data: receitas6m },
-      { name: 'Despesas', data: despesas6m },
-      { name: 'Saldo', data: saldos6m }
+      { name: 'Receitas', type: 'column', data: receitas6m },
+      { name: 'Despesas', type: 'column', data: despesas6m },
+      { name: 'Saldo', type: 'line', data: saldos6m }
     ],
     chart: {
-      type: 'line',
       height: 280,
       toolbar: { show: false },
       fontFamily: 'Inter, sans-serif',
@@ -404,7 +403,7 @@
     colors: ['#10b981', '#ef4444', '#60a5fa'],
     stroke: {
       curve: 'smooth',
-      width: [3, 3, 4]
+      width: [0, 0, 4]
     },
     markers: {
       size: 4,
@@ -424,6 +423,12 @@
       }
     },
     grid: { borderColor: gridColor, strokeDashArray: 4 },
+    plotOptions: {
+      bar: {
+        borderRadius: 4,
+        columnWidth: '60%',
+      }
+    },
     legend: { show: false },
     tooltip: {
       theme: isDark ? 'dark' : 'light',

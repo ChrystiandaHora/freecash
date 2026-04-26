@@ -2,6 +2,7 @@
 <html lang="pt-br" class="">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}FreeCash{% endblock %}</title>
 
     <!-- Dark Mode Detection (runs before page renders) -->
@@ -47,10 +48,46 @@
     <script defer src="{% static 'vendor/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
 
+    <style>
+      /* Responsive sidebar utilities */
+      .sidebar-wrapper {
+        transition: transform 0.3s ease;
+      }
+      @media (max-width: 1023px) {
+        .sidebar-wrapper {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          z-index: 40;
+          transform: translateX(-100%);
+        }
+        .sidebar-wrapper.open {
+          transform: translateX(0);
+        }
+        .sidebar-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          z-index: 39;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.open {
+          display: block;
+        }
+      }
+      @media (min-width: 1024px) {
+        .sidebar-overlay { display: none !important; }
+        .mobile-topbar { display: none !important; }
+      }
+    </style>
+
     {% block extra_head %}{% endblock %}
   </head>
   <body class="bg-gray-100 dark:bg-gray-900 transition-colors">
-    <div class="flex h-screen">
+    <div class="flex h-screen overflow-hidden" id="app-root">
+
       <!-- MESSAGES -->
       {% if messages %}
       <div
@@ -122,18 +159,86 @@
       </div>
       {% endif %}
 
-      <!-- SIDEBAR PREMIUM -->
-      {% include "components/sidebar.html" %}
+      <!-- MOBILE OVERLAY -->
+      <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+      <!-- SIDEBAR WRAPPER -->
+      <div id="sidebar-wrapper" class="sidebar-wrapper flex-shrink-0">
+        {% include "components/sidebar.html" %}
+      </div>
 
       <!-- ÁREA PRINCIPAL -->
-      <main class="flex-1 p-6 overflow-y-auto">
-        {% block content %} {% endblock %}
-      </main>
+      <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+
+        <!-- MOBILE TOP BAR -->
+        <header class="mobile-topbar flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm z-20 flex-shrink-0">
+          <button
+            id="sidebar-toggle"
+            onclick="toggleSidebar()"
+            class="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Abrir menu"
+          >
+            <i class="fa-solid fa-bars text-lg"></i>
+          </button>
+          <div class="flex items-center gap-2">
+            <img src="{% static 'freecash/Icon.png' %}" alt="FreeCash" class="w-7 h-7" />
+            <span class="text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">FreeCash</span>
+          </div>
+          <div class="ml-auto flex items-center gap-2">
+            <button id="theme-toggle-mobile" class="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+              <i id="theme-icon-light-mobile" class="fa-regular fa-sun text-sm hidden"></i>
+              <i id="theme-icon-dark-mobile" class="fa-regular fa-moon text-sm hidden"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+          {% block content %} {% endblock %}
+        </main>
+      </div>
     </div>
 
     <script>
       const ultimaAtualizacao =
         "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
+    </script>
+
+    <!-- Sidebar Mobile JS Helpers -->
+    <script>
+      function getSidebarState() {
+        // Access Alpine.js data on #app-root
+        const root = document.getElementById('app-root');
+        return root ? root._x_dataStack?.[0] : null;
+      }
+      function toggleSidebar() {
+        const wrapper = document.getElementById('sidebar-wrapper');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (!wrapper) return;
+        const isOpen = wrapper.classList.contains('open');
+        if (isOpen) {
+          wrapper.classList.remove('open');
+          overlay?.classList.remove('open');
+          document.body.style.overflow = '';
+        } else {
+          wrapper.classList.add('open');
+          overlay?.classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+      function closeSidebar() {
+        const wrapper = document.getElementById('sidebar-wrapper');
+        const overlay = document.getElementById('sidebar-overlay');
+        wrapper?.classList.remove('open');
+        overlay?.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+      // Auto-close sidebar when resizing to desktop
+      window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1024) {
+          closeSidebar();
+        }
+      });
     </script>
     <script>
       document.addEventListener("DOMContentLoaded", () => {
@@ -217,41 +322,32 @@
     <!-- Theme Toggle Script -->
     <script>
       (function () {
-        const toggleBtn = document.getElementById("theme-toggle");
-        const iconLight = document.getElementById("theme-icon-light");
-        const iconDark = document.getElementById("theme-icon-dark");
-        const themeLabel = document.getElementById("theme-label");
+        const toggleBtns = [
+          document.getElementById("theme-toggle"),
+          document.getElementById("theme-toggle-mobile"),
+        ];
 
         function updateThemeUI() {
           const isDark = document.documentElement.classList.contains("dark");
-          if (isDark) {
-            iconLight?.classList.add("hidden");
-            iconDark?.classList.remove("hidden");
-            if (themeLabel) themeLabel.textContent = "Escuro";
-          } else {
-            iconLight?.classList.remove("hidden");
-            iconDark?.classList.add("hidden");
-            if (themeLabel) themeLabel.textContent = "Claro";
-          }
+          // Desktop sidebar icons
+          document.getElementById("theme-icon-light")?.classList.toggle("hidden", isDark);
+          document.getElementById("theme-icon-dark")?.classList.toggle("hidden", !isDark);
+          const themeLabel = document.getElementById("theme-label");
+          if (themeLabel) themeLabel.textContent = isDark ? "Escuro" : "Claro";
+          // Mobile topbar icons
+          document.getElementById("theme-icon-light-mobile")?.classList.toggle("hidden", isDark);
+          document.getElementById("theme-icon-dark-mobile")?.classList.toggle("hidden", !isDark);
         }
 
         function toggleTheme() {
           const isDark = document.documentElement.classList.contains("dark");
-          if (isDark) {
-            document.documentElement.classList.remove("dark");
-            localStorage.setItem("theme", "light");
-          } else {
-            document.documentElement.classList.add("dark");
-            localStorage.setItem("theme", "dark");
-          }
+          document.documentElement.classList.toggle("dark", !isDark);
+          localStorage.setItem("theme", isDark ? "light" : "dark");
           updateThemeUI();
         }
 
-        // Initial UI update
         updateThemeUI();
-
-        // Toggle on click
-        toggleBtn?.addEventListener("click", toggleTheme);
+        toggleBtns.forEach(btn => btn?.addEventListener("click", toggleTheme));
       })();
     </script>
 

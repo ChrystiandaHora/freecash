@@ -4,11 +4,11 @@
 {% block title %}Cartões - FreeCash{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
+<div class="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
   <!-- Header -->
-  <div class="flex items-center justify-between mb-8">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Cartões de Crédito</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Cartões de Crédito</h1>
       <p class="text-gray-500 dark:text-gray-400 mt-1">Gerencie seus cartões e acompanhe os gastos</p>
     </div>
     <a href="{% url 'cartao_novo' %}" 
@@ -20,7 +20,7 @@
 
   <!-- Cards Grid -->
   {% if cartoes %}
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
     {% for item in cartoes %}
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
       <!-- Card Header - Gradient based on bandeira -->
