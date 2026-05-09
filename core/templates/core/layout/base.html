@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}FreeCash{% endblock %}</title>
 
-    <!-- Dark Mode Detection (runs before page renders) -->
+    <!-- Tailwind (local) -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}?v=1.1" />
+
+    <!-- Dark Mode Detection -->
     <script>
       (function () {
         const theme = localStorage.getItem("theme");
-        if (
-          theme === "dark" ||
-          (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
-        ) {
+        if (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
           document.documentElement.classList.add("dark");
         } else {
           document.documentElement.classList.remove("dark");
@@ -20,344 +20,108 @@
       })();
     </script>
 
-    <!-- Tailwind with dark mode -->
-    <!-- Tailwind (local) -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}" />
-
-    <!-- FontAwesome (local) -->
-    <link
-      rel="stylesheet"
-      href="{% static 'vendor/fontawesome/css/all.min.css' %}"
-    />
-
-    <!-- Inter Font (local) -->
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     <link rel="stylesheet" href="{% static 'fonts/inter.css' %}" />
-
-    <!-- ApexCharts (local) -->
     <script src="{% static 'vendor/apexcharts.min.js' %}"></script>
-    <!-- Flowbite (local) -->
     <script src="{% static 'vendor/flowbite.min.js' %}"></script>
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="512x512"
-      href="{% static 'freecash/freecash_icon_512_dark.png' %}"
-    />
-
-    <!-- Alpine.js (local) -->
+    <link rel="icon" type="image/png" sizes="512x512" href="{% static 'freecash/freecash_icon_512_dark.png' %}" />
     <script defer src="{% static 'vendor/alpine-collapse.min.js' %}"></script>
     <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
 
+    {% block extra_head %}{% endblock %}
+    
     <style>
-      /* Responsive sidebar utilities */
-      .sidebar-wrapper {
-        transition: transform 0.3s ease;
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
-      @media (max-width: 1023px) {
-        .sidebar-wrapper {
-          position: fixed;
-          top: 0;
-          left: 0;
-          bottom: 0;
-          z-index: 40;
-          transform: translateX(-100%);
-        }
-        .sidebar-wrapper.open {
-          transform: translateX(0);
-        }
-        .sidebar-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          z-index: 39;
-          background: rgba(0,0,0,0.5);
-          backdrop-filter: blur(2px);
-        }
-        .sidebar-overlay.open {
-          display: block;
-        }
-      }
-      @media (min-width: 1024px) {
-        .sidebar-overlay { display: none !important; }
-        .mobile-topbar { display: none !important; }
+      .apple-blur { 
+        backdrop-filter: saturate(180%) blur(20px); 
+        -webkit-backdrop-filter: saturate(180%) blur(20px); 
       }
     </style>
-
-    {% block extra_head %}{% endblock %}
   </head>
-  <body class="bg-gray-100 dark:bg-gray-900 transition-colors">
-    <div class="flex h-screen overflow-hidden" id="app-root">
+  <body class="bg-[#f5f5f7] dark:bg-[#000000] transition-colors duration-500 overflow-x-hidden">
+    
+    <!-- APPLE NAVBAR -->
+    {% include "components/navbar.html" %}
 
-      <!-- MESSAGES -->
+    <div class="flex flex-col min-h-screen pt-[44px]" id="app-root">
+      
+      <!-- MESSAGES / TOASTS -->
       {% if messages %}
-      <div
-        id="toast-stack"
-        class="fixed top-4 right-4 z-50 w-full max-w-sm space-y-3 px-4 sm:px-0"
-        aria-live="polite"
-        aria-atomic="true"
-      >
+      <div id="toast-stack" class="fixed top-[54px] right-4 z-[110] w-full max-w-sm space-y-3 px-4 sm:px-0" aria-live="polite">
         {% for msg in messages %}
-        <div
-          class="toast-item pointer-events-auto w-full rounded-2xl border p-4 shadow-lg bg-white/95 backdrop-blur flex items-start gap-3 opacity-0 translate-y-2 transition duration-300 ease-out {% if msg.tags == 'success' %} border-emerald-200 {% elif msg.tags == 'error' %} border-red-200 {% elif msg.tags == 'warning' %} border-amber-200 {% else %} border-gray-200 {% endif %}"
-          data-timeout="4500"
-          role="alert"
-        >
-          <!-- Icon -->
-          <div
-            class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl {% if msg.tags == 'success' %} bg-emerald-50 text-emerald-700 {% elif msg.tags == 'error' %} bg-red-50 text-red-700 {% elif msg.tags == 'warning' %} bg-amber-50 text-amber-700 {% else %} bg-gray-50 text-gray-700 {% endif %}"
-          >
-            {% if msg.tags == "success" %}
-            <i
-              class="fa-solid fa-circle-check text-emerald-400 text-[20px]"
-              aria-hidden="true"
-            ></i>
-            {% elif msg.tags == "error" %}
-            <i
-              class="fa-solid fa-circle-xmark text-red-400 text-[20px]"
-              aria-hidden="true"
-            ></i>
-            {% elif msg.tags == "warning" %}
-            <i
-              class="fa-solid fa-triangle-exclamation text-yellow-400 text-[20px]"
-              aria-hidden="true"
-            ></i>
-            {% else %}
-            <i
-              class="fa-solid fa-circle-info text-sky-400 text-[20px]"
-              aria-hidden="true"
-            ></i>
-            {% endif %}
+        <div class="toast-item rounded-2xl border border-black/[0.08] dark:border-white/[0.08] p-4 shadow-2xl bg-white/90 dark:bg-zinc-900/90 apple-blur flex items-start gap-3 opacity-0 translate-y-2 transition duration-300 ease-out" data-timeout="4500" role="alert">
+          <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl {% if msg.tags == 'success' %} bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 {% elif msg.tags == 'error' %} bg-red-50 dark:bg-red-500/10 text-red-600 {% else %} bg-zinc-50 dark:bg-zinc-800 text-zinc-600 {% endif %}">
+            <i class="fa-solid {% if msg.tags == 'success' %}fa-circle-check{% elif msg.tags == 'error' %}fa-circle-xmark{% else %}fa-circle-info{% endif %} text-[16px]"></i>
           </div>
-
-          <!-- Content -->
           <div class="min-w-0 flex-1">
-            <!-- prettier-ignore -->
-            <p class="text-sm font-semibold text-gray-900">{% if msg.tags == "success" %}Sucesso{% elif msg.tags == "error" %}Erro{% elif msg.tags == "warning" %}Atenção{% else %}Aviso{% endif %}</p>
-            <p class="mt-0.5 text-sm text-gray-600 break-words">{{ msg }}</p>
-
-            <!-- Progress bar -->
-            <div
-              class="mt-3 h-1 w-full overflow-hidden rounded-full bg-gray-100"
-            >
-              <div
-                class="toast-bar h-1 w-full {% if msg.tags == 'success' %} bg-emerald-500 {% elif msg.tags == 'error' %} bg-red-500 {% elif msg.tags == 'warning' %} bg-amber-500 {% else %} bg-gray-500 {% endif %}"
-                style="transform: translateX(-100%)"
-              ></div>
-            </div>
+            <p class="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">{% if msg.tags == "success" %}Sucesso{% elif msg.tags == "error" %}Erro{% else %}Aviso{% endif %}</p>
+            <p class="mt-0.5 text-[12px] text-zinc-500 dark:text-zinc-400 break-words">{{ msg }}</p>
           </div>
-
-          <!-- Close -->
-          <button
-            type="button"
-            class="toast-close -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-            aria-label="Fechar"
-          >
-            <i class="fa-solid fa-xmark text-[20px]" aria-hidden="true"></i>
+          <button type="button" class="toast-close text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            <i class="fa-solid fa-xmark text-[14px]"></i>
           </button>
         </div>
         {% endfor %}
       </div>
       {% endif %}
 
-      <!-- MOBILE OVERLAY -->
-      <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
-
-      <!-- SIDEBAR WRAPPER -->
-      <div id="sidebar-wrapper" class="sidebar-wrapper flex-shrink-0">
-        {% include "components/sidebar.html" %}
-      </div>
-
-      <!-- ÁREA PRINCIPAL -->
-      <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-        <!-- MOBILE TOP BAR -->
-        <header class="mobile-topbar flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm z-20 flex-shrink-0">
-          <button
-            id="sidebar-toggle"
-            onclick="toggleSidebar()"
-            class="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="Abrir menu"
-          >
-            <i class="fa-solid fa-bars text-lg"></i>
-          </button>
-          <div class="flex items-center gap-2">
-            <img src="{% static 'freecash/Icon.png' %}" alt="FreeCash" class="w-7 h-7" />
-            <span class="text-sm font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">FreeCash</span>
-          </div>
-          <div class="ml-auto flex items-center gap-2">
-            <button id="theme-toggle-mobile" class="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
-              <i id="theme-icon-light-mobile" class="fa-regular fa-sun text-sm hidden"></i>
-              <i id="theme-icon-dark-mobile" class="fa-regular fa-moon text-sm hidden"></i>
-            </button>
-          </div>
-        </header>
-
-        <!-- MAIN CONTENT -->
-        <main class="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+      <!-- MAIN CONTENT (APPLE FULL BLEED) -->
+      <main class="flex-1 w-full">
+        <div class="w-full px-4 sm:px-6 lg:px-12 py-8 md:py-12">
           {% block content %} {% endblock %}
-        </main>
-      </div>
+        </div>
+      </main>
+
+      <!-- APPLE FOOTER -->
+      {% include "components/footer.html" %}
     </div>
 
+    <!-- SCRIPTS -->
     <script>
-      const ultimaAtualizacao =
-        "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
-    </script>
-
-    <!-- Sidebar Mobile JS Helpers -->
-    <script>
-      function getSidebarState() {
-        // Access Alpine.js data on #app-root
-        const root = document.getElementById('app-root');
-        return root ? root._x_dataStack?.[0] : null;
-      }
-      function toggleSidebar() {
-        const wrapper = document.getElementById('sidebar-wrapper');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (!wrapper) return;
-        const isOpen = wrapper.classList.contains('open');
-        if (isOpen) {
-          wrapper.classList.remove('open');
-          overlay?.classList.remove('open');
-          document.body.style.overflow = '';
-        } else {
-          wrapper.classList.add('open');
-          overlay?.classList.add('open');
-          document.body.style.overflow = 'hidden';
-        }
-      }
-      function closeSidebar() {
-        const wrapper = document.getElementById('sidebar-wrapper');
-        const overlay = document.getElementById('sidebar-overlay');
-        wrapper?.classList.remove('open');
-        overlay?.classList.remove('open');
-        document.body.style.overflow = '';
-      }
-      // Auto-close sidebar when resizing to desktop
-      window.addEventListener('resize', () => {
-        if (window.innerWidth >= 1024) {
-          closeSidebar();
-        }
-      });
-    </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        if (!ultimaAtualizacao) return;
-
-        const dot = document.getElementById("atualizacao-dot");
-        if (!dot) return;
-
-        const agora = new Date();
-        const ultima = new Date(ultimaAtualizacao);
-        const diffMs = agora - ultima;
-        const diffMin = diffMs / 60000;
-
-        if (diffMin <= 5) {
-          dot.classList.remove("bg-slate-500");
-          dot.classList.add("bg-emerald-400");
-        } else if (diffMin <= 1440) {
-          dot.classList.remove("bg-slate-500");
-          dot.classList.add("bg-yellow-400");
-        } else {
-          dot.classList.remove("bg-slate-500");
-          dot.classList.add("bg-red-500");
-        }
-      });
-    </script>
-    <script>
+      const ultimaAtualizacao = "{{ request.user.configusuario.atualizada_em|date:'Y-m-d H:i:s' }}";
+      
+      // Theme Management
       (function () {
-        const stack = document.getElementById("toast-stack");
-        if (!stack) return;
-
-        const toasts = Array.from(stack.querySelectorAll(".toast-item"));
-
-        function showToast(el) {
-          // anima entrada
-          requestAnimationFrame(() => {
-            el.classList.remove("opacity-0", "translate-y-2");
-            el.classList.add("opacity-100", "translate-y-0");
-          });
-
-          // anima barra de tempo
-          const ms = parseInt(el.getAttribute("data-timeout") || "4500", 10);
-          const bar = el.querySelector(".toast-bar");
-          if (bar) {
-            bar.style.transition = `transform ${ms}ms linear`;
-            requestAnimationFrame(() => {
-              bar.style.transform = "translateX(0)";
-            });
-          }
-
-          // auto-dismiss
-          const t = setTimeout(() => dismissToast(el), ms);
-
-          // botão fechar
-          const btn = el.querySelector(".toast-close");
-          if (btn) {
-            btn.addEventListener("click", () => {
-              clearTimeout(t);
-              dismissToast(el);
-            });
-          }
-        }
-
-        function dismissToast(el) {
-          el.classList.remove("opacity-100", "translate-y-0");
-          el.classList.add("opacity-0", "translate-y-2");
-
-          // remove do DOM após transição
-          setTimeout(() => {
-            el.remove();
-            // se não sobrar nenhum, remove o container
-            if (stack.querySelectorAll(".toast-item").length === 0) {
-              stack.remove();
-            }
-          }, 250);
-        }
-
-        toasts.forEach(showToast);
-      })();
-    </script>
-
-    <!-- Theme Toggle Script -->
-    <script>
-      (function () {
-        const toggleBtns = [
-          document.getElementById("theme-toggle"),
-          document.getElementById("theme-toggle-mobile"),
-        ];
-
+        const toggleBtn = document.getElementById("theme-toggle");
         function updateThemeUI() {
           const isDark = document.documentElement.classList.contains("dark");
-          // Desktop sidebar icons
           document.getElementById("theme-icon-light")?.classList.toggle("hidden", isDark);
           document.getElementById("theme-icon-dark")?.classList.toggle("hidden", !isDark);
-          const themeLabel = document.getElementById("theme-label");
-          if (themeLabel) themeLabel.textContent = isDark ? "Escuro" : "Claro";
-          // Mobile topbar icons
-          document.getElementById("theme-icon-light-mobile")?.classList.toggle("hidden", isDark);
-          document.getElementById("theme-icon-dark-mobile")?.classList.toggle("hidden", !isDark);
         }
-
         function toggleTheme() {
           const isDark = document.documentElement.classList.contains("dark");
           document.documentElement.classList.toggle("dark", !isDark);
           localStorage.setItem("theme", isDark ? "light" : "dark");
           updateThemeUI();
+          window.dispatchEvent(new Event('theme-changed'));
         }
-
         updateThemeUI();
-        toggleBtns.forEach(btn => btn?.addEventListener("click", toggleTheme));
+        toggleBtn?.addEventListener("click", toggleTheme);
       })();
-    </script>
 
-    <!-- Flowbite Initialization -->
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        if (typeof initFlowbite === "function") {
-          initFlowbite();
+      // Toast Management
+      (function () {
+        const stack = document.getElementById("toast-stack");
+        if (!stack) return;
+        const toasts = Array.from(stack.querySelectorAll(".toast-item"));
+        function showToast(el) {
+          requestAnimationFrame(() => el.classList.remove("opacity-0", "translate-y-2"));
+          const ms = parseInt(el.getAttribute("data-timeout") || "4500", 10);
+          const t = setTimeout(() => dismissToast(el), ms);
+          el.querySelector(".toast-close")?.addEventListener("click", () => {
+            clearTimeout(t);
+            dismissToast(el);
+          });
         }
-      });
+        function dismissToast(el) {
+          el.classList.add("opacity-0", "translate-y-2");
+          setTimeout(() => { el.remove(); if (stack.querySelectorAll(".toast-item").length === 0) stack.remove(); }, 300);
+        }
+        toasts.forEach(showToast);
+      })();
     </script>
 
     {% include "core/layout/_confirm_modal.html" %}
