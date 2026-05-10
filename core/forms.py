@@ -1,28 +1,9 @@
 from django import forms
-from core.models import Conta, Categoria, FormaPagamento, CartaoCredito, CategoriaCartao
+from core.models import Conta, Categoria, CartaoCredito
 
 
 class ContaForm(forms.ModelForm):
-    MOEDA_CHOICES = [
-        ("BRL", "🇧🇷 BRL (R$)"),
-        ("USD", "🇺🇸 USD (US$)"),
-        ("EUR", "🇪🇺 EUR (€)"),
-        ("GBP", "🇬🇧 GBP (£)"),
-    ]
-
     # Campos que atuam fora da estrutura padrão
-    moeda = forms.ChoiceField(choices=MOEDA_CHOICES, required=False, initial="BRL")
-    parcelado = forms.BooleanField(required=False)
-    numero_parcelas = forms.IntegerField(
-        required=False, min_value=2, max_value=24, initial=2
-    )
-    multiplicar = forms.BooleanField(required=False)
-    numero_multiplicacoes = forms.IntegerField(
-        required=False, min_value=2, max_value=120, initial=2
-    )
-    data_limite_repeticao = forms.DateField(
-        required=False, widget=forms.DateInput(attrs={"type": "date"})
-    )
     pago = forms.BooleanField(required=False)
     atualizar_futuros = forms.BooleanField(required=False, initial=False)
 
@@ -33,8 +14,6 @@ class ContaForm(forms.ModelForm):
             "valor",
             "data_prevista",
             "categoria",
-            "forma_pagamento",
-            "categoria_cartao",
         ]
         widgets = {
             "data_prevista": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
@@ -44,6 +23,8 @@ class ContaForm(forms.ModelForm):
         self.usuario = kwargs.pop("usuario", None)
         self.tipo_conta = kwargs.pop("tipo", Conta.TIPO_DESPESA)
         super().__init__(*args, **kwargs)
+        self.fields["categoria"].required = False
+        
         if self.instance and self.instance.pk:
             self.fields["pago"].initial = self.instance.transacao_realizada
 
@@ -51,21 +32,22 @@ class ContaForm(forms.ModelForm):
             self.fields["categoria"].queryset = Categoria.objects.filter(
                 usuario=self.usuario, tipo=self.tipo_conta
             ).order_by("nome")
-            self.fields["forma_pagamento"].queryset = FormaPagamento.objects.filter(
-                usuario=self.usuario, ativa=True
-            ).order_by("nome")
-            self.fields[
-                "categoria_cartao"
-            ].queryset = CategoriaCartao.objects.all().order_by("nome")
 
-    def clean(self):
-        cleaned_data = super().clean()
-        parcelado = cleaned_data.get("parcelado")
-        multiplicar = cleaned_data.get("multiplicar")
-
-        if parcelado and multiplicar:
-            self.add_error(None, "Escolha apenas uma opção: parcelar ou multiplicar.")
-        return cleaned_data
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not instance.categoria and self.usuario:
+            # Busca a categoria padrão para o tipo (R=Receita, D=Gastos)
+            default_cat = Categoria.objects.filter(
+                usuario=self.usuario, 
+                tipo=self.tipo_conta,
+                is_default=True
+            ).first()
+            if default_cat:
+                instance.categoria = default_cat
+        
+        if commit:
+            instance.save()
+        return instance
 
 
 class CartaoCreditoForm(forms.ModelForm):

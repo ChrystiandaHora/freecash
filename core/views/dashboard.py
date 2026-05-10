@@ -496,7 +496,7 @@ class DashboardView(View):
                 transacao_realizada=False,
             )
             .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-            .select_related("categoria", "forma_pagamento")
+            .select_related("categoria")
             .order_by("data_prevista")[:5]
         )
 
@@ -504,7 +504,7 @@ class DashboardView(View):
         ultimas_transacoes = (
             Conta.objects.filter(usuario=usuario, transacao_realizada=True)
             .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-            .select_related("categoria", "forma_pagamento")
+            .select_related("categoria")
             .order_by("-data_realizacao", "-id")[:7]
         )
 

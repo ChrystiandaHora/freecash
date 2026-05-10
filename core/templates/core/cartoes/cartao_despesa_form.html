@@ -82,42 +82,6 @@
             <!-- Hidden field to preserve data_prevista -->
             <input type="hidden" name="data_prevista" value="{{ despesa.data_prevista|date:'Y-m-d' }}">
 
-            <!-- Categoria -->
-            <div class="space-y-1.5">
-                <label for="categoria_cartao" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1 flex items-center gap-2">
-                    <i class="fa-solid fa-folder text-gray-400 dark:text-slate-500"></i>
-                    Categoria
-                </label>
-                <select name="categoria_cartao" id="categoria_cartao"
-                        class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer">
-                    <option value="">Selecione uma categoria...</option>
-                    {% for cat in categorias_cartao %}
-                        <option value="{{ cat.id }}" {% if despesa.categoria_cartao_id == cat.id %}selected{% endif %}>
-                            {{ cat.emoji }} {{ cat.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Info de parcelamento (se for parcelada) -->
-            {% if despesa.eh_parcelada %}
-            <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 flex items-center justify-center bg-amber-100 dark:bg-amber-800 rounded-lg text-amber-600 dark:text-amber-400">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                    </div>
-                    <div>
-                        <p class="text-amber-800 dark:text-amber-300 font-medium">
-                            Parcela {{ despesa.parcela_numero }}/{{ despesa.parcela_total }}
-                        </p>
-                        <p class="text-amber-600 dark:text-amber-400 text-sm">
-                            Compra parcelada - editando apenas esta parcela
-                        </p>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
             <!-- Actions -->
             <div class="flex gap-3 pt-4">
                 <a href="{% url 'cartao_despesas' pk=cartao.pk %}" 

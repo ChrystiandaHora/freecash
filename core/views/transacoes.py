@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.core.paginator import Paginator
 
-from core.models import Conta, Categoria, FormaPagamento
+from core.models import Conta, Categoria
 
 
 def clamp_per_page(raw, default=10, min_v=5, max_v=200):
@@ -32,7 +32,6 @@ class TransacoesView(View):
         mes = (request.GET.get("mes") or "").strip()
         tipo = (request.GET.get("tipo") or "").strip()
         categoria = (request.GET.get("categoria") or "").strip()
-        forma_pagamento = (request.GET.get("forma_pagamento") or "").strip()
 
         # Default: Se não houver filtros de data nem busca, exibe mês atual
         if not q and not ano and not mes:
@@ -45,7 +44,7 @@ class TransacoesView(View):
                 # Exclui despesas de cartão individuais (apenas faturas aparecem)
                 Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
             )
-            .select_related("categoria", "forma_pagamento", "cartao")
+            .select_related("categoria", "cartao")
             # Timeline: Apenas passado até hoje (inclusive)
             .filter(data_realizacao__lte=hoje)
             .order_by("-data_realizacao", "-atualizada_em", "-id")
@@ -72,8 +71,6 @@ class TransacoesView(View):
         if categoria.isdigit():
             qs = qs.filter(categoria_id=int(categoria))
 
-        if forma_pagamento.isdigit():
-            qs = qs.filter(forma_pagamento_id=int(forma_pagamento))
 
         per_page = clamp_per_page(request.GET.get("per_page"), default=10, max_v=200)
 
@@ -109,9 +106,6 @@ class TransacoesView(View):
             "per_page": per_page,
             "querystring": querystring,
             "categorias": Categoria.objects.filter(usuario=usuario).order_by("nome"),
-            "formas_pagamento": FormaPagamento.objects.filter(usuario=usuario).order_by(
-                "nome"
-            ),
             "anos": anos,
             "meses": meses,
             "hoje": hoje,
@@ -121,7 +115,6 @@ class TransacoesView(View):
                 "mes": mes,
                 "tipo": tipo,
                 "categoria": categoria,
-                "forma_pagamento": forma_pagamento,
             },
         }
         return render(request, self.template_name, contexto)

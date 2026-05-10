@@ -61,19 +61,14 @@
             {% render_field form.descricao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium" placeholder="Ex: Conta de Luz, Salário..." %}
         </div>
 
-        <!-- Row: Valor, Moeda & Data -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <!-- Row: Valor & Data -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div class="space-y-1.5">
                 <label for="{{ form.valor.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Valor</label>
                 <div class="relative">
-                    <span id="moedaSymbol" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 font-bold">R$</span>
                     {% render_field form.valor type="number" step="0.01" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-bold text-lg" placeholder="0.00" %}
                 </div>
-            </div>
-
-            <div class="space-y-1.5">
-                <label for="{{ form.moeda.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Moeda</label>
-                {% render_field form.moeda class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
             </div>
 
             <div class="space-y-1.5">
@@ -85,95 +80,6 @@
             </div>
         </div>
 
-        <!-- Forma de Pagamento (full width since category is auto-set by form type) -->
-        <div class="space-y-1.5">
-            <label for="{{ form.forma_pagamento.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Forma de Pagamento</label>
-            {% render_field form.forma_pagamento class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
-        </div>
-        
-        <div class="space-y-1.5">
-            <label for="{{ form.categoria.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">Categoria Principal</label>
-            {% render_field form.categoria class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
-        </div>
-
-        <!-- Categoria do Gasto (MCC) -->
-        {% if categorias_cartao %}
-        <div class="space-y-1.5">
-            <label for="{{ form.categoria_cartao.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 ml-1">
-                Categoria do Gasto <span class="text-xs text-gray-400 dark:text-slate-500">(opcional)</span>
-            </label>
-            {% render_field form.categoria_cartao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors" %}
-        </div>
-        {% endif %}
-
-        <div class="border-t border-gray-100 dark:border-slate-800 my-6"></div>
-
-        <!-- Advanced Options (Recurrence) - Only for new Despesas -->
-        {% if not conta and tipo != 'receita' %}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            
-            <!-- Parcelado Card -->
-            <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                <div class="flex items-center gap-3 mb-3">
-                    {% render_field form.parcelado id="parcelado" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
-                    <label for="{{ form.parcelado.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">É uma compra parcelada?</label>
-                </div>
-                
-                <div id="parcelasBox" class="hidden pl-8 space-y-2 animate-fadeIn">
-                    <p class="text-xs text-gray-500 dark:text-slate-500">Selecione o número de parcelas:</p>
-                    <div class="relative">
-                        {% render_field form.numero_parcelas id="numero_parcelas" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Repetir Card -->
-            <div class="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
-                <div class="flex items-center gap-3 mb-3">
-                    {% render_field form.multiplicar id="multiplicar" class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
-                    <label for="{{ form.multiplicar.id_for_label }}" class="font-medium text-gray-900 dark:text-white cursor-pointer select-none">Repetir mensalmente?</label>
-                </div>
-                
-                <div id="multiplicaBox" class="hidden pl-8 space-y-4 animate-fadeIn">
-                    <div class="space-y-2">
-                        <p class="text-xs text-gray-500 dark:text-slate-500">Repetir por quantos meses?</p>
-                        <div class="relative">
-                            {% render_field form.numero_multiplicacoes id="numero_multiplicacoes" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
-                        </div>
-                    </div>
-                    
-                    <div class="relative flex py-2 items-center">
-                        <div class="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
-                        <span class="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold tracking-widest">ou então</span>
-                        <div class="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
-                    </div>
-
-                    <div class="space-y-2">
-                         <p class="text-xs text-gray-500 dark:text-slate-500">Repetir até qual data?</p>
-                        <div class="relative">
-                            <i class="fa-regular fa-calendar-check absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"></i>
-                            {% render_field form.data_limite_repeticao id="data_limite_repeticao" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg pl-10 pr-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500" %}
-                        </div>
-                        <p class="text-[10px] text-amber-500/80 mt-1">Cria registros mensais até o limite.</p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-        {% endif %}
-
-        {% if conta and conta.eh_parcelada and conta.grupo_parcelamento %}
-        <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
-          <label class="flex items-center gap-3">
-            <input id="aplicar_grupo" type="checkbox" name="aplicar_grupo" value="1"
-                   class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer">
-            <div>
-              <p class="text-sm font-semibold text-amber-800 dark:text-amber-300 cursor-pointer">Aplicar em todas as parcelas</p>
-              <p class="text-xs text-amber-600 dark:text-amber-400">Atualiza descrição, categoria e forma de pagamento</p>
-            </div>
-          </label>
-        </div>
-        {% endif %}
 
         <!-- Observação & Checkboxes -->
         <div class="space-y-4">
@@ -182,17 +88,6 @@
                 {% render_field form.observacao class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-gray-900 dark:text-slate-300 placeholder-gray-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all text-sm" placeholder="Detalhes da transação..." %}
             </div>
 
-            <!-- Atualizar Futuros Checkbox -->
-            {% if modo == 'edit' %}
-            <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-                {% render_field form.atualizar_futuros class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
-                <label for="{{ form.atualizar_futuros.id_for_label }}" class="text-sm font-medium text-emerald-800 dark:text-emerald-300 cursor-pointer select-none">
-                    Atualizar lançamentos futuros semelhantes
-                    <span class="block text-xs text-emerald-600 dark:text-emerald-400 font-normal">Sincroniza descrição e valor de contas futuras com o mesmo nome e valor anterior.</span>
-                </label>
-            </div>
-            {% endif %}
-
             <!-- Status Checkbox -->
             <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-slate-950/50 border border-gray-200 dark:border-slate-800">
                 {% render_field form.pago class="w-5 h-5 rounded text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600" %}
@@ -200,9 +95,7 @@
                     Marcar como <span class="text-emerald-600 dark:text-emerald-400 font-bold">Pago / Recebido</span>
                 </label>
             </div>
-            
         </div>
-
       </div>
 
       <!-- Actions Footer -->
@@ -239,126 +132,6 @@
   {% endif %}
 
 </div>
-
-<!-- Logic for parcelas/multiplication -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const chkParcelado = document.getElementById("parcelado");
-    const boxParcelas = document.getElementById("parcelasBox");
-    const selParcelas = document.getElementById("numero_parcelas"); // might stay null if editing
-
-    const chkMultiplicar = document.getElementById("multiplicar");
-    const boxMultiplica = document.getElementById("multiplicaBox");
-    const selMultiplica = document.getElementById("numero_multiplicacoes"); 
-    const inputLimiteRepeticao = document.getElementById("data_limite_repeticao");
-
-    const valorInput = document.getElementById("valor");
-
-    // Helper: format money
-    function parseToCents(raw) {
-      if (!raw) return null;
-      let s = String(raw).trim().replace(/\s/g, "");
-      // Brazilian format usually uses comma for decimals
-      if (s.includes(",")) {
-        s = s.replace(/\./g, ""); // remove thousands separator
-        s = s.replace(",", ".");  // replace decimal comma with dot
-      }
-      const num = Number(s);
-      if (!Number.isFinite(num) || num <= 0) return null;
-      return Math.round(num * 100);
-    }
-
-    function centsToBRL(cents) {
-        return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    }
-
-    function splitCents(totalCents, n) {
-      const base = Math.floor(totalCents / n);
-      const resto = totalCents % n;
-      const parcelas = [];
-      for (let i = 1; i <= n; i++) {
-        parcelas.push(base + (i <= resto ? 1 : 0));
-      }
-      return parcelas;
-    }
-
-    function setVisible(el, visible) {
-      if(!el) return;
-      if (visible) {
-        el.classList.remove("hidden");
-      } else {
-        el.classList.add("hidden");
-      }
-    }
-
-    // Update the text in the select options to show Parcel Value
-    function updateParcelasOptions() {
-      if (!selParcelas || !valorInput) return;
-      
-      const totalCents = parseToCents(valorInput.value);
-      const options = Array.from(selParcelas.options);
-
-      options.forEach(opt => {
-        const n = parseInt(opt.value, 10);
-        if (!totalCents) {
-          // Reset to simple text if no value
-          if (!opt.hasAttribute('data-original-text')) {
-              opt.setAttribute('data-original-text', opt.textContent.split('x')[0] + 'x');
-          }
-          opt.textContent = opt.getAttribute('data-original-text');
-          return;
-        }
-        const parcelas = splitCents(totalCents, n); // calc partition
-        opt.textContent = `${n}x de R$ ${centsToBRL(parcelas[0])}`;
-      });
-    }
-
-    function updateUI() {
-      // Logic: Mutually exclusive checkboxes
-      if (chkParcelado && chkParcelado.checked && chkMultiplicar && chkMultiplicar.checked) {
-         // If user checks one, uncheck the other? Or just valid?
-         // Usually mutually exclusive in logic. Let's force it.
-         // If I just clicked Parcelado, uncheck Multiplicar
-         if (document.activeElement === chkParcelado) chkMultiplicar.checked = false;
-         if (document.activeElement === chkMultiplicar) chkParcelado.checked = false;
-      }
-
-      if (chkParcelado) setVisible(boxParcelas, chkParcelado.checked);
-      if (chkMultiplicar) setVisible(boxMultiplica, chkMultiplicar.checked);
-
-      if (selParcelas) selParcelas.disabled = !chkParcelado.checked;
-      
-      if (selMultiplica && inputLimiteRepeticao) {
-         selMultiplica.disabled = !chkMultiplicar.checked;
-         inputLimiteRepeticao.disabled = !chkMultiplicar.checked;
-
-         // Logic: if date is filled, disable the count select to avoid ambiguity
-         const updateDisabledState = () => {
-             if (inputLimiteRepeticao.value) {
-                 selMultiplica.classList.add('opacity-50', 'pointer-events-none');
-                 selMultiplica.disabled = true;
-             } else {
-                 selMultiplica.classList.remove('opacity-50', 'pointer-events-none');
-                 selMultiplica.disabled = false;
-             }
-         };
-         
-         inputLimiteRepeticao.addEventListener('input', updateDisabledState);
-         updateDisabledState(); // Run immediately to sync state
-      }
-
-      updateParcelasOptions();
-    }
-
-    // Bind events
-    if (chkParcelado) chkParcelado.addEventListener("change", updateUI);
-    if (chkMultiplicar) chkMultiplicar.addEventListener("change", updateUI);
-    if (valorInput) valorInput.addEventListener("input", updateParcelasOptions);
-
-    // Initial run
-    updateUI();
-  });
-</script>
 
 <style>
     @keyframes fadeIn {

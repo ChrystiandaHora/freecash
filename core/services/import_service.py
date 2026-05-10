@@ -68,15 +68,13 @@ def get_backupable_models():
     priority = {
         "ConfigUsuario": 1,
         "Categoria": 2,
-        "FormaPagamento": 3,
-        "CartaoCredito": 4,
-        "ClasseAtivo": 5,
-        "CategoriaAtivo": 6,
-        "SubcategoriaAtivo": 7,
-        "Ativo": 8,
-        "Assinatura": 9,
-        "Conta": 10,
-        "Transacao": 11,
+        "CartaoCredito": 3,
+        "ClasseAtivo": 4,
+        "CategoriaAtivo": 5,
+        "SubcategoriaAtivo": 6,
+        "Ativo": 7,
+        "Conta": 8,
+        "Transacao": 9,
     }
 
     def get_priority(m):

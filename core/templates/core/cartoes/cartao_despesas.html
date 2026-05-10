@@ -80,66 +80,7 @@
             </p>
           </div>
 
-          <!-- Categoria -->
-          <div class="mb-4">
-            <label for="categoria_cartao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-              <i class="fa-regular fa-folder text-gray-400 dark:text-gray-500"></i>
-              Categoria
-            </label>
-            <select name="categoria_cartao" id="categoria_cartao" 
-                    class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
-              <option value="">Selecione...</option>
-              {% for cat in categorias_cartao %}
-              <option value="{{ cat.id }}">{{ cat.emoji }} {{ cat.nome }}</option>
-              {% endfor %}
-            </select>
-          </div>
 
-          <!-- Parcelamento Toggle -->
-          <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="parcelado" value="1" id="parcelado_toggle"
-                     class="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-emerald-500 focus:ring-emerald-500">
-              <span class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                <i class="fa-regular fa-credit-card text-gray-400 dark:text-gray-500"></i>
-                Parcelar compra
-              </span>
-            </label>
-            
-            <!-- Campos de Parcelamento (inicialmente ocultos) -->
-            <div id="campos_parcelamento" class="hidden mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-              <label for="numero_parcelas" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Número de Parcelas
-              </label>
-            <select name="numero_parcelas" id="numero_parcelas" 
-                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-emerald-500 focus:border-emerald-500">
-                <option value="2">2x</option>
-                <option value="3">3x</option>
-                <option value="4">4x</option>
-                <option value="5">5x</option>
-                <option value="6">6x</option>
-                <option value="7">7x</option>
-                <option value="8">8x</option>
-                <option value="9">9x</option>
-                <option value="10">10x</option>
-                <option value="11">11x</option>
-                <option value="12">12x</option>
-                <option value="18">18x</option>
-                <option value="24">24x</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Recorrente Toggle -->
-          <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="recorrente" id="recorrente" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600">
-              <div>
-                <span class="block text-sm font-medium text-gray-900 dark:text-white">Despesa Recorrente?</span>
-                <span class="block text-xs text-gray-500 dark:text-gray-400">Criar assinatura mensal automática</span>
-              </div>
-            </label>
-          </div>
 
           <button type="submit" 
             class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/25 transition-all duration-300 flex items-center justify-center gap-2">
@@ -149,45 +90,6 @@
         </form>
       </div>
       
-      {% if assinaturas %}
-      <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
-           <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-             <i class="fa-solid fa-rotate text-emerald-500"></i> Recorrentes
-           </h3>
-           <a href="{% url 'assinaturas' %}" class="text-xs text-emerald-600 hover:underline font-medium">Ver todas</a>
-        </div>
-        <div class="divide-y divide-gray-100 dark:divide-gray-700">
-          {% for ass in assinaturas %}
-          <div class="p-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-             <div>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ ass.descricao }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Dia {{ ass.dia_vencimento }} • Próx: {{ ass.proxima_geracao|date:"d/m" }}</p>
-             </div>
-             <div class="flex items-center gap-3">
-                <p class="text-sm font-bold text-gray-900 dark:text-white">R$ {{ ass.valor }}</p>
-                <div class="flex items-center gap-1">
-                    <a href="{% url 'assinatura_editar' pk=ass.id %}" 
-                       class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" 
-                       title="Editar">
-                        <i class="fa-solid fa-pen"></i>
-                    </a>
-                    <form id="form-cancelar-assinatura-{{ ass.id }}" method="post" action="{% url 'assinatura_apagar' pk=ass.id %}" class="inline">
-                        {% csrf_token %}
-                        <button type="button" 
-                                onclick="confirmModal.show({ title: 'Cancelar Recorrência', message: 'Tem certeza que deseja cancelar a recorrência \"{{ ass.descricao|escapejs }}\"?', type: 'warning', confirmText: 'Cancelar', onConfirm: () => document.getElementById('form-cancelar-assinatura-{{ ass.id }}').submit() })"
-                                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                                title="Cancelar recorrência">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
-             </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
 
     </div>
 
@@ -282,24 +184,13 @@
           <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-4 flex-1">
-                <!-- Ícone da categoria -->
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0
-                  {% if despesa.categoria_cartao %}bg-emerald-100 dark:bg-emerald-900/30{% else %}bg-gray-100 dark:bg-gray-700{% endif %}">
-                  {% if despesa.categoria_cartao %}
-                    {{ despesa.categoria_cartao.emoji }}
-                  {% else %}
-                    <i class="fa-solid fa-tag text-gray-400"></i>
-                  {% endif %}
+                <!-- Ícone -->
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-gray-100 dark:bg-gray-700">
+                  <i class="fa-solid fa-tag text-gray-400"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-medium text-gray-900 dark:text-white truncate flex items-center gap-2">
+                  <p class="font-medium text-gray-900 dark:text-white truncate">
                     {{ despesa.descricao|default:"Sem descrição" }}
-                    {% if despesa.eh_parcelada %}
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
-                      <i class="fa-solid fa-boxes-stacked text-xs"></i>
-                      {{ despesa.parcela_numero }}/{{ despesa.parcela_total }}
-                    </span>
-                    {% endif %}
                   </p>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     {% if despesa.data_compra %}
@@ -307,7 +198,6 @@
                     {% endif %}
                     <span class="mx-1">•</span>
                     <i class="fa-solid fa-calendar-check text-xs mr-1"></i>Venc: {{ despesa.data_prevista|date:"d/m/Y" }}
-                    {% if despesa.categoria_cartao %} • {{ despesa.categoria_cartao.nome }}{% endif %}
                   </p>
                 </div>
               </div>
@@ -337,13 +227,10 @@
                     <!-- Excluir -->
                     <form id="form-excluir-despesa-{{ despesa.id }}" method="post" action="{% url 'cartao_despesa_apagar' pk=cartao.pk despesa_id=despesa.id %}" class="inline">
                       {% csrf_token %}
-                      {% if despesa.eh_parcelada %}
-                      <input type="hidden" name="apagar_grupo" id="apagar_grupo_{{ despesa.id }}" value="0">
-                      {% endif %}
                       <button type="button" 
                               class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                               title="Excluir"
-                              onclick="{% if despesa.eh_parcelada %}if(event.shiftKey) { document.getElementById('apagar_grupo_{{ despesa.id }}').value='1'; confirmModal.show({ title: 'Excluir Todas Parcelas', message: 'Excluir TODAS as {{ despesa.parcela_total }} parcelas de \"{{ despesa.descricao|escapejs }}\"?', type: 'danger', confirmText: 'Excluir Todas', onConfirm: () => document.getElementById('form-excluir-despesa-{{ despesa.id }}').submit() }); } else { confirmModal.show({ title: 'Excluir Parcela', message: 'Excluir apenas esta parcela ({{ despesa.parcela_numero }}/{{ despesa.parcela_total }}) de \"{{ despesa.descricao|escapejs }}\"? Para excluir todas, segure SHIFT.', type: 'danger', confirmText: 'Excluir Parcela', onConfirm: () => document.getElementById('form-excluir-despesa-{{ despesa.id }}').submit() }); }{% else %}confirmDelete(document.getElementById('form-excluir-despesa-{{ despesa.id }}'), '{{ despesa.descricao|escapejs }}'){% endif %}">
+                              onclick="confirmDelete(document.getElementById('form-excluir-despesa-{{ despesa.id }}'), '{{ despesa.descricao|escapejs }}')">
                         <i class="fa-solid fa-trash"></i>
                       </button>
                     </form>
@@ -393,88 +280,4 @@
     </div>
   </div>
 </div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const chkParcelado = document.getElementById('parcelado_toggle');
-    const boxParcelas = document.getElementById('campos_parcelamento');
-    const selParcelas = document.getElementById('numero_parcelas');
-    const chkRecorrente = document.getElementById('recorrente');
-    const valorInput = document.getElementById('valor');
-
-    // Helper: parse valor para centavos
-    function parseToCents(raw) {
-      if (!raw) return null;
-      let s = String(raw).trim().replace(/\s/g, '');
-      if (s.includes(',')) {
-        s = s.replace(/\./g, '');
-        s = s.replace(',', '.');
-      }
-      const num = Number(s);
-      if (!Number.isFinite(num) || num <= 0) return null;
-      return Math.round(num * 100);
-    }
-
-    function centsToBRL(cents) {
-      return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    }
-
-    function splitCents(totalCents, n) {
-      const base = Math.floor(totalCents / n);
-      const resto = totalCents % n;
-      return base + (1 <= resto ? 1 : 0);
-    }
-
-    // Atualizar texto das opções do select com valores calculados
-    function updateParcelasOptions() {
-      if (!selParcelas || !valorInput) return;
-      const totalCents = parseToCents(valorInput.value);
-      const options = Array.from(selParcelas.options);
-
-      options.forEach(opt => {
-        const n = parseInt(opt.value, 10);
-        if (!opt.hasAttribute('data-original-text')) {
-          opt.setAttribute('data-original-text', opt.textContent);
-        }
-        if (!totalCents) {
-          opt.textContent = opt.getAttribute('data-original-text');
-          return;
-        }
-        const valorParcela = splitCents(totalCents, n);
-        opt.textContent = `${n}x de R$ ${centsToBRL(valorParcela)}`;
-      });
-    }
-
-    // Toggle parcelamento e exclusividade mútua
-    function updateUI() {
-      // Mutuamente exclusivos
-      if (chkParcelado && chkParcelado.checked && chkRecorrente && chkRecorrente.checked) {
-        if (document.activeElement === chkParcelado) chkRecorrente.checked = false;
-        if (document.activeElement === chkRecorrente) chkParcelado.checked = false;
-      }
-
-      if (boxParcelas) {
-        if (chkParcelado && chkParcelado.checked) {
-          boxParcelas.classList.remove('hidden');
-        } else {
-          boxParcelas.classList.add('hidden');
-        }
-      }
-
-      if (selParcelas) {
-        selParcelas.disabled = !chkParcelado || !chkParcelado.checked;
-      }
-
-      updateParcelasOptions();
-    }
-
-    // Event listeners
-    if (chkParcelado) chkParcelado.addEventListener('change', updateUI);
-    if (chkRecorrente) chkRecorrente.addEventListener('change', updateUI);
-    if (valorInput) valorInput.addEventListener('input', updateParcelasOptions);
-
-    // Inicial
-    updateUI();
-  });
-</script>
 {% endblock %}

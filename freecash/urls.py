@@ -28,7 +28,6 @@ from core.views.contas import (
 )
 from core.views.dashboard import DashboardView
 from core.views.exportar import ExportarView, ExportarRelatorioView
-from core.views.formas_pagamento import EditarFormaPagamentoView, FormasPagamentoView
 from core.views.importar import (
     ImportarView,
     ImportarRelatorioView,
@@ -49,13 +48,6 @@ from core.views.cartoes import (
     CartaoDespesaUpdateView,
     CartaoDespesaDeleteView,
     FaturaPagarView,
-)
-from core.views.assinaturas import (
-    AssinaturasListView,
-    AssinaturaCreateView,
-    AssinaturaUpdateView,
-    AssinaturaDeleteView,
-    AssinaturaGerarContaView,
 )
 from core.views.conciliacao import (
     ConciliacaoUploadView,
@@ -100,32 +92,6 @@ urlpatterns += [
         "conciliacao/<int:pk>/apagar/",
         ConciliacaoDeleteView.as_view(),
         name="conciliacao_delete",
-    ),
-    # Assinaturas
-    path("assinaturas/", AssinaturasListView.as_view(), name="assinaturas"),
-    path("assinaturas/nova/", AssinaturaCreateView.as_view(), name="assinatura_nova"),
-    path(
-        "assinaturas/<int:pk>/editar/",
-        AssinaturaUpdateView.as_view(),
-        name="assinatura_editar",
-    ),
-    path(
-        "assinaturas/<int:pk>/apagar/",
-        AssinaturaDeleteView.as_view(),
-        name="assinatura_apagar",
-    ),
-    path(
-        "assinaturas/<int:pk>/gerar/",
-        AssinaturaGerarContaView.as_view(),
-        name="assinatura_gerar",
-    ),
-    path(
-        "formas-de-pagamento/", FormasPagamentoView.as_view(), name="formas_pagamento"
-    ),
-    path(
-        "formas-de-pagamento/<int:pk>/editar/",
-        EditarFormaPagamentoView.as_view(),
-        name="editar_forma_pagamento",
     ),
     path(
         "contas/cadastrar/",

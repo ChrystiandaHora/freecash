@@ -46,23 +46,6 @@ class Categoria(AuditoriaModel):
         return self.nome
 
 
-class FormaPagamento(AuditoriaModel):
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="formas_pagamento",
-    )
-
-    nome = models.CharField(max_length=100)
-    ativa = models.BooleanField(default=True)
-
-    class Meta:
-        unique_together = ("usuario", "nome")
-
-    def __str__(self):
-        return self.nome
-
-
 class Conta(AuditoriaModel):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -84,39 +67,6 @@ class Conta(AuditoriaModel):
     descricao = models.CharField(max_length=255, blank=True)
     valor = models.DecimalField(max_digits=12, decimal_places=2)
 
-    # Multimoeda
-    MOEDA_CHOICES = (
-        ("BRL", "Real (R$)"),
-        ("USD", "Dólar (US$)"),
-        ("EUR", "Euro (€)"),
-        ("GBP", "Libra (£)"),
-    )
-    moeda = models.CharField(
-        max_length=3,
-        choices=MOEDA_CHOICES,
-        default="BRL",
-        help_text="Moeda da transação",
-    )
-    valor_brl = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Valor convertido para BRL",
-    )
-    taxa_cambio = models.DecimalField(
-        max_digits=10,
-        decimal_places=4,
-        null=True,
-        blank=True,
-        help_text="Taxa de câmbio usada na conversão",
-    )
-
-    eh_parcelada = models.BooleanField(default=False, db_index=True)
-    parcela_numero = models.IntegerField(null=True, blank=True)
-    parcela_total = models.IntegerField(null=True, blank=True)
-    grupo_parcelamento = models.IntegerField(null=True, blank=True, db_index=True)
-
     # Agendamento (equivale ao vencimento / data prevista)
     data_prevista = models.DateField(db_index=True)
 
@@ -131,13 +81,6 @@ class Conta(AuditoriaModel):
         blank=True,
         related_name="contas",
     )
-    forma_pagamento = models.ForeignKey(
-        "core.FormaPagamento",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="contas",
-    )
     cartao = models.ForeignKey(
         "core.CartaoCredito",
         on_delete=models.SET_NULL,
@@ -145,13 +88,7 @@ class Conta(AuditoriaModel):
         blank=True,
         related_name="despesas",
     )
-    categoria_cartao = models.ForeignKey(
-        "core.CategoriaCartao",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="contas",
-    )
+
     # Data da compra (para despesas de cartão - diferente da data de vencimento)
     data_compra = models.DateField(null=True, blank=True, db_index=True)
 
@@ -160,22 +97,6 @@ class Conta(AuditoriaModel):
         default=False,
         db_index=True,
         help_text="Marca se este registro é uma fatura de cartão (não uma despesa individual)",
-    )
-    fatura = models.ForeignKey(
-        "self",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="despesas_fatura",
-        help_text="Fatura à qual esta despesa pertence",
-    )
-    assinatura = models.ForeignKey(
-        "core.Assinatura",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="contas_geradas",
-        help_text="Assinatura que gerou esta conta",
     )
 
     class Meta:
@@ -226,26 +147,6 @@ class ConfigUsuario(AuditoriaModel):
         return f"Configurações de {self.usuario.username}"
 
 
-class CategoriaCartao(models.Model):
-    """
-    Categorias de despesas baseadas no padrão MCC (ISO 18245).
-    São categorias globais do sistema, não editáveis pelo usuário.
-    """
-
-    codigo = models.CharField(max_length=4, unique=True)  # Código MCC simplificado
-    nome = models.CharField(max_length=100)
-    icone = models.CharField(max_length=50, default="fa-tag")  # FontAwesome icon
-    emoji = models.CharField(max_length=10, default="📦")
-
-    class Meta:
-        ordering = ["nome"]
-        verbose_name = "Categoria de Cartão"
-        verbose_name_plural = "Categorias de Cartão"
-
-    def __str__(self):
-        return f"{self.emoji} {self.nome}"
-
-
 class CartaoCredito(AuditoriaModel):
     """
     Cartão de crédito do usuário.
@@ -283,68 +184,6 @@ class CartaoCredito(AuditoriaModel):
     def __str__(self):
         digitos = f" ****{self.ultimos_digitos}" if self.ultimos_digitos else ""
         return f"{self.nome}{digitos}"
-
-
-class Assinatura(AuditoriaModel):
-    """
-    Assinaturas/pagamentos recorrentes (Netflix, aluguel, internet, etc).
-    Gera automaticamente Contas a cada mês.
-    """
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="assinaturas",
-    )
-
-    TIPO_RECEITA = "R"
-    TIPO_DESPESA = "D"
-    TIPO_CHOICES = (
-        (TIPO_RECEITA, "Receita"),
-        (TIPO_DESPESA, "Despesa"),
-    )
-
-    descricao = models.CharField(max_length=255)
-    valor = models.DecimalField(max_digits=12, decimal_places=2)
-    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES, default=TIPO_DESPESA)
-    dia_vencimento = models.IntegerField(
-        default=1, help_text="Dia do mês para vencimento (1-31)"
-    )
-    categoria = models.ForeignKey(
-        "core.Categoria",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assinaturas",
-    )
-    forma_pagamento = models.ForeignKey(
-        "core.FormaPagamento",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assinaturas",
-    )
-    cartao = models.ForeignKey(
-        "core.CartaoCredito",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assinaturas",
-        help_text="Cartão de crédito onde a assinatura é cobrada",
-    )
-    ativa = models.BooleanField(default=True, db_index=True)
-    proxima_geracao = models.DateField(
-        help_text="Data da próxima geração automática de conta"
-    )
-
-    class Meta:
-        ordering = ["descricao"]
-        verbose_name = "Assinatura"
-        verbose_name_plural = "Assinaturas"
-
-    def __str__(self):
-        status = "✓" if self.ativa else "✗"
-        return f"{status} {self.descricao} - R$ {self.valor}"
 
 
 class ExtratoImportado(AuditoriaModel):

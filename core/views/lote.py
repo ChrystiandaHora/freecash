@@ -12,7 +12,7 @@ from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.db import transaction
 
-from core.models import Conta, FormaPagamento
+from core.models import Conta, Categoria
 
 
 def parse_date_flexible(date_str: str):
@@ -40,10 +40,6 @@ class ContaLoteCreateView(View):
         # Limitar entre 1 e 20
         quantidade = max(1, min(quantidade, 20))
 
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
-            "nome"
-        )
-
         return render(
             request,
             self.template_name,
@@ -53,7 +49,6 @@ class ContaLoteCreateView(View):
                 "subtitulo": "Registre várias despesas de uma só vez",
                 "quantidade": quantidade,
                 "linhas": range(quantidade),
-                "formas": formas,
                 "url_voltar": "contas_pagar",
             },
         )
@@ -65,15 +60,19 @@ class ContaLoteCreateView(View):
         descricoes = request.POST.getlist("descricao[]")
         valores = request.POST.getlist("valor[]")
         datas = request.POST.getlist("data[]")
-        formas_ids = request.POST.getlist("forma_pagamento[]")
         todas_pagas = request.POST.get("todas_pagas") == "on"
+
+        # Buscar categoria padrão de despesa
+        default_cat = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_DESPESA, is_default=True
+        ).first()
 
         # Validar e preparar lançamentos
         contas_para_criar = []
         erros = []
 
-        for i, (desc, val, dt, forma_id) in enumerate(
-            zip(descricoes, valores, datas, formas_ids), 1
+        for i, (desc, val, dt) in enumerate(
+            zip(descricoes, valores, datas), 1
         ):
             desc = desc.strip()
             val = val.strip()
@@ -111,13 +110,6 @@ class ContaLoteCreateView(View):
                 erros.append(f"Linha {i}: Data inválida")
                 continue
 
-            # Forma de pagamento (opcional)
-            forma_pagamento = None
-            if forma_id and forma_id.isdigit():
-                forma_pagamento = FormaPagamento.objects.filter(
-                    id=forma_id, usuario=usuario
-                ).first()
-
             contas_para_criar.append(
                 Conta(
                     usuario=usuario,
@@ -125,10 +117,9 @@ class ContaLoteCreateView(View):
                     descricao=desc,
                     valor=valor,
                     data_prevista=data_parsed,
+                    categoria=default_cat,
                     transacao_realizada=todas_pagas,
                     data_realizacao=data_parsed if todas_pagas else None,
-                    forma_pagamento=forma_pagamento,
-                    eh_parcelada=False,
                 )
             )
 
@@ -164,10 +155,6 @@ class ReceitaLoteCreateView(View):
         # Limitar entre 1 e 20
         quantidade = max(1, min(quantidade, 20))
 
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
-            "nome"
-        )
-
         return render(
             request,
             self.template_name,
@@ -177,7 +164,6 @@ class ReceitaLoteCreateView(View):
                 "subtitulo": "Registre várias receitas de uma só vez",
                 "quantidade": quantidade,
                 "linhas": range(quantidade),
-                "formas": formas,
                 "url_voltar": "receitas",
             },
         )
@@ -189,14 +175,18 @@ class ReceitaLoteCreateView(View):
         descricoes = request.POST.getlist("descricao[]")
         valores = request.POST.getlist("valor[]")
         datas = request.POST.getlist("data[]")
-        formas_ids = request.POST.getlist("forma_pagamento[]")
+
+        # Buscar categoria padrão de receita
+        default_cat = Categoria.objects.filter(
+            usuario=usuario, tipo=Categoria.TIPO_RECEITA, is_default=True
+        ).first()
 
         # Validar e preparar lançamentos
         receitas_para_criar = []
         erros = []
 
-        for i, (desc, val, dt, forma_id) in enumerate(
-            zip(descricoes, valores, datas, formas_ids), 1
+        for i, (desc, val, dt) in enumerate(
+            zip(descricoes, valores, datas), 1
         ):
             desc = desc.strip()
             val = val.strip()
@@ -234,13 +224,6 @@ class ReceitaLoteCreateView(View):
                 erros.append(f"Linha {i}: Data inválida")
                 continue
 
-            # Forma de pagamento (opcional)
-            forma_pagamento = None
-            if forma_id and forma_id.isdigit():
-                forma_pagamento = FormaPagamento.objects.filter(
-                    id=forma_id, usuario=usuario
-                ).first()
-
             receitas_para_criar.append(
                 Conta(
                     usuario=usuario,
@@ -248,10 +231,9 @@ class ReceitaLoteCreateView(View):
                     descricao=desc,
                     valor=valor,
                     data_prevista=data_parsed,
+                    categoria=default_cat,
                     transacao_realizada=True,  # Receitas já entram como realizadas
                     data_realizacao=data_parsed,
-                    forma_pagamento=forma_pagamento,
-                    eh_parcelada=False,
                 )
             )
 

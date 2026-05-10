@@ -47,7 +47,7 @@ def get_movimentacoes(usuario, data_inicio: date, data_fim: date):
             # Apenas contas sem cartão OU faturas de cartão
             Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
         )
-        .select_related("categoria", "forma_pagamento", "cartao")
+        .select_related("categoria", "cartao")
         .order_by("data_prevista", "id")
     )
     return qs

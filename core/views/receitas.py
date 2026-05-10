@@ -10,13 +10,8 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.db.models import Sum
 
-from core.models import Conta, Categoria, FormaPagamento
+from core.models import Conta, Categoria
 from core.signals import atualizar_config
-from core.services.cotacao_service import converter_para_brl
-from core.services.conta_service import (
-    criar_contas_multiplicadas,
-    criar_contas_parceladas,
-)
 from core.forms import ContaForm
 
 
@@ -52,7 +47,6 @@ class ReceitasView(View):
         ano = (request.GET.get("ano") or "").strip()
         mes = (request.GET.get("mes") or "").strip()
         categoria_id = (request.GET.get("categoria") or "").strip()
-        forma_id = (request.GET.get("forma_pagamento") or "").strip()
 
         # Verificar se há filtros de data aplicados
         has_date_filter = ano.isdigit() or mes.isdigit()
@@ -61,7 +55,7 @@ class ReceitasView(View):
             usuario=usuario,
             tipo=Conta.TIPO_RECEITA,
             transacao_realizada=True,
-        ).select_related("categoria", "forma_pagamento")
+        ).select_related("categoria")
 
         # Aplicar filtros - com default para mês atual se não houver filtro de data
         if ano.isdigit():
@@ -76,8 +70,6 @@ class ReceitasView(View):
 
         if categoria_id.isdigit():
             qs = qs.filter(categoria_id=int(categoria_id))
-        if forma_id.isdigit():
-            qs = qs.filter(forma_pagamento_id=int(forma_id))
         if q:
             qs = qs.filter(descricao__icontains=q)
 
@@ -101,9 +93,6 @@ class ReceitasView(View):
             usuario=usuario,
             tipo=Categoria.TIPO_RECEITA,
         ).order_by("nome")
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
-            "nome"
-        )
 
         anos = list(range(hoje.year - 5, hoje.year + 1))
         anos.reverse()
@@ -123,7 +112,6 @@ class ReceitasView(View):
             "per_page": per_page,
             "querystring": querystring,
             "categorias": categorias,
-            "formas": formas,
             "hoje": hoje,
             "anos": anos,
             "meses": meses,
@@ -136,7 +124,6 @@ class ReceitasView(View):
                 "ano": ano,
                 "mes": mes,
                 "categoria": categoria_id,
-                "forma_pagamento": forma_id,
             },
         }
         return render(request, self.template_name, contexto)
@@ -152,9 +139,6 @@ class ReceitaCreateView(View):
             usuario=usuario,
             tipo=Categoria.TIPO_RECEITA,
         ).order_by("nome")
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
-            "nome"
-        )
 
         form = ContaForm(usuario=usuario, tipo=Conta.TIPO_RECEITA)
         return render(
@@ -162,7 +146,6 @@ class ReceitaCreateView(View):
             self.template_name,
             {
                 "categorias": categorias,
-                "formas": formas,
                 "form": form,
                 "modo": "create",
                 "titulo": "Nova Receita",
@@ -183,82 +166,12 @@ class ReceitaCreateView(View):
             )
             return redirect("receita_nova")
 
-        cd = form.cleaned_data
-        descricao = cd.get("descricao")
-        valor = cd.get("valor")
-        data_date = cd.get("data_prevista")
-        forma_pagamento = cd.get("forma_pagamento")
-        categoria = cd.get("categoria")
-
-        parcelado = cd.get("parcelado")
-        numero_parcelas = cd.get("numero_parcelas", 2)
-        multiplicar = cd.get("multiplicar")
-        numero_multiplicacoes = cd.get("numero_multiplicacoes", 2)
-
-        # Lógica de Multiplicar
-        if multiplicar:
-            n = numero_multiplicacoes
-
-            if n < 2 or n > 12:
-                messages.error(request, "Quantidade deve ser entre 2 e 12.")
-                return redirect("receita_nova")
-
-            criar_contas_multiplicadas(
-                n=n,
-                usuario=usuario,
-                tipo=Conta.TIPO_RECEITA,
-                descricao=descricao,
-                valor_total=valor,
-                data_prevista=data_date,
-                pago=True,
-                categoria=categoria,
-                forma_pagamento=forma_pagamento,
-                categoria_cartao=None,
-            )
-
-            messages.success(request, f"Receita registrada {n} vezes.")
-            return redirect("receitas")
-
-        # Lógica de Parcelar
-        if parcelado:
-            n = numero_parcelas
-
-            if n < 2 or n > 12:
-                messages.error(request, "Número de parcelas deve ser entre 2 e 12.")
-                return redirect("receita_nova")
-
-            criar_contas_parceladas(
-                n=n,
-                usuario=usuario,
-                tipo=Conta.TIPO_RECEITA,
-                descricao=descricao,
-                valor_total=valor,
-                data_prevista=data_date,
-                pago=True,
-                categoria=categoria,
-                forma_pagamento=forma_pagamento,
-                categoria_cartao=None,
-            )
-
-            messages.success(request, f"Receita registrada em {n} parcelas.")
-            return redirect("receitas")
-
-        # Criação Unitária (Padrão)
-        Conta.objects.create(
-            usuario=usuario,
-            tipo=Conta.TIPO_RECEITA,
-            descricao=descricao,
-            valor=valor,
-            data_prevista=data_date,
-            transacao_realizada=True,
-            data_realizacao=data_date,
-            categoria=categoria,
-            forma_pagamento=forma_pagamento,
-            eh_parcelada=False,
-            parcela_numero=None,
-            parcela_total=None,
-            grupo_parcelamento=None,
-        )
+        # Ao salvar receita, forçamos como realizada
+        conta = form.save(commit=False)
+        conta.transacao_realizada = True
+        if not conta.data_realizacao:
+            conta.data_realizacao = conta.data_prevista
+        conta.save()
 
         messages.success(request, "Receita registrada!")
 
@@ -274,7 +187,6 @@ class ReceitaUpdateView(View):
 
     def get(self, request, pk):
         usuario = request.user
-        # Garante que é Receita
         conta = get_object_or_404(
             Conta, id=pk, usuario=usuario, tipo=Conta.TIPO_RECEITA
         )
@@ -284,10 +196,6 @@ class ReceitaUpdateView(View):
             tipo=Categoria.TIPO_RECEITA,
         ).order_by("nome")
 
-        formas = FormaPagamento.objects.filter(usuario=usuario, ativa=True).order_by(
-            "nome"
-        )
-
         form = ContaForm(instance=conta, usuario=usuario, tipo=Conta.TIPO_RECEITA)
 
         return render(
@@ -296,7 +204,6 @@ class ReceitaUpdateView(View):
             {
                 "conta": conta,
                 "categorias": categorias,
-                "formas": formas,
                 "form": form,
                 "modo": "edit",
                 "titulo": "Editar Receita",
@@ -328,18 +235,11 @@ class ReceitaUpdateView(View):
 
         cd = form.cleaned_data
         
-        valor_total = cd.get("valor")
-        moeda = cd.get("moeda", "BRL")
+        valor = cd.get("valor")
         data_prevista_nova = cd.get("data_prevista")
         pago = cd.get("pago")
 
-        # Recalcula BRL e taxas para manter consistência
-        valor_brl, taxa_cambio = converter_para_brl(valor_total, moeda, data_prevista_nova)
-
         conta = form.save(commit=False)
-        conta.moeda = moeda
-        conta.valor_brl = valor_brl
-        conta.taxa_cambio = taxa_cambio
         
         if data_prevista_nova:
             conta.data_realizacao = data_prevista_nova if pago else None
@@ -347,7 +247,7 @@ class ReceitaUpdateView(View):
         conta.transacao_realizada = pago
         conta.save()
 
-        # 4) ATUALIZAR FUTUROS SEMELHANTES
+        # ATUALIZAR FUTUROS SEMELHANTES
         atualizar_futuros = cd.get("atualizar_futuros")
         msg_adicional = ""
         if atualizar_futuros:
@@ -364,8 +264,6 @@ class ReceitaUpdateView(View):
                 contas_futuras.update(
                     descricao=conta.descricao,
                     valor=conta.valor,
-                    valor_brl=conta.valor_brl,
-                    taxa_cambio=conta.taxa_cambio,
                 )
                 atualizar_config(usuario)
                 msg_adicional = f" {count} lançamentos futuros também foram atualizados."

@@ -67,7 +67,6 @@
               <th class="px-4 py-3">Descrição *</th>
               <th class="px-4 py-3 w-36">Valor (R$) *</th>
               <th class="px-4 py-3 w-40">{% if tipo == 'receita' %}Data{% else %}Vencimento{% endif %} *</th>
-              <th class="px-4 py-3 w-48">Forma de Pagamento</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
@@ -99,17 +98,6 @@
               <td class="px-4 py-2">
                 <input type="date" name="data[]"
                        class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 focus:border-{% if tipo == 'receita' %}emerald{% else %}rose{% endif %}-500 focus:ring-{% if tipo == 'receita' %}emerald{% else %}rose{% endif %}-500/20 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white transition-all cursor-pointer shadow-sm">
-              </td>
-              
-              <!-- Forma de Pagamento -->
-              <td class="px-4 py-2">
-                <select name="forma_pagamento[]"
-                        class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 focus:border-{% if tipo == 'receita' %}emerald{% else %}rose{% endif %}-500 focus:ring-{% if tipo == 'receita' %}emerald{% else %}rose{% endif %}-500/20 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer transition-all shadow-sm">
-                  <option value="">—</option>
-                  {% for f in formas %}
-                  <option value="{{ f.id }}">{{ f.nome }}</option>
-                  {% endfor %}
-                </select>
               </td>
             </tr>
             {% endfor %}

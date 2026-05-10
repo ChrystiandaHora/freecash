@@ -90,17 +90,16 @@
                    class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all">
         </div>
 
-        <!-- Filters Group -->
+            <!-- Filters Group -->
         <div class="flex flex-wrap gap-2 lg:flex-nowrap">
             <!-- Selects -->
-            {% for field in "ano,mes,categoria,forma_pagamento"|split:"," %}
+            {% for field in "ano,mes,categoria"|split:"," %}
             <div class="relative min-w-[120px]">
                 <select name="{{ field }}" class="w-full appearance-none bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 cursor-pointer hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
                     <option value="">{{ field|title|replace:"_ ," }}</option>
                      {% if field == "ano" %} {% for a in anos %} <option value="{{ a }}" {% if filtros.ano|stringformat:"s" == a|stringformat:"s" %}selected{% endif %}>{{ a }}</option> {% endfor %} {% endif %}
                     {% if field == "mes" %} {% for m in meses %} <option value="{{ m }}" {% if filtros.mes|stringformat:"s" == m|stringformat:"s" %}selected{% endif %}>{{ m }}</option> {% endfor %} {% endif %}
                     {% if field == "categoria" %} {% for c in categorias %} <option value="{{ c.id }}" {% if filtros.categoria|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option> {% endfor %} {% endif %}
-                    {% if field == "forma_pagamento" %} {% for f in formas %} <option value="{{ f.id }}" {% if filtros.forma_pagamento|stringformat:"s" == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nome }}</option> {% endfor %} {% endif %}
                 </select>
                 <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-600 text-xs pointer-events-none"></i>
             </div>
