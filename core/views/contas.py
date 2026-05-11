@@ -279,6 +279,7 @@ class CadastrarContaPagarView(View):
         data_prevista = cd.get("data_prevista")
 
         conta = form.save(commit=False)
+        conta.usuario = usuario
         conta.transacao_realizada = pago
         if pago and not conta.data_realizacao:
             conta.data_realizacao = data_prevista

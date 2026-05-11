@@ -168,6 +168,7 @@ class ReceitaCreateView(View):
 
         # Ao salvar receita, forçamos como realizada
         conta = form.save(commit=False)
+        conta.usuario = usuario
         conta.transacao_realizada = True
         if not conta.data_realizacao:
             conta.data_realizacao = conta.data_prevista
