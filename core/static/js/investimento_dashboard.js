@@ -156,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
         categoryChart.render();
     }
 
-    // Performance Monthly/Yearly Chart (Rentabilidade Isolada)
+    // Performance Monthly/Yearly Chart (Candlestick + Linha de Investimento)
     const performanceEl = document.getElementById("chartPerformance");
     if (performanceEl && (performanceMonthly.length > 0 || performanceYearly.length > 0)) {
         let mode = "monthly"; // monthly|yearly
@@ -175,46 +175,54 @@ document.addEventListener("DOMContentLoaded", () => {
             return sliceRange(rows, range);
         };
 
-        const toSeriesData = (rows) => {
-            // Calcula a rentabilidade isolada do período (Delta)
-            return rows.map((r, i) => {
-                const current = Number(r.rentabilidade_percentual) || 0;
-                const previous = i > 0 ? (Number(rows[i - 1].rentabilidade_percentual) || 0) : 0;
-                
-                return {
-                    x: new Date(r.data + "T00:00:00").getTime(),
-                    y: parseFloat((current - previous).toFixed(2)),
-                };
-            });
+        const toCandleData = (rows) => {
+            return rows.map((r) => ({
+                x: new Date(r.data + "T00:00:00").getTime(),
+                y: r.ohlc,
+            }));
+        };
+
+        const toInvestidoData = (rows) => {
+            return rows.map((r) => ({
+                x: new Date(r.data + "T00:00:00").getTime(),
+                y: r.investido,
+            }));
         };
 
         const performanceChart = new ApexCharts(performanceEl, {
             series: [
                 {
-                    name: "Rentabilidade",
-                    data: toSeriesData(getRows()),
+                    name: "Patrimônio (OHLC)",
+                    type: "candlestick",
+                    data: toCandleData(getRows()),
+                },
+                {
+                    name: "Valor Investido",
+                    type: "line",
+                    data: toInvestidoData(getRows()),
                 },
             ],
             chart: {
-                type: "bar",
                 height: 280,
+                type: "line", // Misto
                 fontFamily: "Inter, sans-serif",
                 toolbar: { show: false },
                 zoom: { enabled: false },
             },
+            colors: ["#10b981", "#3b82f6"],
             plotOptions: {
-                bar: {
+                candlestick: {
                     colors: {
-                        ranges: [
-                            { from: -1000, to: -0.01, color: "#ef4444" }, // Red for negative
-                            { from: 0, to: 1000, color: "#10b981" }       // Green for positive
-                        ]
+                        upward: "#10b981",
+                        downward: "#ef4444",
                     },
-                    columnWidth: "60%",
-                    borderRadius: 4,
-                }
+                    wick: { useFillColor: true },
+                },
             },
-            dataLabels: { enabled: false },
+            stroke: {
+                width: [1, 3],
+                curve: "smooth",
+            },
             xaxis: {
                 type: "datetime",
                 labels: {
@@ -227,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
             yaxis: {
                 labels: {
                     style: { colors: textColor, fontSize: "11px" },
-                    formatter: (val) => val.toFixed(2) + "%",
+                    formatter: (val) => brl.format(val),
                 },
             },
             grid: {
@@ -236,10 +244,49 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             tooltip: {
                 theme: isDark ? "dark" : "light",
-                x: { format: mode === "yearly" ? "yyyy" : "MMM yyyy" },
-                y: {
-                    formatter: (val) => (val > 0 ? "+" : "") + val.toFixed(2) + "%",
-                    title: { formatter: () => "Rentabilidade: " }
+                shared: true,
+                custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                    const ohlc = w.globals.initialSeries[0].data[dataPointIndex].y;
+                    const investido = w.globals.initialSeries[1].data[dataPointIndex].y;
+                    const date = new Date(w.globals.seriesX[0][dataPointIndex]).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+                    
+                    const lucro = ohlc[3] - investido;
+                    const lucroPerc = investido > 0 ? (lucro / investido) * 100 : 0;
+                    const lucroColor = lucro >= 0 ? "text-emerald-500" : "text-red-500";
+
+                    return `
+                        <div class="p-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg shadow-xl min-w-[200px]">
+                            <div class="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">${date}</div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center gap-4">
+                                    <span class="text-xs text-gray-500 dark:text-slate-400">Abertura:</span>
+                                    <span class="text-xs font-mono font-bold">${brl.format(ohlc[0])}</span>
+                                </div>
+                                <div class="flex justify-between items-center gap-4">
+                                    <span class="text-xs text-gray-500 dark:text-slate-400 text-emerald-500">Máxima:</span>
+                                    <span class="text-xs font-mono font-bold">${brl.format(ohlc[1])}</span>
+                                </div>
+                                <div class="flex justify-between items-center gap-4">
+                                    <span class="text-xs text-gray-500 dark:text-slate-400 text-red-500">Mínima:</span>
+                                    <span class="text-xs font-mono font-bold">${brl.format(ohlc[2])}</span>
+                                </div>
+                                <div class="flex justify-between items-center gap-4">
+                                    <span class="text-xs text-gray-500 dark:text-slate-400">Fechamento:</span>
+                                    <span class="text-xs font-mono font-bold">${brl.format(ohlc[3])}</span>
+                                </div>
+                                <div class="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
+                                    <div class="flex justify-between items-center gap-4">
+                                        <span class="text-xs text-gray-500 dark:text-slate-400">Total Investido:</span>
+                                        <span class="text-xs font-mono font-bold text-blue-500">${brl.format(investido)}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center gap-4 mt-1">
+                                        <span class="text-xs text-gray-500 dark:text-slate-400">Resultado:</span>
+                                        <span class="text-xs font-mono font-bold ${lucroColor}">${brl.format(lucro)} (${lucroPerc.toFixed(1)}%)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
             },
         });
@@ -247,18 +294,19 @@ document.addEventListener("DOMContentLoaded", () => {
         performanceChart.render();
 
         const refresh = () => {
+            const rows = getRows();
             performanceChart.updateSeries([
                 {
-                    name: "Rentabilidade",
-                    data: toSeriesData(getRows()),
+                    name: "Patrimônio (OHLC)",
+                    type: "candlestick",
+                    data: toCandleData(rows),
+                },
+                {
+                    name: "Valor Investido",
+                    type: "line",
+                    data: toInvestidoData(rows),
                 },
             ], true);
-            
-            performanceChart.updateOptions({
-                tooltip: {
-                    x: { format: mode === "yearly" ? "yyyy" : "MMM yyyy" }
-                }
-            });
         };
 
         // Wire buttons

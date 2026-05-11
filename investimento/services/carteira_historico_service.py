@@ -151,55 +151,81 @@ class CarteiraHistoricoService:
 
     def series_mensal(self, *, meses: int | None = 36) -> list[dict]:
         """
-        Série mensal (último ponto de cada mês), em ordem crescente.
+        Série mensal com dados OHLC (Open, High, Low, Close) e Investimento.
         """
         qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "rentabilidade_percentual"
+            "data", "patrimonio", "total_compras", "total_vendas"
         )
 
-        last_by_month: dict[tuple[int, int], dict] = {}
+        # Agrupar por (ano, mês)
+        groups: dict[tuple[int, int], list[dict]] = {}
         for row in qs:
             d: date = row["data"]
-            last_by_month[(d.year, d.month)] = row
+            key = (d.year, d.month)
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(row)
 
-        rows = [last_by_month[k] for k in sorted(last_by_month.keys())]
-        if meses is not None and len(rows) > meses:
-            rows = rows[-meses:]
+        sorted_keys = sorted(groups.keys())
+        if meses and len(sorted_keys) > meses:
+            sorted_keys = sorted_keys[-meses:]
 
-        return [
-            {
-                "data": r["data"].isoformat(),
-                "patrimonio": float(r["patrimonio"] or 0),
-                "rentabilidade_percentual": float(r["rentabilidade_percentual"] or 0),
-            }
-            for r in rows
-        ]
+        results = []
+        for key in sorted_keys:
+            rows = groups[key]
+            # OHLC do Patrimônio
+            o = float(rows[0]["patrimonio"] or 0)
+            c = float(rows[-1]["patrimonio"] or 0)
+            h = float(max(r["patrimonio"] or 0 for r in rows))
+            l = float(min(r["patrimonio"] or 0 for r in rows))
+            
+            # Investimento Líquido (Custo) no final do mês
+            investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
+
+            results.append({
+                "data": rows[-1]["data"].isoformat(),
+                "ohlc": [o, h, l, c],
+                "investido": investido,
+                "patrimonio": c, # Para compatibilidade se necessário
+            })
+        return results
 
     def series_anual(self, *, anos: int | None = 10) -> list[dict]:
         """
-        Série anual (último ponto de cada ano), em ordem crescente.
+        Série anual com dados OHLC (Open, High, Low, Close) e Investimento.
         """
         qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "rentabilidade_percentual"
+            "data", "patrimonio", "total_compras", "total_vendas"
         )
 
-        last_by_year: dict[int, dict] = {}
+        groups: dict[int, list[dict]] = {}
         for row in qs:
             d: date = row["data"]
-            last_by_year[d.year] = row
+            key = d.year
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(row)
 
-        rows = [last_by_year[k] for k in sorted(last_by_year.keys())]
-        if anos is not None and len(rows) > anos:
-            rows = rows[-anos:]
+        sorted_keys = sorted(groups.keys())
+        if anos and len(sorted_keys) > anos:
+            sorted_keys = sorted_keys[-anos:]
 
-        return [
-            {
-                "data": r["data"].isoformat(),
-                "patrimonio": float(r["patrimonio"] or 0),
-                "rentabilidade_percentual": float(r["rentabilidade_percentual"] or 0),
-            }
-            for r in rows
-        ]
+        results = []
+        for key in sorted_keys:
+            rows = groups[key]
+            o = float(rows[0]["patrimonio"] or 0)
+            c = float(rows[-1]["patrimonio"] or 0)
+            h = float(max(r["patrimonio"] or 0 for r in rows))
+            l = float(min(r["patrimonio"] or 0 for r in rows))
+            investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
+
+            results.append({
+                "data": rows[-1]["data"].isoformat(),
+                "ohlc": [o, h, l, c],
+                "investido": investido,
+                "patrimonio": c,
+            })
+        return results
 
 
 def atualizar_historico_para_todos(*, ate_data: date | None = None) -> dict:
