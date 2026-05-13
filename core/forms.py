@@ -35,6 +35,11 @@ class ContaForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        
+        # Garante que o tipo da conta seja definido
+        if not instance.tipo:
+            instance.tipo = self.tipo_conta
+
         if not instance.categoria and self.usuario:
             # Busca a categoria padrão para o tipo (R=Receita, D=Gastos)
             default_cat = Categoria.objects.filter(
