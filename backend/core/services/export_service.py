@@ -73,6 +73,7 @@ def get_backupable_models():
         "Ativo": 7,
         "Conta": 8,
         "Transacao": 9,
+        "CarteiraHistorico": 10,
     }
 
     def get_priority(m):

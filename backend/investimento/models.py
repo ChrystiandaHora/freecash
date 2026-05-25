@@ -6,6 +6,8 @@ dividir ativos (Renda Fixa, Renda Variável, Multimercado, Cambial), listar ativ
 individuais (ex: PETR4) e registrar ordens de compra, venda e recebimento de proventos.
 """
 
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from core.models import AuditoriaModel

@@ -14,6 +14,7 @@ import base64
 import hashlib
 import uuid
 import io
+import logging
 from django.db import transaction
 from django.utils import timezone
 from django.apps import apps
@@ -21,6 +22,8 @@ from django.db.models.fields.related import ForeignKey, OneToOneField
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
@@ -103,6 +106,7 @@ def get_backupable_models():
         "Ativo": 7,
         "Conta": 8,
         "Transacao": 9,
+        "CarteiraHistorico": 10,
     }
 
     def get_priority(m):
@@ -118,6 +122,11 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     insere as novas entidades mapeando e religando chaves estrangeiras com base
     em UUIDs estáveis contidos no dicionário de backup.
 
+    Desconecta temporariamente os signals do módulo de investimentos durante a
+    restauração para evitar recálculos parciais e incorretos de preço médio e
+    quantidade dos ativos enquanto as transações são reinseridas individualmente.
+    Após a restauração completa, força o recálculo de todos os ativos afetados.
+
     Args:
         data_dict (dict): Dicionário contendo os dados decodificados do backup.
         user (User): O usuário Django que está restaurando a base de dados.
@@ -125,9 +134,26 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     Returns:
         dict: Estatísticas contendo total de registros restaurados ou falhas.
     """
+    # ── Desconectar signals de investimento durante a importação ─────────────
+    # O signal post_save/post_delete de Transacao chama recalcular_ativo() a
+    # cada registro inserido, produzindo valores parciais/incorretos de
+    # quantidade e preco_medio durante o processo de restauração em lote.
+    try:
+        from django.db.models.signals import post_save, post_delete
+        from investimento.signals import atualizar_ativo_apos_transacao
+        from investimento.models import Transacao as TransacaoInvestimento
+
+        post_save.disconnect(atualizar_ativo_apos_transacao, sender=TransacaoInvestimento)
+        post_delete.disconnect(atualizar_ativo_apos_transacao, sender=TransacaoInvestimento)
+        signals_disconnected = True
+    except Exception as e:
+        logger.warning("Não foi possível desconectar signals de investimento: %s", e)
+        signals_disconnected = False
+
     backup_models = get_backupable_models()
     uuid_to_id = {}
     total_restored = 0
+    ativos_restaurados = []  # rastreia ativos para recálculo posterior
 
     def get_model_field_names(model):
         """Retorna os nomes de campos válidos do modelo."""
@@ -147,90 +173,147 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
         all_valid = valid_fields | valid_fk_fields
         return {k: v for k, v in row.items() if k in all_valid}
 
-    with transaction.atomic():
-        # 1. DELETE EXISTING
-        for model in reversed(backup_models):
-            is_one_to_one = False
-            for field in model._meta.fields:
-                if isinstance(field, OneToOneField) and field.name == "usuario":
-                    is_one_to_one = True
-                    break
-
-            if not is_one_to_one:
-                model.objects.filter(usuario=user).delete()
-
-        for model in backup_models:
-            uuid_to_id[model.__name__] = {}
-
-        # 2. IMPORT NEW
-        for model in backup_models:
-            app_label = model._meta.app_label
-            model_name = model.__name__
-
-            is_one_to_one_user = False
-            for field in model._meta.fields:
-                if isinstance(field, OneToOneField) and field.name == "usuario":
-                    is_one_to_one_user = True
-                    break
-
-            records = data_dict.get("data", {}).get(app_label, {}).get(model_name, [])
-
-            for row in records:
-                uid = row.pop("uuid", None)
-                if not uid:
-                    continue
-
-                # Resolve FKs
+    try:
+        with transaction.atomic():
+            # 1. DELETE EXISTING
+            for model in reversed(backup_models):
+                is_one_to_one = False
                 for field in model._meta.fields:
-                    if isinstance(field, ForeignKey) and field.name != "usuario":
-                        fk_uuid_key = f"{field.name}_uuid"
-                        val_uuid = row.pop(fk_uuid_key, None)
+                    if isinstance(field, OneToOneField) and field.name == "usuario":
+                        is_one_to_one = True
+                        break
 
-                        if val_uuid:
-                            target_name = field.remote_field.model.__name__
-                            local_id = uuid_to_id.get(target_name, {}).get(
-                                str(val_uuid)
+                if not is_one_to_one:
+                    deleted_count, _ = model.objects.filter(usuario=user).delete()
+                    logger.debug(
+                        "Removidos %d registros de %s para o usuário %s",
+                        deleted_count, model.__name__, user.username
+                    )
+
+            for model in backup_models:
+                # Chave única por app_label.model_name para evitar colisão entre apps
+                uuid_to_id[f"{model._meta.app_label}.{model.__name__}"] = {}
+                # Compatibilidade retroativa: manter também pela chave simples de nome
+                uuid_to_id[model.__name__] = uuid_to_id[f"{model._meta.app_label}.{model.__name__}"]
+
+            # 2. IMPORT NEW
+            for model in backup_models:
+                app_label = model._meta.app_label
+                model_name = model.__name__
+                composite_key = f"{app_label}.{model_name}"
+
+                is_one_to_one_user = False
+                for field in model._meta.fields:
+                    if isinstance(field, OneToOneField) and field.name == "usuario":
+                        is_one_to_one_user = True
+                        break
+
+                records = data_dict.get("data", {}).get(app_label, {}).get(model_name, [])
+                logger.debug(
+                    "Restaurando %d registros de %s.%s", len(records), app_label, model_name
+                )
+
+                for row in records:
+                    uid = row.pop("uuid", None)
+                    if not uid:
+                        continue
+
+                    # Resolve FKs usando chave composta (app_label.ModelName)
+                    for field in model._meta.fields:
+                        if isinstance(field, ForeignKey) and field.name != "usuario":
+                            fk_uuid_key = f"{field.name}_uuid"
+                            val_uuid = row.pop(fk_uuid_key, None)
+
+                            if val_uuid:
+                                target_model = field.remote_field.model
+                                target_key = f"{target_model._meta.app_label}.{target_model.__name__}"
+                                local_id = uuid_to_id.get(target_key, {}).get(str(val_uuid))
+                                if local_id is None:
+                                    # Fallback: chave simples de nome
+                                    local_id = uuid_to_id.get(target_model.__name__, {}).get(str(val_uuid))
+                                row[f"{field.name}_id"] = local_id
+                            else:
+                                row[f"{field.name}_id"] = None
+
+                    # Filtrar campos que não existem mais no modelo
+                    row = filter_valid_fields(model, row)
+
+                    # Upsert/Create
+                    obj = None
+                    try:
+                        if is_one_to_one_user:
+                            obj, _ = model.objects.update_or_create(
+                                usuario=user, defaults=row
                             )
-                            row[f"{field.name}_id"] = local_id
                         else:
-                            row[f"{field.name}_id"] = None
+                            obj, _ = model.objects.update_or_create(
+                                uuid=uid, usuario=user, defaults=row
+                            )
+                    except Exception as exc:
+                        logger.warning(
+                            "Falha no update_or_create de %s (uuid=%s): %s — tentando fallback por nome.",
+                            model_name, uid, exc
+                        )
+                        # Fallback: correspondência por nome
+                        nome = row.get("nome")
+                        try:
+                            if nome:
+                                existing = model.objects.filter(usuario=user, nome=nome).first()
+                                if existing:
+                                    for k, v in row.items():
+                                        setattr(existing, k, v)
+                                    existing.save()
+                                    obj = existing
+                                else:
+                                    row["uuid"] = uuid.uuid4()
+                                    obj = model.objects.create(usuario=user, **row)
+                            else:
+                                row["uuid"] = uuid.uuid4()
+                                obj = model.objects.create(usuario=user, **row)
+                        except Exception as inner_exc:
+                            logger.error(
+                                "Falha crítica ao restaurar %s (uuid=%s): %s",
+                                model_name, uid, inner_exc
+                            )
+                            continue
 
-                # Filtrar campos que não existem mais no modelo
-                row = filter_valid_fields(model, row)
+                    if obj is not None:
+                        uuid_to_id[composite_key][str(uid)] = obj.id
+                        uuid_to_id[model_name][str(uid)] = obj.id
+                        total_restored += 1
 
-                # Upsert/Create
+                        # Rastrear ativos restaurados para recálculo posterior
+                        if model_name == "Ativo":
+                            ativos_restaurados.append(obj)
+
+            # 3. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
+            # Necessário porque os signals foram desconectados durante a importação.
+            if ativos_restaurados:
                 try:
-                    if is_one_to_one_user:
-                        obj, created = model.objects.update_or_create(
-                            usuario=user, defaults=row
-                        )
-                    else:
-                        obj, created = model.objects.update_or_create(
-                            uuid=uid, usuario=user, defaults=row
-                        )
-                except Exception:
-                    # Fallback (Name matching)
-                    nome = row.get("nome")
-                    if nome:
-                        existing = model.objects.filter(usuario=user, nome=nome).first()
-                        if existing:
-                            for k, v in row.items():
-                                setattr(existing, k, v)
-                            existing.save()
-                            obj = existing
-                        else:
-                            row["uuid"] = uuid.uuid4()
-                            obj = model.objects.create(usuario=user, **row)
-                    else:
-                        row["uuid"] = uuid.uuid4()
-                        obj = model.objects.create(usuario=user, **row)
+                    from investimento.calculators import recalcular_ativo
+                    for ativo in ativos_restaurados:
+                        try:
+                            ativo.refresh_from_db()  # Garante estado fresco do DB
+                            recalcular_ativo(ativo)
+                        except Exception as recalc_err:
+                            logger.warning(
+                                "Erro ao recalcular ativo %s: %s", ativo, recalc_err
+                            )
+                except ImportError:
+                    logger.debug("Módulo de investimentos não disponível para recálculo.")
 
-                uuid_to_id[model_name][str(uid)] = obj.id
-                total_restored += 1
+    finally:
+        # ── Reconectar signals de investimento ───────────────────────────────
+        if signals_disconnected:
+            try:
+                post_save.connect(atualizar_ativo_apos_transacao, sender=TransacaoInvestimento)
+                post_delete.connect(atualizar_ativo_apos_transacao, sender=TransacaoInvestimento)
+            except Exception as e:
+                logger.error("Erro ao reconectar signals de investimento: %s", e)
 
     return {
         "tipo": "fcbk",
-        "msg": f"Backup restaurado. {total_restored} registros.",
+        "msg": f"Backup restaurado com sucesso. {total_restored} registros processados.",
         "criados": total_restored,
         "atualizados": 0,
         "ignorados": 0,
@@ -242,12 +325,15 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 # =========================================================
 
 
-@transaction.atomic
+
 def importar_universal(arquivo, usuario, password=None) -> dict:
     """Função controladora principal que valida e roteia a importação do arquivo.
 
     Aceita apenas arquivos sob extensão '.fcbk' criptografados para restaurar a
-    base de dados de forma segura.
+    base de dados de forma segura. Não adiciona uma transaction.atomic() extra —
+    o isolamento transacional é gerenciado internamente por
+    `restore_user_data_fcbk`, que também garante a reconexão dos signals Django
+    de investimentos via bloco `try/finally` ao redor da transaction.
 
     Args:
         arquivo (File): O arquivo binário do backup carregado.
