@@ -28,6 +28,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { DataTable } from '../components/ui/DataTable';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -297,6 +298,74 @@ export default function AtivosHistorico() {
   const [filterAtivo, setFilterAtivo] = useState('');
   const [successMsg, setSuccessMsg] = useState(false);
 
+  const columns = [
+    {
+      key: 'tipo',
+      header: 'Tipo',
+      render: (val) => {
+        const cfg = TIPO_CONFIG[val] ?? TIPO_CONFIG['C'];
+        const Icon = cfg.icon;
+        return (
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cfg.bg}`}>
+            <Icon className={`h-3 w-3 ${cfg.color}`} />
+            <span className={`text-[10px] font-bold ${cfg.color}`}>{cfg.label}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'data',
+      header: 'Data',
+      cellClassName: 'font-medium text-muted-foreground',
+      render: (val) => formatDate(val),
+    },
+    {
+      key: 'ativo',
+      header: 'Ativo',
+      render: (_, row) => (
+        <>
+          <p className="font-bold text-foreground">{row.ativo_detalhe?.ticker ?? '—'}</p>
+          <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">{row.ativo_detalhe?.nome}</p>
+        </>
+      ),
+    },
+    {
+      key: 'quantidade',
+      header: 'Qtd',
+      className: 'text-right',
+      cellClassName: 'text-right font-semibold text-foreground',
+      render: (val, row) => row.tipo === 'D' ? '—' : parseFloat(val).toLocaleString('pt-BR'),
+    },
+    {
+      key: 'preco_unitario',
+      header: 'Preço Unit.',
+      className: 'text-right',
+      cellClassName: 'text-right text-muted-foreground',
+      render: (val, row) => row.tipo === 'D' ? '—' : formatCurrency(val),
+    },
+    {
+      key: 'taxas',
+      header: 'Taxas',
+      className: 'text-right',
+      cellClassName: 'text-right text-muted-foreground',
+      render: (val) => parseFloat(val ?? 0) > 0 ? formatCurrency(val) : '—',
+    },
+    {
+      key: 'valor_total',
+      header: 'Valor Total',
+      className: 'text-right',
+      cellClassName: 'text-right font-extrabold',
+      render: (val, row) => {
+        const cfg = TIPO_CONFIG[row.tipo] ?? TIPO_CONFIG['C'];
+        return (
+          <span className={cfg.color}>
+            {formatCurrency(val)}
+          </span>
+        );
+      },
+    },
+  ];
+
   const {
     data: transacoes,
     isLoading: isLoadingT,
@@ -461,64 +530,12 @@ export default function AtivosHistorico() {
           <CardDescription className="text-xs">Histórico completo de operações registradas</CardDescription>
         </CardHeader>
         <CardContent className="px-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
-                  <th className="py-3 px-6">Tipo</th>
-                  <th className="py-3 px-6">Data</th>
-                  <th className="py-3 px-6">Ativo</th>
-                  <th className="py-3 px-6 text-right">Qtd</th>
-                  <th className="py-3 px-6 text-right">Preço Unit.</th>
-                  <th className="py-3 px-6 text-right">Taxas</th>
-                  <th className="py-3 px-6 text-right">Valor Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
-                {filtered.length > 0 ? (
-                  filtered.map((t) => {
-                    const cfg = TIPO_CONFIG[t.tipo] ?? TIPO_CONFIG['C'];
-                    const Icon = cfg.icon;
-                    return (
-                      <tr key={t.id} className="hover:bg-muted/40 transition-colors">
-                        <td className="py-3.5 px-6">
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cfg.bg}`}>
-                            <Icon className={`h-3 w-3 ${cfg.color}`} />
-                            <span className={`text-[10px] font-bold ${cfg.color}`}>{cfg.label}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-6 font-medium text-muted-foreground">{formatDate(t.data)}</td>
-                        <td className="py-3.5 px-6">
-                          <p className="font-bold text-foreground">{t.ativo_detalhe?.ticker ?? '—'}</p>
-                          <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">{t.ativo_detalhe?.nome}</p>
-                        </td>
-                        <td className="py-3.5 px-6 text-right font-semibold text-foreground">
-                          {t.tipo === 'D' ? '—' : parseFloat(t.quantidade).toLocaleString('pt-BR')}
-                        </td>
-                        <td className="py-3.5 px-6 text-right text-muted-foreground">
-                          {t.tipo === 'D' ? '—' : formatCurrency(t.preco_unitario)}
-                        </td>
-                        <td className="py-3.5 px-6 text-right text-muted-foreground">
-                          {parseFloat(t.taxas ?? 0) > 0 ? formatCurrency(t.taxas) : '—'}
-                        </td>
-                        <td className={`py-3.5 px-6 text-right font-extrabold ${cfg.color}`}>
-                          {formatCurrency(t.valor_total)}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-muted-foreground">
-                      <History className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
-                      <p className="font-semibold">Nenhuma ordem encontrada</p>
-                      <p className="text-[11px] mt-1 text-muted-foreground">Registre sua primeira compra para começar o histórico.</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            pageSize={10}
+            emptyMessage="Nenhuma ordem encontrada no histórico."
+          />
         </CardContent>
       </Card>
 

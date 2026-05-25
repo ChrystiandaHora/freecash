@@ -8,9 +8,9 @@
  * @component
  * @returns {React.JSX.Element} Tabela estruturada de extrato financeiro mensal.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, TrendingUp, TrendingDown, Search } from 'lucide-react';
+import { RefreshCw, ArrowUp, ArrowDown, Search } from 'lucide-react';
 
 import { fetchTransacoes } from '../services/financeiro';
 import { Button } from '../components/ui/Button';
@@ -50,6 +50,32 @@ const groupByDay = (transactions) => {
   return Object.entries(map).sort(([a], [b]) => b.localeCompare(a))
 }
 
+// ─── Componentes Auxiliares ───────────────────────────────────────────────────
+
+const SkeletonRows = () => (
+  <div className="space-y-6">
+    {Array.from({ length: 3 }).map((_, g) => (
+      <div key={g}>
+        <div className="h-4 w-24 animate-pulse rounded bg-muted mb-3" />
+        <div className="rounded-xl border border-border/60 divide-y divide-border/40">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full animate-pulse bg-muted" />
+                <div>
+                  <div className="h-3.5 w-40 animate-pulse rounded bg-muted mb-1.5" />
+                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+              <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function Transacoes() {
@@ -79,39 +105,16 @@ export default function Transacoes() {
 
   // KPIs
   const totalEntradas = filtered
-    .filter((tx) => tx.tipo === 'entrada' || Number(tx.valor) > 0)
+    .filter((tx) => tx.tipo === 'entrada')
     .reduce((a, tx) => a + Math.abs(Number(tx.valor ?? 0)), 0)
 
   const totalSaidas = filtered
-    .filter((tx) => tx.tipo === 'saida' || Number(tx.valor) < 0)
+    .filter((tx) => tx.tipo === 'saida')
     .reduce((a, tx) => a + Math.abs(Number(tx.valor ?? 0)), 0)
 
   const saldo = totalEntradas - totalSaidas
 
-  // Skeleton row
-  const SkeletonRows = () => (
-    <div className="space-y-6">
-      {Array.from({ length: 3 }).map((_, g) => (
-        <div key={g}>
-          <div className="h-4 w-24 animate-pulse rounded bg-muted mb-3" />
-          <div className="rounded-xl border border-border/60 divide-y divide-border/40">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full animate-pulse bg-muted" />
-                  <div>
-                    <div className="h-3.5 w-40 animate-pulse rounded bg-muted mb-1.5" />
-                    <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                  </div>
-                </div>
-                <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -196,7 +199,7 @@ export default function Transacoes() {
         <Card className="glass border-emerald-500/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <ArrowUp className="h-4 w-4 text-emerald-500" />
               Entradas
             </CardTitle>
           </CardHeader>
@@ -205,26 +208,26 @@ export default function Transacoes() {
           </CardContent>
         </Card>
 
-        <Card className="glass">
+        <Card className="glass border-rose-500/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingDown className="h-4 w-4 text-slate-500" />
+              <ArrowDown className="h-4 w-4 text-rose-500" />
               Saídas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{formatCurrency(totalSaidas)}</p>
+            <p className="text-2xl font-bold text-rose-500 dark:text-rose-400">{formatCurrency(totalSaidas)}</p>
           </CardContent>
         </Card>
 
-        <Card className={`glass ${saldo >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+        <Card className={`glass ${saldo >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Saldo do Período
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
               {saldo >= 0 ? '+' : ''}{formatCurrency(saldo)}
             </p>
           </CardContent>
@@ -252,7 +255,7 @@ export default function Transacoes() {
           {groups.map(([day, txs]) => {
             const dayTotal = txs.reduce((sum, tx) => {
               const val = Number(tx.valor ?? 0)
-              return tx.tipo === 'entrada' || val > 0 ? sum + Math.abs(val) : sum - Math.abs(val)
+              return tx.tipo === 'entrada' ? sum + Math.abs(val) : sum - Math.abs(val)
             }, 0)
 
             return (
@@ -262,7 +265,7 @@ export default function Transacoes() {
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {formatDate(day)}
                   </p>
-                  <span className={`text-xs font-semibold ${dayTotal >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <span className={`text-xs font-semibold ${dayTotal >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {dayTotal >= 0 ? '+' : ''}{formatCurrency(dayTotal)}
                   </span>
                 </div>
@@ -270,24 +273,26 @@ export default function Transacoes() {
                 {/* Transações do dia */}
                 <div className="rounded-xl border border-border/60 bg-card divide-y divide-border/40 overflow-hidden">
                   {txs.map((tx, idx) => {
-                    const isEntrada = tx.tipo === 'entrada' || Number(tx.valor) > 0
+                    const isEntrada = tx.tipo === 'entrada'
                     const valor = Math.abs(Number(tx.valor ?? 0))
 
                     return (
                       <div
                         key={tx.id ?? idx}
-                        className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-muted/30"
+                        className={`flex items-center justify-between px-4 py-3 transition-colors hover:bg-muted/30 border-l-4 ${
+                          isEntrada ? 'border-l-emerald-500' : 'border-l-rose-500'
+                        }`}
                       >
                         <div className="flex items-center gap-3">
                           {/* Ícone */}
                           <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                             isEntrada
                               ? 'bg-emerald-500/10 text-emerald-500'
-                              : 'bg-red-500/10 text-red-500'
+                              : 'bg-rose-500/10 text-rose-500'
                           }`}>
                             {isEntrada
-                              ? <TrendingUp className="h-4 w-4" />
-                              : <TrendingDown className="h-4 w-4" />}
+                              ? <ArrowUp className="h-4 w-4" />
+                              : <ArrowDown className="h-4 w-4" />}
                           </div>
                           <div>
                             <p className="font-medium text-sm text-foreground leading-tight">
@@ -304,7 +309,7 @@ export default function Transacoes() {
                             </Badge>
                           )}
                           <span className={`font-semibold text-sm ${
-                            isEntrada ? 'text-emerald-500' : 'text-red-500'
+                            isEntrada ? 'text-emerald-500' : 'text-rose-500'
                           }`}>
                             {isEntrada ? '+' : '-'} {formatCurrency(valor)}
                           </span>

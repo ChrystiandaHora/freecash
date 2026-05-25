@@ -287,6 +287,7 @@ export default function Receitas() {
         columns={columns}
         data={receitas}
         isLoading={isLoading}
+        pageSize={10}
         emptyMessage="Nenhuma receita cadastrada para o período selecionado."
       />
 

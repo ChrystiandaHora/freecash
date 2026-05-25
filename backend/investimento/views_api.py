@@ -182,7 +182,11 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Transações de investimentos do usuário.
         """
-        return Transacao.objects.filter(usuario=self.request.user)
+        queryset = Transacao.objects.filter(usuario=self.request.user)
+        ativo_id = self.request.query_params.get("ativo")
+        if ativo_id:
+            queryset = queryset.filter(ativo_id=ativo_id)
+        return queryset
 
     def perform_create(self, serializer):
         """Salva a ordem calculando o valor total de aquisição de forma estruturada.

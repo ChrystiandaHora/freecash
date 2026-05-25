@@ -11,6 +11,11 @@ export const fetchAtivos = async () => {
   return data;
 };
 
+export const fetchAtivo = async (id) => {
+  const { data } = await api.get(`/api/investimentos/ativos/${id}/`);
+  return data;
+};
+
 export const createAtivo = async (payload) => {
   const { data } = await api.post('/api/investimentos/ativos/', payload);
   return data;

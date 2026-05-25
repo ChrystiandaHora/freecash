@@ -8,7 +8,8 @@
  * @component
  * @returns {React.JSX.Element} Visualização em tabela com modais flutuantes de cadastro operacional.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
@@ -17,14 +18,12 @@ import {
   Search, 
   Percent, 
   TrendingUp, 
-  Coins, 
   AlertCircle, 
   CheckCircle2, 
   RefreshCw, 
   Gem, 
   Calendar, 
-  Filter,
-  Eye,
+  Eye, 
   EyeOff
 } from 'lucide-react';
 
@@ -37,12 +36,11 @@ import {
   atualizarCotacoes
 } from '../services/investimentos';
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
-import { Badge } from '../components/ui/Badge';
+import { DataTable } from '../components/ui/DataTable';
 
 // Helper de formatação de moedas
 const formatCurrency = (value) => {
@@ -63,6 +61,96 @@ const formatPercentage = (value) => {
 
 export default function MeusAtivos() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const columns = [
+    {
+      key: 'ticker',
+      header: 'Ticker',
+      className: 'px-5 py-3.5',
+      cellClassName: 'px-5 py-3.5 font-bold text-foreground',
+    },
+    {
+      key: 'quantidade',
+      header: 'Quantidade',
+      className: 'px-5 py-3.5 text-right',
+      cellClassName: 'px-5 py-3.5 text-right font-bold text-foreground/80',
+      render: (val) => parseFloat(val || 0).toString().replace('.', ','),
+    },
+    {
+      key: 'preco_medio',
+      header: 'P. Médio',
+      className: 'px-5 py-3.5 text-right',
+      cellClassName: 'px-5 py-3.5 text-right text-muted-foreground',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'cotacao_atual',
+      header: 'Cotação',
+      className: 'px-5 py-3.5 text-right',
+      cellClassName: 'px-5 py-3.5 text-right text-muted-foreground font-semibold',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'valor_total_atual',
+      header: 'Valor Atual',
+      className: 'px-5 py-3.5 text-right',
+      cellClassName: 'px-5 py-3.5 text-right font-extrabold text-foreground',
+      render: (val) => formatCurrency(parseFloat(val || 0)),
+    },
+    {
+      key: 'rentabilidade_percentual',
+      header: 'Retorno',
+      className: 'px-5 py-3.5 text-right',
+      cellClassName: 'px-5 py-3.5 text-right font-bold',
+      render: (val) => {
+        const rentabilidadePerc = parseFloat(val || 0);
+        return (
+          <span className={rentabilidadePerc >= 0 ? 'text-primary' : 'text-rose-500'}>
+            {formatPercentage(rentabilidadePerc)}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'acoes',
+      header: 'Ações',
+      sortable: false,
+      className: 'px-5 py-3.5 text-center',
+      cellClassName: 'px-5 py-3.5 text-center',
+      render: (_, row) => (
+        <div className="flex items-center justify-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate(`/investimentos/ativos/${row.id}`)}
+            className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+            title="Visualizar Detalhes"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => openEditModal(row)}
+            className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+            title="Editar Ativo"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => openDeleteModal(row)}
+            className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+            title="Excluir Ativo"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
   
   // Estados de Filtros e Abas
   const [searchTerm, setSearchTerm] = useState('');
@@ -517,95 +605,12 @@ export default function MeusAtivos() {
         </div>
 
         {/* Tabela de Ativos */}
-        <div className="overflow-x-auto rounded-xl border border-border/40">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b border-border/40 bg-muted/20 text-muted-foreground font-semibold">
-                <th className="px-5 py-3.5">Ticker</th>
-                <th className="px-5 py-3.5">Ativo / Nome</th>
-                <th className="px-5 py-3.5">Subclasse</th>
-                <th className="px-5 py-3.5 text-right">Meta %</th>
-                <th className="px-5 py-3.5 text-right">Quantidade</th>
-                <th className="px-5 py-3.5 text-right">P. Médio</th>
-                <th className="px-5 py-3.5 text-right">Cotação</th>
-                <th className="px-5 py-3.5 text-right">Valor Atual</th>
-                <th className="px-5 py-3.5 text-right">Retorno</th>
-                <th className="px-5 py-3.5 text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {filteredAtivos.length > 0 ? (
-                filteredAtivos.map((ativo) => {
-                  const valorAtual = parseFloat(ativo.valor_total_atual || 0);
-                  const rentabilidadePerc = parseFloat(ativo.rentabilidade_percentual || 0);
-                  
-                  return (
-                    <tr key={ativo.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-5 py-3.5 font-bold text-foreground">
-                        {ativo.ticker}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="font-semibold text-foreground/80">{ativo.nome}</div>
-                        {ativo.emissor && (
-                          <div className="text-[10px] text-muted-foreground mt-0.5">Emissor: {ativo.emissor}</div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="inline-flex items-center rounded bg-slate-100 dark:bg-slate-900 px-2 py-0.5 font-medium text-slate-800 dark:text-slate-300">
-                          {ativo.subcategoria_detalhe?.nome || 'Não definida'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-semibold text-foreground/80">
-                        {parseFloat(ativo.meta_porcentagem || 0).toFixed(1).replace('.', ',')}%
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-bold text-foreground/80">
-                        {parseFloat(ativo.quantidade || 0).toString().replace('.', ',')}
-                      </td>
-                      <td className="px-5 py-3.5 text-right text-muted-foreground">
-                        {formatCurrency(ativo.preco_medio)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right text-muted-foreground font-semibold">
-                        {formatCurrency(ativo.cotacao_atual)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-extrabold text-foreground">
-                        {formatCurrency(valorAtual)}
-                      </td>
-                      <td className={`px-5 py-3.5 text-right font-bold ${rentabilidadePerc >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                        {formatPercentage(rentabilidadePerc)}
-                      </td>
-                      <td className="px-5 py-3.5 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => openEditModal(ativo)}
-                            className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => openDeleteModal(ativo)}
-                            className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="10" className="px-5 py-8 text-center text-muted-foreground font-semibold">
-                    Nenhum ativo encontrado nesta aba.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={filteredAtivos}
+          pageSize={10}
+          emptyMessage="Nenhum ativo encontrado nesta aba."
+        />
 
       </div>
 
@@ -1032,6 +1037,8 @@ export default function MeusAtivos() {
           </div>
         </div>
       </Modal>
+
+
 
     </div>
   );

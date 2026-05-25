@@ -45,6 +45,7 @@ import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
 import MeusAtivos from './pages/MeusAtivos';
+import AtivoDetalhes from './pages/AtivoDetalhes';
 import FerramentasImportar from './pages/FerramentasImportar';
 import FerramentasConciliacao from './pages/FerramentasConciliacao';
 import FerramentasBackup from './pages/FerramentasBackup';
@@ -132,6 +133,7 @@ function App() {
 
                 <Route path="investimentos" element={<Investimentos />} />
                 <Route path="investimentos/ativos" element={<MeusAtivos />} />
+                <Route path="investimentos/ativos/:id" element={<AtivoDetalhes />} />
                 <Route path="investimentos/balanceamento" element={<AtivosBalanceamento />} />
                 <Route path="investimentos/historico" element={<AtivosHistorico />} />
                 <Route path="investimentos/classes" element={<AtivosClasses />} />

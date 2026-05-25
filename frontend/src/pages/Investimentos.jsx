@@ -37,6 +37,7 @@ import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
+import { DataTable } from '../components/ui/DataTable';
 
 
 const formatCurrency = (value) => {
@@ -57,6 +58,70 @@ const formatPercentage = (value) => {
 export default function Investimentos() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+
+  const columns = [
+    {
+      key: 'ticker',
+      header: 'Ticker',
+      className: 'px-6 py-3',
+      cellClassName: 'px-6 py-3.5 font-bold text-foreground',
+    },
+    {
+      key: 'nome',
+      header: 'Ativo',
+      className: 'px-6 py-3',
+      cellClassName: 'px-6 py-3.5 text-muted-foreground',
+    },
+    {
+      key: 'preco_medio',
+      header: 'Preço Médio',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right text-muted-foreground',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'cotacao_atual',
+      header: 'Cotação Atual',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right text-muted-foreground',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'quantidade',
+      header: 'Quantidade',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right font-semibold text-foreground/80',
+      render: (val) => parseFloat(val).toString().replace('.', ','),
+    },
+    {
+      key: 'valor_investido_total',
+      header: 'Investido',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right text-muted-foreground',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'valor_total_atual',
+      header: 'Valor Atual',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right font-bold text-foreground',
+      render: (val) => formatCurrency(val),
+    },
+    {
+      key: 'rentabilidade_percentual',
+      header: 'Rentabilidade',
+      className: 'px-6 py-3 text-right',
+      cellClassName: 'px-6 py-3.5 text-right font-bold',
+      render: (val) => {
+        const rentabilidadePerc = parseFloat(val);
+        return (
+          <span className={rentabilidadePerc >= 0 ? 'text-primary' : 'text-rose-500'}>
+            {formatPercentage(rentabilidadePerc)}
+          </span>
+        );
+      },
+    },
+  ];
   const [activeTab, setActiveTab] = useState('portfolio'); // 'portfolio' | 'rebalance'
   const [editingMetas, setEditingMetas] = useState({}); // Stores local target % state by asset ID: { [id]: val }
   const [isEditing, setIsEditing] = useState(false);
@@ -506,60 +571,12 @@ export default function Investimentos() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/40 text-muted-foreground font-semibold">
-                      <th className="px-6 py-3">Ticker</th>
-                      <th className="px-6 py-3">Ativo</th>
-                      <th className="px-6 py-3 text-right">Preço Médio</th>
-                      <th className="px-6 py-3 text-right">Cotação Atual</th>
-                      <th className="px-6 py-3 text-right">Quantidade</th>
-                      <th className="px-6 py-3 text-right">Investido</th>
-                      <th className="px-6 py-3 text-right">Valor Atual</th>
-                      <th className="px-6 py-3 text-right">Rentabilidade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {ativos && ativos.length > 0 ? (
-                      ativos.map((ativo, idx) => (
-                        <tr key={idx} className="hover:bg-muted/40 transition-colors">
-                          <td className="px-6 py-3.5 font-bold text-foreground">
-                            {ativo.ticker}
-                          </td>
-                          <td className="px-6 py-3.5 text-muted-foreground">
-                            {ativo.nome}
-                          </td>
-                          <td className="px-6 py-3.5 text-right text-muted-foreground">
-                            {formatCurrency(ativo.preco_medio)}
-                          </td>
-                          <td className="px-6 py-3.5 text-right text-muted-foreground">
-                            {formatCurrency(ativo.cotacao_atual)}
-                          </td>
-                          <td className="px-6 py-3.5 text-right font-semibold text-foreground/80">
-                            {parseFloat(ativo.quantidade).toString().replace('.', ',')}
-                          </td>
-                          <td className="px-6 py-3.5 text-right text-muted-foreground">
-                            {formatCurrency(ativo.valor_investido_total)}
-                          </td>
-                          <td className="px-6 py-3.5 text-right font-bold text-foreground">
-                            {formatCurrency(ativo.valor_total_atual)}
-                          </td>
-                          <td className={`px-6 py-3.5 text-right font-bold ${ativo.rentabilidade_percentual >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                            {formatPercentage(ativo.rentabilidade_percentual)}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="8" className="px-6 py-8 text-center text-muted-foreground">
-                          Nenhum ativo em carteira no momento. Crie um ativo para começar.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={columns}
+                data={ativos}
+                pageSize={10}
+                emptyMessage="Nenhum ativo em carteira no momento."
+              />
             </CardContent>
           </Card>
 

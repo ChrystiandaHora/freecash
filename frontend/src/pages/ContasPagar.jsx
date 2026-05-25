@@ -222,6 +222,7 @@ export default function ContasPagar() {
     {
       key: 'status',
       header: 'Status',
+      sortable: false,
       render: (_, row) => {
         const { label, variant, Icon } = getStatusInfo(row)
         return (
@@ -235,6 +236,7 @@ export default function ContasPagar() {
     {
       key: 'acoes',
       header: 'Ação',
+      sortable: false,
       render: (_, row) => {
         return (
           <div className="flex items-center gap-2">
@@ -396,6 +398,7 @@ export default function ContasPagar() {
             _fading: fadingIds.has(c.id),
           }))}
           isLoading={isLoading}
+          pageSize={10}
           emptyMessage="Nenhuma conta cadastrada para o período selecionado."
           rowClassName={(row) =>
             row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
