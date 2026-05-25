@@ -7,6 +7,7 @@ e formatação de datas de vencimento.
 """
 
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Categoria, Conta, CartaoCredito, ExtratoImportado, LinhaExtrato
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -294,4 +295,17 @@ class TransacaoAPISerializer(serializers.ModelSerializer):
         if data_val is None:
             data_val = obj.data_realizacao if obj.transacao_realizada and obj.data_realizacao else obj.data_prevista
         return data_val.isoformat() if data_val else None
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Serializador JWT customizado para incluir informações básicas do usuário no token payload.
+
+    Adiciona o username como claim customizada no token de acesso decodificável pelo frontend.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Injetar username no payload do token JWT
+        token['username'] = user.username
+        return token
 

@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from core.models import Categoria, Conta, CartaoCredito
-from core.serializers import CategoriaSerializer, ContaSerializer, CartaoCreditoSerializer
+from core.serializers import CategoriaSerializer, ContaSerializer, CartaoCreditoSerializer, CustomTokenObtainPairSerializer
 from core.services.dashboard_helper import (
     totals_for_range_competencia,
     pct_change,
@@ -286,6 +286,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     Realiza o login do usuário gerando tokens de acesso (retornado no payload JSON)
     e de atualização (refresh token, configurado em um cookie seguro HttpOnly).
     """
+    serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs) -> Response:
         """Gera os tokens JWT e define o refresh token em um cookie HttpOnly seguro.
@@ -453,6 +454,7 @@ class RegistrationAPIView(APIView):
             
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
+            refresh['username'] = user.username
             response_data = {
                 "access": str(refresh.access_token)
             }

@@ -36,7 +36,8 @@ import {
   CheckSquare,
   DownloadCloud,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Clock
 } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -47,6 +48,7 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState('geral');
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Theme Management
   const [theme, setTheme] = useState(() => {
@@ -77,6 +79,14 @@ export default function DashboardLayout() {
     };
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // Real-time dynamic clock timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // Open appropriate group based on current route
@@ -152,6 +162,15 @@ export default function DashboardLayout() {
   const toggleGroup = (id) => {
     setOpenGroup(openGroup === id ? null : id);
   };
+
+  const formattedDateTime = currentTime.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }) + ' ' + currentTime.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300 font-sans">
@@ -245,19 +264,21 @@ export default function DashboardLayout() {
 
         {/* Sidebar Footer (User Info & Logout) */}
         <div className="shrink-0 p-4 border-t border-border/50 space-y-3 bg-muted/20">
-          {!collapsed && user && (
-            <div className="flex items-center gap-3 px-2 py-1">
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                <User className="h-4 w-4" />
+          {user && (
+            <div className={`flex items-center gap-3 ${collapsed ? 'justify-center px-0 py-1' : 'px-2 py-1'}`}>
+              <div 
+                className="w-9 h-9 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shadow-sm transition-all hover:scale-105 duration-200"
+                title={collapsed ? (user.username || 'Usuário') : undefined}
+              >
+                {user.username ? user.username.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate text-foreground">
-                  {user.username || 'Usuário'}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  SaaS Member
-                </p>
-              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate text-foreground" title={user.username || 'Usuário'}>
+                    {user.username || 'Usuário'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -320,10 +341,10 @@ export default function DashboardLayout() {
 
             <div className="h-5 w-[1px] bg-border mx-1" />
 
-            {/* Quick Balance or active status badge */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border/50">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-              <span className="text-xs font-semibold text-muted-foreground">Sincronizado</span>
+            {/* Real-time dynamic clock */}
+            <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-muted border border-border/50 text-xs font-semibold text-muted-foreground shadow-sm">
+              <Clock className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
+              <span>{formattedDateTime}</span>
             </div>
           </div>
         </header>
