@@ -374,11 +374,7 @@ export default function PipelineKanban() {
       <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
         <DollarSign className="h-4 w-4 shrink-0" />
         <p>
-<<<<<<< HEAD
           Arraste um card para a coluna <strong>"Pagas"</strong> para registrar o pagamento automaticamente no backend.
-=======
-          Arraste um card para a coluna <strong>"Pagas ✓"</strong> para registrar o pagamento automaticamente no backend.
->>>>>>> 7e86a8f384903efab0be4239287b3e855a9ae5bb
         </p>
       </div>
 
