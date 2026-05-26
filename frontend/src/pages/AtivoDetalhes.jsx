@@ -1,0 +1,428 @@
+/**
+ * Tela de Visualização Detalhada do Ativo (Livro-Razão & Indicadores).
+ * 
+ * Centraliza e exibe informações cadastrais, parâmetros de renda fixa,
+ * métricas de rentabilidade a mercado e o histórico completo de transações do ativo.
+ *
+ * @component
+ * @returns {React.JSX.Element} Tela widescreen SaaS Flat Premium.
+ */
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  ArrowLeft,
+  RefreshCw, 
+  AlertCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  Gift, 
+  Calendar,
+  Gem,
+  Coins,
+  Percent
+} from 'lucide-react';
+
+import api from '../services/api';
+import { fetchAtivo, atualizarCotacoes } from '../services/investimentos';
+import { useToast } from '../context/ToastContext';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+
+// Helpers de formatação
+const formatCurrency = (value) => {
+  if (value === undefined || value === null) return 'R$ 0,00';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
+
+const formatPercentage = (value) => {
+  if (value === undefined || value === null) return '0,00%';
+  const num = parseFloat(value);
+  const formatted = num.toFixed(2).replace('.', ',');
+  return num >= 0 ? `+${formatted}%` : `${formatted}%`;
+};
+
+export default function AtivoDetalhes() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const [activeTab, setActiveTab] = useState('geral'); // 'geral' | 'rentabilidade' | 'transacoes'
+
+  /* ── Queries ── */
+  const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo, refetch: refetchAtivo } = useQuery({
+    queryKey: ['ativoDetalhe', id],
+    queryFn: () => fetchAtivo(id),
+    enabled: !!id
+  });
+
+  const { data: transacoes = [], isLoading: loadingTransacoes, refetch: refetchTransacoes } = useQuery({
+    queryKey: ['transacoesAtivo', id],
+    queryFn: async () => {
+      const res = await api.get(`/api/investimentos/transacoes/?ativo=${id}`);
+      return res.data;
+    },
+    enabled: !!id
+  });
+
+  /* ── Mutations ── */
+  const updateQuotesMutation = useMutation({
+    mutationFn: () => atualizarCotacoes(),
+    onSuccess: (data) => {
+      // Invalida e força re-fetch de todos os dados relevantes
+      queryClient.invalidateQueries(['ativos']);
+      queryClient.invalidateQueries(['ativoDetalhe', id]);
+      queryClient.invalidateQueries(['transacoesAtivo', id]);
+      queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['investimentosBalanceamento']);
+
+      const count = data?.count || 0;
+      const errors = data?.errors || [];
+
+      if (count > 0 && errors.length === 0) {
+        addToast(`${count} cotações atualizadas com sucesso!`, 'success');
+      } else if (count > 0 && errors.length > 0) {
+        addToast(`${count} cotações atualizadas, mas falharam alguns ativos.`, 'warning');
+      } else if (errors.length > 0) {
+        addToast(`Falha ao atualizar cotações: ${errors.slice(0, 3).join(' | ')}`, 'error');
+      } else {
+        addToast('Nenhuma cotação nova encontrada ou nenhum ativo com ticker.', 'info');
+      }
+    },
+    onError: () => {
+      addToast('Erro ao comunicar com o servidor de cotações.', 'error');
+    }
+  });
+
+  const handleRefresh = () => {
+    updateQuotesMutation.mutate();
+  };
+
+  const isLoading = loadingAtivo || loadingTransacoes;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+        <p className="text-sm font-semibold text-muted-foreground">
+          Carregando dados estruturados do ativo...
+        </p>
+      </div>
+    );
+  }
+
+  if (errorAtivo || !ativo) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <h3 className="text-xl font-bold text-foreground">Ativo não encontrado</h3>
+        <p className="text-sm text-muted-foreground">
+          Não conseguimos carregar as informações deste ativo ou ele foi removido permanentemente da carteira.
+        </p>
+        <Button onClick={() => navigate('/investimentos/ativos')} className="mt-2 rounded-xl">
+          Voltar para Ativos
+        </Button>
+      </div>
+    );
+  }
+
+  // Cálculos financeiros locais
+  const valorTotalAtual = parseFloat(ativo.valor_total_atual || 0);
+  const rentabilidadePerc = parseFloat(ativo.rentabilidade_percentual || 0);
+  const totalCustoInvestido = parseFloat(ativo.quantidade || 0) * parseFloat(ativo.preco_medio || 0);
+
+  return (
+    <div className="space-y-6 animate-fade-in text-foreground">
+      
+      {/* Botão Voltar & Cabeçalho Principal */}
+      <div className="space-y-2">
+        <button 
+          onClick={() => navigate('/investimentos/ativos')}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors active:scale-98"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar para Meus Ativos
+        </button>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 shadow-sm">
+              <Gem className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                {ativo.ticker}
+                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-900 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-300">
+                  {ativo.subcategoria_detalhe?.nome || 'Subclasse não definida'}
+                </span>
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {ativo.nome || 'Visualização estruturada do ativo'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+            <Button 
+              onClick={handleRefresh}
+              disabled={updateQuotesMutation.isPending}
+              variant="outline"
+              className="rounded-xl h-10 px-4 gap-2 font-semibold transition-all border border-border/40 hover:bg-accent text-foreground shadow-sm active:scale-98"
+            >
+              <RefreshCw className={`h-4 w-4 ${updateQuotesMutation.isPending ? 'animate-spin' : ''}`} />
+              {updateQuotesMutation.isPending ? 'Sincronizando...' : 'Sincronizar Dados'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid Rápido de KPIs a mercado */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
+          <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
+            <Coins className="h-full w-full" />
+          </div>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
+          <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+            {formatCurrency(valorTotalAtual)}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Posição atualizada a mercado
+          </p>
+        </div>
+
+        <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
+          <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
+            <Gem className="h-full w-full" />
+          </div>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Original (Principal)</p>
+          <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+            {formatCurrency(totalCustoInvestido)}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Cotas: <span className="font-semibold text-foreground/80">{parseFloat(ativo.quantidade || 0).toString().replace('.', ',')}</span> | P. Médio: <span className="font-semibold text-foreground/80">{formatCurrency(ativo.preco_medio)}</span>
+          </p>
+        </div>
+
+        <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
+          <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
+            <Percent className="h-full w-full" />
+          </div>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Resultado Acumulado</p>
+          <h3 className={`text-2xl font-bold tracking-tight mt-2 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+            {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
+          </h3>
+          <p className={`text-xs font-bold mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+            {formatPercentage(rentabilidadePerc)}
+          </p>
+        </div>
+
+      </div>
+
+      {/* Box Principal de Conteúdo */}
+      <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
+        
+        {/* Abas */}
+        <div className="flex border-b border-border/40 self-start shrink-0 w-full">
+          {[
+            { id: 'geral', label: 'Parâmetros & Dados Gerais' },
+            { id: 'rentabilidade', label: 'Desempenho Financeiro' },
+            { id: 'transacoes', label: 'Histórico do Razão' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab 1: Geral */}
+        {activeTab === 'geral' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+            
+            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider border-b border-border/20 pb-3">
+                Dados Cadastrais
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                <span className="font-semibold text-muted-foreground">Código Ticker:</span>
+                <span className="font-extrabold text-foreground">{ativo.ticker}</span>
+
+                <span className="font-semibold text-muted-foreground">Nome do Ativo:</span>
+                <span className="font-semibold text-foreground">{ativo.nome || '—'}</span>
+
+                <span className="font-semibold text-muted-foreground">Segmento / Subclasse:</span>
+                <span className="font-semibold text-foreground">
+                  {ativo.subcategoria_detalhe?.categoria_detalhe?.nome || '—'} — {ativo.subcategoria_detalhe?.nome || '—'}
+                </span>
+
+                <span className="font-semibold text-muted-foreground">Alocação Alvo / Meta:</span>
+                <span className="font-bold text-foreground">
+                  {parseFloat(ativo.meta_porcentagem || 0).toFixed(1).replace('.', ',')}%
+                </span>
+
+                <span className="font-semibold text-muted-foreground">Status Operacional:</span>
+                <span className="font-bold">
+                  {ativo.ativo ? (
+                    <span className="text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md text-[10px]">CUSTÓDIA ATIVA</span>
+                  ) : (
+                    <span className="text-muted-foreground bg-muted border border-border/40 px-2 py-0.5 rounded-md text-[10px]">ARQUIVADO</span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider border-b border-border/20 pb-3">
+                <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Contratados (Renda Fixa/Dívida)
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                <span className="font-semibold text-muted-foreground">Emissor Financeiro:</span>
+                <span className="font-semibold text-foreground">{ativo.emissor || '—'}</span>
+
+                <span className="font-semibold text-muted-foreground">Maturidade / Vencimento:</span>
+                <span className="font-semibold text-foreground">
+                  {ativo.data_vencimento ? new Intl.DateTimeFormat('pt-BR').format(new Date(ativo.data_vencimento + 'T00:00:00')) : '—'}
+                </span>
+
+                <span className="font-semibold text-muted-foreground">Indexador Monetário:</span>
+                <span className="font-semibold text-foreground">{ativo.indexador || '—'}</span>
+
+                <span className="font-semibold text-muted-foreground">Taxa Nominal:</span>
+                <span className="font-semibold text-foreground">
+                  {ativo.taxa ? `${parseFloat(ativo.taxa).toString().replace('.', ',')}%` : '—'}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 2: Rentabilidade */}
+        {activeTab === 'rentabilidade' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+            
+            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
+                Comparativo de Preços
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                <span className="text-muted-foreground">Preço Médio de Aquisição:</span>
+                <span className="font-semibold text-foreground">{formatCurrency(ativo.preco_medio)}</span>
+
+                <span className="text-muted-foreground">Cotação Atual a Mercado:</span>
+                <span className="font-semibold text-foreground">{formatCurrency(ativo.cotacao_atual)}</span>
+
+                <span className="text-muted-foreground">Diferença por Cotas (Preço):</span>
+                <span className={`font-bold ${parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+                  {formatCurrency(parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0))}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
+                Resultado Consolidado
+              </h3>
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                <span className="text-muted-foreground">Total Investido (Custo de Entrada):</span>
+                <span className="font-semibold text-foreground">{formatCurrency(totalCustoInvestido)}</span>
+
+                <span className="text-muted-foreground">Patrimônio Líquido Atual:</span>
+                <span className="font-semibold text-foreground">{formatCurrency(valorTotalAtual)}</span>
+
+                <span className="font-bold text-foreground border-t border-border/20 pt-2 mt-1">Lucro/Prejuízo Líquido:</span>
+                <span className={`font-bold border-t border-border/20 pt-2 mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+                  {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 3: Transações */}
+        {activeTab === 'transacoes' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="overflow-x-auto rounded-xl border border-border/40">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/20">
+                    <th className="py-3 px-5">Operação</th>
+                    <th className="py-3 px-5">Data Fiel</th>
+                    <th className="py-3 px-5 text-right">Quantidade</th>
+                    <th className="py-3 px-5 text-right">Preço Unit.</th>
+                    <th className="py-3 px-5 text-right">Taxas / Encargos</th>
+                    <th className="py-3 px-5 text-right">Total Líquido</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {transacoes.length > 0 ? (
+                    transacoes.map((t) => {
+                      const isCompra = t.tipo === 'C';
+                      const isVenda = t.tipo === 'V';
+                      const isProvento = t.tipo === 'D';
+
+                      let badgeColor = 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300';
+                      let label = 'Operação';
+                      if (isCompra) {
+                        badgeColor = 'bg-emerald-500/10 text-emerald-500';
+                        label = 'Compra';
+                      } else if (isVenda) {
+                        badgeColor = 'bg-rose-500/10 text-rose-500';
+                        label = 'Venda';
+                      } else if (isProvento) {
+                        badgeColor = 'bg-amber-500/10 text-amber-500';
+                        label = 'Provento';
+                      }
+
+                      return (
+                        <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3.5 px-5">
+                            <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeColor}`}>
+                              {label}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-muted-foreground font-semibold">
+                            {new Intl.DateTimeFormat('pt-BR').format(new Date(t.data + 'T00:00:00'))}
+                          </td>
+                          <td className="py-3.5 px-5 text-right font-bold text-foreground/80">
+                            {isProvento ? '—' : parseFloat(t.quantidade).toString().replace('.', ',')}
+                          </td>
+                          <td className="py-3.5 px-5 text-right text-muted-foreground">
+                            {isProvento ? '—' : formatCurrency(t.preco_unitario)}
+                          </td>
+                          <td className="py-3.5 px-5 text-right text-muted-foreground">
+                            {parseFloat(t.taxas || 0) > 0 ? formatCurrency(t.taxas) : '—'}
+                          </td>
+                          <td className={`py-3.5 px-5 text-right font-extrabold ${isCompra ? 'text-emerald-500' : isVenda ? 'text-rose-500' : 'text-amber-500'}`}>
+                            {formatCurrency(t.valor_total)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-16 text-center text-muted-foreground font-semibold">
+                        Nenhuma movimentação de livro-razão identificada para este ativo.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  );
+}

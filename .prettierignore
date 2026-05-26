@@ -1,0 +1,14 @@
+# Django templates — Prettier quebra as template tags {{ }} e {% %}
+**/templates/**/*.html
+**/*.html
+
+# Python
+*.py
+
+# Migrations
+**/migrations/
+
+# Docker / env
+*.env
+*.env.*
+docker-compose*.yml
