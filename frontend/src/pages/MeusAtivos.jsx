@@ -755,7 +755,10 @@ export default function MeusAtivos() {
               onClick={() => setShowPosicaoInicial(!showPosicaoInicial)}
               className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/40 transition-colors text-xs font-bold uppercase tracking-wider text-muted-foreground"
             >
-              <span>📈 Estabelecer Posição Inicial (Opcional)</span>
+              <span className="flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                Estabelecer Posição Inicial (Opcional)
+              </span>
               <span>{showPosicaoInicial ? 'Recolher [-]' : 'Expandir [+]'}</span>
             </button>
 

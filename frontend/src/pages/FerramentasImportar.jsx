@@ -298,9 +298,9 @@ export default function FerramentasImportar() {
                   <>
                     <p className="font-semibold">{resultado.dados?.msg || 'Restauração concluída!'}</p>
                     <div className="flex gap-4 mt-1 text-sm opacity-80">
-                      <span>✓ {resultado.dados?.criados ?? 0} criados/restaurados</span>
-                      <span>↻ {resultado.dados?.atualizados ?? 0} atualizados</span>
-                      <span>— {resultado.dados?.ignorados ?? 0} ignorados</span>
+                      <span>+ {resultado.dados?.criados ?? 0} criados/restaurados</span>
+                      <span>~ {resultado.dados?.atualizados ?? 0} atualizados</span>
+                      <span>- {resultado.dados?.ignorados ?? 0} ignorados</span>
                     </div>
                   </>
                 ) : (
@@ -350,9 +350,12 @@ export default function FerramentasImportar() {
           </div>
 
           <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              <span className="font-semibold">⚠️ Atenção:</span> A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup. Certifique-se de que possui a senha de descriptografia correta.
-            </p>
+            <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+              <span>
+                <span className="font-bold">Atenção:</span> A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup. Certifique-se de que possui a senha de descriptografia correta.
+              </span>
+            </div>
           </div>
         </div>
       </div>

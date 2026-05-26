@@ -484,7 +484,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
     elements.append(Spacer(1, 5 * mm))
 
     if escopo in ["geral", "completo"]:
-        section_mov = Paragraph("📊 Movimentações", section_style)
+        section_mov = Paragraph("Movimentações", section_style)
         elements.append(section_mov)
 
         # Tabela de movimentações
@@ -517,7 +517,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
         elements.append(Spacer(1, 5 * mm))
 
         # Novo: Comparativo Mensal
-        elements.append(Paragraph("📅 Comparativo Mensal", section_style))
+        elements.append(Paragraph("Comparativo Mensal", section_style))
         comp_data = get_comparativo_mensal_data(usuario, data_inicio, data_fim)
         comp_table_data = [["Período", "Receitas", "Despesas", "Saldo"]]
         
@@ -547,7 +547,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
     # =====================
     if escopo in ["investimentos", "completo"] and investimentos.exists():
         elements.append(PageBreak())
-        section_invest = Paragraph("📈 Carteira de Investimentos", section_style)
+        section_invest = Paragraph("Carteira de Investimentos", section_style)
         elements.append(section_invest)
 
         # Gráfico de Alocação
@@ -589,7 +589,7 @@ def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
         elements.append(Spacer(1, 10 * mm))
 
         # Novo: Resumo de Proventos
-        elements.append(Paragraph("💰 Proventos Recebidos no Período", section_style))
+        elements.append(Paragraph("Proventos Recebidos no Período", section_style))
         prov_dados = get_proventos_data(usuario, data_inicio, data_fim)
         if prov_dados.exists():
             prov_table_data = [["Ticker", "Total Recebido"]]

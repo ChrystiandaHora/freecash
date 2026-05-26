@@ -44,10 +44,10 @@ def find_next_free_port(start_port: int, service_name: str) -> tuple[int, bool]:
 def main():
     # Print Welcome Banner
     print(f"\n{CYAN}{BOLD}======================================================================{RESET}")
-    print(f"{CYAN}{BOLD}   💸  FreeCash Dynamic Port Orchestrator{RESET}")
+    print(f"{CYAN}{BOLD}   [$]  FreeCash Dynamic Port Orchestrator{RESET}")
     print(f"{CYAN}{BOLD}======================================================================{RESET}\n")
     
-    print(f"🕵️  {BOLD}Scanning local ports for conflicts...{RESET}")
+    print(f"[SCAN]  {BOLD}Scanning local ports for conflicts...{RESET}")
     
     # 1. Detect Available Ports
     pg_port, pg_conflict = find_next_free_port(5432, "PostgreSQL")
@@ -92,14 +92,14 @@ def main():
             
     # Print Dynamic Credentials / URLs
     print(f"\n{CYAN}{BOLD}   [Access URLs & Integration info]{RESET}")
-    print(f"   ➜  {BOLD}Frontend Client:{RESET}    {BLUE}http://localhost:{front_port}{RESET}")
-    print(f"   ➜  {BOLD}Backend API url:{RESET}    {BLUE}http://localhost:{backend_port}/api/{RESET}")
-    print(f"   ➜  {BOLD}CORS Integration:{RESET}   Django allows origin {YELLOW}http://localhost:{front_port}{RESET}")
-    print(f"   ➜  {BOLD}PostgreSQL Port:{RESET}    {BLUE}{pg_port}{RESET} (internal: 5432)")
+    print(f"     -> {BOLD}Frontend Client:{RESET}    {BLUE}http://localhost:{front_port}{RESET}")
+    print(f"     -> {BOLD}Backend API url:{RESET}    {BLUE}http://localhost:{backend_port}/api/{RESET}")
+    print(f"     -> {BOLD}CORS Integration:{RESET}   Django allows origin {YELLOW}http://localhost:{front_port}{RESET}")
+    print(f"     -> {BOLD}PostgreSQL Port:{RESET}    {BLUE}{pg_port}{RESET} (internal: 5432)")
     
     # 3. Launch Docker Compose
     print(f"\n{CYAN}{BOLD}======================================================================{RESET}")
-    print(f"   🚀  {BOLD}Starting Docker Compose...{RESET} (Press {RED}{BOLD}Ctrl+C{RESET} to shut down)")
+    print(f"   [START]  {BOLD}Starting Docker Compose...{RESET} (Press {RED}{BOLD}Ctrl+C{RESET} to shut down)")
     print(f"{CYAN}{BOLD}======================================================================{RESET}\n")
     
     cmd = ['docker', 'compose', '--env-file', env_docker_path, 'up']
@@ -113,9 +113,9 @@ def main():
         # Run Docker Compose
         subprocess.run(cmd)
     except KeyboardInterrupt:
-        print(f"\n\n{YELLOW}🛑  Ctrl+C detected. Shutting down containers gracefully...{RESET}")
+        print(f"\n\n{YELLOW}[STOP]  Ctrl+C detected. Shutting down containers gracefully...{RESET}")
         subprocess.run(['docker', 'compose', '--env-file', env_docker_path, 'down'])
-        print(f"{GREEN}✓ Containers stopped successfully. Have a nice day!{RESET}\n")
+        print(f"{GREEN}[ OK ] Containers stopped successfully. Have a nice day!{RESET}\n")
 
 def default_port_format(port):
     return f"{BOLD}{port}{RESET}"

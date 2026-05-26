@@ -215,9 +215,10 @@ function FallbackDRETable({ ano }) {
           ))}
         </tbody>
       </table>
-      <div className="p-5 border-t border-border/40 text-center">
+      <div className="p-5 border-t border-border/40 flex items-center justify-center gap-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
         <p className="text-xs text-muted-foreground italic">
-          ⚠ API de Relatórios em construção — os valores acima serão preenchidos automaticamente quando o endpoint <code className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">/api/relatorios/dre/?ano={ano}</code> estiver disponível.
+          API de Relatórios em construção — os valores acima serão preenchidos automaticamente quando o endpoint <code className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">/api/relatorios/dre/?ano={ano}</code> estiver disponível.
         </p>
       </div>
     </div>

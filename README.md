@@ -15,6 +15,20 @@ Desenvolvido para oferecer controle patrimonial absoluto, o FreeCash não se lim
 *   **Importação Inteligente de Extratos**: Processamento e conciliação de extratos bancários gerados por grandes instituições (Nubank, Banco Inter, Itaú, Bradesco, etc.) em formatos tabulares, mapeando automaticamente as linhas de extrato para transações financeiras.
 *   **Backup e Exportação**: Mecanismos integrados para exportar bases históricas de usuários em planilhas XLSX e importar backups legados de forma íntegra.
 
+<<<<<<< Updated upstream
+### 2. Gestão de Investimentos (`Investimento`)
+-   **Classificação Hierárquica (ANBIMA)**: Organização profissional de ativos em 3 níveis (**Classe > Categoria > Subcategoria**), ex: *Renda Fixa > Títulos Públicos > Tesouro Selic*.
+-   **Carteira Multi-Ativos**: Suporte nativo para:
+    -   **Renda Variável**: Ações, FIIs, ETFs, BDRs.
+    -   **Renda Fixa**: CDBs, Tesouro Direto, LCI/LCA (com campos para Vencimento, Emissor, Indexador e Taxa).
+    -   **Criptoativos**: Bitcoin, Ethereum, Stablecoins.
+    -   **Fundos e Outros**: Flexibilidade para diversos tipos de investimento.
+-   **Controle de Posição**:
+    -   Cálculo automático de **Preço Médio (PM)** e **Quantidade** baseado no histórico.
+    -   Registro de **Compras**, **Vendas** e **Proventos** (Dividendos/JCP).
+    -   Atualização de saldo em tempo real via *Django Signals*.
+-   **Dashboard de Investimentos**: KPI de Patrimônio Total e lista detalhada de ativos com rentabilidade e alocação.
+=======
 ### 2. Gestão Avançada de Investimentos (`investimento`)
 *   **Hierarquia de Ativos ANBIMA (3 Níveis)**: Organização estrutural estrita para alocação de carteira de investimentos:
     *   **Nível 1 (Classe)**: Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos.
@@ -27,9 +41,20 @@ Desenvolvido para oferecer controle patrimonial absoluto, o FreeCash não se lim
 *   **Gestão de Proventos**: Registro e rastreamento de dividendos, JCP (Juros sobre Capital Próprio) e rendimentos recebidos, com impacto direto na rentabilidade histórica do ativo.
 *   **Cotações em Tempo Real**: Integração técnica com APIs de mercado financeiro (Yahoo Finance) para atualizar preços de fechamento diários e calcular a rentabilidade real comparada com o custo médio.
 
-### 3. Dynamic Port Orchestrator (`run.py`)
+### 3. Dynamic Port Orchestrator (`run.sh` & `run.py`)
 *   **Zero-Configuration Dev**: Script de orquestração local que analisa automaticamente se as portas padrão (`5432` para PostgreSQL, `8000` para Django, `5173` para React) estão ocupadas por outros processos no Host.
-*   **Resolução Dinâmica**: Em caso de conflito, o FreeCash remapeia automaticamente os serviços para as próximas portas disponíveis e gera dinamicamente as variáveis correspondentes no arquivo `.env.docker`, garantindo que os containers e a API se comuniquem perfeitamente sem qualquer intervenção manual do desenvolvedor.
+*   **Resolução Dinâmica**: Em caso de conflito, o FreeCash remapeia automaticamente os serviços para as próximas portas disponíveis e gera dinamicamente as variáveis correspondentes no arquivo `.env.docker`, garantindo que os containers e a API se comuniquem perfeitamente sem qualquer intervenção manual do desenvolvedor. Disponível em versão Bash universal `./run.sh` (com zero dependências do host) e Python `run.py`.
+>>>>>>> Stashed changes
+
+---
+
+## 🛠 Stack Tecnológico
+
+-   **Backend**: Python 3.12+, Django 6.0+
+-   **Banco de Dados**: PostgreSQL
+-   **Frontend**: HTML5, Django Templates, **TailwindCSS** (via CDN), Chart.js
+-   **Infraestrutura**: Docker & Docker Compose
+-   **Ferramentas**: Pandas & OpenPyXL (manipulação de dados), Dotenv (configuração)
 
 ---
 
@@ -80,40 +105,47 @@ O FreeCash oferece duas abordagens para execução: com isolamento completo via 
 
 O script `run.py` gerencia todo o ecossistema. Ele realiza a verificação de portas no host, configura as variáveis necessárias em um arquivo temporário de ambiente `.env.docker` e inicializa o Docker Compose.
 
-1.  **Configure o Arquivo de Ambiente Base**:
+<<<<<<< Updated upstream
+1.  **Configure o ambiente**:
     ```bash
     cp .env_example .env
     ```
-2.  **Execute o Orquestrador Dinâmico**:
+
+2.  **Suba os containers**:
+=======
+O orquestrador gerencia todo o ecossistema. Ele realiza a verificação de portas no host, configura as variáveis necessárias em um arquivo temporário de ambiente `.env.docker` e inicializa o Docker Compose. 
+
+Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` a partir do `.env_example` na primeira execução caso você não o possua.
+
+#### 1. Execute o Orquestrador Dinâmico
+
+*   **Método Recomendado (Universal - Zero Dependências de Linguagem)**:
     ```bash
-    python3 run.py
+    ./run.sh
     ```
-3.  **Acesse a Aplicação**:
-    *   **Frontend Client**: [http://localhost:5173](http://localhost:5173) (ou a porta dinamicamente mapeada pelo terminal).
-    *   **Backend API**: [http://localhost:8000/api/](http://localhost:8000/api/)
-    *   **PostgreSQL**: Disponível localmente na porta informada pelo terminal (ex: `5433` em caso de conflito na `5432`).
+*   **Método Alternativo (Requer Python 3 instalado no Host)**:
+>>>>>>> Stashed changes
+    ```bash
+    docker-compose up --build
+    ```
+<<<<<<< Updated upstream
+    *Isso irá construir a imagem, subir o banco PostgreSQL e iniciar o servidor Django.*
 
-*Para encerrar os containers graciosamente, basta pressionar `Ctrl+C` no terminal onde o `run.py` está em execução.*
+3.  **Acesse**:
+    Abra `http://localhost:8000` no seu navegador.
+=======
 
----
+#### 2. Acesse a Aplicação:
+*   **Frontend Client**: [http://localhost:5173](http://localhost:5173) (ou a porta dinamicamente mapeada pelo terminal).
+*   **Backend API**: [http://localhost:8000/api/](http://localhost:8000/api/)
+*   **PostgreSQL**: Disponível localmente na porta informada pelo terminal (ex: `5433` em caso de conflito na `5432`).
 
-### Opção B: Desenvolvimento Manual (Sem Docker)
+*Para encerrar os containers graciosamente, basta pressionar `Ctrl+C` no terminal.*
+>>>>>>> Stashed changes
 
-Se preferir rodar o backend e o frontend de forma manual e separada:
+### Opção B: Localmente (Manual)
 
-#### 1. Banco de Dados
-Garanta que possui um servidor **PostgreSQL** ativo localmente. Crie um banco chamado `freecash_db` e configure o arquivo `.env` na raiz do projeto com as credenciais locais:
-```env
-DB_NAME=freecash_db
-DB_USER=seu_usuario
-DB_PASS=sua_senha
-DB_HOST=localhost
-DB_PORT=5432
-```
-
-#### 2. Configuração do Backend (Django)
-No diretório raiz do projeto:
-1.  **Crie e ative um ambiente virtual**:
+1.  **Crie e ative o ambiente virtual**:
     ```bash
     python3 -m venv .venv
     source .venv/bin/activate  # No Windows: .venv\Scripts\activate
@@ -141,8 +173,11 @@ Em uma nova janela de terminal, navegue até a pasta `frontend/`:
     ```
 2.  **Inicie o servidor de desenvolvimento**:
     ```bash
-    npm run dev
+    python manage.py populate_investments
     ```
+<<<<<<< Updated upstream
+-   **Shell Interativo**:
+=======
 3.  Acesse [http://localhost:5173](http://localhost:5173). O cliente React se conectará automaticamente com o backend do Django rodando em `localhost:8000`.
 
 ---
@@ -375,7 +410,7 @@ O projeto possui comandos consolidados para operações cotidianas:
 
 | Comando | Descrição |
 | :--- | :--- |
-| `python3 run.py` | Executa o port-scanner, constrói e inicializa todos os containers Docker. |
+| `./run.sh` ou `python3 run.py` | Executa o port-scanner, constrói e inicializa todos os containers Docker. |
 | `python manage.py makemigrations` | Gera novos arquivos de migrações com base nas alterações dos modelos. |
 | `python manage.py migrate` | Aplica migrações pendentes ao banco de dados PostgreSQL. |
 | `python manage.py createsuperuser` | Cria um usuário administrador para acessar o painel Django Admin (`/admin`). |
@@ -406,20 +441,26 @@ python manage.py test investimento.tests
 
 ### 1. Erro de Porta Ocupada ("Port already in use")
 *   **Sintoma**: Ao iniciar o Docker, o banco ou backend falha em subir alegando que a porta `5432` ou `8000` está alocada.
-*   **Solução**: Não inicie o projeto utilizando `docker compose up` diretamente. Execute sempre **`python3 run.py`**. O script detectará a porta ocupada no seu sistema operacional e remapeará os containers para portas livres sem exigir alterações manuais de arquivos.
+*   **Solução**: Não inicie o projeto utilizando `docker compose up` diretamente. Execute sempre **`./run.sh`** (ou `python3 run.py`). O script detectará a porta ocupada no seu sistema operacional e remapeará os containers para portas livres sem exigir alterações manuais de arquivos.
 
 ### 2. Erro de Migrações Pendentes ("Database error - Relation does not exist")
 *   **Sintoma**: O Django reporta falha de tabela ausente ou erros de banco de dados ao tentar salvar transações.
 *   **Solução**: Se estiver rodando no Docker, os scripts automáticos aplicam as migrações na inicialização. Caso esteja executando manualmente, certifique-se de ativar o ambiente virtual e rodar:
+>>>>>>> Stashed changes
     ```bash
-    python manage.py makemigrations
-    python manage.py migrate
+    python manage.py shell
     ```
 
-### 3. Cotações Financeiras Desatualizadas
-*   **Sintoma**: Ativos de renda variável são exibidos no Dashboard de Investimento com a rentabilidade zerada ou com fallback de preço médio.
-*   **Solução**: O FreeCash depende do ticker correto cadastrado no ativo (ex: `PETR4.SA` para ações da Petrobras no mercado brasileiro ou `BTC-USD` para Bitcoin). Verifique se o ticker inserido está em conformidade com os tickers suportados pelo Yahoo Finance (`yfinance`).
+---
 
+<<<<<<< Updated upstream
+## 📝 Notas de Desenvolvimento
+
+-   **Padrão de Código**: O projeto segue a PEP-8 e utiliza Type Hints onde possível.
+-   **Design System**: O frontend utiliza classes utilitárias do TailwindCSS para estilização rápida e consistente.
+-   **Automação**: O cadastro de ativos utiliza `signals` para garantir que o saldo nunca fique dessincronizado das transações.
+=======
 ### 4. Containers sem Comunicação ("CORS error" ou "Network Error")
 *   **Sintoma**: O frontend React abre no navegador, mas as requisições para a API falham e as telas permanecem em loading infinito.
-*   **Solução**: Verifique se o backend está ativo. Se o backend estiver rodando em uma porta remapeada pelo orchestrator (ex: `8001`), confirme se a variável `VITE_API_URL` no frontend foi atualizada para apontar para a porta correta. O script `run.py` faz isso automaticamente gerando o arquivo `.env.docker`. Certifique-se de estar rodando os containers via `run.py` para que a integração de portas seja gerada perfeitamente.
+*   **Solução**: Verifique se o backend está ativo. Se o backend estiver rodando em uma porta remapeada pelo orchestrator (ex: `8001`), confirme se a variável `VITE_API_URL` no frontend foi atualizada para apontar para a porta correta. O script orquestrador faz isso automaticamente gerando o arquivo `.env.docker`. Certifique-se de estar rodando os containers via **`./run.sh`** (ou `run.py`) para que a integração de portas seja gerada perfeitamente.
+>>>>>>> Stashed changes

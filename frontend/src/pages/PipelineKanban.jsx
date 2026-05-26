@@ -9,10 +9,10 @@
  * - **Para Hoje**  → contas com vencimento no dia atual.
  * - **Próximos 7 Dias** → contas vencendo dentro de 1–7 dias.
  * - **Final do Mês** → contas vencendo após 7 dias.
- * - **Pagas ✓** → contas já quitadas (`pago === true`).
+ * - **Pagas** → contas já quitadas (`pago === true`).
  *
  * Comportamento de Drag & Drop:
- * - Arrastar um card para a coluna **"Pagas ✓"** dispara a mutation
+ * - Arrastar um card para a coluna **"Pagas"** dispara a mutation
  *   `pagarConta` que registra o pagamento via API (`POST /api/contas-pagar/{id}/pagar/`).
  * - Movimentação entre outras colunas é visual apenas (sem persistência de data).
  *
@@ -91,7 +91,7 @@ const COLUMNS = [
   },
   {
     id: 'pagas',
-    label: 'Pagas ✓',
+    label: 'Pagas',
     icon: CheckCircle2,
     color: 'text-emerald-500 dark:text-emerald-400',
     borderColor: 'border-border/40',
@@ -374,7 +374,11 @@ export default function PipelineKanban() {
       <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
         <DollarSign className="h-4 w-4 shrink-0" />
         <p>
+<<<<<<< HEAD
+          Arraste um card para a coluna <strong>"Pagas"</strong> para registrar o pagamento automaticamente no backend.
+=======
           Arraste um card para a coluna <strong>"Pagas ✓"</strong> para registrar o pagamento automaticamente no backend.
+>>>>>>> 7e86a8f384903efab0be4239287b3e855a9ae5bb
         </p>
       </div>
 
