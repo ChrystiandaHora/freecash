@@ -15,46 +15,19 @@ Desenvolvido para oferecer controle patrimonial absoluto, o FreeCash não se lim
 *   **Importação Inteligente de Extratos**: Processamento e conciliação de extratos bancários gerados por grandes instituições (Nubank, Banco Inter, Itaú, Bradesco, etc.) em formatos tabulares, mapeando automaticamente as linhas de extrato para transações financeiras.
 *   **Backup e Exportação**: Mecanismos integrados para exportar bases históricas de usuários em planilhas XLSX e importar backups legados de forma íntegra.
 
-<<<<<<< Updated upstream
-### 2. Gestão de Investimentos (`Investimento`)
--   **Classificação Hierárquica (ANBIMA)**: Organização profissional de ativos em 3 níveis (**Classe > Categoria > Subcategoria**), ex: *Renda Fixa > Títulos Públicos > Tesouro Selic*.
--   **Carteira Multi-Ativos**: Suporte nativo para:
-    -   **Renda Variável**: Ações, FIIs, ETFs, BDRs.
-    -   **Renda Fixa**: CDBs, Tesouro Direto, LCI/LCA (com campos para Vencimento, Emissor, Indexador e Taxa).
-    -   **Criptoativos**: Bitcoin, Ethereum, Stablecoins.
-    -   **Fundos e Outros**: Flexibilidade para diversos tipos de investimento.
--   **Controle de Posição**:
-    -   Cálculo automático de **Preço Médio (PM)** e **Quantidade** baseado no histórico.
-    -   Registro de **Compras**, **Vendas** e **Proventos** (Dividendos/JCP).
-    -   Atualização de saldo em tempo real via *Django Signals*.
--   **Dashboard de Investimentos**: KPI de Patrimônio Total e lista detalhada de ativos com rentabilidade e alocação.
-=======
 ### 2. Gestão Avançada de Investimentos (`investimento`)
 *   **Hierarquia de Ativos ANBIMA (3 Níveis)**: Organização estrutural estrita para alocação de carteira de investimentos:
     *   **Nível 1 (Classe)**: Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos.
     *   **Nível 2 (Categoria)**: Pós-fixado, Inflação (IPCA), Pré-fixado, Ações, FIIs, ETFs, Moedas, Moedas Digitais.
     *   **Nível 3 (Subcategoria)**: Tesouro Selic, CDB/RDB, LCI/LCA, Ações Brasil, BDRs, FII de Tijolo, FII de Papel, Bitcoin, Ethereum, etc.
-*   **Carteira Multi-Ativos**:
-    *   **Renda Fixa**: Controle parametrizado contendo Vencimento, Emissor, Indexador (CDI, IPCA, Selic, Pré, IGP-M) e Taxa acordada.
-    *   **Renda Variável & Cripto**: Suporte completo a tickers nacionais e internacionais.
+*   **Carteira Multi-Ativos**: Suporte nativo e parametrizado para Renda Fixa (Vencimento, Emissor, Indexador e Taxa), Renda Variável, Criptoativos e Fundos.
 *   **Cálculo Automático de Posição**: Controle nativo de **Preço Médio (PM)** e **Quantidade Acumulada** baseado em compras e vendas com compensações dinâmicas de taxas e corretagem.
 *   **Gestão de Proventos**: Registro e rastreamento de dividendos, JCP (Juros sobre Capital Próprio) e rendimentos recebidos, com impacto direto na rentabilidade histórica do ativo.
-*   **Cotações em Tempo Real**: Integração técnica com APIs de mercado financeiro (Yahoo Finance) para atualizar preços de fechamento diários e calcular a rentabilidade real comparada com o custo médio.
+*   **Cotações em Tempo Real**: Integração técnica com APIs de mercado financeiro (Yahoo Finance via `yfinance`) para atualizar preços de fechamento diários e calcular a rentabilidade real comparada com o custo médio.
 
 ### 3. Dynamic Port Orchestrator (`run.sh` & `run.py`)
 *   **Zero-Configuration Dev**: Script de orquestração local que analisa automaticamente se as portas padrão (`5432` para PostgreSQL, `8000` para Django, `5173` para React) estão ocupadas por outros processos no Host.
 *   **Resolução Dinâmica**: Em caso de conflito, o FreeCash remapeia automaticamente os serviços para as próximas portas disponíveis e gera dinamicamente as variáveis correspondentes no arquivo `.env.docker`, garantindo que os containers e a API se comuniquem perfeitamente sem qualquer intervenção manual do desenvolvedor. Disponível em versão Bash universal `./run.sh` (com zero dependências do host) e Python `run.py`.
->>>>>>> Stashed changes
-
----
-
-## 🛠 Stack Tecnológico
-
--   **Backend**: Python 3.12+, Django 6.0+
--   **Banco de Dados**: PostgreSQL
--   **Frontend**: HTML5, Django Templates, **TailwindCSS** (via CDN), Chart.js
--   **Infraestrutura**: Docker & Docker Compose
--   **Ferramentas**: Pandas & OpenPyXL (manipulação de dados), Dotenv (configuração)
 
 ---
 
@@ -63,8 +36,8 @@ Desenvolvido para oferecer controle patrimonial absoluto, o FreeCash não se lim
 O ecossistema do FreeCash é construído sobre ferramentas modernas e estáveis de desenvolvimento de software:
 
 ### Backend (API & Lógica)
-*   **Linguagem & Framework**: `Python 3.12+` e `Django 6.0.1`
-*   **Banco de Dados**: `PostgreSQL 16` via drivers assíncronos e robustos `psycopg3`
+*   **Linguagem & Framework**: `Python 3.12+` e `Django 6.0+`
+*   **Banco de Dados**: `PostgreSQL 16` via driver assíncrono `psycopg3`
 *   **API Engine**: `Django REST Framework (DRF)` para endpoints RESTful de alta performance.
 *   **Segurança**: `djangorestframework-simplejwt` para autenticação baseada em tokens JWT.
 *   **Integração de Mercado**: `yfinance` para consultas de cotações financeiras globais e nacionais em tempo real.
@@ -73,17 +46,17 @@ O ecossistema do FreeCash é construído sobre ferramentas modernas e estáveis 
 *   **Serviço de Arquivos**: `whitenoise` para servir arquivos estáticos otimizados diretamente pelo container Django.
 
 ### Frontend (Interface de Usuário)
-*   **Linguagem & Framework**: `React 19` e `Vite 8` (compilação extremamente rápida via ESM).
+*   **Linguagem & Framework**: `React 19` e `Vite 6+`
 *   **Estilização**: `Tailwind CSS v4` usando configuração nativa baseada em CSS e compilação ultra veloz.
 *   **State & Cache Management**: `@tanstack/react-query` para sincronização de estado com a API do backend, com invalidação de cache inteligente.
 *   **Formulários**: `react-hook-form` acoplado com validações de dados rigorosas do `zod` via `@hookform/resolvers`.
 *   **Roteamento**: `react-router-dom v7` para controle de rotas de página única (SPA).
-*   **Visualização Gráfica**: `apexcharts` e `react-apexcharts` para gráficos interativos de fluxo de caixa e alocação de carteira.
+*   **Visualização Gráfica**: `react-apexcharts` para gráficos interativos de fluxo de caixa e alocação de carteira.
 *   **Ícones**: `lucide-react` para biblioteca unificada de ícones modernos.
 
 ### Infraestrutura & Orquestração
 *   **Containers**: `Docker` e `Docker Compose` para isolamento total de serviços.
-*   **Orquestrador de Rede**: Script personalizado `run.py` para análise ativa e resolução de conflitos de portas.
+*   **Orquestrador de Rede**: Script personalizado `run.py` e `./run.sh` para análise ativa e resolução de conflitos de portas.
 
 ---
 
@@ -103,16 +76,6 @@ O FreeCash oferece duas abordagens para execução: com isolamento completo via 
 
 ### Opção A: Docker & Port Orchestrator (Recomendado)
 
-O script `run.py` gerencia todo o ecossistema. Ele realiza a verificação de portas no host, configura as variáveis necessárias em um arquivo temporário de ambiente `.env.docker` e inicializa o Docker Compose.
-
-<<<<<<< Updated upstream
-1.  **Configure o ambiente**:
-    ```bash
-    cp .env_example .env
-    ```
-
-2.  **Suba os containers**:
-=======
 O orquestrador gerencia todo o ecossistema. Ele realiza a verificação de portas no host, configura as variáveis necessárias em um arquivo temporário de ambiente `.env.docker` e inicializa o Docker Compose. 
 
 Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` a partir do `.env_example` na primeira execução caso você não o possua.
@@ -121,19 +84,13 @@ Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` 
 
 *   **Método Recomendado (Universal - Zero Dependências de Linguagem)**:
     ```bash
+    chmod +x run.sh
     ./run.sh
     ```
 *   **Método Alternativo (Requer Python 3 instalado no Host)**:
->>>>>>> Stashed changes
     ```bash
-    docker-compose up --build
+    python3 run.py
     ```
-<<<<<<< Updated upstream
-    *Isso irá construir a imagem, subir o banco PostgreSQL e iniciar o servidor Django.*
-
-3.  **Acesse**:
-    Abra `http://localhost:8000` no seu navegador.
-=======
 
 #### 2. Acesse a Aplicação:
 *   **Frontend Client**: [http://localhost:5173](http://localhost:5173) (ou a porta dinamicamente mapeada pelo terminal).
@@ -141,10 +98,12 @@ Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` 
 *   **PostgreSQL**: Disponível localmente na porta informada pelo terminal (ex: `5433` em caso de conflito na `5432`).
 
 *Para encerrar os containers graciosamente, basta pressionar `Ctrl+C` no terminal.*
->>>>>>> Stashed changes
+
+---
 
 ### Opção B: Localmente (Manual)
 
+#### 1. Configuração do Backend
 1.  **Crie e ative o ambiente virtual**:
     ```bash
     python3 -m venv .venv
@@ -154,17 +113,22 @@ Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` 
     ```bash
     pip install -r requirements.txt
     ```
-3.  **Execute as migrações de banco e crie o Superusuário**:
+3.  **Configure as variáveis de ambiente**:
+    ```bash
+    cp .env_example .env
+    ```
+    Ajuste as configurações no `.env` conforme necessário para o seu banco de dados PostgreSQL local.
+4.  **Execute as migrações de banco e crie o Superusuário**:
     ```bash
     python manage.py migrate
     python manage.py createsuperuser
     ```
-4.  **Rode o servidor de desenvolvimento**:
+5.  **Rode o servidor de desenvolvimento**:
     ```bash
     python manage.py runserver 127.0.0.1:8000
     ```
 
-#### 3. Configuração do Frontend (Vite + React)
+#### 2. Configuração do Frontend (Vite + React)
 Em uma nova janela de terminal, navegue até a pasta `frontend/`:
 1.  **Instale as dependências JavaScript**:
     ```bash
@@ -173,11 +137,8 @@ Em uma nova janela de terminal, navegue até a pasta `frontend/`:
     ```
 2.  **Inicie o servidor de desenvolvimento**:
     ```bash
-    python manage.py populate_investments
+    npm run dev
     ```
-<<<<<<< Updated upstream
--   **Shell Interativo**:
-=======
 3.  Acesse [http://localhost:5173](http://localhost:5173). O cliente React se conectará automaticamente com o backend do Django rodando em `localhost:8000`.
 
 ---
@@ -188,46 +149,28 @@ O projeto é organizado de forma modular, separando responsabilidades de negóci
 
 ```text
 freecash/
-├── core/                       # MÓDULO FINANCEIRO CENTRAL
-│   ├── migrations/             # Histórico de migrações do banco
-│   ├── services/               # Lógica de negócio (Importações de Extratos e XLSX)
-│   ├── templates/              # Interfaces estáticas e views administrativas
-│   ├── models.py               # Modelos de dados (Categoria, Conta, Cartão, Extrato)
-│   ├── urls.py                 # Rotas do core e views legadas
-│   └── views.py                # Controladores do módulo core
-│
-├── investimento/               # MÓDULO DE INVESTIMENTOS E CARTEIRA
-│   ├── management/commands/    # Scripts (ex: populate_investments para carga inicial)
-│   ├── services/               # Motores de busca e APIs de cálculo
-│   ├── calculators.py          # Matemática de Preço Médio e quantidade
-│   ├── forms.py                # Validação de formulários de investimentos
-│   ├── models.py               # Ativos, Classes, Subcategorias ANBIMA, Cotações, Transações
-│   ├── signals.py              # Automações orientadas a eventos de banco (Signals)
-│   ├── urls.py                 # Rotas de acesso do módulo
-│   ├── views.py                # Visualização de investimentos
-│   └── views_api.py            # Endpoints REST específicos de investimentos
-│
-├── freecash/                   # CONFIGURAÇÕES GLOBAIS DO PROJETO DJANGO
-│   ├── settings.py             # Configurações globais (DRF, JWT, Banco, CORS)
-│   ├── urls.py                 # Orquestrador global de rotas da aplicação
-│   └── wsgi.py / asgi.py       # Pontos de entrada para servidores de produção
+├── backend/                    # ECOSSISTEMA BACKEND (DJANGO API)
+│   ├── core/                   # Módulo Financeiro Central (Contas, Cartões, Extratos)
+│   ├── investimento/           # Módulo de Investimentos (Ativos, ANBIMA, Transações, Cotações)
+│   ├── freecash/               # Configurações globais do projeto Django
+│   ├── manage.py               # Utilitário de gerenciamento do Django
+│   └── requirements.txt        # Dependências Python do backend
 │
 ├── frontend/                   # CLIENTE REATIVO EM REACT 19 (SPA)
-│   ├── src/
+│   ├── src/                    # Código fonte do React
 │   │   ├── components/         # Componentes UI reutilizáveis (botões, inputs, cards)
 │   │   ├── layouts/            # Estrutura base de páginas e Sidebar
 │   │   ├── pages/              # Telas da SPA (Dashboard, Investimentos, Extratos)
-│   │   ├── services/           # Comunicação com a API (Instância Axios, React Query)
-│   │   └── App.jsx / main.jsx  # Ponto de entrada do React
+│   │   ├── services/           # Comunicação com a API (Axios, React Query)
+│   │   └── App.jsx             # Ponto de entrada do React
 │   ├── tailwind.config.js      # Customização de temas visuais
 │   ├── package.json            # Manifesto de dependências e scripts do Frontend
 │   └── vite.config.js          # Configurações do Vite
 │
 ├── docker-compose.yml          # Definição e orquestração de containers locais
 ├── Dockerfile.backend          # Receita de build do ambiente Django
-├── Dockerfile.frontend         # Receita de build do ambiente React (Dev/Prod)
+├── Dockerfile.frontend         # Receita de build do ambiente React
 ├── Dockerfile.postgres         # Customização e inicialização do banco PostgreSQL
-├── requirements.txt            # Dependências Python globais do projeto
 └── run.py                      # Dynamic Port Orchestrator local
 ```
 
@@ -259,180 +202,17 @@ O FreeCash funciona como uma arquitetura desacoplada (Decoupled SPA). A interfac
 
 ---
 
-### Automações Orientadas a Eventos (`investimento/signals.py`)
-
-O FreeCash implementa **Django Signals** para garantir a consistência dos dados do usuário de forma assíncrona e orientada a eventos, eliminando reprocessamentos pesados. O sistema contém dois receivers críticos:
-
-1.  **`criar_classificacao_padrao` (Acionado ao criar Usuário)**:
-    Quando um novo registro de usuário é inserido (`post_save` no modelo `User`), o signal inicializa automaticamente a taxonomia completa padrão de investimentos de acordo com o padrão **ANBIMA**:
-    *   **Renda Fixa**: Cria automaticamente subcategorias de *Tesouro Selic*, *CDB/RDB*, *LCI/LCA* e *Crédito Privado (CRI/CRA)*.
-    *   **Renda Variável**: Inicializa *Ações Brasil*, *BDRs (Internacional)*, *Small Caps* e divisões de *Fundos Imobiliários (FII de Tijolo, FII de Papel, Fiagro)*.
-    *   **Criptoativos**: Estrutura as divisões para *Bitcoin*, *Ethereum* e *Altcoins*.
-    *   **Multimercado & Cambial**: Configura as moedas (Dólar, Euro) e estratégias macro.
-
-2.  **`atualizar_ativo_apos_transacao` (Acionado por Transações)**:
-    Sempre que uma transação de compra, venda ou provento de investimento é criada, atualizada ou excluída (`post_save` e `post_delete` em `Transacao`), este signal é disparado. Ele invoca a função `recalcular_ativo(ativo)` que:
-    *   Analisa todo o histórico histórico de compras e vendas do ativo específico daquele usuário.
-    *   Recomputa matematicamente a **Quantidade** real acumulada.
-    *   Atualiza o **Preço Médio (PM)** de aquisição com precisão de 4 casas decimais.
-    *   Grava esses valores como um cache de atributos diretamente na tabela `Ativo`, otimizando a exibição do dashboard sem exigir queries agregadas pesadas em tempo real.
-
----
-
-## 🗄️ Modelo Relacional de Banco de Dados
-
-Abaixo está o mapeamento detalhado das entidades do banco de dados PostgreSQL estruturado no FreeCash:
-
-```text
-==========================================================================================
-                                       MÓDULO CORE
-==========================================================================================
-
-Categoria (core_categoria)
-├── id (BigInt, PK)
-├── uuid (UUID, Unique)
-├── nome (VarChar(100), Unique por Usuario)
-├── tipo (VarChar(1), Choices: 'R' (Receita), 'D' (Despesa), 'I' (Investimento))
-├── is_default (Boolean)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-Conta (core_conta)
-├── id (BigInt, PK)
-├── uuid (UUID, Unique)
-├── tipo (VarChar(1), Choices: 'R', 'D', 'I')
-├── descricao (VarChar(255))
-├── valor (Decimal(12, 2))
-├── data_prevista (Date, Indexado)
-├── transacao_realizada (Boolean, Indexado)
-├── data_realizacao (Date, Null, Indexado)
-├── data_compra (Date, Null, Indexado)
-├── eh_fatura_cartao (Boolean, Indexado)
-├── categoria_id (BigInt, FK -> Categoria, Null)
-├── cartao_id (BigInt, FK -> CartaoCredito, Null)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-CartaoCredito (core_cartaocredito)
-├── id (BigInt, PK)
-├── uuid (UUID, Unique)
-├── nome (VarChar(100))
-├── bandeira (VarChar(20), Choices: VISA, MASTERCARD, ELO, AMEX, HIPERCARD, etc.)
-├── ultimos_digitos (VarChar(4))
-├── limite (Decimal(12, 2), Null)
-├── dia_fechamento (Integer)
-├── dia_vencimento (Integer)
-├── ativo (Boolean)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-==========================================================================================
-                                   MÓDULO INVESTIMENTO
-==========================================================================================
-
-ClasseAtivo (investimento_classeativo)
-├── id (BigInt, PK)
-├── nome (VarChar(60), Unique por Usuario)
-├── ativa (Boolean)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-CategoriaAtivo (investimento_categoriaativo)
-├── id (BigInt, PK)
-├── classe_id (BigInt, FK -> ClasseAtivo)
-├── nome (VarChar(60), Unique por Usuario/Classe)
-├── ativa (Boolean)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-SubcategoriaAtivo (investimento_subcategoriaativo)
-├── id (BigInt, PK)
-├── categoria_id (BigInt, FK -> CategoriaAtivo)
-├── nome (VarChar(60), Unique por Usuario/Categoria)
-├── ativa (Boolean)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-Ativo (investimento_ativo)
-├── id (BigInt, PK)
-├── ticker (VarChar(20), Unique por Usuario)
-├── nome (VarChar(120))
-├── subcategoria_id (BigInt, FK -> SubcategoriaAtivo, Null)
-├── data_vencimento (Date, Null)
-├── emissor (VarChar(100))
-├── indexador (VarChar(10), Choices: CDI, IPCA, SELIC, PRE, IGPM, etc.)
-├── taxa (Decimal(9, 4))
-├── moeda (VarChar(10), Default: 'BRL')
-├── ativo (Boolean)
-├── meta_porcentagem (Decimal(5, 2))
-├── quantidade (Decimal(19, 8), Cache Calculado)
-├── preco_medio (Decimal(19, 4), Cache Calculado)
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-
-Transacao (investimento_transacao)
-├── id (BigInt, PK)
-├── ativo_id (BigInt, FK -> Ativo)
-├── tipo (VarChar(1), Choices: 'C' (Compra), 'V' (Venda), 'D' (Provento))
-├── data (Date)
-├── quantidade (Decimal(19, 8))
-├── preco_unitario (Decimal(19, 4))
-├── taxas (Decimal(12, 2))
-├── valor_total (Decimal(19, 2))
-├── usuario_id (BigInt, FK -> auth_user)
-└── [Auditoria: criada_em, atualizada_em]
-```
-
----
-
-## 🔑 Variáveis de Ambiente
-
-O FreeCash utiliza arquivos `.env` para segurança de credenciais sensíveis e portabilidade de portas locais.
-
-### Configurações do Banco de Dados
-*   `DB_NAME`: Nome do banco de dados relacional (Ex: `freecash_db`).
-*   `DB_USER`: Usuário administrativo do PostgreSQL (Ex: `freecash_user`).
-*   `DB_PASS`: Senha do usuário do banco (Ex: `freecash_pass`).
-*   `DB_HOST`: Host de conexão do banco (`postgres` ao rodar em containers Docker, `localhost` na execução manual).
-*   `DB_PORT`: Porta interna do PostgreSQL no container (Padrão: `5432`).
-
-### Configurações de Rede (Orquestradas automaticamente pelo `run.py`)
-*   `POSTGRES_PORT`: Porta mapeada do PostgreSQL no Host Host (Ex: `5433` em caso de conflitos locais).
-*   `BACKEND_PORT`: Porta exposta do servidor Django Backend (Padrão: `8000`).
-*   `FRONTEND_PORT`: Porta exposta do servidor React Vite Frontend (Padrão: `5173`).
-*   `VITE_API_URL`: URL base de comunicação HTTP que o cliente Vite utilizará (Ex: `http://localhost:8000`).
-
----
-
-## 🛠️ Comandos e Scripts Úteis
-
-O projeto possui comandos consolidados para operações cotidianas:
-
-| Comando | Descrição |
-| :--- | :--- |
-| `./run.sh` ou `python3 run.py` | Executa o port-scanner, constrói e inicializa todos os containers Docker. |
-| `python manage.py makemigrations` | Gera novos arquivos de migrações com base nas alterações dos modelos. |
-| `python manage.py migrate` | Aplica migrações pendentes ao banco de dados PostgreSQL. |
-| `python manage.py createsuperuser` | Cria um usuário administrador para acessar o painel Django Admin (`/admin`). |
-| `python manage.py populate_investments` | Comando customizado para popular a taxonomia padrão de investimentos retroativamente. |
-| `python manage.py shell` | Abre o terminal interativo do Python com o contexto do Django inicializado. |
-| `python manage.py test` | Executa a suite completa de testes automatizados do backend. |
-| `npm run build:css` (raiz) | Compila e minifica as classes do Tailwind CSS do core de forma manual. |
-
----
-
 ## 🧪 Testes Automatizados
 
 O backend do FreeCash possui cobertura de testes unitários e de integração para validar a integridade dos cálculos financeiros e as regras de negócio de investimentos.
 
 Para rodar todos os testes unitários do sistema:
 ```bash
-python manage.py test core investimento
+docker compose exec backend python manage.py test
 ```
-
-Se desejar executar os testes de um módulo específico com riqueza de detalhes:
+Ou rodando localmente fora de containers:
 ```bash
-python manage.py test investimento.tests
+python manage.py test
 ```
 
 ---
@@ -446,21 +226,10 @@ python manage.py test investimento.tests
 ### 2. Erro de Migrações Pendentes ("Database error - Relation does not exist")
 *   **Sintoma**: O Django reporta falha de tabela ausente ou erros de banco de dados ao tentar salvar transações.
 *   **Solução**: Se estiver rodando no Docker, os scripts automáticos aplicam as migrações na inicialização. Caso esteja executando manualmente, certifique-se de ativar o ambiente virtual e rodar:
->>>>>>> Stashed changes
     ```bash
-    python manage.py shell
+    python manage.py migrate
     ```
 
----
-
-<<<<<<< Updated upstream
-## 📝 Notas de Desenvolvimento
-
--   **Padrão de Código**: O projeto segue a PEP-8 e utiliza Type Hints onde possível.
--   **Design System**: O frontend utiliza classes utilitárias do TailwindCSS para estilização rápida e consistente.
--   **Automação**: O cadastro de ativos utiliza `signals` para garantir que o saldo nunca fique dessincronizado das transações.
-=======
-### 4. Containers sem Comunicação ("CORS error" ou "Network Error")
+### 3. Containers sem Comunicação ("CORS error" ou "Network Error")
 *   **Sintoma**: O frontend React abre no navegador, mas as requisições para a API falham e as telas permanecem em loading infinito.
 *   **Solução**: Verifique se o backend está ativo. Se o backend estiver rodando em uma porta remapeada pelo orchestrator (ex: `8001`), confirme se a variável `VITE_API_URL` no frontend foi atualizada para apontar para a porta correta. O script orquestrador faz isso automaticamente gerando o arquivo `.env.docker`. Certifique-se de estar rodando os containers via **`./run.sh`** (ou `run.py`) para que a integração de portas seja gerada perfeitamente.
->>>>>>> Stashed changes
