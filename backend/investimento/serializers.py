@@ -102,5 +102,5 @@ class TransacaoInvestimentoSerializer(serializers.ModelSerializer):
             'quantidade', 'preco_unitario', 'taxas', 'valor_total',
             'criada_em', 'atualizada_em'
         ]
-        read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
+        read_only_fields = ['id', 'uuid', 'valor_total', 'criada_em', 'atualizada_em']
 
