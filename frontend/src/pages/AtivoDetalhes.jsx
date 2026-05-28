@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 import api from '../services/api';
+import Chart from 'react-apexcharts';
 import { fetchAtivo, atualizarCotacoes } from '../services/investimentos';
 import { useToast } from '../context/ToastContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -307,42 +308,119 @@ export default function AtivoDetalhes() {
 
         {/* Tab 2: Rentabilidade */}
         {activeTab === 'rentabilidade' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
             
-            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
-                Comparativo de Preços
-              </h3>
-              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                <span className="text-muted-foreground">Preço Médio de Aquisição:</span>
-                <span className="font-semibold text-foreground">{formatCurrency(ativo.preco_medio)}</span>
+            {/* Coluna da esquerda: tabelas de preços e consolidação */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
+                  Comparativo de Preços
+                </h3>
+                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                  <span className="text-muted-foreground">Preço Médio:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(ativo.preco_medio)}</span>
 
-                <span className="text-muted-foreground">Cotação Atual a Mercado:</span>
-                <span className="font-semibold text-foreground">{formatCurrency(ativo.cotacao_atual)}</span>
+                  <span className="text-muted-foreground">Cotação Atual:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(ativo.cotacao_atual)}</span>
 
-                <span className="text-muted-foreground">Diferença por Cotas (Preço):</span>
-                <span className={`font-bold ${parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                  {formatCurrency(parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0))}
-                </span>
+                  <span className="text-muted-foreground">Diferença/Preço:</span>
+                  <span className={`font-bold ${parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+                    {formatCurrency(parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
+                  Resultado Consolidado
+                </h3>
+                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                  <span className="text-muted-foreground">Total Pago:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(totalCustoInvestido)}</span>
+
+                  <span className="text-muted-foreground">Valor de Mercado:</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(valorTotalAtual)}</span>
+
+                  <span className="font-bold text-foreground border-t border-border/20 pt-2 mt-1">Lucro/Prejuízo:</span>
+                  <span className={`font-bold border-t border-border/20 pt-2 mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+                    {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
-                Resultado Consolidado
+            {/* Coluna da direita: gráfico de tendência de cotação */}
+            <div className="lg:col-span-2 space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20 flex flex-col">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
+                Histórico de Cotações (Últimos 30 Dias)
               </h3>
-              <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                <span className="text-muted-foreground">Total Investido (Custo de Entrada):</span>
-                <span className="font-semibold text-foreground">{formatCurrency(totalCustoInvestido)}</span>
-
-                <span className="text-muted-foreground">Patrimônio Líquido Atual:</span>
-                <span className="font-semibold text-foreground">{formatCurrency(valorTotalAtual)}</span>
-
-                <span className="font-bold text-foreground border-t border-border/20 pt-2 mt-1">Lucro/Prejuízo Líquido:</span>
-                <span className={`font-bold border-t border-border/20 pt-2 mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                  {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
-                </span>
-              </div>
+              {ativo.historico_cotacoes && ativo.historico_cotacoes.length > 0 ? (
+                <div className="flex-1 min-h-[220px]">
+                  <Chart
+                    options={{
+                      chart: {
+                        type: 'area',
+                        height: 220,
+                        sparkline: { enabled: false },
+                        toolbar: { show: false },
+                        fontFamily: 'inherit',
+                        background: 'transparent',
+                        animations: { enabled: false }
+                      },
+                      colors: [rentabilidadePerc >= 0 ? '#10b981' : '#f43f5e'],
+                      stroke: { curve: 'smooth', width: 2 },
+                      fill: {
+                        type: 'gradient',
+                        gradient: {
+                          shadeIntensity: 1,
+                          opacityFrom: 0.35,
+                          opacityTo: 0.02,
+                          stops: [0, 90, 100],
+                        },
+                      },
+                      xaxis: {
+                        categories: (ativo.historico_cotacoes || []).map(q => {
+                          const parts = q.data.split('-');
+                          return `${parts[2]}/${parts[1]}`;
+                        }),
+                        labels: {
+                          style: { colors: '#888888', fontSize: '9px', fontWeight: 500 }
+                        },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                      },
+                      yaxis: {
+                        labels: {
+                          formatter: (val) => formatCurrency(val),
+                          style: { colors: '#888888', fontSize: '9px', fontWeight: 500 }
+                        }
+                      },
+                      grid: {
+                        borderColor: 'rgba(148, 163, 184, 0.08)',
+                        strokeDashArray: 4,
+                      },
+                      theme: {
+                        mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                      },
+                      tooltip: {
+                        theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                        y: {
+                          formatter: (val) => formatCurrency(val),
+                        },
+                      },
+                    }}
+                    series={[
+                      { name: 'Fechamento', data: (ativo.historico_cotacoes || []).map(q => q.valor) }
+                    ]}
+                    type="area"
+                    height={220}
+                  />
+                </div>
+              ) : (
+                <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground py-12">
+                  Nenhum registro histórico de cotações disponível para este ativo.
+                </div>
+              )}
             </div>
 
           </div>

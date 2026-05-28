@@ -254,6 +254,54 @@ export default function Dashboard() {
     { name: 'Despesas', data: grafico_projetado.despesas || [] },
   ];
 
+  // Configurações para o gráfico de Rosca (Donut) de maiores despesas
+  const donutExpensesOptions = {
+    chart: {
+      type: 'donut',
+      fontFamily: 'inherit',
+      background: 'transparent',
+      animations: { enabled: false },
+    },
+    labels: (breakdown_despesas || []).map(item => item.nome),
+    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'],
+    dataLabels: { enabled: false },
+    stroke: { width: 1, colors: ['rgba(255, 255, 255, 0.05)'] },
+    legend: { show: false },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '75%',
+          labels: {
+            show: true,
+            value: {
+              formatter: (val) => formatCurrency(val),
+              color: '#888888',
+              fontSize: '13px',
+              fontWeight: 700
+            },
+            total: {
+              show: true,
+              label: 'Despesas',
+              color: '#888888',
+              fontSize: '9px',
+              fontWeight: 600,
+              formatter: () => formatCurrency(total_despesas)
+            }
+          }
+        }
+      }
+    },
+    theme: {
+      mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+    },
+    tooltip: {
+      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+      y: {
+        formatter: (val) => formatCurrency(val)
+      }
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       
@@ -562,25 +610,38 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-5">
             {breakdown_despesas && breakdown_despesas.length > 0 ? (
-              breakdown_despesas.map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-foreground font-medium">
-                      {item.nome}
-                    </span>
-                    <span className="text-foreground font-bold">
-                      {formatCurrency(item.valor)} ({(parseFloat(item.pct) || 0).toFixed(1).replace('.', ',')}%)
-                    </span>
-                  </div>
-                  {/* Custom animated progress bar */}
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-500" 
-                      style={{ width: `${Math.min(item.pct || 0, 100)}%` }}
-                    />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                {/* Coluna 1: Gráfico de Rosca */}
+                <div className="flex justify-center py-2">
+                  <Chart
+                    options={donutExpensesOptions}
+                    series={(breakdown_despesas || []).map(item => parseFloat(item.valor) || 0)}
+                    type="donut"
+                    width={200}
+                  />
                 </div>
-              ))
+                {/* Coluna 2: Lista com progress bars */}
+                <div className="space-y-3">
+                  {breakdown_despesas.map((item, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-foreground font-medium truncate max-w-[120px]">
+                          {item.nome}
+                        </span>
+                        <span className="text-foreground font-bold text-[11px]">
+                          {formatCurrency(item.valor)} ({(parseFloat(item.pct) || 0).toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/40">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all duration-500" 
+                          style={{ width: `${Math.min(item.pct || 0, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10 text-center gap-2 text-muted-foreground">
                 <CheckCircle2 className="h-8 w-8 text-muted-foreground/60" />

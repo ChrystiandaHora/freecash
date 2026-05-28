@@ -61,6 +61,8 @@ class AtivoSerializer(serializers.ModelSerializer):
     emissor = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     indexador = serializers.CharField(allow_null=True, allow_blank=True, required=False)
 
+    historico_cotacoes = serializers.SerializerMethodField()
+
     class Meta:
         model = Ativo
         fields = [
@@ -68,9 +70,16 @@ class AtivoSerializer(serializers.ModelSerializer):
             'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo', 
             'meta_porcentagem', 'quantidade', 'preco_medio', 'valor_total',
             'cotacao_atual', 'valor_total_atual', 'rentabilidade', 'rentabilidade_percentual',
-            'criada_em', 'atualizada_em'
+            'historico_cotacoes', 'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'quantidade', 'preco_medio', 'criada_em', 'atualizada_em']
+
+    def get_historico_cotacoes(self, obj) -> list[dict]:
+        """Retorna a série histórica das últimas 30 cotações ordenadas cronologicamente."""
+        return [
+            {"data": str(c.data), "valor": float(c.valor)}
+            for c in obj.cotacoes.all().order_by('data')[:30]
+        ]
 
     def validate(self, attrs) -> dict:
         """Sanitiza campos opcionais nulos de Renda Fixa convertendo-os em strings vazias.

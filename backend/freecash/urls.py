@@ -26,7 +26,7 @@ from core.views.api import (
     CategoriaViewSet, CartaoCreditoViewSet, ContaViewSet, DashboardAPIView,
     CookieTokenObtainPairView, CookieTokenRefreshView, CookieTokenClearView,
     CartaoCreditoAPIViewSet, ContasPagarViewSet, ReceitasViewSet,
-    TransacoesViewSet, RelatoriosDREAPIView, RegistrationAPIView
+    TransacoesViewSet, RelatoriosDREAPIView, RegistrationAPIView, ExecutiveBIDashboardAPIView
 )
 from investimento.views_api import (
     ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet, 
@@ -67,6 +67,7 @@ urlpatterns += [
     path('api/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/clear/', CookieTokenClearView.as_view(), name='token_clear'),
     path('api/dashboard/', DashboardAPIView.as_view(), name='api-dashboard'),
+    path('api/dashboard/executivo/', ExecutiveBIDashboardAPIView.as_view(), name='api-dashboard-executivo'),
     path('api/investimentos/dashboard/', DashboardInvestimentoAPIView.as_view(), name='api-investimentos-dashboard'),
     path('api/investimentos/balanceamento/', BalanceamentoAPIView.as_view(), name='api-investimentos-balanceamento'),
     path('api/relatorios/dre/', RelatoriosDREAPIView.as_view(), name='api-relatorios-dre'),

@@ -15,9 +15,9 @@ import {
   ShoppingCart, Utensils, Car, Fuel
 } from 'lucide-react';
 
+import Chart from 'react-apexcharts';
 import { fetchCartoes } from '../services/financeiro';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import { Progress } from '../components/ui/Progress';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
@@ -78,6 +78,43 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
   const compras = cartao.compras_recentes ?? []
 
+  // Configurações do gráfico de velocímetro (Gauge)
+  const chartGaugeOptions = {
+    chart: {
+      type: 'radialBar',
+      sparkline: { enabled: true },
+      animations: { enabled: false }
+    },
+    colors: [
+      pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#10b981'
+    ],
+    plotOptions: {
+      radialBar: {
+        startAngle: -95,
+        endAngle: 95,
+        track: {
+          background: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+          strokeWidth: '85%',
+        },
+        dataLabels: {
+          name: { show: false },
+          value: {
+            offsetY: -3,
+            fontSize: '13px',
+            fontWeight: '800',
+            color: 'inherit',
+            formatter: (val) => `${val.toFixed(0)}%`
+          }
+        }
+      }
+    },
+    fill: { type: 'solid' },
+    stroke: { lineCap: 'round' },
+    theme: {
+      mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-border/60 overflow-hidden bg-card transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
       {/* Visual do Cartão */}
@@ -113,22 +150,25 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
       {/* Informações do Limite */}
       <div className="p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-grow">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Fatura Atual</p>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(usado)}</p>
+            <p className="text-xl font-extrabold text-foreground">{formatCurrency(usado)}</p>
+            
+            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+              <p>Limite: <span className="font-bold text-foreground/80">{formatCurrency(limite)}</span></p>
+              <p>Disponível: <span className="font-bold text-emerald-500">{formatCurrency(disponivel)}</span></p>
+            </div>
           </div>
-          <Badge variant={usageVariant}>
-            {pct.toFixed(0)}% usado
-          </Badge>
-        </div>
 
-        {/* Barra de Progresso */}
-        <div>
-          <Progress value={usado} max={limite} variant={usageVariant} />
-          <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
-            <span>Disponível: <span className="font-semibold text-emerald-500">{formatCurrency(disponivel)}</span></span>
-            <span>Limite: {formatCurrency(limite)}</span>
+          <div className="w-24 h-20 overflow-hidden flex items-center justify-center shrink-0" style={{ color: pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#10b981' }}>
+            <Chart
+              options={chartGaugeOptions}
+              series={[pct]}
+              type="radialBar"
+              height={140}
+              width={120}
+            />
           </div>
         </div>
 

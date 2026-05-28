@@ -31,6 +31,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import Chart from 'react-apexcharts';
 import {
   FileText,
   Printer,
@@ -282,7 +283,63 @@ export default function Relatorios() {
   const sections = [
     { id: 'dre', label: 'DRE — Demonstração do Resultado', icon: BarChart3 },
     { id: 'cashflow', label: 'Fluxo de Caixa Resumido', icon: DollarSign },
+    { id: 'heatmap', label: 'Sazonalidade de Despesas (Mapa de Calor)', icon: TrendingUp },
   ];
+
+  const heatmapOptions = {
+    chart: {
+      type: 'heatmap',
+      toolbar: { show: false },
+      fontFamily: 'Outfit, Inter, sans-serif',
+      foreColor: 'var(--muted-foreground)',
+      background: 'transparent',
+    },
+    dataLabels: { enabled: false },
+    stroke: { width: 1, colors: ['var(--background)'] },
+    plotOptions: {
+      heatmap: {
+        radius: 4,
+        enableShades: true,
+        shadeIntensity: 0.5,
+        colorScale: {
+          ranges: [
+            { from: 0, to: 0, color: '#1e293b', name: 'Sem gastos' },
+            { from: 0.01, to: 100, color: '#0ea5e9', name: 'Baixo (< R$100)' },
+            { from: 100.01, to: 500, color: '#3b82f6', name: 'Médio (< R$500)' },
+            { from: 500.01, to: 1000000, color: '#8b5cf6', name: 'Alto (> R$500)' },
+          ]
+        }
+      }
+    },
+    xaxis: {
+      type: 'category',
+      title: {
+        text: 'Semanas (últimos 6 meses)',
+        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: {
+        style: { fontSize: '10px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { fontSize: '10px' }
+      }
+    },
+    grid: {
+      borderColor: 'rgba(255, 255, 255, 0.05)',
+      padding: { right: 20 }
+    },
+    theme: { mode: 'dark' },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: (val) => formatCurrency(val)
+      }
+    }
+  };
 
   return (
     <>
@@ -458,6 +515,29 @@ export default function Relatorios() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+
+                  {section.id === 'heatmap' && (
+                    <div className="p-4 rounded-xl border border-border/40 bg-card/30 backdrop-blur-md">
+                      {compositeData?.sazonalidade?.series ? (
+                        <div className="h-[320px] w-full">
+                          <Chart
+                            options={heatmapOptions}
+                            series={compositeData.sazonalidade.series}
+                            type="heatmap"
+                            height="100%"
+                            width="100%"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-[320px] w-full flex items-center justify-center bg-muted/20 animate-pulse rounded-xl">
+                          <div className="text-center">
+                            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground">Buscando histórico de sazonalidade...</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

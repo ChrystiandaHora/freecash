@@ -194,7 +194,7 @@ class CarteiraHistoricoService:
             list[dict]: Lista de dicionários com 'data', 'ohlc' (lista de floats) e 'investido'.
         """
         qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "total_compras", "total_vendas"
+            "data", "patrimonio", "total_compras", "total_vendas", "total_dividendos"
         )
 
         # Agrupar por (ano, mês)
@@ -221,12 +221,14 @@ class CarteiraHistoricoService:
             
             # Investimento Líquido (Custo) no final do mês
             investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
+            dividendos_acumulados = float(rows[-1]["total_dividendos"] or 0)
 
             results.append({
                 "data": rows[-1]["data"].isoformat(),
                 "ohlc": [o, h, l, c],
                 "investido": investido,
                 "patrimonio": c,
+                "total_dividendos": dividendos_acumulados,
             })
         return results
 

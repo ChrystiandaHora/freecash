@@ -983,6 +983,46 @@ class RelatoriosDREAPIView(APIView):
         except Exception:
             pass
 
+        # Sazonalidade / Mapa de Calor de Gastos dos últimos 6 meses (26 semanas)
+        import datetime
+        hoje_dt = timezone.localdate()
+        seis_meses_atras = hoje_dt - datetime.timedelta(days=180)
+        
+        gastos_qs = Conta.objects.filter(
+            usuario=usuario,
+            tipo=Conta.TIPO_DESPESA,
+            data_prevista__gte=seis_meses_atras,
+            data_prevista__lte=hoje_dt
+        )
+        
+        dias_semana_nomes = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+        grid = {d: [0.0] * 26 for d in range(7)}
+        semana_labels = []
+        for w in range(26):
+            semana_inicio = seis_meses_atras + datetime.timedelta(weeks=w)
+            semana_labels.append(semana_inicio.strftime("%d/%m"))
+            
+        for gasto in gastos_qs:
+            dt_gasto = gasto.data_prevista
+            dias_diff = (dt_gasto - seis_meses_atras).days
+            week_idx = dias_diff // 7
+            if 0 <= week_idx < 26:
+                day_idx = dt_gasto.weekday()
+                grid[day_idx][week_idx] += float(gasto.valor)
+                
+        heatmap_series = []
+        for d in range(7):
+            data_points = []
+            for w in range(26):
+                data_points.append({
+                    "x": semana_labels[w],
+                    "y": round(grid[d][w], 2)
+                })
+            heatmap_series.append({
+                "name": dias_semana_nomes[d],
+                "data": data_points
+            })
+
         payload = {
             "receitas": {
                 "total_receitas": float(total_receitas),
@@ -996,6 +1036,206 @@ class RelatoriosDREAPIView(APIView):
             "investimentos": {
                 "dividendos": float(dividendos),
                 "rentabilidade": float(rentabilidade),
+            },
+            "sazonalidade": {
+                "series": heatmap_series
+            }
+        }
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class ExecutiveBIDashboardAPIView(APIView):
+    """Endpoint unificado para o Dashboard Executivo / BI.
+
+    Agrega o histórico patrimonial mensal dos últimos 12 meses, consolidando a liquidez 
+    física (caixa acumulado) com a custódia de investimentos (avaliação a mercado),
+    permitindo traçar a curva real de evolução do patrimônio líquido (Net Worth).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request) -> Response:
+        """Calcula e formata a série mensal e indicadores de saúde patrimonial do usuário.
+
+        Args:
+            request (Request): Requisição HTTP.
+
+        Returns:
+            Response: Dicionário contendo labels de meses, séries de liquidez, custódia, DRE e KPIs.
+        """
+        from datetime import datetime
+        from investimento.services.carteira_historico_service import CarteiraHistoricoService
+        usuario = request.user
+        
+        # 1. Certifica que os snapshots de investimentos estão atualizados
+        inv_service = CarteiraHistoricoService(usuario)
+        inv_service.atualizar()
+        
+        # 2. Obtém a série mensal de investimentos filtrando pela quantidade de meses
+        meses_param = request.GET.get('meses')
+        if meses_param:
+            if meses_param.lower() == 'all':
+                meses_val = None
+            else:
+                try:
+                    meses_val = int(meses_param)
+                except ValueError:
+                    meses_val = 12
+        else:
+            meses_val = 12
+
+        series_inv = inv_service.series_mensal(meses=meses_val)
+        
+        # Se não houver histórico de investimentos, gera os últimos N meses com base em hoje
+        if not series_inv:
+            from dateutil.relativedelta import relativedelta
+            hoje = timezone.localdate()
+            series_inv = []
+            limit_months = meses_val if meses_val is not None else 12
+            for i in range(limit_months - 1, -1, -1):
+                d = hoje - relativedelta(months=i)
+                ultimo_dia_mes = calendar.monthrange(d.year, d.month)[1]
+                series_inv.append({
+                    "data": f"{d.year}-{d.month:02d}-{ultimo_dia_mes:02d}",
+                    "patrimonio": 0.0,
+                    "investido": 0.0
+                })
+        
+        meses_labels = []
+        liquidez_values = []
+        custodia_values = []
+        patrimonio_liquido_values = []
+        
+        meses_nomes_pt = [
+            "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
+            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+        ]
+        
+        for item in series_inv:
+            dt_str = item["data"]
+            dt = datetime.strptime(dt_str, "%Y-%m-%d").date()
+            
+            # Label ex: "Set/25"
+            label = f"{meses_nomes_pt[dt.month]}/{str(dt.year)[2:]}"
+            meses_labels.append(label)
+            
+            # Custódia (Investimento a mercado)
+            custodia = float(item.get("patrimonio", 0))
+            custodia_values.append(custodia)
+            
+            # Liquidez Física (Acumulado de caixa até este mês)
+            contas_filtro = Conta.objects.filter(
+                usuario=usuario,
+                transacao_realizada=True,
+                data_realizacao__lte=dt
+            ).filter(
+                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+            )
+            
+            receitas = float(contas_filtro.filter(tipo=Conta.TIPO_RECEITA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
+            despesas = float(contas_filtro.filter(tipo=Conta.TIPO_DESPESA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
+            liquidez = receitas - despesas
+            liquidez_values.append(liquidez)
+            
+            # Patrimônio Líquido Real = Liquidez Física + Custódia
+            patrimonio_liquido_values.append(liquidez + custodia)
+            
+        # Evolução mensal do patrimônio líquido
+        evolucao_mensal = [0.0]
+        for i in range(1, len(patrimonio_liquido_values)):
+            evolucao_mensal.append(patrimonio_liquido_values[i] - patrimonio_liquido_values[i-1])
+            
+        # DRE resumida e aportes dos últimos 12 meses
+        tabela_dre = []
+        proventos_acumulados_series = []
+        for item in series_inv:
+            dt_str = item["data"]
+            dt = datetime.strptime(dt_str, "%Y-%m-%d").date()
+            label = f"{meses_nomes_pt[dt.month]}/{str(dt.year)[2:]}"
+            
+            # Receitas e Despesas ocorridas DE FATO dentro deste mês
+            contas_mes = Conta.objects.filter(
+                usuario=usuario,
+                transacao_realizada=True,
+                data_realizacao__year=dt.year,
+                data_realizacao__month=dt.month
+            ).filter(
+                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+            )
+            
+            rec_mes = float(contas_mes.filter(tipo=Conta.TIPO_RECEITA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
+            desp_mes = float(contas_mes.filter(tipo=Conta.TIPO_DESPESA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
+            saldo_mes = rec_mes - desp_mes
+            
+            # Aportes em investimentos efetuados no mês
+            from investimento.models import Transacao as TransacaoInv
+            compras_mes = float(TransacaoInv.objects.filter(
+                usuario=usuario,
+                tipo=TransacaoInv.TIPO_COMPRA,
+                data__year=dt.year,
+                data__month=dt.month
+            ).aggregate(s=Coalesce(Sum('valor_total'), Decimal('0.0'))).get('s') or 0.0)
+            
+            vendas_mes = float(TransacaoInv.objects.filter(
+                usuario=usuario,
+                tipo=TransacaoInv.TIPO_VENDA,
+                data__year=dt.year,
+                data__month=dt.month
+            ).aggregate(s=Coalesce(Sum('valor_total'), Decimal('0.0'))).get('s') or 0.0)
+            
+            aportes_mes = compras_mes - vendas_mes
+
+            # Proventos recebidos no mês
+            proventos_mes = float(TransacaoInv.objects.filter(
+                usuario=usuario,
+                tipo=TransacaoInv.TIPO_DIVIDENDO,
+                data__year=dt.year,
+                data__month=dt.month
+            ).aggregate(s=Coalesce(Sum('valor_total'), Decimal('0.0'))).get('s') or 0.0)
+
+            # Proventos acumulados até este mês (Snowball)
+            proventos_acum_mes = float(TransacaoInv.objects.filter(
+                usuario=usuario,
+                tipo=TransacaoInv.TIPO_DIVIDENDO,
+                data__lte=dt
+            ).aggregate(s=Coalesce(Sum('valor_total'), Decimal('0.0'))).get('s') or 0.0)
+            
+            proventos_acumulados_series.append(proventos_acum_mes)
+            
+            tabela_dre.append({
+                "mes": label,
+                "receitas": rec_mes,
+                "despesas": desp_mes,
+                "saldo": saldo_mes,
+                "aportes": aportes_mes,
+                "proventos": proventos_mes,
+                "proventos_acumulados": proventos_acum_mes
+            })
+            
+        # Métricas Consolidadas / KPIs
+        total_liquidez = liquidez_values[-1] if liquidez_values else 0.0
+        total_custodia = custodia_values[-1] if custodia_values else 0.0
+        total_patrimonio_liquido = patrimonio_liquido_values[-1] if patrimonio_liquido_values else 0.0
+        
+        # Saving Rate médio
+        saving_rates = []
+        for row in tabela_dre:
+            if row["receitas"] > 0:
+                saving_rates.append((row["saldo"] / row["receitas"]) * 100.0)
+        saving_rate_medio = sum(saving_rates) / len(saving_rates) if saving_rates else 0.0
+        
+        payload = {
+            "meses": meses_labels,
+            "liquidez": liquidez_values,
+            "custodia": custodia_values,
+            "patrimonio_liquido": patrimonio_liquido_values,
+            "proventos_acumulados": proventos_acumulados_series,
+            "evolucao_mensal": evolucao_mensal,
+            "tabela_dre": tabela_dre[::-1],  # Mais recente primeiro para a tabela do UI
+            "kpis": {
+                "total_liquidez": total_liquidez,
+                "total_custodia": total_custodia,
+                "total_patrimonio_liquido": total_patrimonio_liquido,
+                "saving_rate_medio": saving_rate_medio
             }
         }
         return Response(payload, status=status.HTTP_200_OK)

@@ -322,6 +322,146 @@ export default function Investimentos() {
     }
   };
 
+  const scatterSeries = (balanceData?.classes || []).map(classe => ({
+    name: classe.nome,
+    data: (classe.ativos || []).map(at => ({
+      x: parseFloat(at.rentabilidade_perc) || 0,
+      y: parseFloat(at.perc_atual - at.meta_porcentagem) || 0,
+      ticker: at.ticker,
+      nome: at.nome,
+      valor_atual: at.valor_atual
+    }))
+  }));
+
+  const scatterOptions = {
+    chart: {
+      type: 'scatter',
+      zoom: { enabled: true, type: 'xy' },
+      toolbar: { show: false },
+      fontFamily: 'Outfit, Inter, sans-serif',
+      foreColor: 'var(--muted-foreground)',
+      background: 'transparent',
+    },
+    xaxis: {
+      tickAmount: 6,
+      labels: {
+        formatter: (val) => parseFloat(val).toFixed(1) + '%'
+      },
+      title: {
+        text: 'Rentabilidade Acumulada (%)',
+        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+      }
+    },
+    yaxis: {
+      tickAmount: 6,
+      labels: {
+        formatter: (val) => (val > 0 ? '+' : '') + parseFloat(val).toFixed(1) + '%'
+      },
+      title: {
+        text: 'Desvio da Meta Alvo (%)',
+        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+      }
+    },
+    grid: {
+      borderColor: 'rgba(255, 255, 255, 0.05)',
+      xaxis: { lines: { show: true } },
+      yaxis: { lines: { show: true } }
+    },
+    theme: { mode: 'dark' },
+    markers: {
+      size: 10,
+      strokeWidth: 2,
+      strokeColors: '#fff',
+      hover: { size: 12 }
+    },
+    tooltip: {
+      theme: 'dark',
+      custom: ({ series, seriesIndex, dataPointIndex, w }) => {
+        const point = w.config.series[seriesIndex].data[dataPointIndex];
+        if (!point) return '';
+        return `
+          <div class="p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs" style="min-width: 180px;">
+            <div class="font-extrabold text-sm text-white mb-1">${point.ticker}</div>
+            <div class="text-slate-400 mb-2 truncate max-w-[200px]">${point.nome}</div>
+            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-white">
+              <span class="text-slate-400">Valor:</span>
+              <span class="text-right font-semibold">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(point.valor_atual)}</span>
+              <span class="text-slate-400">Rentabilidade:</span>
+              <span class="text-right font-semibold text-emerald-400">${point.x.toFixed(2)}%</span>
+              <span class="text-slate-400">Desvio Meta:</span>
+              <span class="text-right font-semibold ${point.y < 0 ? 'text-rose-400' : 'text-primary'}">${point.y.toFixed(2)}%</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+  };
+
+  const snowballMonthlyData = dashboardData?.performance_monthly || [];
+  const snowballCategories = snowballMonthlyData.map(item => {
+    if (!item.data) return '';
+    const parts = item.data.split('-');
+    if (parts.length < 2) return item.data;
+    const year = parts[0].substring(2);
+    const monthIndex = parseInt(parts[1], 10);
+    const monthsPt = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return `${monthsPt[monthIndex]}/${year}`;
+  });
+
+  const snowballSeriesData = snowballMonthlyData.map(item => parseFloat(item.total_dividendos) || 0);
+
+  const snowballChartOptions = {
+    chart: {
+      type: 'area',
+      height: 320,
+      toolbar: { show: false },
+      fontFamily: 'Outfit, Inter, sans-serif',
+      foreColor: 'var(--muted-foreground)',
+      background: 'transparent',
+    },
+    colors: ['#a855f7'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 3 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.45,
+        opacityTo: 0.05,
+        stops: [0, 90, 100],
+      },
+    },
+    xaxis: {
+      categories: snowballCategories,
+      labels: {
+        style: { fontSize: '10px' },
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val) => formatCurrency(val),
+        style: { fontSize: '10px' },
+      },
+    },
+    grid: {
+      borderColor: 'rgba(255, 255, 255, 0.05)',
+      strokeDashArray: 4,
+    },
+    theme: { mode: 'dark' },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: (val) => formatCurrency(val),
+      },
+    },
+  };
+
+  const snowballChartSeries = [
+    { name: 'Renda Passiva Acumulada', data: snowballSeriesData }
+  ];
+
   const donutChartSeries = alocacao_classes.valores || [];
 
   return (
@@ -560,32 +700,60 @@ export default function Investimentos() {
 
           </div>
 
-          {/* Active Positions Table */}
-          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-            <CardHeader>
-              <CardTitle className="text-base font-bold text-foreground">
-                Detalhamento Geral de Posições
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Resumo completo dos ativos mantidos em carteira
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-0">
-              <DataTable
-                columns={columns}
-                data={ativos}
-                pageSize={10}
-                emptyMessage="Nenhum ativo em carteira no momento."
-              />
-            </CardContent>
-          </Card>
+          {/* Efeito Bola de Neve (Renda Passiva Cumulativa) */}
+          {snowballSeriesData.length > 0 && (
+            <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Efeito Bola de Neve (Renda Passiva Acumulada)
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Crescimento real e exponencial dos proventos e dividendos acumulados da sua carteira de investimentos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[280px] w-full">
+                  <Chart
+                    options={snowballChartOptions}
+                    series={snowballChartSeries}
+                    type="area"
+                    height="100%"
+                    width="100%"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         </div>
       )}
 
       {/* Tab 2: Rebalancing Tool */}
       {activeTab === 'rebalance' && balanceData && (
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
+        <div className="space-y-6">
+          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
+            <CardHeader>
+              <CardTitle className="text-base font-bold text-foreground">
+                Matriz de Alocação Estratégica (Rentabilidade vs Desvio da Meta)
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Compare a rentabilidade acumulada de cada ativo com o seu desvio percentual em relação à meta alocada
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[320px] w-full">
+                <Chart
+                  options={scatterOptions}
+                  series={scatterSeries}
+                  type="scatter"
+                  height="100%"
+                  width="100%"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-base font-bold text-foreground">
@@ -742,6 +910,7 @@ export default function Investimentos() {
 
           </CardContent>
         </Card>
+        </div>
       )}
 
     </div>

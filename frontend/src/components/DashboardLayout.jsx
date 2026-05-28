@@ -116,6 +116,7 @@ export default function DashboardLayout() {
       label: 'Geral',
       items: [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        { name: 'BI Executivo', path: '/dashboard/executivo', icon: TrendingUp },
         { name: 'Relatórios', path: '/relatorios', icon: FileText },
       ]
     },
