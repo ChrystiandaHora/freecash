@@ -50,6 +50,11 @@ export const createReceita = async (payload) => {
   return data
 }
 
+export const updateReceita = async ({ id, ...payload }) => {
+  const { data } = await api.put(`/api/financeiro/receitas/${id}/`, payload)
+  return data
+}
+
 // ─── Transações ───────────────────────────────────────────────────────────────
 
 export const fetchTransacoes = async (params = {}) => {

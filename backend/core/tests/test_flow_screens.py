@@ -142,9 +142,25 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["descricao"], "Consultoria Extra")
         self.assertEqual(response.data["valor"], "1200.00")
+        receita_id = response.data["id"]
 
-        # Verifica listagem de receitas da tela
-        response_list = self.client.get(f"{url_receitas}?mes={hoje.month}&ano={hoje.year}")
+        # 2. Edição da receita criada (mudando a data para o próximo mês para validar o bypass de filtro)
+        next_month = hoje + datetime.timedelta(days=32)
+        payload_update = {
+            "descricao": "Consultoria Extra Ajustada",
+            "valor": 1500.00,
+            "data_recebimento": next_month.strftime("%Y-%m-%d"),
+            "categoria": "Serviços Freelance Premium"
+        }
+        response_update = self.client.put(f"{url_receitas}{receita_id}/", payload_update, format='json')
+        self.assertEqual(response_update.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_update.data["descricao"], "Consultoria Extra Ajustada")
+        self.assertEqual(response_update.data["valor"], "1500.00")
+        self.assertEqual(response_update.data["categoria"], "Serviços Freelance Premium")
+        self.assertEqual(response_update.data["data_recebimento"], next_month.strftime("%Y-%m-%d"))
+
+        # 3. Verifica listagem de receitas da tela no próximo período
+        response_list = self.client.get(f"{url_receitas}?mes={next_month.month}&ano={next_month.year}")
         self.assertEqual(response_list.status_code, status.HTTP_200_OK)
         self.assertTrue(len(response_list.json()) >= 1)
 

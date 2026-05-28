@@ -534,6 +534,10 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
             tipo=Conta.TIPO_DESPESA
         ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
 
+        # Se for uma ação de detalhe (detalhar, editar, deletar), não filtra por mês/ano
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            return queryset.order_by('-data_prevista')
+
         mes = self.request.query_params.get('mes')
         ano = self.request.query_params.get('ano')
 
@@ -789,6 +793,10 @@ class ReceitasViewSet(viewsets.ModelViewSet):
             tipo=Conta.TIPO_RECEITA
         )
 
+        # Se for uma ação de detalhe (detalhar, editar, deletar), não filtra por mês/ano
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            return queryset.order_by('-data_prevista')
+
         mes = self.request.query_params.get('mes')
         ano = self.request.query_params.get('ano')
 
@@ -861,6 +869,44 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         response_serializer = ReceitasAPISerializer(serializer.instance, context={'request': request})
         headers = self.get_success_headers(serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs) -> Response:
+        """Customiza a atualização mapeando categoria pelo nome e data de recebimento.
+
+        Args:
+            request (Request): Dados da modificação.
+
+        Returns:
+            Response: Receita atualizada serializada.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+        
+        # 1. Map data_recebimento -> data_prevista
+        if 'data_recebimento' in data:
+            data['data_prevista'] = data['data_recebimento']
+            
+        # 2. Resolve or create category name string
+        categoria_nome = data.get('categoria')
+        if categoria_nome:
+            categoria_obj, _ = Categoria.objects.get_or_create(
+                usuario=request.user,
+                nome=categoria_nome.strip(),
+                tipo=Categoria.TIPO_RECEITA
+            )
+            data['categoria'] = categoria_obj.id
+
+        # 3. Enforce tipo = Receita
+        data['tipo'] = Conta.TIPO_RECEITA
+            
+        # Validate using standard serializer
+        serializer = ContaSerializer(instance, data=data, partial=partial, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        response_serializer = ReceitasAPISerializer(serializer.instance, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
 class TransacoesViewSet(viewsets.ReadOnlyModelViewSet):

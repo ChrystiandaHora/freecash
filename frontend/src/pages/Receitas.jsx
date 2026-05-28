@@ -15,10 +15,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, TrendingUp, CheckCircle2, Clock,
-  Loader2, RefreshCw, ArrowUpCircle, Repeat, DollarSign, Filter
+  Loader2, RefreshCw, ArrowUpCircle, Repeat, DollarSign, Filter, Pencil
 } from 'lucide-react';
 
-import { fetchReceitas, createReceita } from '../services/financeiro';
+import { fetchReceitas, createReceita, updateReceita } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -72,6 +72,7 @@ const YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i)
 export default function Receitas() {
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingConta, setEditingConta] = useState(null)
   const [tipoSelecionado, setTipoSelecionado] = useState('unica')
 
   // Filtros de Mês e Ano
@@ -92,6 +93,7 @@ export default function Receitas() {
   const watchTipo = watch('tipo')
 
   const createMutation = useMutation({
+    queryKey: ['receitas'],
     mutationFn: createReceita,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['receitas'] })
@@ -100,7 +102,36 @@ export default function Receitas() {
     },
   })
 
-  const onSubmit = (values) => createMutation.mutate(values)
+  const updateMutation = useMutation({
+    mutationFn: updateReceita,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receitas'] })
+      setModalOpen(false)
+      setEditingConta(null)
+      reset()
+    },
+  })
+
+  const onSubmit = (values) => {
+    if (editingConta) {
+      updateMutation.mutate({ id: editingConta.id, ...values })
+    } else {
+      createMutation.mutate(values)
+    }
+  }
+
+  const handleEdit = (conta) => {
+    setEditingConta(conta)
+    reset({
+      descricao: conta.descricao,
+      categoria: conta.categoria || '',
+      valor: conta.valor,
+      data_recebimento: conta.data_recebimento,
+      tipo: 'unica',
+      recorrencia: conta.recorrencia || ''
+    })
+    setModalOpen(true)
+  }
 
   // ─── KPIs ──────────────────────────────────────────────────────────────────
   const receitasMes = receitas
@@ -161,6 +192,24 @@ export default function Receitas() {
           </Badge>
         ),
     },
+    {
+      key: 'acoes',
+      header: 'Ação',
+      sortable: false,
+      render: (_, row) => (
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+            onClick={() => handleEdit(row)}
+            title="Editar"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ]
 
   return (
@@ -180,7 +229,7 @@ export default function Receitas() {
             <RefreshCw className="mr-1.5 h-4 w-4" />
             Atualizar
           </Button>
-          <Button onClick={() => setModalOpen(true)}>
+          <Button onClick={() => { setEditingConta(null); reset({ tipo: 'unica', descricao: '', categoria: '', valor: '', data_recebimento: '', recorrencia: '' }); setModalOpen(true); }}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Receita
           </Button>
@@ -291,12 +340,12 @@ export default function Receitas() {
         emptyMessage="Nenhuma receita cadastrada para o período selecionado."
       />
 
-      {/* ─── Modal: Nova Receita ──────────────────────────────────────────────── */}
+      {/* ─── Modal: Cadastro / Edição ─────────────────────────────────────────── */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); reset() }}
-        title="Nova Receita"
-        description="Cadastre uma entrada financeira única ou recorrente"
+        onClose={() => { setModalOpen(false); setEditingConta(null); reset() }}
+        title={editingConta ? 'Editar Receita' : 'Nova Receita'}
+        description={editingConta ? 'Altere os dados da entrada financeira' : 'Cadastre uma entrada financeira única ou recorrente'}
         size="md"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -384,20 +433,20 @@ export default function Receitas() {
             )}
           </div>
 
-          {createMutation.isError && (
-            <p className="text-sm text-red-500">Erro ao criar receita. Tente novamente.</p>
+          {(createMutation.isError || updateMutation.isError) && (
+            <p className="text-sm text-red-500">Erro ao salvar receita. Tente novamente.</p>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" type="button" onClick={() => { setModalOpen(false); reset() }}>
+            <Button variant="outline" type="button" onClick={() => { setModalOpen(false); setEditingConta(null); reset() }}>
               Cancelar
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || createMutation.isPending}
+              disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
               className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
             >
-              {(isSubmitting || createMutation.isPending) && (
+              {(isSubmitting || createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               <TrendingUp className="mr-1.5 h-4 w-4" />
