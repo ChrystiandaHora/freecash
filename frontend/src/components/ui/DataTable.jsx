@@ -78,9 +78,18 @@ const DataTable = ({
       if (valA === undefined || valA === null) return 1
       if (valB === undefined || valB === null) return -1
 
+      // Função auxiliar para verificar se o valor é numérico ou uma string numérica válida
+      const isNumeric = (val) => {
+        if (typeof val === "number") return true
+        if (typeof val === "string") {
+          return val.trim() !== "" && !isNaN(Number(val))
+        }
+        return false
+      }
+
       let comparison = 0
-      if (typeof valA === "number" && typeof valB === "number") {
-        comparison = valA - valB
+      if (isNumeric(valA) && isNumeric(valB)) {
+        comparison = Number(valA) - Number(valB)
       } else if (
         !isNaN(Date.parse(valA)) && 
         !isNaN(Date.parse(valB)) && 
