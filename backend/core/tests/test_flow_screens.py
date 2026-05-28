@@ -113,6 +113,19 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertFalse(response.data["pago"])
         conta_id = response.data["id"]
 
+        # 1.5. Edição da conta de luz criada (PUT request)
+        payload_update = {
+            "descricao": "Luz",
+            "categoria": "Gastos",
+            "valor": 207.93,
+            "data_vencimento": hoje.strftime("%Y-%m-%d")
+        }
+        response_update = self.client.put(f"{url_contas}{conta_id}/", payload_update, format='json')
+        self.assertEqual(response_update.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_update.data["descricao"], "Luz")
+        self.assertEqual(response_update.data["valor"], "207.93")
+        self.assertEqual(response_update.data["categoria"], "Gastos")
+
         # 2. Filtragem de contas a pagar
         response_list = self.client.get(f"{url_contas}?mes={hoje.month}&ano={hoje.year}")
         self.assertEqual(response_list.status_code, status.HTTP_200_OK)

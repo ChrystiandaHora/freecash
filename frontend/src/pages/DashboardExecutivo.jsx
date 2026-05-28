@@ -415,7 +415,7 @@ export default function DashboardExecutivo() {
       </div>
 
       {/* ── KPI INDICATORS GRID ── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Total Net Worth */}
         <Card className="bg-card border border-border/40 shadow-sm relative overflow-hidden group">

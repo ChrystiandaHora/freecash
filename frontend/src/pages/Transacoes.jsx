@@ -196,38 +196,38 @@ export default function Transacoes() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="glass border-emerald-500/20">
+        <Card className="bg-card border border-emerald-500/30 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <ArrowUp className="h-4 w-4 text-emerald-500" />
+              <ArrowUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               Entradas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalEntradas)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalEntradas)}</p>
           </CardContent>
         </Card>
-
-        <Card className="glass border-rose-500/20">
+ 
+        <Card className="bg-card border border-rose-500/30 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <ArrowDown className="h-4 w-4 text-rose-500" />
+              <ArrowDown className="h-4 w-4 text-rose-600 dark:text-rose-400" />
               Saídas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-rose-500 dark:text-rose-400">{formatCurrency(totalSaidas)}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalSaidas)}</p>
           </CardContent>
         </Card>
-
-        <Card className={`glass ${saldo >= 0 ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
+ 
+        <Card className={`bg-card shadow-sm text-card-foreground border ${saldo >= 0 ? 'border-emerald-500/30' : 'border-rose-500/30'}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Saldo do Período
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
               {saldo >= 0 ? '+' : ''}{formatCurrency(saldo)}
             </p>
           </CardContent>

@@ -343,7 +343,7 @@ export default function ContasPagar() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="glass">
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Total Pendente
@@ -354,22 +354,22 @@ export default function ContasPagar() {
             <p className="text-xs text-muted-foreground mt-1">{pendentes.length} conta(s) em aberto</p>
           </CardContent>
         </Card>
-
-        <Card className="glass border-orange-500/20">
+ 
+        <Card className="bg-card border border-amber-500/30 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Atrasadas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-red-500">{atrasadas.length}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{atrasadas.length}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {formatCurrency(atrasadas.reduce((a, c) => a + Number(c.valor ?? 0), 0))}
             </p>
           </CardContent>
         </Card>
-
-        <Card className="glass">
+ 
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Total de Contas

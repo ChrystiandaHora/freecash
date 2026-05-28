@@ -317,8 +317,8 @@ export default function Dashboard() {
         </div>
 
         {/* Period Selector & Refresh */}
-        <div className="relative flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex bg-muted p-1.5 rounded-xl border border-border/40 w-full sm:w-auto">
+        <div className="relative flex flex-col xs:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="grid grid-cols-2 sm:flex bg-muted p-1.5 rounded-xl border border-border/40 w-full sm:w-auto gap-1">
             <button
               onClick={() => {
                 setPeriodo(0);
@@ -376,14 +376,14 @@ export default function Dashboard() {
               {periodo === -1 ? `${getMonthNameShort(customDate.mes)}/${customDate.ano}` : 'Personalizado...'}
             </button>
           </div>
-
+ 
           {showDatePicker && (
             <>
               <div 
                 className="fixed inset-0 z-40 bg-transparent" 
                 onClick={() => setShowDatePicker(false)} 
               />
-              <div className="absolute right-12 top-full mt-2 z-50 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 sm:right-12 top-full mt-2 z-50 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between pb-2 border-b border-border/40">
                     <span className="text-xs font-bold text-foreground">

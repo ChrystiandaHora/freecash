@@ -638,6 +638,9 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
             )
             data['categoria'] = categoria_obj.id
             
+        # 3. Enforce tipo = Despesa
+        data['tipo'] = Conta.TIPO_DESPESA
+            
         # Validate using standard serializer
         serializer = ContaSerializer(instance, data=data, partial=partial, context={'request': request})
         serializer.is_valid(raise_exception=True)

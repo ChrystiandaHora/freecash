@@ -285,7 +285,7 @@ export default function Receitas() {
 
       {/* KPIs do Mês */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="glass border-emerald-500/20">
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Previsto no Mês
@@ -296,27 +296,27 @@ export default function Receitas() {
             <p className="text-xs text-muted-foreground mt-1">{receitasMes.length} receita(s)</p>
           </CardContent>
         </Card>
-
-        <Card className="glass border-emerald-500/20">
+ 
+        <Card className="bg-card border border-emerald-500/30 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Receitas Realizadas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalRealizado)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalRealizado)}</p>
             <p className="text-xs text-muted-foreground mt-1">{realizadas.length} recebida(s)</p>
           </CardContent>
         </Card>
-
-        <Card className="glass">
+ 
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Ainda Previstas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-500">
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {formatCurrency(previstas.reduce((a, r) => a + Number(r.valor ?? 0), 0))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">{previstas.length} a receber</p>

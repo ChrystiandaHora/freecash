@@ -333,13 +333,15 @@ export default function Investimentos() {
     }))
   }));
 
+  const isDarkTheme = document.documentElement.classList.contains('dark');
+
   const scatterOptions = {
     chart: {
       type: 'scatter',
       zoom: { enabled: true, type: 'xy' },
       toolbar: { show: false },
       fontFamily: 'Outfit, Inter, sans-serif',
-      foreColor: 'var(--muted-foreground)',
+      foreColor: isDarkTheme ? '#888888' : '#666666',
       background: 'transparent',
     },
     xaxis: {
@@ -349,7 +351,7 @@ export default function Investimentos() {
       },
       title: {
         text: 'Rentabilidade Acumulada (%)',
-        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+        style: { fontSize: '11px', fontWeight: 600, color: isDarkTheme ? '#888888' : '#666666' }
       }
     },
     yaxis: {
@@ -359,15 +361,17 @@ export default function Investimentos() {
       },
       title: {
         text: 'Desvio da Meta Alvo (%)',
-        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+        style: { fontSize: '11px', fontWeight: 600, color: isDarkTheme ? '#888888' : '#666666' }
       }
     },
     grid: {
-      borderColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
       xaxis: { lines: { show: true } },
       yaxis: { lines: { show: true } }
     },
-    theme: { mode: 'dark' },
+    theme: {
+      mode: isDarkTheme ? 'dark' : 'light',
+    },
     markers: {
       size: 10,
       strokeWidth: 2,
@@ -375,7 +379,7 @@ export default function Investimentos() {
       hover: { size: 12 }
     },
     tooltip: {
-      theme: 'dark',
+      theme: isDarkTheme ? 'dark' : 'light',
       custom: ({ series, seriesIndex, dataPointIndex, w }) => {
         const point = w.config.series[seriesIndex].data[dataPointIndex];
         if (!point) return '';
@@ -416,7 +420,7 @@ export default function Investimentos() {
       height: 320,
       toolbar: { show: false },
       fontFamily: 'Outfit, Inter, sans-serif',
-      foreColor: 'var(--muted-foreground)',
+      foreColor: isDarkTheme ? '#888888' : '#666666',
       background: 'transparent',
     },
     colors: ['#a855f7'],
@@ -446,12 +450,14 @@ export default function Investimentos() {
       },
     },
     grid: {
-      borderColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
       strokeDashArray: 4,
     },
-    theme: { mode: 'dark' },
+    theme: {
+      mode: isDarkTheme ? 'dark' : 'light',
+    },
     tooltip: {
-      theme: 'dark',
+      theme: isDarkTheme ? 'dark' : 'light',
       y: {
         formatter: (val) => formatCurrency(val),
       },
@@ -520,7 +526,7 @@ export default function Investimentos() {
       </div>
 
       {/* KPI Cards (Always Shown) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Patrimonio Total */}
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground relative overflow-hidden group">
@@ -714,6 +720,7 @@ export default function Investimentos() {
               <CardContent>
                 <div className="h-[280px] w-full">
                   <Chart
+                    key={`snowball-${isDarkTheme}`}
                     options={snowballChartOptions}
                     series={snowballChartSeries}
                     type="area"
@@ -743,6 +750,7 @@ export default function Investimentos() {
             <CardContent>
               <div className="h-[320px] w-full">
                 <Chart
+                  key={`scatter-${isDarkTheme}`}
                   options={scatterOptions}
                   series={scatterSeries}
                   type="scatter"

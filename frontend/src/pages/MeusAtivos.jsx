@@ -497,7 +497,7 @@ export default function MeusAtivos() {
       )}
 
       {/* Grid de Métricas SaaS Flat */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         
         <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">

@@ -157,7 +157,7 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
             
             <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
               <p>Limite: <span className="font-bold text-foreground/80">{formatCurrency(limite)}</span></p>
-              <p>Disponível: <span className="font-bold text-emerald-500">{formatCurrency(disponivel)}</span></p>
+              <p>Disponível: <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(disponivel)}</span></p>
             </div>
           </div>
 
@@ -234,9 +234,8 @@ export default function MeusCartoes() {
         </Button>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="glass">
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Limite Total
@@ -248,28 +247,28 @@ export default function MeusCartoes() {
           </CardContent>
         </Card>
 
-        <Card className="glass">
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Total em Faturas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-500">{formatCurrency(totalUsado)}</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalUsado)}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {totalLimite > 0 ? ((totalUsado / totalLimite) * 100).toFixed(1) : 0}% do limite total
             </p>
           </CardContent>
         </Card>
 
-        <Card className="glass">
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Disponível Total
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-500">{formatCurrency(totalLimite - totalUsado)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalLimite - totalUsado)}</p>
             <p className="text-xs text-muted-foreground mt-1">Crédito restante</p>
           </CardContent>
         </Card>
