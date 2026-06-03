@@ -534,8 +534,8 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
             tipo=Conta.TIPO_DESPESA
         ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
 
-        # Se for uma ação de detalhe (detalhar, editar, deletar), não filtra por mês/ano
-        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+        # Se for uma ação de detalhe (detalhar, editar, deletar, pagar), não filtra por mês/ano
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'pagar']:
             return queryset.order_by('-data_prevista')
 
         mes = self.request.query_params.get('mes')

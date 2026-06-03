@@ -137,6 +137,23 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertEqual(response_pagar.status_code, status.HTTP_200_OK)
         self.assertTrue(response_pagar.data["pago"])
 
+        # 4. Ação de marcar como paga uma conta de outro mês (para testar o bypass de filtro no detail request)
+        outra_data = hoje - datetime.timedelta(days=60)
+        payload_outro_mes = {
+            "descricao": "Conta Mês Passado",
+            "valor": 100.00,
+            "data_vencimento": outra_data.strftime("%Y-%m-%d"),
+            "categoria": "Gastos"
+        }
+        response_outro = self.client.post(url_contas, payload_outro_mes, format='json')
+        self.assertEqual(response_outro.status_code, status.HTTP_201_CREATED)
+        outro_id = response_outro.data["id"]
+
+        url_pagar_outro = f"{url_contas}{outro_id}/pagar/"
+        response_pagar_outro = self.client.put(url_pagar_outro)
+        self.assertEqual(response_pagar_outro.status_code, status.HTTP_200_OK)
+        self.assertTrue(response_pagar_outro.data["pago"])
+
     def test_screen_flow_receitas_management(self):
         """
         [Fluxo da Tela de Receitas]
