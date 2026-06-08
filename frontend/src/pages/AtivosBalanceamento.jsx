@@ -172,8 +172,19 @@ export default function AtivosBalanceamento() {
   const magicAllocation = allAtivos.map((at) => {
     const meta = (isEditing ? editingMetas[at.id] : at.meta_porcentagem) ?? 0;
     const valorIdeal = (meta / 100) * futuroPatrimonio;
-    const aporte = Math.max(0, valorIdeal - at.valor_atual);
-    return { ...at, meta, valorIdeal, aporte };
+    const aporteIdeal = Math.max(0, valorIdeal - at.valor_atual);
+    const cotacao = at.preco_atual ?? 0;
+    const qtdComprar = cotacao > 0 ? Math.round(aporteIdeal / cotacao) : 0;
+    const aporteAjustado = cotacao > 0 ? qtdComprar * cotacao : 0;
+    return {
+      ...at,
+      meta,
+      valorIdeal,
+      cotacao,
+      qtdComprar,
+      aporte: aporteAjustado,
+      aporteIdeal
+    };
   });
 
   const somaAportes = magicAllocation.reduce((s, a) => s + a.aporte, 0);
@@ -248,7 +259,7 @@ export default function AtivosBalanceamento() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <Card className="border border-border/40 bg-card shadow-sm relative overflow-hidden group">
           <CardHeader className="pb-1">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Patrimônio atual</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Investido</span>
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalPatrimonio)}</h3>
@@ -330,7 +341,7 @@ export default function AtivosBalanceamento() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs font-bold text-foreground">{formatCurrency(at.valor_atual)}</p>
-                        <p className="text-[10px] text-muted-foreground">atual • {formatPct(at.perc_atual)} carteira</p>
+                        <p className="text-[10px] text-muted-foreground">investido • {formatPct(at.perc_atual)} carteira</p>
                       </div>
                     </div>
 
@@ -343,10 +354,16 @@ export default function AtivosBalanceamento() {
                     />
 
                     {/* Aporte info */}
-                    {magicoItem && magicoItem.aporte > 0.01 && (
-                      <div className="flex items-center gap-2 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-1.5">
+                    {magicoItem && magicoItem.aporteIdeal > 0.01 && (
+                      <div className="flex items-center gap-2 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-1.5 flex-wrap">
                         <ArrowRight className="h-3 w-3 shrink-0" />
-                        <span className="font-semibold">Aporte sugerido: {formatCurrency(magicoItem.aporte)}</span>
+                        <span className="font-semibold">
+                          {magicoItem.aporte > 0.01 ? (
+                            <>Aporte sugerido: {formatCurrency(magicoItem.aporte)} ({magicoItem.qtdComprar} cota{magicoItem.qtdComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
+                          ) : (
+                            <>Aporte ideal: {formatCurrency(magicoItem.aporteIdeal)} (cotação: {formatCurrency(magicoItem.cotacao)})</>
+                          )}
+                        </span>
                         <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
                       </div>
                     )}
@@ -388,9 +405,9 @@ export default function AtivosBalanceamento() {
                 />
               </div>
             </div>
-            {aporteNum > 0 && (
+             {aporteNum > 0 && (
               <div className="text-right shrink-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Patrimônio futuro</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
                 <p className="text-xl font-extrabold text-foreground">{formatCurrency(futuroPatrimonio)}</p>
               </div>
             )}
@@ -403,8 +420,10 @@ export default function AtivosBalanceamento() {
                   <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
                     <th className="py-3 px-4">Ativo</th>
                     <th className="py-3 px-4 text-right">Meta</th>
-                    <th className="py-3 px-4 text-right">Saldo Atual</th>
+                    <th className="py-3 px-4 text-right">Cotação</th>
+                    <th className="py-3 px-4 text-right">Valor Investido</th>
                     <th className="py-3 px-4 text-right">Saldo Ideal</th>
+                    <th className="py-3 px-4 text-right">Qtd. a Comprar</th>
                     <th className="py-3 px-4 text-right">Aportar</th>
                   </tr>
                 </thead>
@@ -416,8 +435,12 @@ export default function AtivosBalanceamento() {
                         <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatCurrency(at.cotacao)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valor_atual)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valorIdeal)}</td>
+                      <td className={`py-3 px-4 text-right font-extrabold font-mono ${at.qtdComprar > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {at.qtdComprar > 0 ? `${at.qtdComprar} un.` : '—'}
+                      </td>
                       <td className={`py-3 px-4 text-right font-extrabold ${at.aporte > 0.01 ? 'text-primary' : 'text-muted-foreground'}`}>
                         {at.aporte > 0.01 ? formatCurrency(at.aporte) : '—'}
                       </td>

@@ -201,6 +201,13 @@ export default function MeusAtivos() {
     queryFn: () => fetchSubcategoriasAtivos()
   });
 
+  // Detecção de tipo para exibição condicional do bloco Renda Fixa/Alternativos
+  const selectedSub = subcategorias.find(sc => sc.id === parseInt(formData.subcategoria));
+  const classeNome = selectedSub?.categoria_detalhe?.classe_detalhe?.nome || "";
+  const isRendaFixaOuAlternativo = 
+    classeNome.toLowerCase().includes("fixa") || 
+    classeNome.toLowerCase().includes("alternativo");
+
   /* ── Mutations ── */
   const handleShowSuccess = (msg) => {
     setSuccessMessage(msg);
@@ -682,6 +689,18 @@ export default function MeusAtivos() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Taxa / Taxa de Adm. (%)</label>
+              <Input
+                type="number"
+                step="0.0001"
+                placeholder="Ex: 6.5, 110 ou 0.5 (opcional)"
+                value={formData.taxa}
+                onChange={(e) => setFormData({ ...formData, taxa: e.target.value })}
+                className="h-10 text-sm rounded-xl font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Meta de Alocação (%)</label>
               <Input
                 type="number"
@@ -698,55 +717,47 @@ export default function MeusAtivos() {
           </div>
 
           {/* Dados Opcionais de Renda Fixa */}
-          <div className="border-t border-border/40 pt-4">
-            <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-              <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isRendaFixaOuAlternativo && (
+            <div className="border-t border-border/40 pt-4 animate-fade-in">
+              <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
+              </h4>
               
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Emissor</label>
-                <Input
-                  placeholder="Ex: Banco Itaú, Tesouro Nacional"
-                  value={formData.emissor}
-                  onChange={(e) => setFormData({ ...formData, emissor: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Emissor</label>
+                  <Input
+                    placeholder="Ex: Banco Itaú, Tesouro Nacional"
+                    value={formData.emissor}
+                    onChange={(e) => setFormData({ ...formData, emissor: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
-                <Input
-                  type="date"
-                  value={formData.data_vencimento}
-                  onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
+                  <Input
+                    type="date"
+                    value={formData.data_vencimento}
+                    onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Indexador</label>
-                <Input
-                  placeholder="Ex: IPCA, CDI, SELIC"
-                  value={formData.indexador}
-                  onChange={(e) => setFormData({ ...formData, indexador: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Indexador</label>
+                  <Input
+                    placeholder="Ex: IPCA, CDI, SELIC"
+                    value={formData.indexador}
+                    onChange={(e) => setFormData({ ...formData, indexador: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Taxa Contratada</label>
-                <Input
-                  placeholder="Ex: 6.5% + IPCA, 110% CDI"
-                  value={formData.taxa}
-                  onChange={(e) => setFormData({ ...formData, taxa: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
               </div>
-
             </div>
-          </div>
+          )}
 
           {/* ACORDEÃO: POSIÇÃO INICIAL (OPCIONAL) */}
           <div className="border border-border/40 rounded-xl overflow-hidden bg-muted/10">
@@ -889,6 +900,18 @@ export default function MeusAtivos() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Taxa / Taxa de Adm. (%)</label>
+              <Input
+                type="number"
+                step="0.0001"
+                placeholder="Ex: 6.5, 110 ou 0.5 (opcional)"
+                value={formData.taxa}
+                onChange={(e) => setFormData({ ...formData, taxa: e.target.value })}
+                className="h-10 text-sm rounded-xl font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Meta de Alocação (%)</label>
               <Input
                 type="number"
@@ -904,55 +927,47 @@ export default function MeusAtivos() {
           </div>
 
           {/* Dados Opcionais Renda Fixa */}
-          <div className="border-t border-border/40 pt-4">
-            <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-              <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
-            </h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isRendaFixaOuAlternativo && (
+            <div className="border-t border-border/40 pt-4 animate-fade-in">
+              <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
+              </h4>
               
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Emissor</label>
-                <Input
-                  placeholder="Ex: Banco Itaú"
-                  value={formData.emissor}
-                  onChange={(e) => setFormData({ ...formData, emissor: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Emissor</label>
+                  <Input
+                    placeholder="Ex: Banco Itaú"
+                    value={formData.emissor}
+                    onChange={(e) => setFormData({ ...formData, emissor: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
-                <Input
-                  type="date"
-                  value={formData.data_vencimento}
-                  onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
+                  <Input
+                    type="date"
+                    value={formData.data_vencimento}
+                    onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Indexador</label>
-                <Input
-                  placeholder="Ex: IPCA"
-                  value={formData.indexador}
-                  onChange={(e) => setFormData({ ...formData, indexador: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Indexador</label>
+                  <Input
+                    placeholder="Ex: IPCA"
+                    value={formData.indexador}
+                    onChange={(e) => setFormData({ ...formData, indexador: e.target.value })}
+                    className="h-10 text-sm rounded-xl"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Taxa Contratada</label>
-                <Input
-                  placeholder="Ex: 6.5% + IPCA"
-                  value={formData.taxa}
-                  onChange={(e) => setFormData({ ...formData, taxa: e.target.value })}
-                  className="h-10 text-sm rounded-xl"
-                />
               </div>
-
             </div>
-          </div>
+          )}
 
           {/* Switch de Ativo/Inativo */}
           <div className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-muted/10">

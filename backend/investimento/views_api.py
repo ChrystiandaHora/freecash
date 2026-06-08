@@ -300,7 +300,7 @@ class BalanceamentoAPIView(APIView):
             Response: Dicionário contendo o total de patrimônio e a distância/plano de reequilíbrio de cada ativo.
         """
         ativos_qs = Ativo.objects.filter(usuario=request.user, ativo=True).order_by("ticker")
-        total_patrimonio = sum(a.valor_total_atual for a in ativos_qs)
+        total_patrimonio = sum(a.valor_investido for a in ativos_qs)
         
         ativos_por_classe = {}
         soma_metas = 0
@@ -316,7 +316,7 @@ class BalanceamentoAPIView(APIView):
                     "soma_classe": 0.0
                 }
                 
-            valor_atual = float(ativo.valor_total_atual)
+            valor_atual = float(ativo.valor_investido)
             meta = float(ativo.meta_porcentagem)
             soma_metas += meta
             ativos_por_classe[classe_nome]["soma_classe"] += meta

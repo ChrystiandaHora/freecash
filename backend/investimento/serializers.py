@@ -60,7 +60,8 @@ class AtivoSerializer(serializers.ModelSerializer):
 
     emissor = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     indexador = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-
+    taxa = serializers.DecimalField(max_digits=9, decimal_places=4, allow_null=True, required=False)
+ 
     historico_cotacoes = serializers.SerializerMethodField()
 
     class Meta:
@@ -82,7 +83,7 @@ class AtivoSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs) -> dict:
-        """Sanitiza campos opcionais nulos de Renda Fixa convertendo-os em strings vazias.
+        """Sanitiza campos opcionais nulos de Renda Fixa/Variável.
 
         Args:
             attrs (dict): Atributos de entrada validados.
@@ -94,6 +95,8 @@ class AtivoSerializer(serializers.ModelSerializer):
             attrs['emissor'] = ""
         if 'indexador' in attrs and attrs['indexador'] is None:
             attrs['indexador'] = ""
+        if 'taxa' in attrs and attrs['taxa'] is None:
+            attrs['taxa'] = 0
         return super().validate(attrs)
 
 
