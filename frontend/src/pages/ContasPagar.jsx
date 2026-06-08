@@ -40,14 +40,25 @@ const formatDate = (dateStr) => {
 }
 
 const getStatusInfo = (conta) => {
+  if (conta.pago) return { label: 'Paga', variant: 'success', Icon: CheckCircle2 }
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const due = new Date(conta.data_vencimento + 'T00:00:00')
 
-  if (conta.pago) return { label: 'Paga', variant: 'success', Icon: CheckCircle2 }
-  if (due < today) return { label: 'Atrasada', variant: 'destructive', Icon: AlertCircle }
-  const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24))
-  if (diff <= 7) return { label: 'Próxima', variant: 'warning', Icon: Clock }
+  const [year, month, day] = conta.data_vencimento.split('-')
+  const due = new Date(Number(year), Number(month) - 1, Number(day))
+  due.setHours(0, 0, 0, 0)
+
+  if (due < today) return { label: 'Atrasado', variant: 'destructive', Icon: AlertCircle }
+
+  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return { label: 'Próximo Venc.', variant: 'warning', Icon: Clock }
+  if (diffDays === 1) return { label: 'Venc. 1 dia', variant: 'warning', Icon: Clock }
+  if (diffDays === 2) return { label: 'Venc. 2 dias', variant: 'warning', Icon: Clock }
+  if (diffDays === 3) return { label: 'Venc. 3 dias', variant: 'warning', Icon: Clock }
+  if (diffDays >= 4 && diffDays <= 7) return { label: 'Próximo Venc.', variant: 'warning', Icon: Clock }
+
   return { label: 'Pendente', variant: 'secondary', Icon: Clock }
 }
 
@@ -177,9 +188,12 @@ export default function ContasPagar() {
   // ─── KPIs ──────────────────────────────────────────────────────────────────
   const pendentes = contas.filter((c) => !c.pago)
   const atrasadas = contas.filter((c) => {
-    const due = new Date(c.data_vencimento + 'T00:00:00')
+    if (c.pago) return false
+    const [year, month, day] = c.data_vencimento.split('-')
+    const due = new Date(Number(year), Number(month) - 1, Number(day))
+    due.setHours(0, 0, 0, 0)
     const today = new Date(); today.setHours(0, 0, 0, 0)
-    return !c.pago && due < today
+    return due < today
   })
   const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
@@ -399,6 +413,8 @@ export default function ContasPagar() {
           }))}
           isLoading={isLoading}
           pageSize={10}
+          defaultSortKey="data_vencimento"
+          defaultSortDir="asc"
           emptyMessage="Nenhuma conta cadastrada para o período selecionado."
           rowClassName={(row) =>
             row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''

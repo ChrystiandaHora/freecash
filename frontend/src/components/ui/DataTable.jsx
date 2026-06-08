@@ -36,10 +36,14 @@ const DataTable = ({
   sortKey,
   sortDir,
   onSort,
+
+  // Ordenação Padrão (Uncontrolled)
+  defaultSortKey = null,
+  defaultSortDir = "asc",
 }) => {
   // --- Estados Locais para Ordenação (Uncontrolled) ---
-  const [localSortKey, setLocalSortKey] = useState(null)
-  const [localSortDir, setLocalSortDir] = useState("asc")
+  const [localSortKey, setLocalSortKey] = useState(defaultSortKey)
+  const [localSortDir, setLocalSortDir] = useState(defaultSortDir)
 
   // --- Estados Locais para Paginação (Uncontrolled) ---
   const [localPage, setLocalPage] = useState(1)
