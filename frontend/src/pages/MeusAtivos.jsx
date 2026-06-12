@@ -175,6 +175,7 @@ export default function MeusAtivos() {
   const initialFormState = {
     ticker: '',
     nome: '',
+    cnpj: '',
     subcategoria: '',
     data_vencimento: '',
     emissor: '',
@@ -310,6 +311,7 @@ export default function MeusAtivos() {
       id: ativo.id,
       ticker: ativo.ticker,
       nome: ativo.nome,
+      cnpj: ativo.cnpj || '',
       subcategoria: ativo.subcategoria || '',
       data_vencimento: ativo.data_vencimento || '',
       emissor: ativo.emissor || '',
@@ -348,6 +350,7 @@ export default function MeusAtivos() {
     const payload = {
       ticker: formData.ticker.trim().toUpperCase(),
       nome: formData.nome.trim() || formData.ticker.trim().toUpperCase(),
+      cnpj: formData.cnpj ? formData.cnpj.trim() : null,
       subcategoria: parseInt(formData.subcategoria),
       data_vencimento: formData.data_vencimento || null,
       emissor: formData.emissor.trim() || null,
@@ -383,6 +386,7 @@ export default function MeusAtivos() {
       id: formData.id,
       ticker: formData.ticker.trim().toUpperCase(),
       nome: formData.nome.trim() || formData.ticker.trim().toUpperCase(),
+      cnpj: formData.cnpj ? formData.cnpj.trim() : null,
       subcategoria: parseInt(formData.subcategoria),
       data_vencimento: formData.data_vencimento || null,
       emissor: formData.emissor.trim() || null,
@@ -663,6 +667,16 @@ export default function MeusAtivos() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">CNPJ do Fundo (Opcional)</label>
+              <Input
+                placeholder="Apenas números (Ex: 12987743000186)"
+                value={formData.cnpj || ''}
+                onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                className="h-10 text-sm rounded-xl font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Subclasse de Ativo *</label>
               {subcategorias.length > 0 ? (
                 <Select
@@ -879,6 +893,16 @@ export default function MeusAtivos() {
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 className="h-10 text-sm rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">CNPJ do Fundo (Opcional)</label>
+              <Input
+                placeholder="Apenas números (Ex: 12987743000186)"
+                value={formData.cnpj || ''}
+                onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                className="h-10 text-sm rounded-xl font-semibold"
               />
             </div>
 

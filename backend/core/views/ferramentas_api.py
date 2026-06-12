@@ -89,6 +89,102 @@ class FerramentasImportarAPIView(APIView):
             )
 
 
+class FerramentasImportarExtratoAPIView(APIView):
+    """View para upload de faturas de cartão de crédito (PDF).
+
+    Recebe o arquivo PDF, o UUID do cartão e o banco, executa o parser e salva as linhas de extrato pendentes.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request) -> Response:
+        arquivo = request.FILES.get('arquivo')
+        cartao_uuid = request.data.get('cartao')
+        banco = request.data.get('banco', 'generico')
+
+        if not arquivo:
+            return Response(
+                {'erro': 'Nenhum arquivo enviado. Use o campo "arquivo".'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not cartao_uuid:
+            return Response(
+                {'erro': 'Cartão de crédito não especificado.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            cartao_obj = CartaoCredito.objects.get(uuid=cartao_uuid, usuario=request.user)
+        except (CartaoCredito.DoesNotExist, ValueError):
+            return Response(
+                {'erro': 'Cartão de crédito não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        suffix = os.path.splitext(arquivo.name)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            for chunk in arquivo.chunks():
+                temp_file.write(chunk)
+            temp_path = temp_file.name
+
+        try:
+            from core.services.extrato_parser import processar_pdf
+            linhas_extraidas = processar_pdf(temp_path, banco=banco)
+
+            if not linhas_extraidas:
+                return Response(
+                    {'erro': 'Nenhuma transação encontrada no arquivo ou formato incompatível.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Criar ExtratoImportado
+            extrato = ExtratoImportado.objects.create(
+                usuario=request.user,
+                arquivo_nome=arquivo.name,
+                banco=banco,
+                status='pendente',
+                linhas_encontradas=len(linhas_extraidas),
+                linhas_importadas=0,
+                cartao=cartao_obj
+            )
+
+            # Criar LinhaExtrato
+            linhas_objs = []
+            for line in linhas_extraidas:
+                linhas_objs.append(
+                    LinhaExtrato(
+                        extrato=extrato,
+                        data=line['data'],
+                        descricao=line['descricao'],
+                        valor=line['valor'],
+                        tipo=line.get('tipo', 'D'),
+                        status='pendente'
+                    )
+                )
+            
+            LinhaExtrato.objects.bulk_create(linhas_objs)
+
+            return Response(
+                {
+                    'ok': True,
+                    'msg': f'Fatura importada com sucesso. {len(linhas_extraidas)} lançamentos encontrados.',
+                    'linhas_encontradas': len(linhas_extraidas),
+                    'extrato_id': extrato.id
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            return Response(
+                {'erro': f'Falha ao processar fatura: {str(e)}'},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+
 # ─────────────────────────────────────────────────────────────
 # 2.2  CONCILIAÇÃO — GET + POST /api/ferramentas/conciliacao/
 # ─────────────────────────────────────────────────────────────
@@ -179,10 +275,14 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                     data_compra = None
 
                     if extrato.cartao and tipo_conta == 'D':
-                        from datetime import timedelta
+                        from core.services.fatura_service import calcular_vencimento_fatura
                         transacao_realizada = False
                         data_compra = linha.data
-                        data_prevista = linha.data + timedelta(days=30)
+                        data_prevista = calcular_vencimento_fatura(
+                            data_compra,
+                            extrato.cartao.dia_fechamento,
+                            extrato.cartao.dia_vencimento
+                        )
 
                     conta = Conta.objects.create(
                         usuario=request.user,

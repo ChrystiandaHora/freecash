@@ -47,7 +47,7 @@ import AtivosClasses from './pages/AtivosClasses';
 import MeusAtivos from './pages/MeusAtivos';
 import AtivoDetalhes from './pages/AtivoDetalhes';
 import FerramentasImportar from './pages/FerramentasImportar';
-import FerramentasConciliacao from './pages/FerramentasConciliacao';
+import ComprasCartao from './pages/ComprasCartao';
 import FerramentasBackup from './pages/FerramentasBackup';
 import AjustesPagamentos from './pages/AjustesPagamentos';
 import DashboardExecutivo from './pages/DashboardExecutivo';
@@ -141,7 +141,7 @@ function App() {
                 <Route path="investimentos/classes" element={<AtivosClasses />} />
 
                 <Route path="importar" element={<FerramentasImportar />} />
-                <Route path="conciliacao" element={<FerramentasConciliacao />} />
+                <Route path="compras-cartao" element={<ComprasCartao />} />
                 <Route path="backup" element={<FerramentasBackup />} />
 
                 <Route path="pagamentos" element={<AjustesPagamentos />} />

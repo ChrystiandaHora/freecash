@@ -46,6 +46,11 @@ const formatPercentage = (value) => {
   return num >= 0 ? `+${formatted}%` : `${formatted}%`;
 };
 
+const formatCNPJ = (cnpj) => {
+  if (!cnpj || cnpj.length !== 14) return cnpj;
+  return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
+};
+
 export default function AtivoDetalhes() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -258,6 +263,13 @@ export default function AtivoDetalhes() {
 
                 <span className="font-semibold text-muted-foreground">Nome do Ativo:</span>
                 <span className="font-semibold text-foreground">{ativo.nome || '—'}</span>
+
+                {ativo.cnpj && (
+                  <>
+                    <span className="font-semibold text-muted-foreground">CNPJ do Fundo:</span>
+                    <span className="font-semibold text-foreground">{formatCNPJ(ativo.cnpj)}</span>
+                  </>
+                )}
 
                 <span className="font-semibold text-muted-foreground">Segmento / Subclasse:</span>
                 <span className="font-semibold text-foreground">

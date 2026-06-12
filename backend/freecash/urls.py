@@ -34,6 +34,7 @@ from investimento.views_api import (
 )
 from core.views.ferramentas_api import (
     FerramentasImportarAPIView,
+    FerramentasImportarExtratoAPIView,
     FerramentasConciliacaoListAPIView,
     FerramentasConciliacaoProcessarAPIView,
     FerramentasExportarAPIView,
@@ -73,6 +74,7 @@ urlpatterns += [
     path('api/relatorios/dre/', RelatoriosDREAPIView.as_view(), name='api-relatorios-dre'),
     # Ferramentas
     path('api/ferramentas/importar/', FerramentasImportarAPIView.as_view(), name='api-ferramentas-importar'),
+    path('api/ferramentas/importar-extrato/', FerramentasImportarExtratoAPIView.as_view(), name='api-ferramentas-importar-extrato'),
     path('api/ferramentas/conciliacao/', FerramentasConciliacaoListAPIView.as_view(), name='api-ferramentas-conciliacao'),
     path('api/ferramentas/conciliacao/processar/', FerramentasConciliacaoProcessarAPIView.as_view(), name='api-ferramentas-conciliacao-processar'),
     path('api/ferramentas/exportar/', FerramentasExportarAPIView.as_view(), name='api-ferramentas-exportar'),

@@ -12,6 +12,7 @@ from investimento.services.tradingview_screener import (
     fetch_quotes_brazil,
     _normalize_to_tradingview_symbol,
 )
+from investimento.services.cvm_service import fetch_cvm_quotes
 
 
 def recalcular_ativo(ativo: Ativo) -> None:
@@ -69,31 +70,35 @@ def recalcular_ativo(ativo: Ativo) -> None:
 
 
 def atualizar_cotacoes() -> tuple[int, list[str]]:
-    """Busca em lote as cotações atuais B3 de mercado para todos os ativos sob custódia.
+    """Busca em lote as cotações atuais de mercado (B3 via TradingView e Fundos via CVM).
 
-    Realiza uma requisição otimizada única em lote ao TradingView para economizar requisições
-    e atualiza ou cria o histórico diário de fechamento das cotações.
+    Atualiza ou cria o histórico diário de fechamento das cotações.
 
     Returns:
         tuple[int, list[str]]: Tupla contendo o número de cotações gravadas com sucesso e a lista de erros ocorridos.
     """
-    ativos = Ativo.objects.filter(ativo=True).exclude(ticker="")
-
     count = 0
     errors = []
 
-    # Busca em lote no TradingView para evitar N requisições.
-    try:
-        tickers = [a.ticker for a in ativos if a.ticker]
-        quotes_by_symbol = fetch_quotes_brazil(tickers)
-    except Exception as e:
-        return 0, [f"Erro ao buscar cotações no TradingView: {str(e)}"]
+    # 1. Atualização de Ações / FIIs via TradingView
+    ativos_b3 = Ativo.objects.filter(ativo=True).exclude(ticker="")
 
-    for ativo in ativos:
+    quotes_by_symbol = {}
+    if ativos_b3.exists():
+        try:
+            tickers = [a.ticker for a in ativos_b3 if a.ticker]
+            quotes_by_symbol = fetch_quotes_brazil(tickers)
+        except Exception as e:
+            errors.append(f"Erro ao buscar cotações no TradingView: {str(e)}")
+
+    for ativo in ativos_b3:
         try:
             symbol = _normalize_to_tradingview_symbol(ativo.ticker)
             quote = quotes_by_symbol.get(symbol)
             if not quote:
+                # Se não foi encontrado no TradingView mas possui CNPJ, tentaremos pela CVM abaixo
+                if ativo.cnpj:
+                    continue
                 errors.append(f"Ativo {ativo.ticker}: Não encontrado no TradingView")
                 continue
 
@@ -104,5 +109,35 @@ def atualizar_cotacoes() -> tuple[int, list[str]]:
         except Exception as e:
             errors.append(f"Ativo {ativo.ticker}: Erro ao salvar cotação ({str(e)})")
 
+    # 2. Atualização de Fundos de Investimento via CVM
+    ativos_cvm = Ativo.objects.filter(ativo=True).exclude(cnpj__isnull=True).exclude(cnpj="")
+    
+    # Filtra ativos para buscar apenas se não foram atualizados pelo TradingView nesta rodada
+    ativos_cvm_para_buscar = []
+    for a in ativos_cvm:
+        symbol = _normalize_to_tradingview_symbol(a.ticker)
+        if symbol not in quotes_by_symbol:
+            ativos_cvm_para_buscar.append(a)
+
+    if ativos_cvm_para_buscar:
+        try:
+            cnpjs = [a.cnpj for a in ativos_cvm_para_buscar]
+            cvm_quotes = fetch_cvm_quotes(cnpjs)
+            
+            for ativo in ativos_cvm_para_buscar:
+                quote_info = cvm_quotes.get(ativo.cnpj)
+                if not quote_info:
+                    errors.append(f"Fundo {ativo.ticker or ativo.nome} (CNPJ {ativo.cnpj}): Não encontrado nos dados da CVM")
+                    continue
+                
+                vl_quota, dt_comptc = quote_info
+                Cotacao.objects.update_or_create(
+                    ativo=ativo, data=dt_comptc, defaults={"valor": vl_quota}
+                )
+                count += 1
+        except Exception as e:
+            errors.append(f"Erro ao buscar cotações na CVM: {str(e)}")
+
     return count, errors
+
 

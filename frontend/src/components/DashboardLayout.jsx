@@ -94,7 +94,7 @@ export default function DashboardLayout() {
     const path = location.pathname;
     if (path.includes('investimentos')) setOpenGroup('investimentos');
     else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes')) setOpenGroup('financeiro');
-    else if (path.includes('importar') || path.includes('conciliacao') || path.includes('backup')) setOpenGroup('ferramentas');
+    else if (path.includes('importar') || path.includes('compras-cartao') || path.includes('backup')) setOpenGroup('ferramentas');
     else if (path.includes('pagamentos')) setOpenGroup('ajustes');
     else setOpenGroup('geral');
   }, [location.pathname]);
@@ -147,7 +147,7 @@ export default function DashboardLayout() {
       label: 'Ferramentas',
       items: [
         { name: 'Importar', path: '/importar', icon: UploadCloud },
-        { name: 'Conciliação', path: '/conciliacao', icon: CheckSquare },
+        { name: 'Compras Cartão', path: '/compras-cartao', icon: CheckSquare },
         { name: 'Backup', path: '/backup', icon: DownloadCloud },
       ]
     },

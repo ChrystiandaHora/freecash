@@ -192,6 +192,18 @@ class Conta(AuditoriaModel):
             update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
 
+        # Se for o pagamento da fatura consolidada do cartão, marca também as despesas individuais dela
+        if self.eh_fatura_cartao and self.cartao:
+            Conta.objects.filter(
+                usuario=self.usuario,
+                cartao=self.cartao,
+                eh_fatura_cartao=False,
+                data_prevista=self.data_prevista
+            ).update(
+                transacao_realizada=True,
+                data_realizacao=self.data_realizacao
+            )
+
     def desmarcar_realizada(self):
         """Desmarca o lançamento financeiro, retornando-o ao estado previsto/pendente."""
         self.transacao_realizada = False
@@ -199,6 +211,46 @@ class Conta(AuditoriaModel):
         self.save(
             update_fields=["transacao_realizada", "data_realizacao", "atualizada_em"]
         )
+
+        # Se for a fatura consolidada do cartão, desmarca também as despesas individuais dela
+        if self.eh_fatura_cartao and self.cartao:
+            Conta.objects.filter(
+                usuario=self.usuario,
+                cartao=self.cartao,
+                eh_fatura_cartao=False,
+                data_prevista=self.data_prevista
+            ).update(
+                transacao_realizada=False,
+                data_realizacao=None
+            )
+
+    def save(self, *args, **kwargs):
+        """Salva a transação sincronizando o estado com a fatura consolidada se aplicável.
+
+        Caso seja uma compra individual de cartão e já exista uma fatura consolidada
+        cadastrada para o mesmo período, a compra herda o estado da fatura (paga/pendente).
+        """
+        if self.cartao and not self.eh_fatura_cartao:
+            if self.data_compra:
+                from core.services.fatura_service import calcular_vencimento_fatura
+                self.data_prevista = calcular_vencimento_fatura(
+                    self.data_compra,
+                    self.cartao.dia_fechamento,
+                    self.cartao.dia_vencimento
+                )
+
+            fatura = self.__class__.objects.filter(
+                usuario=self.usuario,
+                cartao=self.cartao,
+                eh_fatura_cartao=True,
+                data_prevista=self.data_prevista
+            ).first()
+            if fatura:
+                self.transacao_realizada = fatura.transacao_realizada
+                self.data_realizacao = fatura.data_realizacao if fatura.transacao_realizada else None
+
+        super().save(*args, **kwargs)
+
 
 
 class ConfigUsuario(AuditoriaModel):

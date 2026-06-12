@@ -74,8 +74,10 @@ def atualizar_valor_fatura(fatura: Conta) -> None:
 
     # Somar todas as despesas vinculadas a esta fatura
     total = Conta.objects.filter(
-        fatura=fatura,
+        usuario=fatura.usuario,
+        cartao=fatura.cartao,
         eh_fatura_cartao=False,
+        data_prevista=fatura.data_prevista
     ).aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
 
     fatura.valor = total
@@ -104,8 +106,10 @@ def pagar_fatura(fatura: Conta, data_pagamento: date = None) -> None:
 
     # Marcar todas as despesas vinculadas como pagas
     Conta.objects.filter(
-        fatura=fatura,
+        usuario=fatura.usuario,
+        cartao=fatura.cartao,
         eh_fatura_cartao=False,
+        data_prevista=fatura.data_prevista
     ).update(
         transacao_realizada=True,
         data_realizacao=data_pagamento,
@@ -130,8 +134,10 @@ def desfazer_pagamento_fatura(fatura: Conta) -> None:
 
     # Desmarcar todas as despesas vinculadas
     Conta.objects.filter(
-        fatura=fatura,
+        usuario=fatura.usuario,
+        cartao=fatura.cartao,
         eh_fatura_cartao=False,
+        data_prevista=fatura.data_prevista
     ).update(
         transacao_realizada=False,
         data_realizacao=None,
@@ -159,8 +165,15 @@ def despesa_pode_ser_editada(despesa: Conta) -> bool:
     Returns:
         bool: False se a despesa pertencer a uma fatura já liquidada/paga.
     """
-    if despesa.fatura and despesa.fatura.transacao_realizada:
-        return False
+    if despesa.cartao:
+        fatura = Conta.objects.filter(
+            usuario=despesa.usuario,
+            cartao=despesa.cartao,
+            eh_fatura_cartao=True,
+            data_prevista=despesa.data_prevista
+        ).first()
+        if fatura and fatura.transacao_realizada:
+            return False
     return True
 
 

@@ -156,6 +156,13 @@ class Ativo(AuditoriaModel):
 
     ticker = models.CharField(max_length=20)
     nome = models.CharField(max_length=120, blank=True)
+    cnpj = models.CharField(
+        max_length=14,
+        blank=True,
+        null=True,
+        verbose_name="CNPJ do Fundo",
+        help_text="Somente números (14 dígitos) para atualização via CVM",
+    )
 
     # Vínculo com a subcategoria (folha da árvore)
     subcategoria = models.ForeignKey(
@@ -282,6 +289,13 @@ class Ativo(AuditoriaModel):
         if self.valor_investido == 0:
             return Decimal(0)
         return (self.rentabilidade / self.valor_investido) * 100
+
+    def save(self, *args, **kwargs):
+        """Normaliza o CNPJ removendo pontuações antes de salvar."""
+        if self.cnpj:
+            self.cnpj = "".join(filter(str.isdigit, self.cnpj))
+        super().save(*args, **kwargs)
+
 
 
 

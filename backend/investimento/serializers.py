@@ -61,13 +61,14 @@ class AtivoSerializer(serializers.ModelSerializer):
     emissor = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     indexador = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     taxa = serializers.DecimalField(max_digits=9, decimal_places=4, allow_null=True, required=False)
+    cnpj = serializers.CharField(allow_null=True, allow_blank=True, required=False)
  
     historico_cotacoes = serializers.SerializerMethodField()
 
     class Meta:
         model = Ativo
         fields = [
-            'id', 'uuid', 'ticker', 'nome', 'subcategoria', 'subcategoria_detalhe',
+            'id', 'uuid', 'ticker', 'nome', 'cnpj', 'subcategoria', 'subcategoria_detalhe',
             'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo', 
             'meta_porcentagem', 'quantidade', 'preco_medio', 'valor_total',
             'cotacao_atual', 'valor_total_atual', 'rentabilidade', 'rentabilidade_percentual',
@@ -81,6 +82,15 @@ class AtivoSerializer(serializers.ModelSerializer):
             {"data": str(c.data), "valor": float(c.valor)}
             for c in obj.cotacoes.all().order_by('data')[:30]
         ]
+
+    def validate_cnpj(self, value):
+        if value:
+            # Remove qualquer caractere não numérico
+            clean_cnpj = "".join(filter(str.isdigit, value))
+            if len(clean_cnpj) != 14:
+                raise serializers.ValidationError("O CNPJ deve conter exatamente 14 dígitos numéricos.")
+            return clean_cnpj
+        return value
 
     def validate(self, attrs) -> dict:
         """Sanitiza campos opcionais nulos de Renda Fixa/Variável.
