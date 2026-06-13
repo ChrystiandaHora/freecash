@@ -485,7 +485,8 @@ from core.serializers import (
     ContasPagarAPISerializer,
     ReceitasAPISerializer,
     TransacaoAPISerializer,
-    CartaoCreditoAPISerializer
+    CartaoCreditoAPISerializer,
+    ComprasCartaoAPISerializer,
 )
 
 class CartaoCreditoAPIViewSet(viewsets.ModelViewSet):
@@ -614,6 +615,10 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs) -> Response:
         """Customiza a atualização mapeando categoria pelo nome e data de vencimento.
 
+        Para faturas consolidadas de cartão (eh_fatura_cartao=True), o campo `valor`
+        não pode ser alterado manualmente — ele é sempre calculado automaticamente
+        pelo sistema de signals.
+
         Args:
             request (Request): Dados da modificação.
 
@@ -623,7 +628,11 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data.copy()
-        
+
+        # Faturas consolidadas de cartão: proíbe alteração manual do valor
+        if instance.eh_fatura_cartao and 'valor' in data:
+            data.pop('valor')
+
         # 1. Map data_vencimento -> data_prevista
         if 'data_vencimento' in data:
             data['data_prevista'] = data['data_vencimento']
@@ -910,6 +919,187 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         
         response_serializer = ReceitasAPISerializer(serializer.instance, context={'request': request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+
+class ComprasCartaoViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestão completa de compras individuais de cartão de crédito.
+
+    Filtra apenas lançamentos de despesas vinculadas a cartão (eh_fatura_cartao=False
+    e cartao is not null). Impede edição ou exclusão de compras que pertencem a faturas
+    já liquidadas. O signal `post_save`/`post_delete` cuida automaticamente da
+    consolidação da fatura em Contas a Pagar.
+    """
+    serializer_class = ComprasCartaoAPISerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Retorna compras individuais do usuário filtrando opcionalmente por cartão e período.
+
+        Query Params:
+            cartao_uuid (str, optional): UUID do cartão para filtrar.
+            mes (int, optional): Mês de referência (data_prevista).
+            ano (int, optional): Ano de referência (data_prevista).
+
+        Returns:
+            QuerySet: Compras individuais de cartão do usuário.
+        """
+        queryset = Conta.objects.filter(
+            usuario=self.request.user,
+            tipo=Conta.TIPO_DESPESA,
+            eh_fatura_cartao=False,
+            cartao__isnull=False,
+        ).select_related('cartao', 'categoria')
+
+        # Detalhe, edição e exclusão não filtram por mês/ano
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            return queryset.order_by('-data_compra', '-id')
+
+        cartao_uuid = self.request.query_params.get('cartao_uuid')
+        mes = self.request.query_params.get('mes')
+        ano = self.request.query_params.get('ano')
+
+        if cartao_uuid:
+            queryset = queryset.filter(cartao__uuid=cartao_uuid)
+
+        if mes or ano:
+            try:
+                if mes:
+                    queryset = queryset.filter(data_prevista__month=int(mes))
+                if ano:
+                    queryset = queryset.filter(data_prevista__year=int(ano))
+            except (ValueError, TypeError):
+                pass
+
+        return queryset.order_by('-data_compra', '-id')
+
+    def _verificar_editavel(self, despesa: Conta) -> Response | None:
+        """Verifica se a compra pode ser editada/excluída (fatura não paga).
+
+        Args:
+            despesa (Conta): A compra individual a ser verificada.
+
+        Returns:
+            Response | None: Resposta de erro 403 se não editável, None se permitido.
+        """
+        from core.services.fatura_service import despesa_pode_ser_editada
+        if not despesa_pode_ser_editada(despesa):
+            return Response(
+                {'detail': 'Esta compra pertence a uma fatura já paga e não pode ser alterada.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+
+    def perform_create(self, serializer):
+        """Salva a compra associando ao usuário autenticado.
+
+        Args:
+            serializer (Serializer): Serializador validado.
+        """
+        serializer.save(
+            usuario=self.request.user,
+            tipo=Conta.TIPO_DESPESA,
+            eh_fatura_cartao=False,
+        )
+
+    def create(self, request, *args, **kwargs) -> Response:
+        """Cria uma nova compra individual de cartão.
+
+        Aceita `data_compra` e calcula automaticamente a `data_prevista` (vencimento)
+        com base nas configurações do cartão selecionado. O signal sincroniza a fatura.
+
+        Args:
+            request (Request): Dados da nova compra.
+
+        Returns:
+            Response: Compra criada serializada.
+        """
+        data = request.data.copy()
+        data['tipo'] = Conta.TIPO_DESPESA
+        data['eh_fatura_cartao'] = False
+
+        # Resolve categoria pelo nome se passada como string
+        categoria_nome = data.get('categoria_nome') or data.get('categoria')
+        if categoria_nome and isinstance(categoria_nome, str):
+            cat_obj, _ = Categoria.objects.get_or_create(
+                usuario=request.user,
+                nome=categoria_nome.strip(),
+                tipo=Categoria.TIPO_DESPESA,
+            )
+            data['categoria'] = cat_obj.id
+
+        serializer = ContaSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        response_serializer = ComprasCartaoAPISerializer(
+            serializer.instance, context={'request': request}
+        )
+        headers = self.get_success_headers(serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs) -> Response:
+        """Atualiza uma compra individual de cartão.
+
+        Impede a edição se a fatura correspondente já estiver paga.
+
+        Args:
+            request (Request): Dados da atualização.
+
+        Returns:
+            Response: Compra atualizada serializada.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        erro = self._verificar_editavel(instance)
+        if erro:
+            return erro
+
+        data = request.data.copy()
+        data['tipo'] = Conta.TIPO_DESPESA
+        data['eh_fatura_cartao'] = False
+
+        # Resolve categoria pelo nome se passada como string
+        categoria_nome = data.get('categoria_nome') or data.get('categoria')
+        if categoria_nome and isinstance(categoria_nome, str):
+            cat_obj, _ = Categoria.objects.get_or_create(
+                usuario=request.user,
+                nome=categoria_nome.strip(),
+                tipo=Categoria.TIPO_DESPESA,
+            )
+            data['categoria'] = cat_obj.id
+
+        serializer = ContaSerializer(
+            instance, data=data, partial=partial, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(usuario=request.user)
+
+        response_serializer = ComprasCartaoAPISerializer(
+            serializer.instance, context={'request': request}
+        )
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs) -> Response:
+        """Exclui uma compra individual de cartão.
+
+        Impede a exclusão se a fatura correspondente já estiver paga.
+        O signal `post_delete` atualiza automaticamente o valor da fatura.
+
+        Args:
+            request (Request): Requisição HTTP.
+
+        Returns:
+            Response: 204 No Content em caso de sucesso.
+        """
+        instance = self.get_object()
+
+        erro = self._verificar_editavel(instance)
+        if erro:
+            return erro
+
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TransacoesViewSet(viewsets.ReadOnlyModelViewSet):

@@ -16,8 +16,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
-  CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil
+  CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil, CreditCard, ExternalLink
 } from 'lucide-react';
+
 
 import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
@@ -212,8 +213,22 @@ export default function ContasPagar() {
     {
       key: 'descricao',
       header: 'Descrição',
-      render: (val) => <span className="font-medium text-foreground">{val}</span>,
+      render: (val, row) => (
+        <span className="flex items-center gap-2">
+          {row.eh_fatura_cartao && (
+            <span
+              title="Fatura de cartão de crédito — valor calculado automaticamente"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0"
+            >
+              <CreditCard className="h-2.5 w-2.5" />
+              Cartão
+            </span>
+          )}
+          <span className="font-medium text-foreground">{val}</span>
+        </span>
+      ),
     },
+
     {
       key: 'categoria',
       header: 'Categoria',
@@ -265,15 +280,30 @@ export default function ContasPagar() {
                 Pagar
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-              onClick={() => handleEdit(row)}
-              title="Editar"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            {row.eh_fatura_cartao ? (
+              // Faturas de cartão: navegar para Compras Cartão para ver/editar compras individuais
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={() => navigate('/compras-cartao')}
+                title="Ver compras individuais desta fatura"
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                Ver Compras
+              </Button>
+            ) : (
+              // Contas normais: editar
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => handleEdit(row)}
+                title="Editar"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )
       },

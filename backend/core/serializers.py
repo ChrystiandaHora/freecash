@@ -297,7 +297,70 @@ class TransacaoAPISerializer(serializers.ModelSerializer):
         return data_val.isoformat() if data_val else None
 
 
+class ComprasCartaoAPISerializer(serializers.ModelSerializer):
+    """Serializador para compras individuais de cartão de crédito.
+
+    Expõe dados ricos para a tela de 'Compras Cartão', incluindo detalhes
+    do cartão e da categoria, e a data de vencimento calculada automaticamente.
+    """
+    cartao_detalhe = serializers.SerializerMethodField()
+    categoria_detalhe = serializers.SerializerMethodField()
+    data_vencimento = serializers.DateField(source='data_prevista', read_only=True)
+    pago = serializers.BooleanField(source='transacao_realizada', read_only=True)
+
+    class Meta:
+        model = Conta
+        fields = [
+            'id', 'uuid', 'descricao', 'valor',
+            'data_compra', 'data_vencimento',
+            'pago', 'data_realizacao',
+            'cartao', 'cartao_detalhe',
+            'categoria', 'categoria_detalhe',
+            'eh_fatura_cartao', 'esta_atrasada',
+            'criada_em', 'atualizada_em',
+        ]
+        read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
+
+    def get_cartao_detalhe(self, obj) -> dict | None:
+        """Retorna os dados resumidos do cartão associado à compra.
+
+        Args:
+            obj (Conta): Instância da compra.
+
+        Returns:
+            dict | None: Dados básicos do cartão ou None se não houver cartão.
+        """
+        if not obj.cartao:
+            return None
+        c = obj.cartao
+        return {
+            'id': c.id,
+            'uuid': str(c.uuid),
+            'nome': c.nome,
+            'bandeira': c.bandeira,
+            'final': c.ultimos_digitos,
+        }
+
+    def get_categoria_detalhe(self, obj) -> dict | None:
+        """Retorna os dados resumidos da categoria associada à compra.
+
+        Args:
+            obj (Conta): Instância da compra.
+
+        Returns:
+            dict | None: Dados básicos da categoria ou None se não houver categoria.
+        """
+        if not obj.categoria:
+            return None
+        return {
+            'id': obj.categoria.id,
+            'nome': obj.categoria.nome,
+            'tipo': obj.categoria.tipo,
+        }
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
     """Serializador JWT customizado para incluir informações básicas do usuário no token payload.
 
     Adiciona o username como claim customizada no token de acesso decodificável pelo frontend.

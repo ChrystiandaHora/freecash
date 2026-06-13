@@ -26,7 +26,8 @@ from core.views.api import (
     CategoriaViewSet, CartaoCreditoViewSet, ContaViewSet, DashboardAPIView,
     CookieTokenObtainPairView, CookieTokenRefreshView, CookieTokenClearView,
     CartaoCreditoAPIViewSet, ContasPagarViewSet, ReceitasViewSet,
-    TransacoesViewSet, RelatoriosDREAPIView, RegistrationAPIView, ExecutiveBIDashboardAPIView
+    TransacoesViewSet, RelatoriosDREAPIView, RegistrationAPIView,
+    ExecutiveBIDashboardAPIView, ComprasCartaoViewSet
 )
 from investimento.views_api import (
     ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet, 
@@ -52,6 +53,7 @@ router.register(r'financeiro/cartoes', CartaoCreditoAPIViewSet, basename='api-fi
 router.register(r'financeiro/contas-pagar', ContasPagarViewSet, basename='api-financeiro-contas-pagar')
 router.register(r'financeiro/receitas', ReceitasViewSet, basename='api-financeiro-receitas')
 router.register(r'financeiro/transacoes', TransacoesViewSet, basename='api-financeiro-transacoes')
+router.register(r'financeiro/compras-cartao', ComprasCartaoViewSet, basename='api-financeiro-compras-cartao')
 
 router.register(r'investimentos/classes', ClasseAtivoViewSet, basename='api-classe')
 router.register(r'investimentos/categorias', CategoriaAtivoViewSet, basename='api-categoria-ativo')

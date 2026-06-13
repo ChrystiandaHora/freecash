@@ -53,8 +53,13 @@ const processarLinhas = async (payload) => {
   return res.data;
 };
 
-const fetchContas = async () => {
-  const res = await api.get('/api/contas/?tipo=D');
+const fetchComprasCartao = async (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.cartao_uuid) query.set('cartao_uuid', params.cartao_uuid);
+  if (params.mes) query.set('mes', params.mes);
+  if (params.ano) query.set('ano', params.ano);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await api.get(`/api/financeiro/compras-cartao/${qs}`);
   return res.data;
 };
 
@@ -123,8 +128,8 @@ export default function ComprasCartao() {
   const cartoes = cartoesData || [];
 
   const { data: contasData, isLoading: isContasLoading, isError: isContasError, refetch: refetchContas } = useQuery({
-    queryKey: ['contas-cartao'],
-    queryFn: () => fetchContas(),
+    queryKey: ['compras-cartao', cardFilter],
+    queryFn: () => fetchComprasCartao({ cartao_uuid: cardFilter || undefined }),
     enabled: activeTab === 'historico',
   });
   const contas = contasData || [];
@@ -141,8 +146,9 @@ export default function ComprasCartao() {
     mutationFn: processarLinhas,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conciliacao'] });
-      queryClient.invalidateQueries({ queryKey: ['contas-cartao'] });
+      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
       queryClient.invalidateQueries({ queryKey: ['cartoes'] });
+      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
       setSelectedLinhas({});
     },
   });
@@ -173,34 +179,38 @@ export default function ComprasCartao() {
   const updatePurchaseMutation = useMutation({
     mutationFn: async (payload) => {
       const { id, ...data } = payload;
-      const res = await api.put(`/api/contas/${id}/`, data);
+      const res = await api.put(`/api/financeiro/compras-cartao/${id}/`, data);
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contas-cartao'] });
+      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
       queryClient.invalidateQueries({ queryKey: ['cartoes'] });
+      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
       queryClient.invalidateQueries({ queryKey: ['conciliacao'] });
       setIsEditModalOpen(false);
       setEditingPurchase(null);
     },
     onError: (err) => {
-      alert('Erro ao atualizar compra: ' + (err?.response?.data?.erro || err.message));
+      const msg = err?.response?.data?.detail || err?.response?.data?.erro || err.message;
+      alert('Erro ao atualizar compra: ' + msg);
     }
   });
 
   const deletePurchaseMutation = useMutation({
     mutationFn: async (id) => {
-      await api.delete(`/api/contas/${id}/`);
+      await api.delete(`/api/financeiro/compras-cartao/${id}/`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contas-cartao'] });
+      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
       queryClient.invalidateQueries({ queryKey: ['cartoes'] });
+      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
       queryClient.invalidateQueries({ queryKey: ['conciliacao'] });
       setIsDeleteModalOpen(false);
       setDeletingId(null);
     },
     onError: (err) => {
-      alert('Erro ao excluir compra: ' + (err?.response?.data?.erro || err.message));
+      const msg = err?.response?.data?.detail || err?.response?.data?.erro || err.message;
+      alert('Erro ao excluir compra: ' + msg);
     }
   });
 
@@ -293,12 +303,11 @@ export default function ComprasCartao() {
   };
 
   // Filter purchases for Tab 2
-  const purchases = contas.filter(c => c.cartao !== null && c.eh_fatura_cartao === false);
-  const filteredPurchases = purchases.filter(p => {
-    const matchesSearch = p.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.categoria_detalhe?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCard = cardFilter === '' || p.cartao_detalhe?.uuid === cardFilter;
-    return matchesSearch && matchesCard;
+  const filteredPurchases = contas.filter(p => {
+    const matchesSearch = !searchTerm ||
+      p.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.categoria_detalhe?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   const totalPendentes = extratos.reduce((sum, e) => sum + (e.linhas_pendentes || 0), 0);

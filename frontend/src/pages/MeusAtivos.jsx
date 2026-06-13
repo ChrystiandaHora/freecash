@@ -619,7 +619,7 @@ export default function MeusAtivos() {
         <DataTable
           columns={columns}
           data={filteredAtivos}
-          pageSize={10}
+          pageSize={20}
           emptyMessage="Nenhum ativo encontrado nesta aba."
         />
 

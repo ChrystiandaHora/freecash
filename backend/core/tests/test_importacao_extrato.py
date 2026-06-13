@@ -131,8 +131,11 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["importadas"], 2)
 
-        # Verificar as contas criadas e suas datas previstas
-        contas = Conta.objects.filter(usuario=self.user).order_by("data_compra")
+        # Verificar as compras individuais criadas e suas datas previstas
+        # (O signal cria automaticamente as faturas consolidadas, por isso filtramos)
+        contas = Conta.objects.filter(
+            usuario=self.user, eh_fatura_cartao=False
+        ).order_by("data_compra")
         self.assertEqual(contas.count(), 2)
 
         conta_antes = contas.filter(descricao="Compra Antes Fechamento").first()
@@ -150,6 +153,22 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(conta_apos.data_prevista, date(2026, 6, 25))
         self.assertEqual(conta_apos.data_compra, date(2026, 5, 18))
         self.assertFalse(conta_apos.transacao_realizada)
+
+        # Verificar que as faturas consolidadas foram criadas automaticamente pelo signal
+        faturas = Conta.objects.filter(
+            usuario=self.user, eh_fatura_cartao=True
+        ).order_by("data_prevista")
+        self.assertEqual(faturas.count(), 2, "Dois meses diferentes = duas faturas consolidadas")
+
+        fatura_maio = faturas.filter(data_prevista__month=5).first()
+        fatura_junho = faturas.filter(data_prevista__month=6).first()
+
+        self.assertIsNotNone(fatura_maio, "Fatura de Maio deve ter sido criada")
+        self.assertIsNotNone(fatura_junho, "Fatura de Junho deve ter sido criada")
+        self.assertEqual(fatura_maio.valor, Decimal("100.00"))
+        self.assertEqual(fatura_junho.valor, Decimal("50.00"))
+        self.assertFalse(fatura_maio.transacao_realizada)
+        self.assertFalse(fatura_junho.transacao_realizada)
 
     def test_sync_compra_com_fatura_paga_na_criacao(self):
         """Valida que criar uma compra de cartão vinculada a uma fatura já PAGA a marca como paga automaticamente."""
