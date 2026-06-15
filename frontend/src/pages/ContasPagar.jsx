@@ -16,11 +16,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
-  CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil, CreditCard, ExternalLink
+  CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil, CreditCard, ExternalLink,
+  Trash2
 } from 'lucide-react';
 
 
-import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta } from '../services/financeiro';
+import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta, deleteContaPagar } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -115,6 +116,7 @@ export default function ContasPagar() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConta, setEditingConta] = useState(null)
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
+  const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
   const [fadingIds, setFadingIds] = useState(new Set())
 
   // Filtros de Mês e Ano
@@ -139,6 +141,21 @@ export default function ContasPagar() {
         queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
         setFadingIds(new Set())
         setConfirmId(null)
+      }, 500)
+    },
+  })
+
+  // Mutation: excluir conta
+  const deleteMutation = useMutation({
+    mutationFn: deleteContaPagar,
+    onMutate: (id) => {
+      setFadingIds((prev) => new Set(prev).add(id))
+    },
+    onSuccess: () => {
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
+        setFadingIds(new Set())
+        setDeleteId(null)
       }, 500)
     },
   })
@@ -293,16 +310,27 @@ export default function ContasPagar() {
                 Ver Compras
               </Button>
             ) : (
-              // Contas normais: editar
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                onClick={() => handleEdit(row)}
-                title="Editar"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              // Contas normais: editar e excluir
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => handleEdit(row)}
+                  title="Editar"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                  onClick={() => setDeleteId(row.id)}
+                  title="Excluir"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </div>
         )
@@ -474,6 +502,32 @@ export default function ContasPagar() {
               <CheckCircle2 className="mr-2 h-4 w-4" />
             )}
             Confirmar Pagamento
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ─── Modal: Confirmar Exclusão ─────────────────────────────────────────── */}
+      <Modal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="Confirmar Exclusão"
+        description="Esta ação excluirá permanentemente a despesa. Deseja continuar?"
+      >
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={() => setDeleteId(null)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => deleteMutation.mutate(deleteId)}
+            disabled={deleteMutation.isPending}
+            className="bg-rose-600 hover:bg-rose-700 text-white border-0"
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            Confirmar Exclusão
           </Button>
         </div>
       </Modal>

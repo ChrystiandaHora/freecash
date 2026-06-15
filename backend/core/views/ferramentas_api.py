@@ -130,6 +130,7 @@ class FerramentasImportarExtratoAPIView(APIView):
 
         try:
             from core.services.extrato_parser import processar_pdf
+            from core.services.fatura_service import detectar_vencimento_fatura
             linhas_extraidas = processar_pdf(temp_path, banco=banco)
 
             if not linhas_extraidas:
@@ -137,6 +138,9 @@ class FerramentasImportarExtratoAPIView(APIView):
                     {'erro': 'Nenhuma transação encontrada no arquivo ou formato incompatível.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+            # Detectar data de vencimento da fatura
+            data_vencimento_fatura = detectar_vencimento_fatura(linhas_extraidas, cartao_obj)
 
             # Criar ExtratoImportado
             extrato = ExtratoImportado.objects.create(
@@ -146,7 +150,8 @@ class FerramentasImportarExtratoAPIView(APIView):
                 status='pendente',
                 linhas_encontradas=len(linhas_extraidas),
                 linhas_importadas=0,
-                cartao=cartao_obj
+                cartao=cartao_obj,
+                data_vencimento=data_vencimento_fatura
             )
 
             # Criar LinhaExtrato
@@ -283,6 +288,9 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                             extrato.cartao.dia_fechamento,
                             extrato.cartao.dia_vencimento
                         )
+                        # Ajustar data_prevista para a data da fatura atual caso seja uma parcela antiga
+                        if extrato.data_vencimento and data_prevista < extrato.data_vencimento:
+                            data_prevista = extrato.data_vencimento
 
                     conta = Conta.objects.create(
                         usuario=request.user,

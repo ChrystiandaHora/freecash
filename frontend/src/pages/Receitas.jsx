@@ -15,10 +15,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, TrendingUp, CheckCircle2, Clock,
-  Loader2, RefreshCw, ArrowUpCircle, Repeat, DollarSign, Filter, Pencil
+  Loader2, RefreshCw, ArrowUpCircle, Repeat, DollarSign, Filter, Pencil,
+  Trash2
 } from 'lucide-react';
 
-import { fetchReceitas, createReceita, updateReceita } from '../services/financeiro';
+import { fetchReceitas, createReceita, updateReceita, deleteReceita } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -74,6 +75,8 @@ export default function Receitas() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConta, setEditingConta] = useState(null)
   const [tipoSelecionado, setTipoSelecionado] = useState('unica')
+  const [deleteId, setDeleteId] = useState(null)
+  const [fadingIds, setFadingIds] = useState(new Set())
 
   // Filtros de Mês e Ano
   const today = new Date()
@@ -91,6 +94,20 @@ export default function Receitas() {
   })
 
   const watchTipo = watch('tipo')
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteReceita,
+    onMutate: (id) => {
+      setFadingIds((prev) => new Set(prev).add(id))
+    },
+    onSuccess: () => {
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['receitas'] })
+        setFadingIds(new Set())
+        setDeleteId(null)
+      }, 500)
+    },
+  })
 
   const createMutation = useMutation({
     queryKey: ['receitas'],
@@ -197,7 +214,7 @@ export default function Receitas() {
       header: 'Ação',
       sortable: false,
       render: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
@@ -206,6 +223,15 @@ export default function Receitas() {
             title="Editar"
           >
             <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+            onClick={() => setDeleteId(row.id)}
+            title="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -334,10 +360,16 @@ export default function Receitas() {
       {/* Tabela */}
       <DataTable
         columns={columns}
-        data={receitas}
+        data={receitas.map((r) => ({
+          ...r,
+          _fading: fadingIds.has(r.id),
+        }))}
         isLoading={isLoading}
         pageSize={10}
         emptyMessage="Nenhuma receita cadastrada para o período selecionado."
+        rowClassName={(row) =>
+          row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
+        }
       />
 
       {/* ─── Modal: Cadastro / Edição ─────────────────────────────────────────── */}
@@ -454,6 +486,32 @@ export default function Receitas() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ─── Modal: Confirmar Exclusão ─────────────────────────────────────────── */}
+      <Modal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="Confirmar Exclusão"
+        description="Esta ação excluirá permanentemente a receita. Deseja continuar?"
+      >
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={() => setDeleteId(null)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => deleteMutation.mutate(deleteId)}
+            disabled={deleteMutation.isPending}
+            className="bg-rose-600 hover:bg-rose-700 text-white border-0"
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            Confirmar Exclusão
+          </Button>
+        </div>
       </Modal>
     </div>
   )

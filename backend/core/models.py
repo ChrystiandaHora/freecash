@@ -233,11 +233,13 @@ class Conta(AuditoriaModel):
         if self.cartao and not self.eh_fatura_cartao:
             if self.data_compra:
                 from core.services.fatura_service import calcular_vencimento_fatura
-                self.data_prevista = calcular_vencimento_fatura(
+                calculado = calcular_vencimento_fatura(
                     self.data_compra,
                     self.cartao.dia_fechamento,
                     self.cartao.dia_vencimento
                 )
+                if not self.data_prevista or self.data_prevista < calculado:
+                    self.data_prevista = calculado
 
             fatura = self.__class__.objects.filter(
                 usuario=self.usuario,
@@ -378,6 +380,11 @@ class ExtratoImportado(AuditoriaModel):
     linhas_encontradas = models.IntegerField(default=0)
     linhas_importadas = models.IntegerField(default=0)
     erro_mensagem = models.TextField(blank=True)
+    data_vencimento = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Data de vencimento da fatura associada a este extrato",
+    )
     cartao = models.ForeignKey(
         "core.CartaoCredito",
         on_delete=models.SET_NULL,

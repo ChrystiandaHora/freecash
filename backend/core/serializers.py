@@ -76,7 +76,7 @@ class ExtratoImportadoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'uuid', 'arquivo_nome', 'banco', 'banco_display',
             'status', 'status_display', 'linhas_encontradas', 'linhas_importadas',
-            'erro_mensagem', 'cartao', 'cartao_detalhe', 'linhas_pendentes',
+            'erro_mensagem', 'data_vencimento', 'cartao', 'cartao_detalhe', 'linhas_pendentes',
             'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']

@@ -281,3 +281,72 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertTrue(compra_acumulada.transacao_realizada)
         self.assertEqual(compra_acumulada.data_realizacao, date(2026, 5, 24))
 
+    def test_detectar_vencimento_fatura(self):
+        """Testa se a detecção heurística do vencimento da fatura escolhe a moda correta."""
+        from core.services.fatura_service import detectar_vencimento_fatura
+        
+        # Simula linhas extraídas de uma fatura de Maio (Fechamento: 15/05, Vencimento: 25/05)
+        # Compras normais do mês: vencimento em 25/05/2026
+        # Parcela antiga: compra original em 10/04/2026 -> vencimento seria 25/04/2026
+        linhas = [
+            {"data": date(2026, 5, 10), "tipo": "D"},
+            {"data": date(2026, 5, 12), "tipo": "D"},
+            {"data": date(2026, 4, 20), "tipo": "D"}, # pós-fechamento de abril (15/04) -> vence 25/05
+            {"data": date(2026, 4, 10), "tipo": "D"}, # parcela antiga -> vence 25/04
+        ]
+        
+        vencimento_detectado = detectar_vencimento_fatura(linhas, self.cartao)
+        self.assertEqual(vencimento_detectado, date(2026, 5, 25))
+
+    def test_reconciliacao_parcela_antiga(self):
+        """Valida que uma compra de mês anterior (parcela) é associada ao vencimento da fatura importada atual."""
+        # Cria extrato com data_vencimento de Maio
+        extrato = ExtratoImportado.objects.create(
+            usuario=self.user,
+            arquivo_nome="Fatura_Maio.pdf",
+            banco="santander",
+            status="pendente",
+            linhas_encontradas=1,
+            cartao=self.cartao,
+            data_vencimento=date(2026, 5, 25)
+        )
+        
+        # Parcela de compra realizada em 10/04 (vencimento original seria 25/04)
+        linha_parcela = LinhaExtrato.objects.create(
+            extrato=extrato,
+            data=date(2026, 4, 10),
+            descricao="Compra Parcelada Antiga 2/3",
+            valor=Decimal("120.00"),
+            tipo="D",
+            status="pendente"
+        )
+
+        token = str(AccessToken.for_user(self.user))
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+        # Processar conciliação
+        response = self.client.post(
+            "/api/ferramentas/conciliacao/processar/",
+            {
+                "acao": "importar",
+                "extrato_id": extrato.id,
+                "linha_ids": [linha_parcela.id]
+            },
+            format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["importadas"], 1)
+
+        # Verificar se a compra individual criada foi corretamente ajustada
+        compra = Conta.objects.filter(
+            usuario=self.user, eh_fatura_cartao=False, descricao="Compra Parcelada Antiga 2/3"
+        ).first()
+
+        self.assertIsNotNone(compra)
+        # Deve ter o vencimento ajustado para a fatura de Maio (25/05/2026)
+        self.assertEqual(compra.data_prevista, date(2026, 5, 25))
+        # Mas deve preservar a data da compra original (10/04/2026)
+        self.assertEqual(compra.data_compra, date(2026, 4, 10))
+
+

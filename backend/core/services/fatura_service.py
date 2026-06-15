@@ -255,3 +255,31 @@ def cents_to_decimal(cents: int) -> Decimal:
     """
     return (Decimal(cents) / Decimal(100)).quantize(Decimal("0.01"))
 
+
+def detectar_vencimento_fatura(linhas_extraidas: list, cartao) -> date | None:
+    """Detecta a data de vencimento da fatura com base na moda (vencimento mais comum) das transações.
+
+    Args:
+        linhas_extraidas (list): Lista de dicionários das transações extraídas.
+        cartao (CartaoCredito): Instância do cartão de crédito correspondente.
+
+    Returns:
+        date | None: A data de vencimento detectada ou None.
+    """
+    from collections import Counter
+
+    due_dates = []
+    for line in linhas_extraidas:
+        if line.get("tipo", "D") == "D":
+            due_date = calcular_vencimento_fatura(
+                line["data"],
+                cartao.dia_fechamento,
+                cartao.dia_vencimento
+            )
+            due_dates.append(due_date)
+
+    if due_dates:
+        return Counter(due_dates).most_common(1)[0][0]
+    return None
+
+

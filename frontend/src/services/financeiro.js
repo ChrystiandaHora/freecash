@@ -61,3 +61,14 @@ export const fetchTransacoes = async (params = {}) => {
   const { data } = await api.get('/api/financeiro/transacoes/', { params })
   return data
 }
+
+export const deleteContaPagar = async (id) => {
+  const { data } = await api.delete(`/api/financeiro/contas-pagar/${id}/`)
+  return data
+}
+
+export const deleteReceita = async (id) => {
+  const { data } = await api.delete(`/api/financeiro/receitas/${id}/`)
+  return data
+}
+
