@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} Tela de controle de contas a pagar contendo KPIs de pendências e tabela CRUD.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -214,6 +214,7 @@ export default function ContasPagar() {
     return due < today
   })
   const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
+  const totalGeral = contas.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
   // ─── Colunas da tabela ─────────────────────────────────────────────────────
   const columns = [
@@ -289,26 +290,36 @@ export default function ContasPagar() {
             {!row.pago && (
               <Button
                 size="sm"
-                variant="outline"
-                className="border-primary/40 text-primary hover:bg-primary/5 dark:hover:bg-primary/10 h-8 px-3 text-xs"
+                variant="ghost"
+                className="h-8 w-8 p-0 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                 onClick={() => setConfirmId(row.id)}
+                title="Marcar como Pago"
               >
-                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                Pagar
+                <CheckCircle2 className="h-4 w-4" />
               </Button>
             )}
             {row.eh_fatura_cartao ? (
-              // Faturas de cartão: navegar para Compras Cartão para ver/editar compras individuais
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                onClick={() => navigate('/compras-cartao')}
-                title="Ver compras individuais desta fatura"
-              >
-                <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                Ver Compras
-              </Button>
+              // Faturas de cartão: navegar para Compras Cartão para ver/editar compras individuais + editar metadados
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  onClick={() => navigate('/compras-cartao')}
+                  title="Ver compras individuais desta fatura"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => handleEdit(row)}
+                  title="Editar"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
             ) : (
               // Contas normais: editar e excluir
               <div className="flex items-center gap-1">
@@ -444,12 +455,12 @@ export default function ContasPagar() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Total de Contas
+              Total Geral
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{contas.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Incluindo pagas</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalGeral)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{contas.length} conta(s) no total</p>
           </CardContent>
         </Card>
       </div>
@@ -565,7 +576,14 @@ export default function ContasPagar() {
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Valor (R$) <span className="text-red-500">*</span>
               </label>
-              <Input {...register('valor')} type="number" step="0.01" placeholder="0,00" />
+              <Input
+                {...register('valor')}
+                type="number"
+                step="0.01"
+                placeholder="0,00"
+                readOnly={!!editingConta?.eh_fatura_cartao}
+                className={editingConta?.eh_fatura_cartao ? "bg-muted cursor-not-allowed" : ""}
+              />
               {errors.valor && (
                 <p className="mt-1 text-xs text-red-500">{errors.valor.message}</p>
               )}
@@ -575,7 +593,12 @@ export default function ContasPagar() {
               <label className="mb-1.5 block text-sm font-medium text-foreground">
                 Data de Vencimento <span className="text-red-500">*</span>
               </label>
-              <Input {...register('data_vencimento')} type="date" />
+              <Input
+                {...register('data_vencimento')}
+                type="date"
+                readOnly={!!editingConta?.eh_fatura_cartao}
+                className={editingConta?.eh_fatura_cartao ? "bg-muted cursor-not-allowed" : ""}
+              />
               {errors.data_vencimento && (
                 <p className="mt-1 text-xs text-red-500">{errors.data_vencimento.message}</p>
               )}

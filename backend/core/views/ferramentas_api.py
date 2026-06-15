@@ -142,40 +142,57 @@ class FerramentasImportarExtratoAPIView(APIView):
             # Detectar data de vencimento da fatura
             data_vencimento_fatura = detectar_vencimento_fatura(linhas_extraidas, cartao_obj)
 
-            # Criar ExtratoImportado
-            extrato = ExtratoImportado.objects.create(
-                usuario=request.user,
-                arquivo_nome=arquivo.name,
-                banco=banco,
-                status='pendente',
-                linhas_encontradas=len(linhas_extraidas),
-                linhas_importadas=0,
-                cartao=cartao_obj,
-                data_vencimento=data_vencimento_fatura
-            )
-
-            # Criar LinhaExtrato
-            linhas_objs = []
+            count = 0
             for line in linhas_extraidas:
-                linhas_objs.append(
-                    LinhaExtrato(
-                        extrato=extrato,
-                        data=line['data'],
+                tipo_conta = 'R' if line.get('tipo', 'D') == 'C' else 'D'
+                transacao_realizada = True
+                data_prevista = line['data']
+                data_compra = None
+
+                if cartao_obj and tipo_conta == 'D':
+                    from core.services.fatura_service import calcular_vencimento_fatura
+                    transacao_realizada = False
+                    data_compra = line['data']
+                    data_prevista = calcular_vencimento_fatura(
+                        data_compra,
+                        cartao_obj.dia_fechamento,
+                        cartao_obj.dia_vencimento
+                    )
+                    # Ajustar data_prevista para a data da fatura atual caso seja uma parcela antiga
+                    if data_vencimento_fatura and data_prevista < data_vencimento_fatura:
+                        data_prevista = data_vencimento_fatura
+
+                # Verificar se já existe a transação no banco
+                exists = Conta.objects.filter(
+                    usuario=request.user,
+                    tipo=tipo_conta,
+                    descricao=line['descricao'],
+                    valor=line['valor'],
+                    cartao=cartao_obj,
+                    data_compra=data_compra,
+                    data_prevista=data_prevista
+                ).exists()
+
+                if not exists:
+                    Conta.objects.create(
+                        usuario=request.user,
+                        tipo=tipo_conta,
                         descricao=line['descricao'],
                         valor=line['valor'],
-                        tipo=line.get('tipo', 'D'),
-                        status='pendente'
+                        data_prevista=data_prevista,
+                        transacao_realizada=transacao_realizada,
+                        data_realizacao=line['data'] if transacao_realizada else None,
+                        cartao=cartao_obj,
+                        data_compra=data_compra,
                     )
-                )
-            
-            LinhaExtrato.objects.bulk_create(linhas_objs)
+                    count += 1
 
             return Response(
                 {
                     'ok': True,
-                    'msg': f'Fatura importada com sucesso. {len(linhas_extraidas)} lançamentos encontrados.',
+                    'msg': f'Fatura processada com sucesso. {len(linhas_extraidas)} lançamentos encontrados, {count} novos adicionados.',
                     'linhas_encontradas': len(linhas_extraidas),
-                    'extrato_id': extrato.id
+                    'linhas_adicionadas': count
                 },
                 status=status.HTTP_201_CREATED
             )

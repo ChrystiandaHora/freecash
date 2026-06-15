@@ -629,9 +629,12 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         data = request.data.copy()
 
-        # Faturas consolidadas de cartão: proíbe alteração manual do valor
-        if instance.eh_fatura_cartao and 'valor' in data:
-            data.pop('valor')
+        # Faturas consolidadas de cartão: proíbe alteração manual do valor e vencimento.
+        # Mantemos os valores originais no payload para passar na validação de campos obrigatórios do DRF.
+        if instance.eh_fatura_cartao:
+            data['valor'] = instance.valor
+            data['data_prevista'] = instance.data_prevista
+            data['data_vencimento'] = instance.data_prevista
 
         # 1. Map data_vencimento -> data_prevista
         if 'data_vencimento' in data:
