@@ -167,27 +167,75 @@ export default function AtivosBalanceamento() {
   const aporteNum = parseFloat(aporteValue.replace(',', '.')) || 0;
   const totalPatrimonio = balanceData?.total_patrimonio ?? 0;
   const allAtivos = (balanceData?.classes ?? []).flatMap((c) => c.ativos);
-  const futuroPatrimonio = totalPatrimonio + aporteNum;
 
-  const magicAllocation = allAtivos.map((at) => {
+  // Initialize simulated state for greedy allocation
+  const allocationState = allAtivos.map((at) => {
     const meta = (isEditing ? editingMetas[at.id] : at.meta_porcentagem) ?? 0;
-    const valorIdeal = (meta / 100) * futuroPatrimonio;
-    const aporteIdeal = Math.max(0, valorIdeal - at.valor_atual);
-    const cotacao = at.preco_atual ?? 0;
-    const qtdComprar = cotacao > 0 ? Math.round(aporteIdeal / cotacao) : 0;
-    const aporteAjustado = cotacao > 0 ? qtdComprar * cotacao : 0;
     return {
       ...at,
       meta,
+      qtdComprar: 0,
+      aporte: 0,
+    };
+  });
+
+  let remainingBudget = aporteNum;
+  if (remainingBudget > 0) {
+    let iterations = 0;
+    const MAX_ITERATIONS = 10000; // safety cap to prevent infinite loops
+    
+    while (remainingBudget > 0 && iterations < MAX_ITERATIONS) {
+      iterations++;
+      
+      const simulatedTotal = totalPatrimonio + (aporteNum - remainingBudget);
+      
+      let bestAssetIndex = -1;
+      let maxDeficit = -Infinity;
+      
+      for (let i = 0; i < allocationState.length; i++) {
+        const at = allocationState[i];
+        const cotacao = at.preco_atual ?? 0;
+        
+        // Skip assets we cannot afford or that have invalid/zero price
+        if (cotacao <= 0 || cotacao > remainingBudget) continue;
+        
+        const currentValue = at.valor_atual + at.aporte;
+        const currentPercentage = simulatedTotal > 0 ? (currentValue / simulatedTotal) * 100 : 0;
+        const deficit = at.meta - currentPercentage;
+        
+        if (deficit > maxDeficit) {
+          maxDeficit = deficit;
+          bestAssetIndex = i;
+        }
+      }
+      
+      // If we couldn't find any asset we can afford, stop
+      if (bestAssetIndex === -1) {
+        break;
+      }
+      
+      const bestAsset = allocationState[bestAssetIndex];
+      bestAsset.qtdComprar += 1;
+      bestAsset.aporte = bestAsset.qtdComprar * (bestAsset.preco_atual ?? 0);
+      remainingBudget -= (bestAsset.preco_atual ?? 0);
+    }
+  }
+
+  const magicAllocation = allocationState.map((at) => {
+    const finalPatrimonio = totalPatrimonio + (aporteNum - remainingBudget);
+    const valorIdeal = (at.meta / 100) * finalPatrimonio;
+    const cotacao = at.preco_atual ?? 0;
+    const aporteIdeal = Math.max(0, valorIdeal - at.valor_atual);
+    return {
+      ...at,
       valorIdeal,
       cotacao,
-      qtdComprar,
-      aporte: aporteAjustado,
-      aporteIdeal
+      aporteIdeal,
     };
   });
 
   const somaAportes = magicAllocation.reduce((s, a) => s + a.aporte, 0);
+  const futuroPatrimonio = totalPatrimonio + somaAportes;
   const somaEditingMetas = Object.values(editingMetas).reduce((a, b) => a + b, 0);
   const pctSumOk = Math.abs(somaEditingMetas - 100) < 0.01;
 
@@ -452,9 +500,17 @@ export default function AtivosBalanceamento() {
           )}
 
           {aporteNum > 0 && somaAportes > 0.01 && (
-            <div className={`flex items-center justify-between p-3.5 rounded-xl border text-xs ${somaAportes <= aporteNum + 0.01 ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}>
-              <span className="font-semibold">Total recomendado para aporte:</span>
-              <span className="font-extrabold text-base">{formatCurrency(somaAportes)}</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border text-xs bg-primary/10 border-primary/20 text-primary">
+                <span className="font-semibold">Total recomendado para aporte:</span>
+                <span className="font-extrabold text-base">{formatCurrency(somaAportes)}</span>
+              </div>
+              {aporteNum - somaAportes > 0.01 && (
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs">
+                  <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
+                  <span className="font-extrabold text-sm">{formatCurrency(aporteNum - somaAportes)}</span>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
