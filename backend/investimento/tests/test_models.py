@@ -74,3 +74,36 @@ class InvestimentoModelsTestCase(TestCase):
         self.assertEqual(self.ativo.valor_total_atual, Decimal("3500.00"))
         self.assertEqual(self.ativo.rentabilidade, Decimal("500.00"))
         self.assertEqual(self.ativo.rentabilidade_percentual, Decimal("16.66666666666666666666666667")) # 500/3000 * 100
+
+    def test_ativo_recalculation_on_edit_and_delete(self):
+        # 1. Create a purchase of 100 units at 30.00
+        transacao = Transacao.objects.create(
+            usuario=self.user,
+            ativo=self.ativo,
+            tipo=Transacao.TIPO_COMPRA,
+            data=timezone.localdate(),
+            quantidade=Decimal("100"),
+            preco_unitario=Decimal("30.00"),
+            valor_total=Decimal("3000.00")
+        )
+        
+        self.ativo.refresh_from_db()
+        self.assertEqual(self.ativo.quantidade, Decimal("100"))
+        self.assertEqual(self.ativo.preco_medio, Decimal("30.00"))
+
+        # 2. Update the transaction: quantity to 50, price to 20.00, valor_total to 1000.00
+        transacao.quantidade = Decimal("50")
+        transacao.preco_unitario = Decimal("20.00")
+        transacao.valor_total = Decimal("1000.00")
+        transacao.save()
+
+        self.ativo.refresh_from_db()
+        self.assertEqual(self.ativo.quantidade, Decimal("50"))
+        self.assertEqual(self.ativo.preco_medio, Decimal("20.00"))
+
+        # 3. Delete the transaction
+        transacao.delete()
+
+        self.ativo.refresh_from_db()
+        self.assertEqual(self.ativo.quantidade, Decimal("0"))
+        self.assertEqual(self.ativo.preco_medio, Decimal("0"))

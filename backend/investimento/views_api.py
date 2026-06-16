@@ -222,6 +222,45 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
             valor_total=valor_total
         )
 
+    def perform_update(self, serializer):
+        """Atualiza a ordem recalculando o valor total de aquisição de forma estruturada.
+
+        Garante o acréscimo de taxas/corretagem nas compras, abatimento de taxas
+        nas vendas e limitação de quantidade unitária (1) para recebimentos de proventos.
+
+        Args:
+            serializer (Serializer): Serializador da transação.
+        """
+        tipo = self.request.data.get("tipo", serializer.instance.tipo)
+        
+        qtd_raw = self.request.data.get("quantidade")
+        qtd = Decimal(str(qtd_raw)) if qtd_raw is not None else serializer.instance.quantidade
+        
+        preco_raw = self.request.data.get("preco_unitario")
+        preco = Decimal(str(preco_raw)) if preco_raw is not None else serializer.instance.preco_unitario
+        
+        taxas_raw = self.request.data.get("taxas")
+        taxas = Decimal(str(taxas_raw)) if taxas_raw is not None else serializer.instance.taxas
+
+        # Lógica de cálculo do valor total baseado no tipo
+        if tipo == Transacao.TIPO_DIVIDENDO:
+            qtd = Decimal("1")
+            taxas = Decimal("0")
+            valor_total = preco
+        elif tipo == Transacao.TIPO_COMPRA:
+            valor_total = (qtd * preco) + taxas
+        elif tipo == Transacao.TIPO_VENDA:
+            valor_total = (qtd * preco) - taxas
+        else:
+            valor_total = qtd * preco
+
+        serializer.save(
+            quantidade=qtd,
+            preco_unitario=preco,
+            taxas=taxas,
+            valor_total=valor_total
+        )
+
 
 class DashboardInvestimentoAPIView(APIView):
     """Endpoint consolidado que alimenta a tela de investimentos do React.

@@ -23,7 +23,9 @@ import {
   ArrowUpDown,
   ChevronDown,
   CheckCircle2,
-  Filter
+  Filter,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -63,16 +65,20 @@ const TIPO_CONFIG = {
  * @param {Function} props.onSuccess - Callback acionado pós-sucesso da mutação.
  * @returns {React.JSX.Element}
  */
-function NovaOrdemModal({ ativos, onClose, onSuccess }) {
-  const [tab, setTab] = useState('cv'); // 'cv' | 'proventos'
+function OrdemModal({ ativos, transacao, onClose, onSuccess }) {
+  const isEditing = !!transacao;
+  const [tab, setTab] = useState(() => {
+    if (isEditing && transacao.tipo === 'D') return 'proventos';
+    return 'cv';
+  });
   const [form, setForm] = useState({
-    ativo: '',
-    tipo: 'C',
-    data: new Date().toISOString().split('T')[0],
-    quantidade: '',
-    preco_unitario: '',
-    taxas: '',
-    valor_total_provento: '',
+    ativo: transacao?.ativo ?? '',
+    tipo: transacao?.tipo ?? 'C',
+    data: transacao?.data ?? new Date().toISOString().split('T')[0],
+    quantidade: transacao?.quantidade ?? '',
+    preco_unitario: transacao?.preco_unitario ?? '',
+    taxas: transacao?.taxas ?? '',
+    valor_total_provento: transacao?.tipo === 'D' ? transacao?.preco_unitario : '',
   });
   const [error, setError] = useState('');
 
@@ -80,22 +86,27 @@ function NovaOrdemModal({ ativos, onClose, onSuccess }) {
 
   const mutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await api.post('/api/investimentos/transacoes/', payload);
-      return res.data;
+      if (isEditing) {
+        const res = await api.put(`/api/investimentos/transacoes/${transacao.id}/`, payload);
+        return res.data;
+      } else {
+        const res = await api.post('/api/investimentos/transacoes/', payload);
+        return res.data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
       queryClient.invalidateQueries(['investimentosBalanceamento']);
       queryClient.invalidateQueries(['transacoesInvestimento']);
-      onSuccess();
+      onSuccess(isEditing);
     },
     onError: (err) => {
       const apiErr = err.response?.data;
       if (typeof apiErr === 'object' && apiErr !== null) {
         setError(Object.entries(apiErr).map(([key, val]) => `${key}: ${val}`).join(' | '));
       } else {
-        setError('Erro ao registrar ordem.');
+        setError(isEditing ? 'Erro ao atualizar ordem.' : 'Erro ao registrar ordem.');
       }
     },
   });
@@ -149,8 +160,10 @@ function NovaOrdemModal({ ativos, onClose, onSuccess }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border/40 shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Nova Ordem</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Registre uma compra, venda ou recebimento de proventos</p>
+            <h2 className="text-lg font-bold text-foreground">{isEditing ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isEditing ? 'Atualize os dados do lançamento da carteira' : 'Registre uma compra, venda ou recebimento de proventos'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors">
             <X className="h-5 w-5" />
@@ -283,8 +296,35 @@ function NovaOrdemModal({ ativos, onClose, onSuccess }) {
             disabled={mutation.isPending}
             className="flex-1 rounded-xl h-10 bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-semibold"
           >
-            {mutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Registrar Ordem'}
+            {mutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : (isEditing ? 'Salvar Alterações' : 'Registrar Ordem')}
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Delete Confirm ─────────────────────────── */
+function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-sm border border-border/40 p-6">
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+            <Trash2 className="h-6 w-6 text-destructive" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-foreground">Confirmar exclusão</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tem certeza que deseja excluir a ordem de <span className="font-semibold text-foreground">{label}</span>? Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <div className="flex gap-3 w-full">
+            <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
+            <Button onClick={onConfirm} disabled={isPending} className="flex-1 rounded-xl h-10 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0 font-semibold">
+              {isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Excluir'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -293,10 +333,50 @@ function NovaOrdemModal({ ativos, onClose, onSuccess }) {
 
 /* ─────────────────────────── Main Page ─────────────────────────── */
 export default function AtivosHistorico() {
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransacao, setEditingTransacao] = useState(null);
+  const [deletingTransacao, setDeletingTransacao] = useState(null);
   const [filterTipo, setFilterTipo] = useState(''); // '' | 'C' | 'V' | 'D'
   const [filterAtivo, setFilterAtivo] = useState('');
-  const [successMsg, setSuccessMsg] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleEdit = (transacao) => {
+    setEditingTransacao(transacao);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingTransacao(null);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/api/investimentos/transacoes/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['ativos']);
+      queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['investimentosBalanceamento']);
+      queryClient.invalidateQueries(['transacoesInvestimento']);
+      setDeletingTransacao(null);
+      setSuccessMsg('Ordem excluída com sucesso!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+      refetchT();
+    },
+    onError: () => {
+      alert('Erro ao excluir ordem.');
+    }
+  });
+
+  const getDeleteLabel = (t) => {
+    if (!t) return '';
+    const tipoLabel = TIPO_CONFIG[t.tipo]?.label || '';
+    const ticker = t.ativo_detalhe?.ticker || '';
+    const dataFormatted = formatDate(t.data);
+    return `${tipoLabel} de ${ticker} em ${dataFormatted}`;
+  };
 
   const columns = [
     {
@@ -364,6 +444,35 @@ export default function AtivosHistorico() {
         );
       },
     },
+    {
+      key: 'acoes',
+      header: 'Ações',
+      className: 'w-[100px] text-center',
+      cellClassName: 'text-center',
+      sortable: false,
+      render: (_, row) => (
+        <div className="flex items-center justify-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handleEdit(row)}
+            className="h-8 w-8 rounded-lg"
+            title="Editar"
+          >
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setDeletingTransacao(row)}
+            className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:border-destructive/30 group"
+            title="Excluir"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   const {
@@ -390,10 +499,11 @@ export default function AtivosHistorico() {
     },
   });
 
-  const handleSuccess = () => {
+  const handleSuccess = (isEdit) => {
     setModalOpen(false);
-    setSuccessMsg(true);
-    setTimeout(() => setSuccessMsg(false), 3000);
+    setEditingTransacao(null);
+    setSuccessMsg(isEdit ? 'Ordem atualizada com sucesso!' : 'Ordem registrada com sucesso!');
+    setTimeout(() => setSuccessMsg(''), 3000);
     refetchT();
   };
 
@@ -452,7 +562,7 @@ export default function AtivosHistorico() {
       {successMsg && (
         <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400 text-xs">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <p className="font-semibold">Ordem registrada com sucesso!</p>
+          <p className="font-semibold">{successMsg}</p>
         </div>
       )}
 
@@ -541,10 +651,21 @@ export default function AtivosHistorico() {
 
       {/* ── Modal ── */}
       {modalOpen && (
-        <NovaOrdemModal
+        <OrdemModal
           ativos={ativos ?? []}
-          onClose={() => setModalOpen(false)}
+          transacao={editingTransacao}
+          onClose={handleCloseModal}
           onSuccess={handleSuccess}
+        />
+      )}
+
+      {/* ── Delete Confirmation ── */}
+      {deletingTransacao && (
+        <DeleteConfirmModal
+          label={getDeleteLabel(deletingTransacao)}
+          onConfirm={() => deleteMutation.mutate(deletingTransacao.id)}
+          onClose={() => setDeletingTransacao(null)}
+          isPending={deleteMutation.isPending}
         />
       )}
     </div>
