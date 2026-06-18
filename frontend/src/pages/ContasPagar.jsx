@@ -42,7 +42,7 @@ const formatDate = (dateStr) => {
 }
 
 const getStatusInfo = (conta) => {
-  if (conta.pago) return { label: 'Paga', variant: 'success', Icon: CheckCircle2 }
+  if (conta.pago) return { label: 'Pago', variant: 'success', Icon: CheckCircle2 }
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -55,11 +55,9 @@ const getStatusInfo = (conta) => {
 
   const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return { label: 'Próximo Venc.', variant: 'warning', Icon: Clock }
-  if (diffDays === 1) return { label: 'Venc. 1 dia', variant: 'warning', Icon: Clock }
-  if (diffDays === 2) return { label: 'Venc. 2 dias', variant: 'warning', Icon: Clock }
-  if (diffDays === 3) return { label: 'Venc. 3 dias', variant: 'warning', Icon: Clock }
-  if (diffDays >= 4 && diffDays <= 7) return { label: 'Próximo Venc.', variant: 'warning', Icon: Clock }
+  if (diffDays === 0) return { label: 'Vence Hoje', variant: 'warning', Icon: Clock }
+  if (diffDays === 2) return { label: 'Vence 2 dias', variant: 'warning', Icon: Clock }
+  if (diffDays === 3) return { label: 'Vence 3 dias', variant: 'warning', Icon: Clock }
 
   return { label: 'Pendente', variant: 'secondary', Icon: Clock }
 }
@@ -419,7 +417,7 @@ export default function ContasPagar() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Seletor de Mês */}
-          <div className="w-[160px]">
+          <div className="w-40">
             <Select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
               {MONTHS.map((m) => (
                 <option key={m.value} value={m.value}>
