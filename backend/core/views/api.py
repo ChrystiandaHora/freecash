@@ -199,47 +199,9 @@ class DashboardAPIView(APIView):
             (saldo_mes / total_receitas * 100.0) if total_receitas > 0 else None
         )
 
-        # Card "Status das contas" continua por data_prevista
-        contas_mes = Conta.objects.filter(
-            usuario=usuario,
-            tipo=Conta.TIPO_DESPESA,
-            data_prevista__gte=periodo.inicio,
-            data_prevista__lt=periodo.fim,
-        ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-
-        contas_pendentes = contas_mes.filter(transacao_realizada=False).count()
-        contas_pagas = contas_mes.filter(transacao_realizada=True).count()
-        contas_atrasadas = contas_mes.filter(
-            transacao_realizada=False, data_prevista__lt=hoje
-        ).count()
-
-        # Próximas contas (inclui atrasadas, ordenadas por vencimento)
-        upcoming_bills = (
-            Conta.objects.filter(
-                usuario=usuario,
-                tipo=Conta.TIPO_DESPESA,
-                transacao_realizada=False,
-            )
-            .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-            .select_related("categoria")
-            .order_by("data_prevista")[:5]
-        )
-
-        # Transações recentes continuam por CAIXA (realizadas)
-        ultimas_transacoes = (
-            Conta.objects.filter(usuario=usuario, transacao_realizada=True)
-            .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-            .select_related("categoria")
-            .order_by("-data_realizacao", "-id")[:7]
-        )
-
         resumo_3_meses = resumo_ultimos_3_meses_competencia(usuario, periodo.inicio)
         saldo_prev = receitas_prev - despesas_prev
         saldo_pct = pct_change(saldo_mes, saldo_prev)
-
-        # Serialização das listas
-        upcoming_serialized = ContaSerializer(upcoming_bills, many=True).data
-        recentes_serialized = ContaSerializer(ultimas_transacoes, many=True).data
 
         payload = {
             "periodo": periodo.idx,
@@ -253,9 +215,6 @@ class DashboardAPIView(APIView):
             "saldo_pct": saldo_pct,
             "media_gasto_dia": media_gasto_dia,
             "taxa_poupanca": taxa_poupanca,
-            "contas_pagas": contas_pagas,
-            "contas_pendentes": contas_pendentes,
-            "contas_atrasadas": contas_atrasadas,
             "grafico_diario": {
                 "labels": dias_labels,
                 "receitas": receitas_dias,
@@ -269,8 +228,6 @@ class DashboardAPIView(APIView):
             },
             "breakdown_despesas": breakdown_items,
             "top_categoria": top_categoria,
-            "proximas_contas": upcoming_serialized,
-            "ultimas_transacoes": recentes_serialized,
             "resumo_3_meses": resumo_3_meses,
         }
 

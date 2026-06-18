@@ -11,10 +11,9 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
-import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  LogOut,
   Menu, 
   X, 
   Sun, 
@@ -116,7 +115,6 @@ export default function DashboardLayout() {
       label: 'Geral',
       items: [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'BI Executivo', path: '/dashboard/executivo', icon: TrendingUp },
         { name: 'Relatórios', path: '/relatorios', icon: FileText },
       ]
     },

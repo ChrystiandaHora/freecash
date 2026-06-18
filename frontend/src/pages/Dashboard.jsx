@@ -12,19 +12,14 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
-import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Wallet, 
-  TrendingUp, 
-  Calendar, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Clock,
-  ArrowRight,
-  TrendingDown,
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  Calendar,
+  CheckCircle2,
+  AlertTriangle,
   RefreshCw,
-  Percent,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -80,7 +75,7 @@ export default function Dashboard() {
   });
 
   // Fetch dashboard data
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard', periodo, periodo === -1 ? customDate : null],
     queryFn: async () => {
       const params = {};
@@ -131,15 +126,10 @@ export default function Dashboard() {
     saldo_pct = 0,
     media_gasto_dia = 0,
     taxa_poupanca = null,
-    contas_pagas = 0,
-    contas_pendentes = 0,
-    contas_atrasadas = 0,
     grafico_diario = { labels: [], receitas: [], despesas: [] },
     grafico_projetado = { labels: [], receitas: [], despesas: [], saldos: [] },
     breakdown_despesas = [],
     top_categoria = null,
-    proximas_contas = [],
-    ultimas_transacoes = [],
   } = data;
 
   // Configuration for Cash Flow Chart (Daily)
@@ -453,15 +443,6 @@ export default function Dashboard() {
             </>
           )}
           
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refetch()}
-            className="rounded-xl h-9 w-9 shrink-0"
-            disabled={isFetching}
-          >
-            <RefreshCw className={`h-4 w-4 text-muted-foreground ${isFetching ? 'animate-spin' : ''}`} />
-          </Button>
         </div>
       </div>
 
@@ -668,183 +649,32 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Bill Status & Projections Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Bill Status Check Widget */}
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-bold text-foreground">
-              Status de Despesas do Mês
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Acompanhamento de pagamentos planejados
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-primary/10 border border-primary/20">
-                <span className="text-primary font-extrabold text-xl">{contas_pagas}</span>
-                <span className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider mt-1 text-center">Pagas</span>
-              </div>
-              <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <span className="text-amber-500 font-extrabold text-xl">{contas_pendentes}</span>
-                <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 text-center">Pendentes</span>
-              </div>
-              <div className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-                <span className="text-rose-500 font-extrabold text-xl">{contas_atrasadas}</span>
-                <span className="text-[10px] font-semibold text-rose-600 uppercase tracking-wider mt-1 text-center font-bold animate-pulse">Atrasadas</span>
-              </div>
+      {/* Projected 6 Months Chart */}
+      <Card className="border-border/40 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-bold text-foreground">
+            Fluxo Projetado (6 Meses)
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Simulação de receitas, despesas e saldos para os próximos períodos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {grafico_projetado?.labels?.length > 0 ? (
+            <Chart
+              key={`proj-${periodo}-${customDate.mes}-${customDate.ano}`}
+              options={projectedChartOptions}
+              series={projectedChartSeries}
+              type="bar"
+              height={260}
+            />
+          ) : (
+            <div className="flex h-64 items-center justify-center text-xs text-muted-foreground font-medium">
+              Carregando projeções...
             </div>
-            
-            <div className="flex items-center justify-between text-xs bg-muted border border-border/40 rounded-xl p-3.5">
-              <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                <Clock className="h-4 w-4 text-primary" />
-                <span>Atualização silenciosa</span>
-              </div>
-              <span className="font-semibold text-foreground">100% Sincronizado</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Projected 6 Months Chart */}
-        <Card className="lg:col-span-2 border-border/40 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-bold text-foreground">
-              Fluxo Projetado (6 Meses)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Simulação de receitas, despesas e saldos para os próximos períodos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {grafico_projetado?.labels?.length > 0 ? (
-              <Chart
-                key={`proj-${periodo}-${customDate.mes}-${customDate.ano}`}
-                options={projectedChartOptions}
-                series={projectedChartSeries}
-                type="bar"
-                height={260}
-              />
-            ) : (
-              <div className="flex h-[260px] items-center justify-center text-xs text-muted-foreground font-medium">
-                Carregando projeções...
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Lists of Transactions / Upcoming Bills */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Upcoming Bills List */}
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-bold text-foreground">
-              Próximos Vencimentos
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Próximas despesas planejadas no sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="overflow-x-auto font-sans">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border/40 text-muted-foreground font-semibold">
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Descrição</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Categoria</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Vencimento</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground text-right">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {proximas_contas && proximas_contas.length > 0 ? (
-                    proximas_contas.map((conta, idx) => (
-                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-3.5 font-medium text-foreground">
-                          {conta.descricao}
-                        </td>
-                        <td className="px-6 py-3.5 text-muted-foreground">
-                          {conta.categoria_nome || 'Sem Categoria'}
-                        </td>
-                        <td className="px-6 py-3.5 text-muted-foreground font-semibold">
-                          {new Date(conta.data_prevista + 'T12:00:00').toLocaleDateString('pt-BR')}
-                        </td>
-                        <td className="px-6 py-3.5 text-right font-bold text-rose-600 dark:text-rose-400">
-                          {formatCurrency(conta.valor)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-muted-foreground">
-                        Nenhuma conta pendente para os próximos dias!
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Transactions List */}
-        <Card className="border-border/40 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-bold text-foreground">
-              Histórico Recente (Caixa)
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Últimos lançamentos liquidados e efetivados
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="overflow-x-auto font-sans">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border/40 text-muted-foreground font-semibold">
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Descrição</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Categoria</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground">Data</th>
-                    <th className="px-6 py-3 font-semibold text-muted-foreground text-right">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {ultimas_transacoes && ultimas_transacoes.length > 0 ? (
-                    ultimas_transacoes.map((trans, idx) => {
-                      const isReceita = trans.tipo === 'R';
-                      return (
-                        <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-6 py-3.5 font-medium text-foreground">
-                            {trans.descricao}
-                          </td>
-                          <td className="px-6 py-3.5 text-muted-foreground">
-                            {trans.categoria_nome || 'Sem Categoria'}
-                          </td>
-                          <td className="px-6 py-3.5 text-muted-foreground font-semibold">
-                            {new Date(trans.data_realizacao + 'T12:00:00').toLocaleDateString('pt-BR')}
-                          </td>
-                          <td className={`px-6 py-3.5 text-right font-bold ${isReceita ? 'text-primary' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {isReceita ? '+' : '-'}{formatCurrency(trans.valor)}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-muted-foreground">
-                        Nenhum histórico de caixa recente liquidado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
 
     </div>
   );

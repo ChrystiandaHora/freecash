@@ -50,7 +50,6 @@ import FerramentasImportar from './pages/FerramentasImportar';
 import ComprasCartao from './pages/ComprasCartao';
 import FerramentasBackup from './pages/FerramentasBackup';
 import AjustesPagamentos from './pages/AjustesPagamentos';
-import DashboardExecutivo from './pages/DashboardExecutivo';
 
 // Create TanStack Query Client
 const queryClient = new QueryClient({
@@ -123,7 +122,6 @@ function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="dashboard/executivo" element={<DashboardExecutivo />} />
                 <Route path="relatorios" element={<Relatorios />} />
                 
                 <Route path="contas-pagar" element={<ContasPagar />} />
