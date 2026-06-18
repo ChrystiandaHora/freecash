@@ -26,6 +26,11 @@ export const pagarConta = async (id) => {
   return data
 }
 
+export const desfazerPagamentoConta = async (id) => {
+  const { data } = await api.put(`/api/financeiro/contas-pagar/${id}/desfazer-pagamento/`)
+  return data
+}
+
 export const createContasPagarLote = async (payload) => {
   const { data } = await api.post('/api/financeiro/contas-pagar/lote/', payload)
   return data

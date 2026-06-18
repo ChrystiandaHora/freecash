@@ -676,6 +676,21 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         conta.marcar_realizada()
         return Response(ContasPagarAPISerializer(conta, context={'request': request}).data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['put'], url_path='desfazer-pagamento')
+    def desfazer_pagamento(self, request, pk=None) -> Response:
+        """Reverte o status de pago da despesa, retornando-a a pendente.
+
+        Args:
+            request (Request): Requisição HTTP.
+            pk (str, optional): ID da conta.
+
+        Returns:
+            Response: Despesa revertida serializada.
+        """
+        conta = self.get_object()
+        conta.desmarcar_realizada()
+        return Response(ContasPagarAPISerializer(conta, context={'request': request}).data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'], url_path='lote')
     def lote(self, request) -> Response:
         """Registra múltiplos lançamentos de despesa simultaneamente de forma atômica.

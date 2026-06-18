@@ -17,11 +17,11 @@ import { z } from 'zod';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
   CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil, CreditCard, ExternalLink,
-  Trash2
+  Trash2, RotateCcw
 } from 'lucide-react';
 
 
-import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta, deleteContaPagar } from '../services/financeiro';
+import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -117,6 +117,7 @@ export default function ContasPagar() {
   const [editingConta, setEditingConta] = useState(null)
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
+  const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
   const [fadingIds, setFadingIds] = useState(new Set())
 
   // Filtros de Mês e Ano
@@ -157,6 +158,18 @@ export default function ContasPagar() {
         setFadingIds(new Set())
         setDeleteId(null)
       }, 500)
+    },
+  })
+
+  // Mutation: desfazer pagamento
+  const desfazerPagamentoMutation = useMutation({
+    mutationFn: desfazerPagamentoConta,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
+      setDesfazerPagamentoId(null)
+      setModalOpen(false)
+      setEditingConta(null)
+      reset()
     },
   })
 
@@ -543,6 +556,36 @@ export default function ContasPagar() {
         </div>
       </Modal>
 
+      {/* ─── Modal: Desfazer Pagamento ────────────────────────────────────────── */}
+      <Modal
+        isOpen={!!desfazerPagamentoId}
+        onClose={() => { setDesfazerPagamentoId(null); setEditingConta(null); reset() }}
+        title="Desfazer Pagamento"
+        description={
+          editingConta?.eh_fatura_cartao
+            ? "Esta é uma fatura de cartão. Desfazer o pagamento irá reverter também todas as compras individuais desta fatura. Deseja continuar?"
+            : "Esta ação reverterá o status da conta para pendente. Deseja continuar?"
+        }
+      >
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" onClick={() => { setDesfazerPagamentoId(null); setEditingConta(null); reset() }}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => desfazerPagamentoMutation.mutate(desfazerPagamentoId)}
+            disabled={desfazerPagamentoMutation.isPending}
+            className="bg-amber-600 hover:bg-amber-700 text-white border-0"
+          >
+            {desfazerPagamentoMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="mr-2 h-4 w-4" />
+            )}
+            Confirmar Reversão
+          </Button>
+        </div>
+      </Modal>
+
       {/* ─── Modal: Nova Conta ────────────────────────────────────────────────── */}
       <Modal
         isOpen={modalOpen}
@@ -609,6 +652,24 @@ export default function ContasPagar() {
             <p className="text-sm text-red-500">
               Erro ao salvar conta. Tente novamente.
             </p>
+          )}
+
+          {editingConta?.pago && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-amber-800 dark:text-amber-300">
+                Esta conta está marcada como <strong>paga</strong>. Deseja reverter o status?
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-amber-400 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-300"
+                onClick={() => { setModalOpen(false); setDesfazerPagamentoId(editingConta.id) }}
+              >
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                Desfazer Pagamento
+              </Button>
+            </div>
           )}
 
           <div className="flex justify-end gap-3 pt-2">

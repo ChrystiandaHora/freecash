@@ -180,6 +180,7 @@ class DashboardInvestimentoService:
             total_rentabilidade_percentual = (total_rentabilidade / total_compras) * 100
 
         historico_service = CarteiraHistoricoService(self.user)
+        historico_service.atualizar()
         performance_monthly = historico_service.series_mensal(meses=36)
         performance_yearly = historico_service.series_anual(anos=10)
 
