@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} Tela de controle de contas a pagar contendo KPIs de pendências e tabela CRUD.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -215,6 +215,26 @@ export default function ContasPagar() {
     })
     setModalOpen(true)
   }
+
+  // ─── Ordenação inteligente: atrasadas → pendentes → pagas ─────────────────
+  const contasOrdenadas = useMemo(() => {
+    const todayMs = new Date().setHours(0, 0, 0, 0)
+
+    const prioridade = (c) => {
+      if (c.pago) return 3
+      const [y, m, d] = c.data_vencimento.split('-')
+      const due = new Date(Number(y), Number(m) - 1, Number(d)).setHours(0, 0, 0, 0)
+      if (due < todayMs) return 0  // atrasada
+      if (due === todayMs) return 1 // vence hoje
+      return 2                      // pendente futura
+    }
+
+    return [...contas].sort((a, b) => {
+      const diff = prioridade(a) - prioridade(b)
+      if (diff !== 0) return diff
+      return a.data_vencimento.localeCompare(b.data_vencimento)
+    })
+  }, [contas])
 
   // ─── KPIs ──────────────────────────────────────────────────────────────────
   const pendentes = contas.filter((c) => !c.pago)
@@ -489,14 +509,12 @@ export default function ContasPagar() {
       <div>
         <DataTable
           columns={columns}
-          data={contas.map((c) => ({
+          data={contasOrdenadas.map((c) => ({
             ...c,
             _fading: fadingIds.has(c.id),
           }))}
           isLoading={isLoading}
           pageSize={10}
-          defaultSortKey="data_vencimento"
-          defaultSortDir="asc"
           emptyMessage="Nenhuma conta cadastrada para o período selecionado."
           rowClassName={(row) =>
             row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
