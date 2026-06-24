@@ -1,235 +1,333 @@
-# 💸 FreeCash
+# FreeCash
 
-**FreeCash** é uma solução completa de nível profissional para gestão financeira pessoal e controle avançado de investimentos. A aplicação combina um poderoso ecossistema de retaguarda (Backend) em **Django 6.0** com uma interface de usuário dinâmica, reativa e moderna em **React 19** e **Tailwind CSS v4**.
+**FreeCash** é uma suíte completa de gestão financeira pessoal e controle avançado de investimentos. A aplicação combina uma API robusta em **Django 6** com uma interface moderna e reativa em **React 19** e **Tailwind CSS v4**, entregando controle patrimonial de nível profissional direto no seu servidor.
 
-Desenvolvido para oferecer controle patrimonial absoluto, o FreeCash não se limita a apenas registrar entradas e saídas; ele integra a consolidação de carteiras multi-ativos com as normas padrão de mercado, cotações atualizadas via integração de mercado e automação total com containers Docker e inteligência de orquestração de rede local.
-
----
-
-## 🚀 Funcionalidades Principais
-
-### 1. Gestão Financeira Pessoal (`core`)
-*   **Dashboard de Fluxo de Caixa**: Visão analítica de receitas, despesas e saldo líquido consolidado no mês, com suporte a breakdowns gráficos e categorização de despesas.
-*   **Controle de Contas a Pagar/Receber**: Registro de compromissos agendados por data de vencimento com alertas visuais intuitivos para contas vencidas ou próximas do prazo.
-*   **Sistema de Faturas de Cartão de Crédito**: Módulo dedicado para cartões com dias específicos de fechamento e vencimento, automatizando o agrupamento de despesas e controle de limite.
-*   **Importação Inteligente de Extratos**: Processamento e conciliação de extratos bancários gerados por grandes instituições (Nubank, Banco Inter, Itaú, Bradesco, etc.) em formatos tabulares, mapeando automaticamente as linhas de extrato para transações financeiras.
-*   **Backup e Exportação**: Mecanismos integrados para exportar bases históricas de usuários em planilhas XLSX e importar backups legados de forma íntegra.
-
-### 2. Gestão Avançada de Investimentos (`investimento`)
-*   **Hierarquia de Ativos ANBIMA (3 Níveis)**: Organização estrutural estrita para alocação de carteira de investimentos:
-    *   **Nível 1 (Classe)**: Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos.
-    *   **Nível 2 (Categoria)**: Pós-fixado, Inflação (IPCA), Pré-fixado, Ações, FIIs, ETFs, Moedas, Moedas Digitais.
-    *   **Nível 3 (Subcategoria)**: Tesouro Selic, CDB/RDB, LCI/LCA, Ações Brasil, BDRs, FII de Tijolo, FII de Papel, Bitcoin, Ethereum, etc.
-*   **Carteira Multi-Ativos**: Suporte nativo e parametrizado para Renda Fixa (Vencimento, Emissor, Indexador e Taxa), Renda Variável, Criptoativos e Fundos.
-*   **Cálculo Automático de Posição**: Controle nativo de **Preço Médio (PM)** e **Quantidade Acumulada** baseado em compras e vendas com compensações dinâmicas de taxas e corretagem.
-*   **Gestão de Proventos**: Registro e rastreamento de dividendos, JCP (Juros sobre Capital Próprio) e rendimentos recebidos, com impacto direto na rentabilidade histórica do ativo.
-*   **Cotações em Tempo Real**: Integração técnica com APIs de mercado financeiro (Yahoo Finance via `yfinance`) para atualizar preços de fechamento diários e calcular a rentabilidade real comparada com o custo médio.
-
-### 3. Dynamic Port Orchestrator (`run.sh` & `run.py`)
-*   **Zero-Configuration Dev**: Script de orquestração local que analisa automaticamente se as portas padrão (`5432` para PostgreSQL, `8000` para Django, `5173` para React) estão ocupadas por outros processos no Host.
-*   **Resolução Dinâmica**: Em caso de conflito, o FreeCash remapeia automaticamente os serviços para as próximas portas disponíveis e gera dinamicamente as variáveis correspondentes no arquivo `.env.docker`, garantindo que os containers e a API se comuniquem perfeitamente sem qualquer intervenção manual do desenvolvedor. Disponível em versão Bash universal `./run.sh` (com zero dependências do host) e Python `run.py`.
+Vai além do registro de entradas e saídas: integra carteira multi-ativos com hierarquia ANBIMA, cotações em tempo real, pipeline Kanban de contas, importação de extratos bancários, DRE mensal e backup criptografado — tudo num ecossistema isolado em containers Docker.
 
 ---
 
-## 🛠 Tech Stack
+## Telas do Sistema
 
-O ecossistema do FreeCash é construído sobre ferramentas modernas e estáveis de desenvolvimento de software:
+### Login e Dashboard Principal
 
-### Backend (API & Lógica)
-*   **Linguagem & Framework**: `Python 3.12+` e `Django 6.0+`
-*   **Banco de Dados**: `PostgreSQL 16` via driver assíncrono `psycopg3`
-*   **API Engine**: `Django REST Framework (DRF)` para endpoints RESTful de alta performance.
-*   **Segurança**: `djangorestframework-simplejwt` para autenticação baseada em tokens JWT.
-*   **Integração de Mercado**: `yfinance` para consultas de cotações financeiras globais e nacionais em tempo real.
-*   **Processamento de Dados**: `pandas` e `openpyxl` para manipulação, importação e exportação de planilhas.
-*   **Engine de PDFs**: `reportlab` e `pdfplumber` para geração e leitura de relatórios financeiros e extratos.
-*   **Serviço de Arquivos**: `whitenoise` para servir arquivos estáticos otimizados diretamente pelo container Django.
+| Tela de Login | Dashboard Financeiro |
+|---|---|
+| ![Login](docs/screenshots/00-login.png) | ![Dashboard](docs/screenshots/01-dashboard.png) |
 
-### Frontend (Interface de Usuário)
-*   **Linguagem & Framework**: `React 19` e `Vite 6+`
-*   **Estilização**: `Tailwind CSS v4` usando configuração nativa baseada em CSS e compilação ultra veloz.
-*   **State & Cache Management**: `@tanstack/react-query` para sincronização de estado com a API do backend, com invalidação de cache inteligente.
-*   **Formulários**: `react-hook-form` acoplado com validações de dados rigorosas do `zod` via `@hookform/resolvers`.
-*   **Roteamento**: `react-router-dom v7` para controle de rotas de página única (SPA).
-*   **Visualização Gráfica**: `react-apexcharts` para gráficos interativos de fluxo de caixa e alocação de carteira.
-*   **Ícones**: `lucide-react` para biblioteca unificada de ícones modernos.
-
-### Infraestrutura & Orquestração
-*   **Containers**: `Docker` e `Docker Compose` para isolamento total de serviços.
-*   **Orquestrador de Rede**: Script personalizado `run.py` e `./run.sh` para análise ativa e resolução de conflitos de portas.
+> O dashboard consolida receitas, despesas e saldo do mês em tempo real, com gráfico de fluxo de caixa diário, breakdown de maiores gastos por categoria e projeção de 6 meses.
 
 ---
 
-## 📋 Pré-requisitos
+### Gestão Financeira
 
-Para executar e desenvolver o FreeCash localmente, certifique-se de possuir:
+| Contas a Pagar | Pipeline Kanban |
+|---|---|
+| ![Contas a Pagar](docs/screenshots/02-contas-pagar.png) | ![Pipeline Kanban](docs/screenshots/03-pipeline-kanban.png) |
 
-*   **Docker** instalado e configurado (com suporte ao comando `docker compose`).
-*   **Python 3.12+** (caso opte pela execução manual fora de containers).
-*   **Node.js 20+** e **npm** (para desenvolvimento do Frontend local).
-
----
-
-## ⚡ Como Rodar o Projeto
-
-O FreeCash oferece duas abordagens para execução: com isolamento completo via Docker (Recomendado) ou localmente de forma manual.
-
-### Opção A: Docker & Port Orchestrator (Recomendado)
-
-O orquestrador gerencia todo o ecossistema. Ele realiza a verificação de portas no host, configura as variáveis necessárias em um arquivo temporário de ambiente `.env.docker` e inicializa o Docker Compose. 
-
-Tanto o script Bash quanto o Python configuram automaticamente o arquivo `.env` a partir do `.env_example` na primeira execução caso você não o possua.
-
-#### 1. Execute o Orquestrador Dinâmico
-
-*   **Método Recomendado (Universal - Zero Dependências de Linguagem)**:
-    ```bash
-    chmod +x run.sh
-    ./run.sh
-    ```
-*   **Método Alternativo (Requer Python 3 instalado no Host)**:
-    ```bash
-    python3 run.py
-    ```
-
-#### 2. Acesse a Aplicação:
-*   **Frontend Client**: [http://localhost:5173](http://localhost:5173) (ou a porta dinamicamente mapeada pelo terminal).
-*   **Backend API**: [http://localhost:8000/api/](http://localhost:8000/api/)
-*   **PostgreSQL**: Disponível localmente na porta informada pelo terminal (ex: `5433` em caso de conflito na `5432`).
-
-*Para encerrar os containers graciosamente, basta pressionar `Ctrl+C` no terminal.*
+> **Contas a Pagar** apresenta status visual inteligente (Atrasado, Pendente, Pago) com alertas de vencimento. O **Pipeline Kanban** permite arrastar contas entre colunas — ao mover para "Pagas", o pagamento é registrado automaticamente no backend.
 
 ---
 
-### Opção B: Localmente (Manual)
+### Carteira de Investimentos
 
-#### 1. Configuração do Backend
-1.  **Crie e ative o ambiente virtual**:
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate  # No Windows: .venv\Scripts\activate
-    ```
-2.  **Instale os pacotes requeridos**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  **Configure as variáveis de ambiente**:
-    ```bash
-    cp .env_example .env
-    ```
-    Ajuste as configurações no `.env` conforme necessário para o seu banco de dados PostgreSQL local.
-4.  **Execute as migrações de banco e crie o Superusuário**:
-    ```bash
-    python manage.py migrate
-    python manage.py createsuperuser
-    ```
-5.  **Rode o servidor de desenvolvimento**:
-    ```bash
-    python manage.py runserver 127.0.0.1:8000
-    ```
+| Dashboard de Investimentos | Meus Ativos |
+|---|---|
+| ![Investimentos](docs/screenshots/07-investimentos-dashboard.png) | ![Meus Ativos](docs/screenshots/08-meus-ativos.png) |
 
-#### 2. Configuração do Frontend (Vite + React)
-Em uma nova janela de terminal, navegue até a pasta `frontend/`:
-1.  **Instale as dependências JavaScript**:
-    ```bash
-    cd frontend
-    npm install
-    ```
-2.  **Inicie o servidor de desenvolvimento**:
-    ```bash
-    npm run dev
-    ```
-3.  Acesse [http://localhost:5173](http://localhost:5173). O cliente React se conectará automaticamente com o backend do Django rodando em `localhost:8000`.
+> O painel de investimentos exibe patrimônio total, rentabilidade acumulada, alocação por classe em gráfico donut e a árvore hierárquica ANBIMA expansível. A tabela de ativos mostra ticker, quantidade, preço médio, cotação atual e retorno colorido.
 
 ---
 
-## 📂 Estrutura do Repositório
+### Balanceamento e Relatórios
 
-O projeto é organizado de forma modular, separando responsabilidades de negócio de forma nítida:
+| Balanceamento de Carteira | Relatórios Financeiros (DRE) |
+|---|---|
+| ![Balanceamento](docs/screenshots/09-balanceamento.png) | ![Relatórios](docs/screenshots/11-relatorios.png) |
 
-```text
+> O **Balanceador** calcula o aporte ideal por ativo com sliders de meta percentual — indica exatamente quanto comprar para atingir a alocação alvo. Os **Relatórios** geram DRE completo com EBITDA, Resultado Líquido e margem líquida por ano.
+
+---
+
+## Funcionalidades
+
+### Financeiro Pessoal (`core`)
+
+**Dashboard de Fluxo de Caixa**
+- KPIs: Receita Total, Despesas Totais, Saldo Líquido com variação vs. mês anterior
+- Gráfico de área de fluxo diário (receitas x despesas)
+- Breakdown de maiores categorias de gastos (donut chart)
+- Projeção de fluxo de caixa para os próximos 6 meses
+- Seletor de período: mês atual, anterior, próximo ou intervalo personalizado
+
+**Contas a Pagar / Contas a Receber**
+- CRUD completo com formulário validado (React Hook Form + Zod)
+- Status inteligente: Atrasado, Pendente, Vence Hoje, Pago
+- Ação de pagamento rápido com desfazer (undo)
+- Cadastro em lote via tabela editável
+- Filtros por mês/ano
+
+**Pipeline Kanban**
+- Quadro visual com 5 colunas: Atrasadas / Para Hoje / Próximos 7 Dias / Final do Mês / Pagas
+- Drag-and-drop: arrastar para "Pagas" registra o pagamento via API automaticamente
+- KPIs de total pendente, atrasado e pago no topo
+
+**Receitas**
+- Controle de receitas recorrentes e avulsas
+- Status: Previsto, Recebido, Atrasado
+- KPIs: Total Previsto, Total Recebido, A Receber
+
+**Extrato de Transações**
+- Listagem cronológica de todas as movimentações agrupadas por dia
+- Busca por descrição, categoria ou valor
+
+**Cartões de Crédito**
+- Cadastro de cartões com limite, dia de fechamento, dia de vencimento e cor personalizada
+- Gauge de utilização do limite por cartão
+- Histórico de compras recentes por cartão
+- Importação de faturas PDF (Nubank, Santander)
+
+**Relatórios Financeiros**
+- DRE (Demonstração do Resultado) anual com Receita Bruta, Despesas Operacionais, EBITDA e Resultado Líquido com margem
+- Fluxo de caixa consolidado por ano
+- Heatmap de sazonalidade de despesas (últimos 6 meses)
+- Exportação para PDF via impressão do navegador
+
+---
+
+### Gestão de Investimentos (`investimento`)
+
+**Dashboard de Investimentos**
+- KPIs: Patrimônio Total, Total Investido, Rentabilidade Acumulada, Proventos Recebidos
+- Gráfico de alocação patrimonial por classe de ativo (donut chart)
+- Árvore ANBIMA expansível: Classe → Categoria → Subcategoria → Ativo
+- Gráfico de Efeito Bola de Neve (renda passiva acumulada ao longo do tempo)
+- Dois modos: Visão da Carteira e Balanceador Ideal
+
+**Hierarquia ANBIMA de 3 Níveis**
+- **Nível 1 — Classe:** Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos
+- **Nível 2 — Categoria:** Pós-fixado, IPCA, Pré-fixado, Ações, FIIs, ETFs, Moedas, Moedas Digitais
+- **Nível 3 — Subcategoria:** Tesouro Selic, CDB/RDB, LCI/LCA, Ações Brasil, BDRs, FII de Tijolo, FII de Papel, Bitcoin, Ethereum, etc.
+- Estrutura criada automaticamente para cada novo usuário via Django Signals
+
+**Meus Ativos**
+- Tabela com Ticker, Quantidade, Preço Médio, Cotação Atual, Valor Total e Retorno (% colorido)
+- Busca e filtro por classe de ativo
+- Atualização de cotações via Yahoo Finance (yfinance) com um clique
+- CRUD completo: cadastro de ações, FIIs, ETFs, renda fixa (com indexador, taxa, vencimento) e criptoativos
+
+**Detalhe do Ativo**
+- 3 abas: Dados Gerais, Rentabilidade e Histórico de Transações
+- Posição atual: quantidade, preço médio, cotação, valor e retorno
+- Renda fixa: emissor, indexador (CDI, IPCA, SELIC, Pré), taxa e data de vencimento
+
+**Balanceamento de Carteira**
+- Sliders de meta percentual por ativo (botões +/−)
+- Validador em tempo real: soma das metas deve ser exatamente 100%
+- Cálculo do aporte ideal: quanto comprar de cada ativo para atingir a alocação alvo
+- Scatter plot: rentabilidade vs. desvio da meta (Balanceador Ideal)
+
+**Histórico de Transações**
+- Ledger cronológico de todas as operações: Compra (C), Venda (V), Provento (D)
+- Filtros por tipo de transação e busca por ticker
+- CRUD: adicionar, editar e excluir transações com recálculo automático de preço médio
+
+**Cálculo Automático de Posição**
+- Django Signal `atualizar_ativo_apos_transacao` recalcula Preço Médio e Quantidade sempre que uma transação é criada, editada ou removida
+
+---
+
+### Ferramentas
+
+**Importação de Extratos**
+- Engine universal para extratos bancários (Nubank, Banco Inter, Itaú, Bradesco) em XLS/CSV
+- Mapeamento automático de linhas para transações com conciliação
+
+**Backup e Exportação**
+- Formatos: Excel (.xlsx), CSV, PDF e `.fcbk` (backup proprietário)
+- Backup `.fcbk` criptografado com AES-GCM e senha opcional
+- Escopo por data ou exportação completa
+
+**Importação de Backup**
+- Drag-and-drop de arquivo `.fcbk` com suporte a senha
+- Relatório de importação: registros criados e atualizados por categoria
+
+**Ajustes de Pagamentos**
+- Cadastro e gerenciamento de cartões de crédito e contas bancárias
+- Toggle ativo/inativo por cartão
+- Paleta de cores e ícones personalizáveis (Nubank, Inter, Itaú, Bradesco...)
+
+---
+
+## Tech Stack
+
+### Backend
+| Tecnologia | Uso |
+|---|---|
+| Python 3.12 + Django 6 | Core da API |
+| Django REST Framework | Endpoints RESTful |
+| PostgreSQL 16 + psycopg3 | Banco de dados |
+| djangorestframework-simplejwt | Autenticação JWT via cookies HttpOnly |
+| yfinance | Cotações de mercado (Yahoo Finance) |
+| pandas + openpyxl | Importação/exportação de planilhas |
+| pdfplumber + reportlab | Leitura e geração de PDFs |
+| whitenoise | Servir arquivos estáticos |
+
+### Frontend
+| Tecnologia | Uso |
+|---|---|
+| React 19 + Vite 6 | SPA com HMR |
+| Tailwind CSS v4 | Estilização nativa baseada em CSS |
+| TanStack React Query | Cache e sincronização com a API |
+| React Hook Form + Zod | Formulários com validação tipada |
+| React Router Dom v7 | Roteamento SPA |
+| ApexCharts | Gráficos interativos |
+| Lucide React | Ícones vetoriais |
+
+### Infraestrutura
+| Tecnologia | Uso |
+|---|---|
+| Docker + Docker Compose | Isolamento de serviços |
+| `run.sh` / `run.py` | Orquestrador local com resolução dinâmica de portas |
+
+---
+
+## Como Rodar
+
+### Opção A: Docker (Recomendado)
+
+O orquestrador detecta conflitos de porta automaticamente e configura o ambiente.
+
+```bash
+# Método recomendado (zero dependências no host além do Docker)
+chmod +x run.sh
+./run.sh
+
+# Ou com Python
+python3 run.py
+```
+
+Acesso após subir:
+- **Frontend:** http://localhost:5173
+- **API:** http://localhost:8000/api/
+- **PostgreSQL:** porta 5432 (ou remapeada automaticamente)
+
+*Para encerrar, pressione `Ctrl+C`.*
+
+### Opção B: Execução Manual
+
+#### Backend
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+
+pip install -r backend/requirements.txt
+
+cp .env_example .env
+# Edite .env com suas credenciais do PostgreSQL
+
+cd backend
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 127.0.0.1:8000
+```
+
+#### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Acesse http://localhost:5173. O cliente React conecta automaticamente ao backend em `localhost:8000`.
+
+---
+
+## Estrutura do Repositório
+
+```
 freecash/
-├── backend/                    # ECOSSISTEMA BACKEND (DJANGO API)
-│   ├── core/                   # Módulo Financeiro Central (Contas, Cartões, Extratos)
-│   ├── investimento/           # Módulo de Investimentos (Ativos, ANBIMA, Transações, Cotações)
-│   ├── freecash/               # Configurações globais do projeto Django
-│   ├── manage.py               # Utilitário de gerenciamento do Django
-│   └── requirements.txt        # Dependências Python do backend
+├── backend/
+│   ├── core/                   # Módulo financeiro (contas, cartões, extratos, dashboard)
+│   │   ├── models.py           # Conta, CartaoCredito, Categoria, ExtratoImportado
+│   │   ├── views/api.py        # Endpoints DRF + autenticação JWT
+│   │   └── services/           # dashboard_helper, import_service
+│   ├── investimento/           # Módulo de investimentos (ativos, ANBIMA, cotações)
+│   │   ├── models.py           # Ativo, TransacaoInvestimento, ClasseAtivo, etc.
+│   │   ├── signals.py          # Recálculo automático de preço médio
+│   │   └── services/           # dashboard_service, calculators, yfinance sync
+│   ├── freecash/               # Configurações globais Django (settings, urls)
+│   └── requirements.txt
 │
-├── frontend/                   # CLIENTE REATIVO EM REACT 19 (SPA)
-│   ├── src/                    # Código fonte do React
-│   │   ├── components/         # Componentes UI reutilizáveis (botões, inputs, cards)
-│   │   ├── layouts/            # Estrutura base de páginas e Sidebar
-│   │   ├── pages/              # Telas da SPA (Dashboard, Investimentos, Extratos)
-│   │   ├── services/           # Comunicação com a API (Axios, React Query)
-│   │   └── App.jsx             # Ponto de entrada do React
-│   ├── tailwind.config.js      # Customização de temas visuais
-│   ├── package.json            # Manifesto de dependências e scripts do Frontend
-│   └── vite.config.js          # Configurações do Vite
+├── frontend/
+│   └── src/
+│       ├── pages/              # 20+ telas (Dashboard, Investimentos, Kanban, etc.)
+│       ├── components/         # UI atômico (Button, Card, Modal, DataTable...)
+│       ├── layouts/            # DashboardLayout com sidebar colapsável
+│       ├── services/           # Axios + custom hooks React Query por domínio
+│       └── App.jsx             # Roteamento + provedores globais
 │
-├── docker-compose.yml          # Definição e orquestração de containers locais
-├── Dockerfile.backend          # Receita de build do ambiente Django
-├── Dockerfile.frontend         # Receita de build do ambiente React
-├── Dockerfile.postgres         # Customização e inicialização do banco PostgreSQL
-└── run.py                      # Dynamic Port Orchestrator local
+├── docs/screenshots/           # Screenshots do sistema
+├── docker-compose.yml
+├── Dockerfile.backend
+├── Dockerfile.frontend
+├── Dockerfile.postgres
+├── run.sh                      # Orquestrador Bash (recomendado)
+└── run.py                      # Orquestrador Python alternativo
 ```
 
 ---
 
-## ⚙️ Arquitetura de Dados & Fluxo
+## Arquitetura
 
-### Ciclo de Requisição & Resposta (REST API)
+O FreeCash segue arquitetura SPA desacoplada. O React envia requisições via Axios autenticadas com JWT (cookie HttpOnly); o Django processa via DRF e retorna JSON; o React Query mantém o cache local sincronizado.
 
-O FreeCash funciona como uma arquitetura desacoplada (Decoupled SPA). A interface React envia requisições assíncronas utilizando **Axios** para a API Django. O Django processa a requisição, interage com o PostgreSQL via ORM e retorna um payload JSON estruturado que atualiza o estado local do React via **React Query**.
-
-```text
-+-----------------------+               HTTP REST (JSON)              +-----------------------+
-|  Vite + React 19 Client|  =======================================>  |     Django Backend    |
-|  (State, React Query) |  <=======================================  |  (DRF Views & Models) |
-+-----------------------+           Autenticação JWT Bearer           +-----------------------+
-            ||                                                                    ||
-            \/                                                                    \/
-+-----------------------+                                             +-----------------------+
-|   Local Cache / State |                                             |  ActiveRecord / ORM   |
-|   (ApexCharts, Zod)   |                                             |   (psycopg3 Driver)   |
-+-----------------------+                                             +-----------------------+
-                                                                                  ||
-                                                                                  \/
-                                                                      +-----------------------+
-                                                                      | PostgreSQL 16 Database|
-                                                                      +-----------------------+
 ```
+React 19 (Vite)          HTTP REST / JWT Bearer        Django 6 (DRF)
+  TanStack Query    ──────────────────────────────►   Views + Serializers
+  ApexCharts        ◄──────────────────────────────   ORM psycopg3
+  Zod / RHF                                               │
+                                                    PostgreSQL 16
+```
+
+**Django Signals** garantem integridade dos dados de investimentos sem lógica no cliente:
+- `criar_classificacao_padrao` — popula a árvore ANBIMA completa no cadastro de cada novo usuário
+- `atualizar_ativo_apos_transacao` — recalcula Preço Médio e Quantidade acumulada a cada operação
 
 ---
 
-## 🧪 Testes Automatizados
+## Pré-requisitos
 
-O backend do FreeCash possui cobertura de testes unitários e de integração para validar a integridade dos cálculos financeiros e as regras de negócio de investimentos.
+- **Docker** com suporte a `docker compose` (para o método recomendado)
+- **Python 3.12+** (para execução manual do backend)
+- **Node.js 20+** e **npm** (para desenvolvimento do frontend)
 
-Para rodar todos os testes unitários do sistema:
+---
+
+## Testes
+
 ```bash
+# Via Docker
 docker compose exec backend python manage.py test
-```
-Ou rodando localmente fora de containers:
-```bash
-python manage.py test
+
+# Local
+cd backend && python manage.py test
+
+# Suite específica
+python manage.py test investimento.tests
 ```
 
 ---
 
-## 🔍 Guia de Troubleshooting (Resolução de Problemas)
+## Troubleshooting
 
-### 1. Erro de Porta Ocupada ("Port already in use")
-*   **Sintoma**: Ao iniciar o Docker, o banco ou backend falha em subir alegando que a porta `5432` ou `8000` está alocada.
-*   **Solução**: Não inicie o projeto utilizando `docker compose up` diretamente. Execute sempre **`./run.sh`** (ou `python3 run.py`). O script detectará a porta ocupada no seu sistema operacional e remapeará os containers para portas livres sem exigir alterações manuais de arquivos.
+**Porta já em uso (`Port already in use`)**
+Nunca inicie com `docker compose up` diretamente. Use sempre `./run.sh` — ele detecta portas ocupadas e remapeia os containers automaticamente.
 
-### 2. Erro de Migrações Pendentes ("Database error - Relation does not exist")
-*   **Sintoma**: O Django reporta falha de tabela ausente ou erros de banco de dados ao tentar salvar transações.
-*   **Solução**: Se estiver rodando no Docker, os scripts automáticos aplicam as migrações na inicialização. Caso esteja executando manualmente, certifique-se de ativar o ambiente virtual e rodar:
-    ```bash
-    python manage.py migrate
-    ```
+**Migrações pendentes (`Relation does not exist`)**
+```bash
+python manage.py migrate
+```
 
-### 3. Containers sem Comunicação ("CORS error" ou "Network Error")
-*   **Sintoma**: O frontend React abre no navegador, mas as requisições para a API falham e as telas permanecem em loading infinito.
-*   **Solução**: Verifique se o backend está ativo. Se o backend estiver rodando em uma porta remapeada pelo orchestrator (ex: `8001`), confirme se a variável `VITE_API_URL` no frontend foi atualizada para apontar para a porta correta. O script orquestrador faz isso automaticamente gerando o arquivo `.env.docker`. Certifique-se de estar rodando os containers via **`./run.sh`** (ou `run.py`) para que a integração de portas seja gerada perfeitamente.
+**Frontend em loading infinito (CORS / Network Error)**
+Confirme que o backend está ativo e que `VITE_API_URL` aponta para a porta correta. O orquestrador `./run.sh` faz isso automaticamente gerando o `.env.docker`.
