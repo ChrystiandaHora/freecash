@@ -169,5 +169,24 @@ def export_user_data(user, password):
 
         data["data"][app_label][model_name] = records
 
+    # Exportar Cotacao manualmente, pois não possui usuario diretamente
+    from investimento.models import Ativo, Cotacao
+    ativos_usuario_ids = Ativo.objects.filter(usuario=user).values_list("id", flat=True)
+    cotacoes_qs = Cotacao.objects.filter(ativo_id__in=ativos_usuario_ids)
+    
+    cotacoes_records = []
+    for obj in cotacoes_qs:
+        row = {
+            "ativo_uuid": str(obj.ativo.uuid),
+            "data": obj.data.isoformat() if hasattr(obj.data, "isoformat") else str(obj.data),
+            "valor": float(obj.valor),
+        }
+        cotacoes_records.append(row)
+        
+    if "investimento" not in data["data"]:
+        data["data"]["investimento"] = {}
+    data["data"]["investimento"]["Cotacao"] = cotacoes_records
+
     return encrypt_data(data, password)
+
 

@@ -42,3 +42,9 @@ export const atualizarCotacoes = async () => {
   const { data } = await api.post('/api/investimentos/ativos/atualizar-cotacoes/');
   return data;
 };
+
+export const atualizarAtivo = async (id) => {
+  const { data } = await api.post(`/api/investimentos/ativos/${id}/atualizar/`);
+  return data;
+};
+

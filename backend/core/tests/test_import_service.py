@@ -214,3 +214,47 @@ class RestoreUserDataFcbkTests(TestCase):
             transacoes_outro.count(), 1,
             "O restore afetou o número de transações de outro usuário!"
         )
+
+    def test_export_import_cotacoes(self):
+        """Verifica se o histórico de cotações (Cotacao) é exportado e restaurado com sucesso.
+        """
+        from investimento.models import Cotacao
+        import datetime
+        from decimal import Decimal
+
+        # Cria uma cotação de teste para o ativo do usuário
+        data_cotacao = datetime.date(2026, 6, 24)
+        valor_cotacao = Decimal("35.50")
+        Cotacao.objects.create(
+            ativo=self.ativo,
+            data=data_cotacao,
+            valor=valor_cotacao
+        )
+
+        # Exporta backup
+        senha = "senha_de_teste"
+        encrypted = export_user_data(self.user, senha)
+        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+
+        # Garante que as cotações foram exportadas
+        cotacoes_no_backup = data_dict.get("data", {}).get("investimento", {}).get("Cotacao", [])
+        self.assertEqual(len(cotacoes_no_backup), 1)
+        self.assertEqual(cotacoes_no_backup[0]["ativo_uuid"], str(self.ativo.uuid))
+        self.assertEqual(float(cotacoes_no_backup[0]["valor"]), 35.50)
+
+        # Deleta tudo e reimporta
+        Cotacao.objects.all().delete()
+        Transacao.objects.filter(usuario=self.user).delete()
+        Ativo.objects.filter(usuario=self.user).delete()
+
+        restore_user_data_fcbk(data_dict, self.user)
+
+        # Verifica se a cotação foi restaurada e vinculada ao novo ativo correto
+        ativo_restaurado = Ativo.objects.get(usuario=self.user, ticker="PETR4")
+        cotações_restauradas = Cotacao.objects.filter(ativo=ativo_restaurado)
+        self.assertEqual(cotações_restauradas.count(), 1)
+        
+        cotacao = cotações_restauradas.first()
+        self.assertEqual(cotacao.data, data_cotacao)
+        self.assertEqual(cotacao.valor, valor_cotacao)
+

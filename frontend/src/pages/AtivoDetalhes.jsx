@@ -25,7 +25,7 @@ import {
 
 import api from '../services/api';
 import Chart from 'react-apexcharts';
-import { fetchAtivo, atualizarCotacoes } from '../services/investimentos';
+import { fetchAtivo, atualizarAtivo } from '../services/investimentos';
 import { useToast } from '../context/ToastContext';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -75,10 +75,10 @@ export default function AtivoDetalhes() {
   });
 
   /* ── Mutations ── */
-  const updateQuotesMutation = useMutation({
-    mutationFn: () => atualizarCotacoes(),
+  const updateAssetMutation = useMutation({
+    mutationFn: () => atualizarAtivo(id),
     onSuccess: (data) => {
-      // Invalida e força re-fetch de todos os dados relevantes
+      // Invalida e força re-fetch de todos os dados relevantes deste ativo
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['ativoDetalhe', id]);
       queryClient.invalidateQueries(['transacoesAtivo', id]);
@@ -86,25 +86,20 @@ export default function AtivoDetalhes() {
       queryClient.invalidateQueries(['investimentosBalanceamento']);
 
       const count = data?.count || 0;
-      const errors = data?.errors || [];
-
-      if (count > 0 && errors.length === 0) {
-        addToast(`${count} cotações atualizadas com sucesso!`, 'success');
-      } else if (count > 0 && errors.length > 0) {
-        addToast(`${count} cotações atualizadas, mas falharam alguns ativos.`, 'warning');
-      } else if (errors.length > 0) {
-        addToast(`Falha ao atualizar cotações: ${errors.slice(0, 3).join(' | ')}`, 'error');
+      if (count > 0) {
+        addToast(`Ativo atualizado! ${count} cotações salvas com sucesso.`, 'success');
       } else {
-        addToast('Nenhuma cotação nova encontrada ou nenhum ativo com ticker.', 'info');
+        addToast('Histórico do ativo já estava atualizado.', 'info');
       }
     },
-    onError: () => {
-      addToast('Erro ao comunicar com o servidor de cotações.', 'error');
+    onError: (err) => {
+      const errMsg = err?.response?.data?.error || 'Erro ao comunicar com o servidor.';
+      addToast(`Falha ao atualizar ativo: ${errMsg}`, 'error');
     }
   });
 
   const handleRefresh = () => {
-    updateQuotesMutation.mutate();
+    updateAssetMutation.mutate();
   };
 
   const isLoading = loadingAtivo || loadingTransacoes;
@@ -171,17 +166,18 @@ export default function AtivoDetalhes() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            <Button 
-              onClick={handleRefresh}
-              disabled={updateQuotesMutation.isPending}
-              variant="outline"
-              className="rounded-xl h-10 px-4 gap-2 font-semibold transition-all border border-border/40 hover:bg-accent text-foreground shadow-sm active:scale-98"
-            >
-              <RefreshCw className={`h-4 w-4 ${updateQuotesMutation.isPending ? 'animate-spin' : ''}`} />
-              {updateQuotesMutation.isPending ? 'Sincronizando...' : 'Sincronizar Dados'}
-            </Button>
-          </div>
+          {ativo.ticker && (
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <Button 
+                onClick={handleRefresh}
+                disabled={updateAssetMutation.isPending}
+                className="rounded-xl h-10 px-4 gap-2 font-semibold transition-all shadow-sm active:scale-98"
+              >
+                <RefreshCw className={`h-4 w-4 ${updateAssetMutation.isPending ? 'animate-spin' : ''}`} />
+                {updateAssetMutation.isPending ? 'Atualizando Ativo...' : 'Atualizar Ativo'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -377,7 +373,16 @@ export default function AtivoDetalhes() {
                         toolbar: { show: false },
                         fontFamily: 'inherit',
                         background: 'transparent',
-                        animations: { enabled: false }
+                        animations: { enabled: true }
+                      },
+                      dataLabels: {
+                        enabled: false
+                      },
+                      markers: {
+                        size: 0,
+                        hover: {
+                          size: 5
+                        }
                       },
                       colors: [rentabilidadePerc >= 0 ? '#10b981' : '#f43f5e'],
                       stroke: { curve: 'smooth', width: 2 },
@@ -385,8 +390,8 @@ export default function AtivoDetalhes() {
                         type: 'gradient',
                         gradient: {
                           shadeIntensity: 1,
-                          opacityFrom: 0.35,
-                          opacityTo: 0.02,
+                          opacityFrom: 0.3,
+                          opacityTo: 0.01,
                           stops: [0, 90, 100],
                         },
                       },
@@ -400,6 +405,7 @@ export default function AtivoDetalhes() {
                         },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
+                        tickAmount: 6
                       },
                       yaxis: {
                         labels: {
@@ -410,15 +416,22 @@ export default function AtivoDetalhes() {
                       grid: {
                         borderColor: 'rgba(148, 163, 184, 0.08)',
                         strokeDashArray: 4,
+                        padding: {
+                          left: 10,
+                          right: 20
+                        }
                       },
                       theme: {
                         mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
                       },
                       tooltip: {
                         theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                        shared: true,
+                        intersect: false,
                         y: {
                           formatter: (val) => formatCurrency(val),
-                        },
+                          title: { formatter: () => 'Preço: ' }
+                        }
                       },
                     }}
                     series={[

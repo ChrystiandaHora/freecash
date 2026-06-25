@@ -166,6 +166,95 @@ class AtivoViewSet(viewsets.ModelViewSet):
             "errors": errors
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'], url_path='atualizar')
+    def atualizar(self, request, pk=None) -> Response:
+        """Busca o histórico de cotações dos últimos 30 dias no Yahoo Finance para este ativo e atualiza no banco.
+        """
+        ativo = self.get_object()
+        ticker = (ativo.ticker or "").strip().upper()
+        if not ticker:
+            return Response(
+                {"error": "Este ativo não possui um ticker cadastrado para atualização de cotações."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Heurística para formatar o ticker do Yahoo Finance
+        # Se for um ticker fracionário da B3 (ex: PETR4F, PRIO3F), removemos o 'F' final
+        # para consultar a cotação do lote padrão no Yahoo Finance (que é idêntica).
+        normalized_ticker = ticker
+        if len(normalized_ticker) >= 2 and normalized_ticker[-1] == "F" and normalized_ticker[-2].isdigit():
+            normalized_ticker = normalized_ticker[:-1]
+
+        # Se terminar com número (dígito), e não tiver "." nem ":"
+        if normalized_ticker[-1].isdigit() and "." not in normalized_ticker and ":" not in normalized_ticker:
+            normalized_ticker = f"{normalized_ticker}.SA"
+
+        import urllib.request
+        import json
+        from decimal import Decimal
+        import datetime
+
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{normalized_ticker}?range=30d&interval=1d"
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+        except Exception as e:
+            return Response(
+                {"error": f"Erro de comunicação com Yahoo Finance: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        chart_data = res_data.get("chart", {})
+        result_list = chart_data.get("result")
+        if not result_list:
+            error_description = chart_data.get("error", {}).get("description", "Ticker não encontrado ou sem cotações disponíveis.")
+            return Response(
+                {"error": f"Erro retornado pelo Yahoo Finance: {error_description}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        result = result_list[0]
+        timestamps = result.get("timestamp", [])
+        indicators = result.get("indicators", {})
+        quote_list = indicators.get("quote", [{}])
+        close_prices = quote_list[0].get("close", [])
+
+        if not timestamps or not close_prices:
+            return Response(
+                {"error": "Nenhuma cotação encontrada no histórico do Yahoo Finance para o período."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        count = 0
+        from .models import Cotacao
+        for ts, close in zip(timestamps, close_prices):
+            if close is None:
+                continue
+            try:
+                # Converte o timestamp UTC para date local
+                dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).date()
+                Cotacao.objects.update_or_create(
+                    ativo=ativo,
+                    data=dt,
+                    defaults={"valor": Decimal(str(close))}
+                )
+                count += 1
+            except Exception:
+                pass
+
+        return Response({
+            "count": count,
+            "message": f"Histórico de {count} cotações atualizado com sucesso."
+        }, status=status.HTTP_200_OK)
+
+
 
 class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
     """ViewSet REST para controle de ordens e lançamentos da carteira do usuário.

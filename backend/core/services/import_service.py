@@ -286,7 +286,34 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         if model_name == "Ativo":
                             ativos_restaurados.append(obj)
 
-            # 3. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
+            # 3. Restaurar cotações históricas se fornecidas no backup
+            cotacao_records = data_dict.get("data", {}).get("investimento", {}).get("Cotacao", [])
+            if cotacao_records:
+                logger.debug("Restaurando %d registros de Cotacao", len(cotacao_records))
+                from investimento.models import Cotacao
+                from datetime import datetime
+                from decimal import Decimal
+                
+                for row in cotacao_records:
+                    ativo_uuid = row.get("ativo_uuid")
+                    ativo_id = uuid_to_id.get("investimento.Ativo", {}).get(ativo_uuid)
+                    if not ativo_id:
+                        ativo_id = uuid_to_id.get("Ativo", {}).get(ativo_uuid)
+                    
+                    if ativo_id:
+                        try:
+                            data_str = row.get("data")
+                            if data_str:
+                                dt = datetime.strptime(data_str, "%Y-%m-%d").date()
+                                Cotacao.objects.update_or_create(
+                                    ativo_id=ativo_id,
+                                    data=dt,
+                                    defaults={"valor": Decimal(str(row.get("valor")))}
+                                )
+                        except Exception as e:
+                            logger.warning("Falha ao restaurar cotação: %s", e)
+
+            # 4. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
             # Necessário porque os signals foram desconectados durante a importação.
             if ativos_restaurados:
                 try:
