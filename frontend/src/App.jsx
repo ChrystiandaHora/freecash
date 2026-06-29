@@ -41,6 +41,7 @@ import PipelineKanban from './pages/PipelineKanban';
 import MeusCartoes from './pages/MeusCartoes';
 import Receitas from './pages/Receitas';
 import Transacoes from './pages/Transacoes';
+import SimuladorGastos from './pages/SimuladorGastos';
 import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
@@ -130,6 +131,7 @@ function App() {
                 <Route path="cartoes" element={<MeusCartoes />} />
                 <Route path="receitas" element={<Receitas />} />
                 <Route path="transacoes" element={<Transacoes />} />
+                <Route path="simulador" element={<SimuladorGastos />} />
 
                 <Route path="investimentos" element={<Investimentos />} />
                 <Route path="investimentos/ativos" element={<MeusAtivos />} />

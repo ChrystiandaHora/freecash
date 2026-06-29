@@ -36,9 +36,11 @@ import {
   DownloadCloud,
   Settings,
   ChevronDown,
-  Clock
+  Clock,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { helpContent } from '../config/helpContent';
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
@@ -48,6 +50,40 @@ export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState('geral');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [helpOpen, setHelpOpen] = useState(false);
+  
+  // Helper para casar a rota atual com o dicionário de ajuda usando Expressões Regulares
+  const getHelpForPath = (path) => {
+    for (const pattern in helpContent) {
+      // Converte parâmetros como :id em expressão regular que aceita qualquer valor sem barra
+      const escaped = pattern.replace(/([.+*?=^!:${}()[\]|/\\])/g, '\\$1');
+      const regexStr = '^' + escaped.replace(/\\:[a-zA-Z0-9_]+/g, '[^/]+') + '$';
+      const regex = new RegExp(regexStr);
+      
+      if (regex.test(path)) {
+        return helpContent[pattern];
+      }
+    }
+    return null;
+  };
+
+  // Fallback padrão se não encontrar ajuda cadastrada
+  const fallbackHelp = {
+    title: "Central de Ajuda FreeCash",
+    overview: "Você está navegando pelo painel consolidado do FreeCash. Explore o menu lateral esquerdo para gerenciar suas contas, cartões de crédito e carteiras de investimento.",
+    features: [
+      "Acompanhe o painel de controle geral (Dashboard) para ver resumos de receitas e despesas.",
+      "Cadastre ativos e gerencie sua carteira na seção de Investimentos.",
+      "Importe planilhas, concilie compras de cartões de crédito e realize backups de seus dados."
+    ],
+    actions: {
+      "Navegação": "Utilize o menu lateral esquerdo para alternar entre as telas do sistema.",
+      "Tema Claro/Escuro": "Clique no ícone de sol/lua no cabeçalho superior para mudar as cores do painel.",
+      "Ajuda Contextual": "Clique no botão (?) em qualquer tela para abrir este guia novamente."
+    }
+  };
+
+  const currentHelp = getHelpForPath(location.pathname) || fallbackHelp;
   
   // Theme Management
   const [theme, setTheme] = useState(() => {
@@ -92,7 +128,7 @@ export default function DashboardLayout() {
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('investimentos')) setOpenGroup('investimentos');
-    else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes')) setOpenGroup('financeiro');
+    else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes') || path.includes('simulador')) setOpenGroup('financeiro');
     else if (path.includes('importar') || path.includes('compras-cartao') || path.includes('backup')) setOpenGroup('ferramentas');
     else if (path.includes('pagamentos')) setOpenGroup('ajustes');
     else setOpenGroup('geral');
@@ -127,6 +163,7 @@ export default function DashboardLayout() {
         { name: 'Meus Cartões', path: '/cartoes', icon: CreditCard },
         { name: 'Receitas', path: '/receitas', icon: Coins },
         { name: 'Transações', path: '/transacoes', icon: List },
+        { name: 'Simulador de Gastos', path: '/simulador', icon: Clock },
       ]
     },
     {
@@ -324,6 +361,17 @@ export default function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Help Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHelpOpen(true)}
+              className="rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9"
+              title="Ajuda desta tela"
+            >
+              <HelpCircle className="h-[1.1rem] w-[1.1rem]" />
+            </Button>
+
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -360,6 +408,100 @@ export default function DashboardLayout() {
           &copy; {new Date().getFullYear()} FreeCash. Todos os direitos reservados.
         </footer>
       </div>
+
+      {/* Help Modal */}
+      {helpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          {/* Backdrop Blur Overlay */}
+          <div 
+            className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setHelpOpen(false)}
+          />
+
+          {/* Modal Content Card */}
+          <div className="relative bg-card border border-border/60 shadow-2xl rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-scale-up z-10 transition-all duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-border/50 bg-muted/20 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <HelpCircle className="h-4 w-4" />
+                </div>
+                <h3 className="font-bold text-base text-foreground leading-tight">
+                  Ajuda: {currentHelp.title}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setHelpOpen(false)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {/* Visão Geral */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Visão Geral</h4>
+                <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                  {currentHelp.overview}
+                </p>
+              </div>
+
+              {/* Como Usar */}
+              {currentHelp.features && currentHelp.features.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Como Usar / Recursos</h4>
+                  <ul className="space-y-2 text-sm text-foreground/80 font-medium">
+                    {currentHelp.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Dicionário de Ações */}
+              {currentHelp.actions && Object.keys(currentHelp.actions).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Guia de Ações e Botões</h4>
+                  <div className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/20">
+                          <th className="py-2.5 px-4 font-bold uppercase tracking-wider">Elemento / Ação</th>
+                          <th className="py-2.5 px-4 font-bold uppercase tracking-wider">O que faz</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/20 text-foreground/90 font-medium">
+                        {Object.entries(currentHelp.actions).map(([name, desc]) => (
+                          <tr key={name} className="hover:bg-muted/10 transition-colors">
+                            <td className="py-3 px-4 font-bold text-primary">{name}</td>
+                            <td className="py-3 px-4 leading-relaxed">{desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-border/50 bg-muted/10 flex justify-end shrink-0">
+              <Button 
+                onClick={() => setHelpOpen(false)}
+                className="rounded-xl px-5 font-semibold text-xs py-2 shadow-sm"
+              >
+                Entendi
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

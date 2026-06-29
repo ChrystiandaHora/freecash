@@ -102,12 +102,18 @@ class ContaViewSet(viewsets.ModelViewSet):
         queryset = Conta.objects.filter(usuario=self.request.user)
         tipo = self.request.query_params.get('tipo')
         realizada = self.request.query_params.get('realizada')
+        data_inicio = self.request.query_params.get('data_inicio')
+        data_fim = self.request.query_params.get('data_fim')
         
         if tipo:
             queryset = queryset.filter(tipo=tipo)
         if realizada is not None:
             realizada_bool = realizada.lower() in ['true', '1']
             queryset = queryset.filter(transacao_realizada=realizada_bool)
+        if data_inicio:
+            queryset = queryset.filter(data_prevista__gte=data_inicio)
+        if data_fim:
+            queryset = queryset.filter(data_prevista__lte=data_fim)
             
         return queryset
 

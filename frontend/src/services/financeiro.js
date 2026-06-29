@@ -77,3 +77,7 @@ export const deleteReceita = async (id) => {
   return data
 }
 
+export const fetchContas = async (params = {}) => {
+  const { data } = await api.get('/api/contas/', { params })
+  return data
+}
