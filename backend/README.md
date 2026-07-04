@@ -1,6 +1,6 @@
 # FreeCash — Backend API
 
-API RESTful construída em **Python 3.12 + Django 6** com **Django REST Framework**. É o núcleo de processamento financeiro: garante integridade dos dados, executa regras de precificação de investimentos, recalcula posições via Signals e gerencia conciliações bancárias.
+API RESTful construída em **Python 3.14 + Django 6** com **Django REST Framework**. É o núcleo de processamento financeiro: garante integridade dos dados, executa regras de precificação de investimentos, recalcula posições via Signals e gerencia conciliações bancárias.
 
 ---
 
@@ -9,11 +9,13 @@ API RESTful construída em **Python 3.12 + Django 6** com **Django REST Framewor
 | Tecnologia | Uso |
 |---|---|
 | Django 6 + DRF | Framework e engine de API |
-| PostgreSQL 16 + psycopg3 | Banco de dados com driver assíncrono |
+| PostgreSQL 16 + psycopg3 | Banco de dados |
 | djangorestframework-simplejwt | Auth stateless JWT via cookies HttpOnly |
-| yfinance | Cotações diárias e em tempo real (Yahoo Finance) |
-| pandas + openpyxl | Importação de extratos bancários e exportação XLSX |
-| pdfplumber + reportlab | Leitura de extratos PDF e geração de relatórios |
+| django-cors-headers | Liberação de CORS para o frontend React |
+| TradingView Screener + CVM + Yahoo Finance (chart API) | Cotações diárias e histórico de ativos (scraping/HTTP direto, sem SDK) |
+| openpyxl | Importação de extratos e exportação XLSX |
+| pdfplumber + reportlab | Leitura de extratos/faturas em PDF e geração de relatórios |
+| cryptography | Criptografia do backup `.fcbk` |
 | whitenoise | Servir estáticos diretamente no container da API |
 
 ---
@@ -28,25 +30,60 @@ Gerencia todo o fluxo de caixa pessoal do usuário.
 - `Conta` — Transação financeira (receita ou despesa) com data de vencimento, realização, categoria e cartão vinculado
 - `CartaoCredito` — Cartão com limite, dia de fechamento/vencimento, cor e ícone
 - `Categoria` — Classificação de transações por tipo (Receita/Despesa/Investimento)
+- `ConfigUsuario` — Preferências e configurações por usuário
 - `ExtratoImportado` + `LinhaExtrato` — Pipeline de importação de extratos bancários
 
-**Endpoints principais:**
+A lista de endpoints abaixo é organizada por domínio de negócio — não existe mais um `urls.py` por app; tudo é registrado em `freecash/urls.py`.
+
+**Autenticação:**
 ```
 POST   /api/register/                          Cadastro de usuário
 POST   /api/token/                             Login (JWT)
 POST   /api/token/refresh/                     Renovar token
 POST   /api/token/clear/                       Logout
+```
 
+**Dashboards e relatórios:**
+```
 GET    /api/dashboard/                         KPIs + gráficos do mês
+GET    /api/dashboard/executivo/               Dashboard executivo (BI, histórico patrimonial de 12 meses)
 GET    /api/relatorios/dre/?ano=2026           DRE anual
+```
 
+**Financeiro (usado pelo frontend):**
+```
+GET/POST/PUT/DELETE   /api/financeiro/cartoes/               CRUD de cartões
+GET/POST/PUT/DELETE   /api/financeiro/contas-pagar/          CRUD de contas a pagar
+PUT    /api/financeiro/contas-pagar/{id}/pagar/               Marcar como paga
+PUT    /api/financeiro/contas-pagar/{id}/desfazer-pagamento/  Desfazer pagamento
+POST   /api/financeiro/contas-pagar/lote/                     Cadastro em lote
+GET/POST/PUT/DELETE   /api/financeiro/receitas/               CRUD de receitas
+GET    /api/financeiro/transacoes/                            Extrato consolidado (somente leitura)
+GET/POST/PUT/DELETE   /api/financeiro/compras-cartao/         CRUD de compras de cartão (conciliação)
+GET/POST/PUT   /api/configuracoes/contas-bancarias/           Contas bancárias/cartões cadastrados
+POST   /api/configuracoes/contas-bancarias/{id}/toggle_ativo/ Ativar/inativar
+```
+
+**CRUDs legados (ainda existem no código; `/api/cartoes/` está sobreposto por `/api/financeiro/cartoes/`, que é o que o frontend consome hoje):**
+```
 GET/POST/PATCH/DELETE  /api/contas/            CRUD de transações
-GET/POST/PATCH/DELETE  /api/cartoes/           CRUD de cartões
+GET/POST/PATCH/DELETE  /api/cartoes/           CRUD de cartões (rota antiga, sem uso confirmado no frontend)
 GET/POST/PATCH/DELETE  /api/categorias/        CRUD de categorias
+```
 
+**Ferramentas:**
+```
 GET/POST   /api/ferramentas/exportar/          Export XLSX/CSV/PDF/.fcbk
 POST       /api/ferramentas/importar/          Import backup .fcbk
+POST       /api/ferramentas/importar-extrato/  Import de fatura em PDF
+GET        /api/ferramentas/conciliacao/       Lista itens pendentes de conciliação
+POST       /api/ferramentas/conciliacao/processar/  Processa conciliação bancária
 ```
+
+**Tarefas internas (management commands, não são endpoints HTTP):**
+- `update_quotes` — atualiza cotações via TradingView Screener
+- `update_portfolio_history` — grava snapshot diário/mensal da carteira (`CarteiraHistorico`)
+- `populate_investments` — popula dados iniciais de investimentos
 
 ---
 
@@ -64,16 +101,17 @@ ClasseAtivo (Renda Fixa, Renda Variável, Criptoativos...)
 
 **Modelos principais:**
 - `Ativo` — Ativo individual com ticker, subcategoria ANBIMA, meta de alocação, preço médio e quantidade (mantidos por Signal)
-- `TransacaoInvestimento` — Operação de Compra (C), Venda (V) ou Provento (D) com quantidade, preço unitário e taxas
+- `Transacao` — Operação de Compra (C), Venda (V) ou Provento (D) com quantidade, preço unitário e taxas (serializada como "TransacaoInvestimento")
+- `Cotacao` — Histórico de preços diários por ativo
+- `CarteiraHistorico` — Snapshot patrimonial periódico, usado no dashboard executivo
 
-**Signals (`signals.py`):**
-- `criar_classificacao_padrao` — Popula toda a árvore ANBIMA ao criar um novo usuário
-- `atualizar_ativo_apos_transacao` — Recalcula Preço Médio e Quantidade acumulada em toda criação, edição ou remoção de transação
+**Signals (`signals.py`):** popula a árvore ANBIMA para usuários novos e recalcula preço médio/quantidade do `Ativo` a cada criação, edição ou remoção de `Transacao`.
 
 **Endpoints principais:**
 ```
 GET/POST/PATCH/DELETE  /api/investimentos/ativos/
-POST   /api/investimentos/ativos/atualizar-cotacoes/
+POST   /api/investimentos/ativos/atualizar-cotacoes/       Sincroniza cotações de todos os ativos
+POST   /api/investimentos/ativos/{id}/atualizar/           Sincroniza histórico (30 dias) de um ativo
 
 GET/POST/PATCH/DELETE  /api/investimentos/transacoes/
 

@@ -1,6 +1,6 @@
 # FreeCash — Frontend
 
-SPA (Single Page Application) construída em **React 19 + Vite 6**, com **Tailwind CSS v4** para estilização ultra-veloz e **TanStack React Query** para sincronização inteligente com a API.
+SPA (Single Page Application) construída em **React 19 + Vite 8**, com **Tailwind CSS v4** para estilização ultra-veloz e **TanStack React Query** para sincronização inteligente com a API.
 
 ---
 
@@ -8,7 +8,7 @@ SPA (Single Page Application) construída em **React 19 + Vite 6**, com **Tailwi
 
 | Tecnologia | Uso |
 |---|---|
-| React 19 + Vite 6 | SPA com HMR e build otimizado |
+| React 19 + Vite 8 | SPA com HMR e build otimizado |
 | Tailwind CSS v4 | Estilização nativa baseada em CSS moderno |
 | TanStack React Query | Cache, sincronização e invalidação de estado com a API |
 | React Router Dom v7 | Roteamento SPA com rotas protegidas |
@@ -16,6 +16,8 @@ SPA (Single Page Application) construída em **React 19 + Vite 6**, com **Tailwi
 | ApexCharts | Gráficos interativos (área, donut, barra, scatter, radial) |
 | Lucide React | Biblioteca unificada de ícones vetoriais |
 | Axios | HTTP client com interceptors JWT |
+| @hello-pangea/dnd | Drag-and-drop (Pipeline Kanban, Compras Cartão) |
+| react-dropzone | Upload de arquivos por arrastar-e-soltar |
 
 ---
 
@@ -36,6 +38,7 @@ SPA (Single Page Application) construída em **React 19 + Vite 6**, com **Tailwi
 | `/cartoes` | Meus Cartões | Gauge de limite, histórico por cartão |
 | `/receitas` | Receitas | Controle de receitas previstas e realizadas |
 | `/transacoes` | Transações | Extrato cronológico agrupado por dia |
+| `/simulador` | Simulador de Gastos | Simulação de cenários com base nas contas cadastradas |
 
 ### Investimentos
 | Rota | Página | Descrição |
@@ -64,16 +67,23 @@ src/
 ├── components/
 │   ├── ui/                 # Componentes atômicos (Button, Card, Modal, Badge, DataTable...)
 │   └── DashboardLayout.jsx # Layout mestre com sidebar colapsável e navbar
+├── config/
+│   └── helpContent.js      # Conteúdo de ajuda contextual por rota
 ├── context/
 │   ├── AuthProvider.jsx    # Estado de autenticação JWT + interceptors Axios
 │   └── ToastContext.jsx    # Sistema de notificações (toasts)
-├── pages/                  # 20+ telas da aplicação
+├── lib/
+│   └── utils.js            # Helpers (ex.: merge de classes Tailwind)
+├── pages/                  # 20 telas da aplicação
 ├── services/
-│   ├── api.js              # Instância Axios configurada
-│   └── queries/            # Custom hooks React Query por domínio de negócio
+│   ├── api.js              # Instância Axios + interceptors JWT
+│   ├── financeiro.js       # Chamadas de API do domínio financeiro
+│   └── investimentos.js    # Chamadas de API do domínio de investimentos
 ├── App.jsx                 # Roteamento + provedores globais
 └── main.jsx                # Ponto de entrada
 ```
+
+Chamadas à API ficam centralizadas em `services/financeiro.js` e `services/investimentos.js`; o uso de React Query (`useQuery`/`useMutation`) é feito diretamente dentro de cada página, sem uma camada de hooks customizados por domínio.
 
 ---
 
