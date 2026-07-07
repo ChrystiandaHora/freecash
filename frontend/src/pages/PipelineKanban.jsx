@@ -64,26 +64,44 @@ const COLUMNS = [
   },
   {
     id: 'hoje',
-    label: 'Para Hoje',
-    icon: AlertCircle,
-    color: 'text-amber-500 dark:text-amber-400',
+    label: 'Vence Hoje',
+    icon: Clock,
+    color: 'text-rose-500 dark:text-rose-400',
+    borderColor: 'border-border/40',
+    bgColor: 'bg-muted/40',
+    badgeVariant: 'urgent',
+  },
+  {
+    id: 'amanha',
+    label: 'Vence amanhã',
+    icon: Clock,
+    color: 'text-rose-500 dark:text-rose-400',
+    borderColor: 'border-border/40',
+    bgColor: 'bg-muted/40',
+    badgeVariant: 'urgent',
+  },
+  {
+    id: 'vence_2_dias',
+    label: 'Vence 2 dias',
+    icon: Clock,
+    color: 'text-orange-500 dark:text-orange-400',
     borderColor: 'border-border/40',
     bgColor: 'bg-muted/40',
     badgeVariant: 'warning',
   },
   {
-    id: 'semana',
-    label: 'Próximos 7 Dias',
+    id: 'vence_3_dias',
+    label: 'Vence 3 dias',
     icon: Clock,
-    color: 'text-primary',
+    color: 'text-orange-500 dark:text-orange-400',
     borderColor: 'border-border/40',
     bgColor: 'bg-muted/40',
-    badgeVariant: 'default',
+    badgeVariant: 'warning',
   },
   {
-    id: 'mes',
-    label: 'Final do Mês',
-    icon: CalendarDays,
+    id: 'pendentes',
+    label: 'Pendentes',
+    icon: Clock,
     color: 'text-muted-foreground',
     borderColor: 'border-border/40',
     bgColor: 'bg-muted/40',
@@ -107,13 +125,21 @@ const getColumnId = (conta) => {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const due = new Date(conta.data_vencimento + 'T00:00:00')
-  const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24))
 
-  if (diff < 0) return 'atrasadas'
-  if (diff === 0) return 'hoje'
-  if (diff <= 7) return 'semana'
-  return 'mes'
+  const [year, month, day] = conta.data_vencimento.split('-')
+  const due = new Date(Number(year), Number(month) - 1, Number(day))
+  due.setHours(0, 0, 0, 0)
+
+  if (due < today) return 'atrasadas'
+
+  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'hoje'
+  if (diffDays === 1) return 'amanha'
+  if (diffDays === 2) return 'vence_2_dias'
+  if (diffDays === 3) return 'vence_3_dias'
+
+  return 'pendentes'
 }
 
 // ─── Card de Conta (Kanban item) ──────────────────────────────────────────────

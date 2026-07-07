@@ -55,7 +55,8 @@ const getStatusInfo = (conta) => {
 
   const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return { label: 'Vence Hoje', variant: 'warning', Icon: Clock }
+  if (diffDays === 0) return { label: 'Vence Hoje', variant: 'urgent', Icon: Clock }
+  if (diffDays === 1) return { label: 'Vence amanhã', variant: 'urgent', Icon: Clock }
   if (diffDays === 2) return { label: 'Vence 2 dias', variant: 'warning', Icon: Clock }
   if (diffDays === 3) return { label: 'Vence 3 dias', variant: 'warning', Icon: Clock }
 

@@ -159,7 +159,7 @@ export default function DashboardLayout() {
       label: 'Financeiro',
       items: [
         { name: 'Contas a Pagar', path: '/contas-pagar', icon: FileSpreadsheet },
-        { name: 'Pipeline Kanban', path: '/contas-kanban', icon: KanbanSquare },
+        { name: 'Kanban', path: '/contas-kanban', icon: KanbanSquare },
         { name: 'Meus Cartões', path: '/cartoes', icon: CreditCard },
         { name: 'Receitas', path: '/receitas', icon: Coins },
         { name: 'Transações', path: '/transacoes', icon: List },

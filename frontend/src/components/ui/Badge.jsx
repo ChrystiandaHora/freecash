@@ -22,6 +22,7 @@ const variantStyles = {
   success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
   secondary: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50",
   outline: "border border-border text-foreground",
+  urgent: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
 }
 
 const Badge = React.forwardRef(({ className, variant = "default", ...props }, ref) => (
