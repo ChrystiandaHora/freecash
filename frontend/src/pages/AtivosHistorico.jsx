@@ -412,29 +412,29 @@ export default function AtivosHistorico() {
     {
       key: 'quantidade',
       header: 'Qtd',
-      className: 'text-right',
-      cellClassName: 'text-right font-semibold text-foreground',
+      className: 'text-left',
+      cellClassName: 'text-left font-semibold text-foreground',
       render: (val, row) => row.tipo === 'D' ? '—' : parseFloat(val).toLocaleString('pt-BR'),
     },
     {
       key: 'preco_unitario',
       header: 'Preço Unit.',
-      className: 'text-right',
-      cellClassName: 'text-right text-muted-foreground',
+      className: 'text-left',
+      cellClassName: 'text-left text-muted-foreground',
       render: (val, row) => row.tipo === 'D' ? '—' : formatCurrency(val),
     },
     {
       key: 'taxas',
       header: 'Taxas',
-      className: 'text-right',
-      cellClassName: 'text-right text-muted-foreground',
+      className: 'text-left',
+      cellClassName: 'text-left text-muted-foreground',
       render: (val) => parseFloat(val ?? 0) > 0 ? formatCurrency(val) : '—',
     },
     {
       key: 'valor_total',
       header: 'Valor Total',
-      className: 'text-right',
-      cellClassName: 'text-right font-extrabold',
+      className: 'text-left',
+      cellClassName: 'text-left font-extrabold',
       render: (val, row) => {
         const cfg = TIPO_CONFIG[row.tipo] ?? TIPO_CONFIG['C'];
         return (

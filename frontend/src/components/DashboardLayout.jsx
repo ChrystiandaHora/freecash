@@ -398,7 +398,7 @@ export default function DashboardLayout() {
 
         {/* Content Viewport */}
         <main className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto space-y-8">
+          <div className="w-full space-y-8">
             <Outlet />
           </div>
         </main>

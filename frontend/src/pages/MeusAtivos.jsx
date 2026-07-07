@@ -73,36 +73,36 @@ export default function MeusAtivos() {
     {
       key: 'quantidade',
       header: 'Quantidade',
-      className: 'px-5 py-3.5 text-right',
-      cellClassName: 'px-5 py-3.5 text-right font-bold text-foreground/80',
+      className: 'px-5 py-3.5 text-left',
+      cellClassName: 'px-5 py-3.5 text-left font-bold text-foreground/80',
       render: (val) => parseFloat(val || 0).toString().replace('.', ','),
     },
     {
       key: 'preco_medio',
       header: 'P. Médio',
-      className: 'px-5 py-3.5 text-right',
-      cellClassName: 'px-5 py-3.5 text-right text-muted-foreground',
+      className: 'px-5 py-3.5 text-left',
+      cellClassName: 'px-5 py-3.5 text-left text-muted-foreground',
       render: (val) => formatCurrency(val),
     },
     {
       key: 'cotacao_atual',
       header: 'Cotação',
-      className: 'px-5 py-3.5 text-right',
-      cellClassName: 'px-5 py-3.5 text-right text-muted-foreground font-semibold',
+      className: 'px-5 py-3.5 text-left',
+      cellClassName: 'px-5 py-3.5 text-left text-muted-foreground font-semibold',
       render: (val) => formatCurrency(val),
     },
     {
       key: 'valor_total_atual',
       header: 'Valor Atual',
-      className: 'px-5 py-3.5 text-right',
-      cellClassName: 'px-5 py-3.5 text-right font-extrabold text-foreground',
+      className: 'px-5 py-3.5 text-left',
+      cellClassName: 'px-5 py-3.5 text-left font-extrabold text-foreground',
       render: (val) => formatCurrency(parseFloat(val || 0)),
     },
     {
       key: 'rentabilidade_percentual',
       header: 'Retorno',
-      className: 'px-5 py-3.5 text-right',
-      cellClassName: 'px-5 py-3.5 text-right font-bold',
+      className: 'px-5 py-3.5 text-left',
+      cellClassName: 'px-5 py-3.5 text-left font-bold',
       render: (val) => {
         const rentabilidadePerc = parseFloat(val || 0);
         return (
