@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element}
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
@@ -24,7 +24,7 @@ import {
   Minus,
   Plus
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 
@@ -109,6 +109,20 @@ export default function AtivosBalanceamento() {
   const [isEditing, setIsEditing] = useState(false);
   const [metaError, setMetaError] = useState('');
   const [aporteValue, setAporteValue] = useState('');
+  const [excludedAssetIds, setExcludedAssetIds] = useState(new Set());
+
+  const toggleAssetExcluded = useCallback((id) => {
+    setExcludedAssetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
 
   /* ── Query ── */
   const {
@@ -171,11 +185,13 @@ export default function AtivosBalanceamento() {
   // Initialize simulated state for greedy allocation
   const allocationState = allAtivos.map((at) => {
     const meta = (isEditing ? editingMetas[at.id] : at.meta_porcentagem) ?? 0;
+    const isExcluded = excludedAssetIds.has(at.id);
     return {
       ...at,
       meta,
       qtdComprar: 0,
       aporte: 0,
+      isExcluded,
     };
   });
 
@@ -194,6 +210,10 @@ export default function AtivosBalanceamento() {
       
       for (let i = 0; i < allocationState.length; i++) {
         const at = allocationState[i];
+        
+        // Skip assets that are excluded by the user
+        if (at.isExcluded) continue;
+
         const cotacao = at.preco_atual ?? 0;
         
         // Skip assets we cannot afford or that have invalid/zero price
@@ -402,7 +422,7 @@ export default function AtivosBalanceamento() {
                     />
 
                     {/* Aporte info */}
-                    {magicoItem && magicoItem.aporteIdeal > 0.01 && (
+                    {magicoItem && !magicoItem.isExcluded && magicoItem.aporteIdeal > 0.01 && (
                       <div className="flex items-center gap-2 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-1.5 flex-wrap">
                         <ArrowRight className="h-3 w-3 shrink-0" />
                         <span className="font-semibold">
@@ -413,6 +433,11 @@ export default function AtivosBalanceamento() {
                           )}
                         </span>
                         <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
+                      </div>
+                    )}
+                    {magicoItem && magicoItem.isExcluded && (
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5 w-fit">
+                        <span className="font-semibold">Excluído do Aporte Mágico</span>
                       </div>
                     )}
                   </div>
@@ -466,6 +491,7 @@ export default function AtivosBalanceamento() {
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
+                    <th className="py-3 px-4 w-12 text-center">Aplicar</th>
                     <th className="py-3 px-4">Ativo</th>
                     <th className="py-3 px-4 text-right">Meta</th>
                     <th className="py-3 px-4 text-right">Cotação</th>
@@ -477,7 +503,15 @@ export default function AtivosBalanceamento() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {magicAllocation.map((at) => (
-                    <tr key={at.id} className="hover:bg-muted/40 transition-colors">
+                    <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.isExcluded ? 'opacity-50' : ''}`}>
+                      <td className="py-3 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={!at.isExcluded}
+                          onChange={() => toggleAssetExcluded(at.id)}
+                          className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+                        />
+                      </td>
                       <td className="py-3 px-4">
                         <p className="font-bold text-foreground">{at.ticker}</p>
                         <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
