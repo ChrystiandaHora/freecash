@@ -11,6 +11,7 @@ import os
 import base64
 import hashlib
 import uuid
+import zlib
 from decimal import Decimal
 from django.utils import timezone
 from django.apps import apps
@@ -19,7 +20,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-VERSION = "4.0"
+VERSION = "4.1"
 
 
 def _to_serializable(obj):
@@ -97,6 +98,7 @@ def encrypt_data(data_dict, password):
         str: String codificada em Base64 contendo os dados protegidos (arquivo .fcbk).
     """
     json_data = json.dumps(data_dict, default=_to_serializable).encode("utf-8")
+    compressed_data = zlib.compress(json_data, level=6)
     salt = os.urandom(16)
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -107,7 +109,7 @@ def encrypt_data(data_dict, password):
     key = kdf.derive(password.encode("utf-8"))
     aesgcm = AESGCM(key)
     nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, json_data, None)
+    ciphertext = aesgcm.encrypt(nonce, compressed_data, None)
 
     # Payload format: SALT(16) + NONCE(12) + CIPHERTEXT
     payload = salt + nonce + ciphertext
@@ -150,8 +152,17 @@ def export_user_data(user, password):
         if app_label not in data["data"]:
             data["data"][app_label] = {}
 
+        fk_names = [
+            f.name
+            for f in model._meta.fields
+            if isinstance(f, ForeignKey) and f.name != "usuario"
+        ]
+        queryset = model.objects.filter(usuario=user)
+        if fk_names:
+            queryset = queryset.select_related(*fk_names)
+
         records = []
-        for obj in model.objects.filter(usuario=user):
+        for obj in queryset.iterator(chunk_size=1000):
             row = {}
             for field in model._meta.fields:
                 if field.name in ["id", "usuario"]:
@@ -172,10 +183,10 @@ def export_user_data(user, password):
     # Exportar Cotacao manualmente, pois não possui usuario diretamente
     from investimento.models import Ativo, Cotacao
     ativos_usuario_ids = Ativo.objects.filter(usuario=user).values_list("id", flat=True)
-    cotacoes_qs = Cotacao.objects.filter(ativo_id__in=ativos_usuario_ids)
-    
+    cotacoes_qs = Cotacao.objects.filter(ativo_id__in=ativos_usuario_ids).select_related("ativo")
+
     cotacoes_records = []
-    for obj in cotacoes_qs:
+    for obj in cotacoes_qs.iterator(chunk_size=1000):
         row = {
             "ativo_uuid": str(obj.ativo.uuid),
             "data": obj.data.isoformat() if hasattr(obj.data, "isoformat") else str(obj.data),

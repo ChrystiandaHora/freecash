@@ -7,8 +7,17 @@ Cobre os fluxos críticos de restauração atômica de dados, incluindo:
 - Isolamento multi-tenant (padrão do security_standards.md)
 """
 
+import base64
+import hashlib
+import json
+import os
+
 from django.contrib.auth.models import User
 from django.test import TestCase
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from core.services.export_service import export_user_data
 from core.services.import_service import restore_user_data_fcbk, decrypt_data_fcbk
@@ -19,6 +28,20 @@ from investimento.models import (
     Ativo,
     Transacao,
 )
+
+
+def _encrypt_sem_compressao(data_dict, password):
+    """Reproduz o formato de arquivo .fcbk legado (versão 4.0, sem zlib)."""
+    json_data = json.dumps(data_dict).encode("utf-8")
+    salt = os.urandom(16)
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000)
+    key = kdf.derive(password.encode("utf-8"))
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, json_data, None)
+    payload = salt + nonce + ciphertext
+    final_file_data = hashlib.sha256(payload).digest() + payload
+    return base64.b64encode(final_file_data).decode("utf-8")
 
 
 class RestoreUserDataFcbkTests(TestCase):
@@ -257,4 +280,59 @@ class RestoreUserDataFcbkTests(TestCase):
         cotacao = cotações_restauradas.first()
         self.assertEqual(cotacao.data, data_cotacao)
         self.assertEqual(cotacao.valor, valor_cotacao)
+
+    def test_backup_legado_sem_compressao_ainda_funciona(self):
+        """Arquivos .fcbk gerados antes da versão 4.1 (sem zlib) devem continuar
+        sendo restauráveis, garantindo compatibilidade retroativa."""
+        self._create_transacoes()
+        data_dict_original = {
+            "metadata": {"version": "4.0", "username": self.user.username},
+            "data": {},
+        }
+        senha = "senha_legado"
+        encrypted = _encrypt_sem_compressao(data_dict_original, senha)
+
+        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+
+        self.assertEqual(data_dict["metadata"]["version"], "4.0")
+
+    def test_versao_incompativel_rejeitada(self):
+        """Um backup com versão não suportada deve ser rejeitado antes de
+        qualquer tentativa de restauração parcial registro a registro."""
+        data_dict_original = {
+            "metadata": {"version": "99.0", "username": self.user.username},
+            "data": {},
+        }
+        senha = "senha_futura"
+        encrypted = _encrypt_sem_compressao(data_dict_original, senha)
+
+        with self.assertRaises(ValueError):
+            decrypt_data_fcbk(encrypted.encode(), senha)
+
+    def test_ignorados_contabilizado_corretamente(self):
+        """Registros sem UUID (corrompidos/incompletos) devem ser contabilizados
+        em 'ignorados' em vez de inflar silenciosamente 'criados'."""
+        self._create_transacoes()
+
+        senha = "senha_de_teste"
+        encrypted = export_user_data(self.user, senha)
+        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+
+        transacoes = data_dict["data"]["investimento"]["Transacao"]
+        self.assertEqual(len(transacoes), 3)
+        del transacoes[0]["uuid"]
+
+        Transacao.objects.filter(usuario=self.user).delete()
+        Ativo.objects.filter(usuario=self.user).delete()
+        SubcategoriaAtivo.objects.filter(usuario=self.user).delete()
+        CategoriaAtivo.objects.filter(usuario=self.user).delete()
+        ClasseAtivo.objects.filter(usuario=self.user).delete()
+
+        resultado = restore_user_data_fcbk(data_dict, self.user)
+
+        self.assertEqual(resultado["ignorados"], 1)
+        self.assertEqual(
+            Transacao.objects.filter(usuario=self.user).count(), 2,
+            "Apenas as 2 transações com UUID válido deveriam ser restauradas."
+        )
 

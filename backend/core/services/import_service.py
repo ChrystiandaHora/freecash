@@ -15,6 +15,7 @@ import hashlib
 import uuid
 import io
 import logging
+import zlib
 from django.db import transaction
 from django.utils import timezone
 from django.apps import apps
@@ -24,6 +25,8 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
+
+SUPPORTED_VERSIONS = {"4.0", "4.1"}
 
 
 # =========================================================
@@ -67,11 +70,24 @@ def decrypt_data_fcbk(encrypted_base64: str, password: str) -> dict:
 
         aesgcm = AESGCM(key)
         decrypted_data = aesgcm.decrypt(nonce, ciphertext, None)
-        return json.loads(decrypted_data.decode("utf-8"))
+        try:
+            decrypted_data = zlib.decompress(decrypted_data)
+        except zlib.error:
+            pass  # backup gerado antes da versão 4.1, sem compressão
+
+        data_dict = json.loads(decrypted_data.decode("utf-8"))
     except Exception as e:
         if "VIOLADO" in str(e):
             raise e
         raise ValueError("Senha incorreta ou arquivo corrompido.")
+
+    version = data_dict.get("metadata", {}).get("version")
+    if version not in SUPPORTED_VERSIONS:
+        raise ValueError(
+            f"Versão de backup não suportada: {version!r}. "
+            f"Versões aceitas: {sorted(SUPPORTED_VERSIONS)}."
+        )
+    return data_dict
 
 
 def get_backupable_models():
@@ -153,6 +169,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     backup_models = get_backupable_models()
     uuid_to_id = {}
     total_restored = 0
+    total_ignorados = 0
     ativos_restaurados = []  # rastreia ativos para recálculo posterior
 
     def get_model_field_names(model):
@@ -216,6 +233,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 for row in records:
                     uid = row.pop("uuid", None)
                     if not uid:
+                        total_ignorados += 1
                         continue
 
                     # Resolve FKs usando chave composta (app_label.ModelName)
@@ -275,6 +293,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                                 "Falha crítica ao restaurar %s (uuid=%s): %s",
                                 model_name, uid, inner_exc
                             )
+                            total_ignorados += 1
                             continue
 
                     if obj is not None:
@@ -338,12 +357,22 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
             except Exception as e:
                 logger.error("Erro ao reconectar signals de investimento: %s", e)
 
+    if total_ignorados:
+        logger.warning(
+            "Restauração concluída com %d registro(s) ignorado(s) para o usuário %s.",
+            total_ignorados, user.username
+        )
+
+    msg = f"Backup restaurado com sucesso. {total_restored} registros processados."
+    if total_ignorados:
+        msg += f" {total_ignorados} registro(s) não puderam ser restaurados (ver logs)."
+
     return {
         "tipo": "fcbk",
-        "msg": f"Backup restaurado com sucesso. {total_restored} registros processados.",
+        "msg": msg,
         "criados": total_restored,
         "atualizados": 0,
-        "ignorados": 0,
+        "ignorados": total_ignorados,
     }
 
 
