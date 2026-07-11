@@ -130,18 +130,15 @@ class SubcategoriaAtivo(AuditoriaModel):
 class Ativo(AuditoriaModel):
     """Representa um ativo financeiro específico de Renda Fixa ou Renda Variável.
 
-    Controla emissor, indexador, taxas, metas percentuais de balanceamento de
-    carteira B3, além de caches calculados de quantidade e preço médio acumulados.
+    Controla metas percentuais de balanceamento de carteira B3, além de caches
+    calculados de quantidade e preço médio acumulados. Atributos exclusivos de
+    Renda Fixa (emissor, indexador, taxa, vencimento) ficam em `DetalheRendaFixa`.
 
     Atributos:
         usuario (User): Proprietário do ativo custodiado.
         ticker (str): Código de negociação do ativo na bolsa (ex: PETR4).
         nome (str): Nome completo ou razão social da empresa emissora.
         subcategoria (SubcategoriaAtivo): Vínculo com a folha da segmentação de ativos.
-        data_vencimento (date): Vencimento do título caso seja Renda Fixa.
-        emissor (str): Banco ou empresa emissora do título.
-        indexador (str): Indexador monetário da taxa (CDI, IPCA, SELIC, PRE, etc.).
-        taxa (Decimal): Porcentagem ou prêmio (ex: 110 para 110% CDI ou 6.5 para IPCA+6.5%).
         moeda (str): Código monetário oficial (ex: BRL).
         ativo (bool): Flag de custódia ativa.
         meta_porcentagem (Decimal): Meta percentual de alocação no portfólio.
@@ -171,32 +168,6 @@ class Ativo(AuditoriaModel):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="ativos",
-    )
-
-    # Detalhes Renda Fixa (ANBIMA Standard)
-    INDEXADOR_CHOICES = (
-        ("CDI", "CDI"),
-        ("IPCA", "IPCA"),
-        ("SELIC", "SELIC"),
-        ("PRE", "Pré-fixado"),
-        ("IGPM", "IGP-M"),
-        ("OUTROS", "Outros"),
-    )
-    data_vencimento = models.DateField(
-        null=True, blank=True, verbose_name="Data de Vencimento"
-    )
-    emissor = models.CharField(
-        max_length=100, blank=True, verbose_name="Emissor (Banco/Empresa)"
-    )
-    indexador = models.CharField(
-        max_length=10, choices=INDEXADOR_CHOICES, blank=True, verbose_name="Indexador"
-    )
-    taxa = models.DecimalField(
-        max_digits=9,
-        decimal_places=4,
-        default=0,
-        help_text="Ex: 100 para 100% do CDI ou 6.5 para IPCA+6.5%",
-        verbose_name="Taxa / Porcentagem",
     )
 
     moeda = models.CharField(max_length=10, default="BRL")
@@ -296,6 +267,52 @@ class Ativo(AuditoriaModel):
             self.cnpj = "".join(filter(str.isdigit, self.cnpj))
         super().save(*args, **kwargs)
 
+
+class DetalheRendaFixa(AuditoriaModel):
+    """Atributos contratuais exclusivos de ativos de Renda Fixa/Dívida (ANBIMA Standard).
+
+    Extraído de `Ativo` porque só se aplica a um subconjunto de ativos
+    (renda fixa/alternativos) — mantendo `Ativo` livre de colunas sempre
+    vazias para ações, FIIs e fundos.
+    """
+
+    INDEXADOR_CHOICES = (
+        ("CDI", "CDI"),
+        ("IPCA", "IPCA"),
+        ("SELIC", "SELIC"),
+        ("PRE", "Pré-fixado"),
+        ("IGPM", "IGP-M"),
+        ("OUTROS", "Outros"),
+    )
+
+    ativo = models.OneToOneField(
+        Ativo,
+        on_delete=models.CASCADE,
+        related_name="detalhe_renda_fixa",
+    )
+    data_vencimento = models.DateField(
+        null=True, blank=True, verbose_name="Data de Vencimento"
+    )
+    emissor = models.CharField(
+        max_length=100, blank=True, verbose_name="Emissor (Banco/Empresa)"
+    )
+    indexador = models.CharField(
+        max_length=10, choices=INDEXADOR_CHOICES, blank=True, verbose_name="Indexador"
+    )
+    taxa = models.DecimalField(
+        max_digits=9,
+        decimal_places=4,
+        default=0,
+        help_text="Ex: 100 para 100% do CDI ou 6.5 para IPCA+6.5%",
+        verbose_name="Taxa / Porcentagem",
+    )
+
+    class Meta:
+        verbose_name = "Detalhe de Renda Fixa"
+        verbose_name_plural = "Detalhes de Renda Fixa"
+
+    def __str__(self):
+        return f"Renda Fixa de {self.ativo.ticker}"
 
 
 

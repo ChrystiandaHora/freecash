@@ -24,6 +24,7 @@ import {
 import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
@@ -499,9 +500,9 @@ export default function ContasPagar() {
 
       {/* Error state */}
       {isError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400">
+        <Alert variant="error">
           Não foi possível carregar as contas. Verifique a conexão com a API.
-        </div>
+        </Alert>
       )}
 
       {/* Tabela */}

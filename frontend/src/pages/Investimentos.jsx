@@ -38,6 +38,7 @@ import { Accordion, AccordionItem } from '../components/ui/Accordion';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
 import { DataTable } from '../components/ui/DataTable';
+import { Alert } from '../components/ui/Alert';
 
 
 const formatCurrency = (value) => {
@@ -814,17 +815,15 @@ export default function Investimentos() {
             
             {/* Meta validation error */}
             {metaError && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs">
-                <AlertCircle className="h-4.5 w-4.5 shrink-0" />
-                <p className="font-semibold leading-relaxed">{metaError}</p>
-              </div>
+              <Alert variant="error" icon={AlertCircle} className="p-3.5 text-xs">
+                <span className="font-semibold leading-relaxed">{metaError}</span>
+              </Alert>
             )}
 
             {saveMetasMutation.isSuccess && (
-              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-primary/10 border border-primary/20 text-primary/80 text-xs">
-                <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
-                <p className="font-semibold leading-relaxed">Metas de alocação salvas e sincronizadas com sucesso!</p>
-              </div>
+              <Alert variant="success" icon={CheckCircle2} className="p-3.5 text-xs">
+                <span className="font-semibold leading-relaxed">Metas de alocação salvas e sincronizadas com sucesso!</span>
+              </Alert>
             )}
 
             {/* Sum Indicator */}

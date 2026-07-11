@@ -31,6 +31,7 @@ import {
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Alert } from '../components/ui/Alert';
 
 // ─── API helpers ───────────────────────────────────────────
 const fetchContas = () =>
@@ -532,10 +533,9 @@ export default function AjustesPagamentos() {
 
       {/* Error */}
       {isError && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>Erro ao carregar cartões. Verifique a conexão com o servidor.</p>
-        </div>
+        <Alert variant="error" icon={AlertCircle}>
+          Erro ao carregar cartões. Verifique a conexão com o servidor.
+        </Alert>
       )}
 
       {/* Loading */}

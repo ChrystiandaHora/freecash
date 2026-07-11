@@ -36,6 +36,7 @@ import {
 
 import { fetchContasPagar, pagarConta } from '../services/financeiro';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 
@@ -229,7 +230,7 @@ const KanbanColumn = ({ col, contas, provided, snapshot }) => {
       <div
         ref={provided.innerRef}
         {...provided.droppableProps}
-        className={`flex-1 space-y-3 p-3 pt-1 min-h-[200px] rounded-b-2xl transition-colors duration-200 ${
+        className={`flex-1 space-y-3 p-3 pt-1 min-h-[200px] max-h-[calc(100vh-380px)] overflow-y-auto rounded-b-2xl transition-colors duration-200 ${
           snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''
         }`}
       >
@@ -391,9 +392,9 @@ export default function PipelineKanban() {
 
       {/* Error */}
       {isError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400">
+        <Alert variant="error">
           Não foi possível carregar as contas. Verifique a conexão com a API.
-        </div>
+        </Alert>
       )}
 
       {/* Instruções */}

@@ -29,6 +29,8 @@ import {
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { SectionLabel } from '../components/ui/SectionLabel';
+import { Alert } from '../components/ui/Alert';
 
 function downloadBlob(data, filename, mimeType) {
   const blob = new Blob([data], { type: mimeType });
@@ -139,20 +141,12 @@ export default function FerramentasBackup() {
 
       {/* Feedback */}
       {feedback && (
-        <div
-          className={`flex items-center gap-3 p-4 rounded-xl border ${
-            feedback.tipo === 'sucesso'
-              ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-          }`}
+        <Alert
+          variant={feedback.tipo === 'sucesso' ? 'success' : 'error'}
+          icon={feedback.tipo === 'sucesso' ? CheckCircle2 : AlertTriangle}
         >
-          {feedback.tipo === 'sucesso' ? (
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-          )}
-          <p className="font-medium">{feedback.msg}</p>
-        </div>
+          <span className="font-medium">{feedback.msg}</span>
+        </Alert>
       )}
 
       {/* Main Export Card */}
@@ -290,27 +284,16 @@ export default function FerramentasBackup() {
         {/* Notice Panel */}
         <div className="lg:col-span-2 space-y-4">
           <div className="p-4 rounded-xl border border-border/40 bg-card space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              Garantia de Privacidade
-            </h3>
+            <SectionLabel icon={ShieldCheck}>Garantia de Privacidade</SectionLabel>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Todos os seus dados exportados são gerados em tempo real diretamente da base de dados e transmitidos por conexões seguras HTTPS. Backups do tipo <strong>.fcbk</strong> recebem uma camada de proteção adicional com o algoritmo de criptografia militar robusto AES-GCM.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-            <div className="flex gap-2">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-blue-800 dark:text-blue-300">Formatos Recomendados</h4>
-                <p className="text-[11px] text-blue-700/80 dark:text-blue-400">
-                  - Use <strong>Excel (.xlsx)</strong> para auditorias, dashboards manuais e análises de balanceamento por abas.<br/>
-                  - Use <strong>PDF</strong> para uma apresentação visual limpa da carteira com gráficos de pizza inclusos.
-                </p>
-              </div>
-            </div>
-          </div>
+          <Alert variant="info" icon={Info} title="Formatos Recomendados">
+            - Use <strong>Excel (.xlsx)</strong> para auditorias, dashboards manuais e análises de balanceamento por abas.<br/>
+            - Use <strong>PDF</strong> para uma apresentação visual limpa da carteira com gráficos de pizza inclusos.
+          </Alert>
         </div>
       </div>
 

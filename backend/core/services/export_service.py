@@ -72,6 +72,7 @@ def get_backupable_models():
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
         "Ativo": 7,
+        "ReceitaRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
@@ -180,9 +181,25 @@ def export_user_data(user, password):
 
         data["data"][app_label][model_name] = records
 
-    # Exportar Cotacao manualmente, pois não possui usuario diretamente
-    from investimento.models import Ativo, Cotacao
+    # Exportar Cotacao e DetalheRendaFixa manualmente, pois não possuem usuario diretamente
+    from investimento.models import Ativo, Cotacao, DetalheRendaFixa
     ativos_usuario_ids = Ativo.objects.filter(usuario=user).values_list("id", flat=True)
+
+    detalhes_qs = DetalheRendaFixa.objects.filter(ativo_id__in=ativos_usuario_ids).select_related("ativo")
+    detalhes_records = []
+    for obj in detalhes_qs.iterator(chunk_size=1000):
+        detalhes_records.append({
+            "ativo_uuid": str(obj.ativo.uuid),
+            "data_vencimento": obj.data_vencimento.isoformat() if obj.data_vencimento else None,
+            "emissor": obj.emissor,
+            "indexador": obj.indexador,
+            "taxa": float(obj.taxa),
+        })
+
+    if "investimento" not in data["data"]:
+        data["data"]["investimento"] = {}
+    data["data"]["investimento"]["DetalheRendaFixa"] = detalhes_records
+
     cotacoes_qs = Cotacao.objects.filter(ativo_id__in=ativos_usuario_ids).select_related("ativo")
 
     cotacoes_records = []

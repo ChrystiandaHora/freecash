@@ -331,8 +331,8 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Workspace Shell */}
-      <div 
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300
+      <div
+        className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300
           ${collapsed ? 'lg:pl-20' : 'lg:pl-72'}
         `}
       >
@@ -397,8 +397,8 @@ export default function DashboardLayout() {
         </header>
 
         {/* Content Viewport */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="w-full space-y-8">
+        <main className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden min-w-0">
+          <div className="w-full space-y-8 min-w-0">
             <Outlet />
           </div>
         </main>

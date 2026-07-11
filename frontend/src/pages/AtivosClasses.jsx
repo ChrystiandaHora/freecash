@@ -30,6 +30,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Alert } from '../components/ui/Alert';
 
 /* ─────────────────────────── Modal genérico ─────────────────────────── */
 /**
@@ -74,10 +75,9 @@ function QuickEditModal({ title, placeholder, initialValue = '', onSave, onClose
             autoFocus
           />
           {(localError || error) && (
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <Alert variant="error" icon={AlertCircle} className="p-2.5 text-xs">
               <span className="font-semibold">{localError || error}</span>
-            </div>
+            </Alert>
           )}
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl h-9 text-xs">Cancelar</Button>
@@ -269,10 +269,9 @@ export default function AtivosClasses() {
 
       {/* ── Success ── */}
       {successMsg && (
-        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <p className="font-semibold">{successMsg}</p>
-        </div>
+        <Alert variant="success" icon={CheckCircle2} className="p-3.5 text-xs">
+          <span className="font-semibold">{successMsg}</span>
+        </Alert>
       )}
 
       {/* ── Legend ── */}

@@ -120,6 +120,7 @@ def get_backupable_models():
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
         "Ativo": 7,
+        "ReceitaRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
@@ -331,6 +332,38 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                                 )
                         except Exception as e:
                             logger.warning("Falha ao restaurar cotação: %s", e)
+
+            # 3b. Restaurar detalhes de Renda Fixa se fornecidos no backup
+            detalhe_records = data_dict.get("data", {}).get("investimento", {}).get("DetalheRendaFixa", [])
+            if detalhe_records:
+                logger.debug("Restaurando %d registros de DetalheRendaFixa", len(detalhe_records))
+                from investimento.models import DetalheRendaFixa
+                from datetime import datetime
+                from decimal import Decimal
+
+                for row in detalhe_records:
+                    ativo_uuid = row.get("ativo_uuid")
+                    ativo_id = uuid_to_id.get("investimento.Ativo", {}).get(ativo_uuid)
+                    if not ativo_id:
+                        ativo_id = uuid_to_id.get("Ativo", {}).get(ativo_uuid)
+
+                    if ativo_id:
+                        try:
+                            data_str = row.get("data_vencimento")
+                            data_vencimento = (
+                                datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else None
+                            )
+                            DetalheRendaFixa.objects.update_or_create(
+                                ativo_id=ativo_id,
+                                defaults={
+                                    "data_vencimento": data_vencimento,
+                                    "emissor": row.get("emissor") or "",
+                                    "indexador": row.get("indexador") or "",
+                                    "taxa": Decimal(str(row.get("taxa") or 0)),
+                                }
+                            )
+                        except Exception as e:
+                            logger.warning("Falha ao restaurar detalhe de renda fixa: %s", e)
 
             # 4. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
             # Necessário porque os signals foram desconectados durante a importação.

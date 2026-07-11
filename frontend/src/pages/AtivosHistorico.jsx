@@ -31,6 +31,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { DataTable } from '../components/ui/DataTable';
+import { Alert } from '../components/ui/Alert';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -277,10 +278,9 @@ function OrdemModal({ ativos, transacao, onClose, onSuccess }) {
           )}
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <p className="font-semibold">{error}</p>
-            </div>
+            <Alert variant="error" icon={AlertCircle} className="text-xs">
+              <span className="font-semibold">{error}</span>
+            </Alert>
           )}
         </form>
 
@@ -560,10 +560,9 @@ export default function AtivosHistorico() {
 
       {/* ── Success ── */}
       {successMsg && (
-        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400 text-xs">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <p className="font-semibold">{successMsg}</p>
-        </div>
+        <Alert variant="success" icon={CheckCircle2} className="text-xs">
+          <span className="font-semibold">{successMsg}</span>
+        </Alert>
       )}
 
       {/* ── KPI Summary ── */}

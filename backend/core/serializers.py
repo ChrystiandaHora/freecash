@@ -235,21 +235,39 @@ class ContasPagarAPISerializer(serializers.ModelSerializer):
 class ReceitasAPISerializer(serializers.ModelSerializer):
     """Serializador customizado otimizado para a exibição de Receitas.
 
-    Facilita a visualização do estado de liquidação e recebimento.
+    Facilita a visualização do estado de liquidação e recebimento, além de
+    refletir se a receita é uma ocorrência gerada por uma `ReceitaRecorrente`.
     """
     categoria = serializers.CharField(source='categoria.nome', read_only=True)
     realizada = serializers.BooleanField(source='transacao_realizada', read_only=True)
     data_recebimento = serializers.DateField(source='data_prevista', read_only=True)
+    tipo = serializers.SerializerMethodField()
+    recorrencia = serializers.SerializerMethodField()
+    data_fim = serializers.SerializerMethodField()
 
     class Meta:
         model = Conta
         fields = [
             'id', 'uuid', 'tipo', 'descricao', 'valor', 'data_recebimento',
             'realizada', 'data_realizacao', 'categoria', 'cartao',
-            'eh_fatura_cartao', 'esta_atrasada',
+            'eh_fatura_cartao', 'esta_atrasada', 'recorrencia', 'data_fim',
             'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
+
+    def get_tipo(self, obj) -> str:
+        """Retorna 'recorrente' se esta ocorrência pertence a uma ReceitaRecorrente ativa."""
+        return 'recorrente' if obj.receita_recorrente_id else 'unica'
+
+    def get_recorrencia(self, obj) -> str | None:
+        """Retorna a frequência da regra de recorrência, se houver."""
+        return obj.receita_recorrente.frequencia if obj.receita_recorrente_id else None
+
+    def get_data_fim(self, obj) -> str | None:
+        """Retorna a data limite da regra de recorrência, se houver."""
+        if obj.receita_recorrente_id and obj.receita_recorrente.data_fim:
+            return obj.receita_recorrente.data_fim.isoformat()
+        return None
 
 
 class TransacaoAPISerializer(serializers.ModelSerializer):

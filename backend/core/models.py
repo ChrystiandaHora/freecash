@@ -148,6 +148,15 @@ class Conta(AuditoriaModel):
         help_text="Marca se este registro é uma fatura de cartão (não uma despesa individual)",
     )
 
+    # Origem, caso esta ocorrência tenha sido gerada por uma regra de receita recorrente
+    receita_recorrente = models.ForeignKey(
+        "core.ReceitaRecorrente",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ocorrencias",
+    )
+
     class Meta:
         ordering = ["-data_prevista", "-id"]
         indexes = [
@@ -253,6 +262,62 @@ class Conta(AuditoriaModel):
 
         super().save(*args, **kwargs)
 
+
+class ReceitaRecorrente(AuditoriaModel):
+    """Regra de geração automática de receitas recorrentes (salário, aluguel recebido, etc.).
+
+    Não representa um lançamento financeiro em si — as ocorrências reais são
+    materializadas como `Conta` (tipo Receita) vinculadas via `receita_recorrente`,
+    geradas sob demanda por `core.services.recorrencia_service`.
+
+    Atributos:
+        usuario (User): Proprietário da regra.
+        descricao (str): Descrição aplicada a cada ocorrência gerada.
+        categoria (Categoria): Categoria aplicada a cada ocorrência gerada.
+        valor (Decimal): Valor de cada ocorrência gerada.
+        frequencia (str): Periodicidade de geração (mensal/quinzenal/semanal/anual).
+        data_inicio (date): Data da primeira ocorrência.
+        data_fim (date): Data limite opcional; indefinida se vazia.
+        ativa (bool): Se False, para a geração de novas ocorrências (histórico é preservado).
+    """
+
+    FREQ_MENSAL = "mensal"
+    FREQ_QUINZENAL = "quinzenal"
+    FREQ_SEMANAL = "semanal"
+    FREQ_ANUAL = "anual"
+    FREQUENCIA_CHOICES = (
+        (FREQ_MENSAL, "Mensal"),
+        (FREQ_QUINZENAL, "Quinzenal"),
+        (FREQ_SEMANAL, "Semanal"),
+        (FREQ_ANUAL, "Anual"),
+    )
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="receitas_recorrentes",
+    )
+    descricao = models.CharField(max_length=255, blank=True)
+    categoria = models.ForeignKey(
+        "core.Categoria",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="receitas_recorrentes",
+    )
+    valor = models.DecimalField(max_digits=12, decimal_places=2)
+    frequencia = models.CharField(max_length=10, choices=FREQUENCIA_CHOICES, default=FREQ_MENSAL)
+    data_inicio = models.DateField()
+    data_fim = models.DateField(null=True, blank=True)
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-data_inicio"]
+        verbose_name = "Receita Recorrente"
+        verbose_name_plural = "Receitas Recorrentes"
+
+    def __str__(self):
+        return f"{self.descricao} ({self.get_frequencia_display()})"
 
 
 class ConfigUsuario(AuditoriaModel):

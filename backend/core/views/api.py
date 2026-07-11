@@ -778,6 +778,9 @@ class ReceitasViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filtra as receitas do usuário logado no período especificado de mês e ano.
 
+        Antes de filtrar, estende a geração de ocorrências de receitas recorrentes
+        ativas do usuário caso o período pedido ultrapasse o horizonte já gerado.
+
         Returns:
             QuerySet: Receitas filtradas do usuário.
         """
@@ -804,6 +807,8 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         try:
             mes = int(mes)
             ano = int(ano)
+            from core.services.recorrencia_service import estender_horizonte_se_necessario
+            estender_horizonte_se_necessario(self.request.user, mes, ano)
             queryset = queryset.filter(data_prevista__month=mes, data_prevista__year=ano)
         except (ValueError, TypeError):
             pass
@@ -829,6 +834,9 @@ class ReceitasViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs) -> Response:
         """Customiza a criação mapeando a data de recebimento e resolvendo a categoria.
 
+        Quando `tipo == 'recorrente'`, cria uma `ReceitaRecorrente` e gera suas
+        ocorrências iniciais em vez de uma `Conta` avulsa.
+
         Args:
             request (Request): Dados da nova receita.
 
@@ -836,12 +844,13 @@ class ReceitasViewSet(viewsets.ModelViewSet):
             Response: Receita criada serializada.
         """
         data = request.data.copy()
-        
+
         # 1. Map data_recebimento -> data_prevista
         if 'data_recebimento' in data:
             data['data_prevista'] = data['data_recebimento']
-            
+
         # 2. Resolve or create category name string
+        categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
             categoria_obj, _ = Categoria.objects.get_or_create(
@@ -850,21 +859,52 @@ class ReceitasViewSet(viewsets.ModelViewSet):
                 tipo=Categoria.TIPO_RECEITA
             )
             data['categoria'] = categoria_obj.id
-            
+
+        if data.get('tipo') == 'recorrente':
+            from core.services.recorrencia_service import criar_regra_e_gerar
+            from datetime import datetime
+
+            frequencia = data.get('recorrencia')
+            if not frequencia:
+                return Response(
+                    {"recorrencia": "Obrigatório quando tipo='recorrente'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            data_inicio = datetime.strptime(data['data_prevista'], "%Y-%m-%d").date()
+            data_fim = (
+                datetime.strptime(data['data_fim'], "%Y-%m-%d").date()
+                if data.get('data_fim') else None
+            )
+            regra, primeira_ocorrencia = criar_regra_e_gerar(
+                usuario=request.user,
+                descricao=data.get('descricao', ''),
+                categoria=categoria_obj,
+                valor=Decimal(str(data['valor'])),
+                frequencia=frequencia,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+            )
+            response_serializer = ReceitasAPISerializer(primeira_ocorrencia, context={'request': request})
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
         # 3. Enforce tipo = Receita
         data['tipo'] = Conta.TIPO_RECEITA
-        
+
         # Validate using standard serializer
         serializer = ContaSerializer(data=data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        
+
         response_serializer = ReceitasAPISerializer(serializer.instance, context={'request': request})
         headers = self.get_success_headers(serializer.data)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs) -> Response:
         """Customiza a atualização mapeando categoria pelo nome e data de recebimento.
+
+        Quando `tipo == 'recorrente'`, atualiza (ou cria) a `ReceitaRecorrente`
+        vinculada e propaga os novos valores para ocorrências futuras não
+        realizadas, sem afetar histórico já liquidado.
 
         Args:
             request (Request): Dados da modificação.
@@ -875,12 +915,13 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         data = request.data.copy()
-        
+
         # 1. Map data_recebimento -> data_prevista
         if 'data_recebimento' in data:
             data['data_prevista'] = data['data_recebimento']
-            
+
         # 2. Resolve or create category name string
+        categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
             categoria_obj, _ = Categoria.objects.get_or_create(
@@ -892,12 +933,50 @@ class ReceitasViewSet(viewsets.ModelViewSet):
 
         # 3. Enforce tipo = Receita
         data['tipo'] = Conta.TIPO_RECEITA
-            
+
         # Validate using standard serializer
         serializer = ContaSerializer(instance, data=data, partial=partial, context={'request': request})
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        
+
+        if request.data.get('tipo') == 'recorrente':
+            from core.services.recorrencia_service import propagar_edicao
+            from datetime import datetime
+
+            frequencia = request.data.get('recorrencia')
+            data_fim = (
+                datetime.strptime(request.data['data_fim'], "%Y-%m-%d").date()
+                if request.data.get('data_fim') else None
+            )
+            if instance.receita_recorrente_id:
+                campos = {"valor": serializer.instance.valor, "descricao": serializer.instance.descricao,
+                          "categoria": categoria_obj}
+                if frequencia:
+                    campos["frequencia"] = frequencia
+                campos["data_fim"] = data_fim
+                propagar_edicao(instance.receita_recorrente, **campos)
+            elif frequencia:
+                from core.models import ReceitaRecorrente
+                from core.services.recorrencia_service import gerar_ocorrencias, HORIZONTE_PADRAO_MESES
+                from dateutil.relativedelta import relativedelta
+
+                regra = ReceitaRecorrente.objects.create(
+                    usuario=request.user,
+                    descricao=serializer.instance.descricao,
+                    categoria=categoria_obj,
+                    valor=serializer.instance.valor,
+                    frequencia=frequencia,
+                    data_inicio=serializer.instance.data_prevista,
+                    data_fim=data_fim,
+                )
+                # Vincula esta ocorrência já existente ANTES de gerar as futuras,
+                # para que `gerar_ocorrencias` a reconheça e não crie uma duplicata
+                # na mesma data_inicio.
+                serializer.instance.receita_recorrente = regra
+                serializer.instance.save(update_fields=["receita_recorrente"])
+                horizonte = regra.data_inicio + relativedelta(months=HORIZONTE_PADRAO_MESES)
+                gerar_ocorrencias(regra, horizonte)
+
         response_serializer = ReceitasAPISerializer(serializer.instance, context={'request': request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 

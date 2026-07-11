@@ -113,6 +113,13 @@ lerna-debug.log*
 \#*\#
 .#*
 
+# AI tooling / assistant artifacts (not part of the app itself)
+.claude/
+.agents/
+graphify-out/
+CLAUDE.md
+.github/copilot-instructions.md
+
 # Sensitive and Environment Configs
 .env
 .env.local

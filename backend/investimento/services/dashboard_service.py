@@ -142,11 +142,11 @@ class DashboardInvestimentoService:
             Ativo.objects.filter(
                 usuario=self.user,
                 ativo=True,
-                data_vencimento__gte=hoje,
-                data_vencimento__lte=limite_dias,
+                detalhe_renda_fixa__data_vencimento__gte=hoje,
+                detalhe_renda_fixa__data_vencimento__lte=limite_dias,
             )
-            .select_related("subcategoria__categoria__classe")
-            .order_by("data_vencimento")[:5]
+            .select_related("subcategoria__categoria__classe", "detalhe_renda_fixa")
+            .order_by("detalhe_renda_fixa__data_vencimento")[:5]
         )
 
         # Paginação

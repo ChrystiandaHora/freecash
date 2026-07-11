@@ -17,6 +17,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -236,9 +237,9 @@ export default function Transacoes() {
 
       {/* Error */}
       {isError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400">
+        <Alert variant="error">
           Não foi possível carregar as transações. Verifique a conexão com a API.
-        </div>
+        </Alert>
       )}
 
       {/* Lista agrupada por dia */}

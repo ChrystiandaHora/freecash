@@ -41,6 +41,8 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
+import { SectionLabel } from '../components/ui/SectionLabel';
+import { Alert } from '../components/ui/Alert';
 
 // Helper de formatação de moedas
 const formatCurrency = (value) => {
@@ -493,18 +495,16 @@ export default function MeusAtivos() {
 
       {/* Banner de Sucesso */}
       {successMessage && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary animate-in fade-in duration-300">
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
+        <Alert variant="success" icon={CheckCircle2} className="animate-in fade-in duration-300">
           <span className="text-sm font-semibold">{successMessage}</span>
-        </div>
+        </Alert>
       )}
 
       {/* Banner de Erro Global */}
       {globalError && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive animate-in fade-in duration-300">
-          <AlertCircle className="h-5 w-5 shrink-0" />
+        <Alert variant="error" icon={AlertCircle} className="animate-in fade-in duration-300">
           <span className="text-sm font-semibold">{globalError}</span>
-        </div>
+        </Alert>
       )}
 
       {/* Grid de Métricas SaaS Flat */}
@@ -636,10 +636,9 @@ export default function MeusAtivos() {
         <form onSubmit={handleCreateSubmit} className="space-y-6">
           
           {errorMessage && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <Alert variant="error" icon={AlertCircle} className="text-xs">
               <span className="font-semibold">{errorMessage}</span>
-            </div>
+            </Alert>
           )}
 
           {/* Dados Principais */}
@@ -733,9 +732,9 @@ export default function MeusAtivos() {
           {/* Dados Opcionais de Renda Fixa */}
           {isRendaFixaOuAlternativo && (
             <div className="border-t border-border/40 pt-4 animate-fade-in">
-              <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
-              </h4>
+              <SectionLabel as="h4" icon={Calendar} className="mb-3">
+                Detalhes Adicionais (Renda Fixa/Alternativos)
+              </SectionLabel>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
@@ -866,10 +865,9 @@ export default function MeusAtivos() {
         <form onSubmit={handleEditSubmit} className="space-y-6">
           
           {errorMessage && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <Alert variant="error" icon={AlertCircle} className="text-xs">
               <span className="font-semibold">{errorMessage}</span>
-            </div>
+            </Alert>
           )}
 
           {/* Dados Principais */}
@@ -953,9 +951,9 @@ export default function MeusAtivos() {
           {/* Dados Opcionais Renda Fixa */}
           {isRendaFixaOuAlternativo && (
             <div className="border-t border-border/40 pt-4 animate-fade-in">
-              <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                <Calendar className="h-4 w-4 text-muted-foreground" /> Detalhes Adicionais (Renda Fixa/Alternativos)
-              </h4>
+              <SectionLabel as="h4" icon={Calendar} className="mb-3">
+                Detalhes Adicionais (Renda Fixa/Alternativos)
+              </SectionLabel>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
@@ -1055,10 +1053,9 @@ export default function MeusAtivos() {
           </div>
 
           {errorMessage && (
-            <div className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <Alert variant="error" icon={AlertCircle} className="w-full text-xs">
               <span className="font-semibold leading-relaxed">{errorMessage}</span>
-            </div>
+            </Alert>
           )}
 
           <div className="flex gap-3 w-full pt-2">

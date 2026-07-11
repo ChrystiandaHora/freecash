@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Alert } from '../components/ui/Alert';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -554,13 +555,9 @@ export default function Relatorios() {
 
         {/* ── Note ── */}
         {isError && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs no-print">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Endpoint de relatórios não disponível</p>
-              <p className="mt-0.5 text-amber-500/80">Os relatórios estão sendo exibidos com dados parciais obtidos das APIs existentes (dashboard e investimentos). Configure o endpoint <code className="bg-amber-500/10 px-1 rounded">/api/relatorios/dre/</code> para dados consolidados completos.</p>
-            </div>
-          </div>
+          <Alert variant="warning" icon={AlertCircle} title="Endpoint de relatórios não disponível" className="text-xs no-print">
+            Os relatórios estão sendo exibidos com dados parciais obtidos das APIs existentes (dashboard e investimentos). Configure o endpoint <code className="bg-amber-500/10 px-1 rounded">/api/relatorios/dre/</code> para dados consolidados completos.
+          </Alert>
         )}
 
       </div>

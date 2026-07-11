@@ -22,6 +22,7 @@ import {
 import { fetchReceitas, createReceita, updateReceita, deleteReceita } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
@@ -48,6 +49,7 @@ const schema = z.object({
   data_recebimento: z.string().min(1, 'Data obrigatória'),
   tipo: z.enum(['unica', 'recorrente']),
   recorrencia: z.string().optional(),
+  data_fim: z.string().optional(),
 })
 
 const MONTHS = [
@@ -144,9 +146,11 @@ export default function Receitas() {
       categoria: conta.categoria || '',
       valor: conta.valor,
       data_recebimento: conta.data_recebimento,
-      tipo: 'unica',
-      recorrencia: conta.recorrencia || ''
+      tipo: conta.tipo === 'recorrente' ? 'recorrente' : 'unica',
+      recorrencia: conta.recorrencia || '',
+      data_fim: conta.data_fim || '',
     })
+    setTipoSelecionado(conta.tipo === 'recorrente' ? 'recorrente' : 'unica')
     setModalOpen(true)
   }
 
@@ -255,7 +259,7 @@ export default function Receitas() {
             <RefreshCw className="mr-1.5 h-4 w-4" />
             Atualizar
           </Button>
-          <Button onClick={() => { setEditingConta(null); reset({ tipo: 'unica', descricao: '', categoria: '', valor: '', data_recebimento: '', recorrencia: '' }); setModalOpen(true); }}>
+          <Button onClick={() => { setEditingConta(null); reset({ tipo: 'unica', descricao: '', categoria: '', valor: '', data_recebimento: '', recorrencia: '', data_fim: '' }); setModalOpen(true); }}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Receita
           </Button>
@@ -352,9 +356,9 @@ export default function Receitas() {
 
       {/* Error */}
       {isError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400">
+        <Alert variant="error">
           Não foi possível carregar as receitas. Verifique a conexão com a API.
-        </div>
+        </Alert>
       )}
 
       {/* Tabela */}
@@ -461,6 +465,16 @@ export default function Receitas() {
                   <option value="semanal">Semanal</option>
                   <option value="anual">Anual</option>
                 </Select>
+              </div>
+            )}
+
+            {watchTipo === 'recorrente' && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Repetir Até (opcional)
+                </label>
+                <Input {...register('data_fim')} type="date" />
+                <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para recorrência indefinida.</p>
               </div>
             )}
           </div>

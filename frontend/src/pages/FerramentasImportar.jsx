@@ -47,6 +47,8 @@ import {
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { SectionLabel } from '../components/ui/SectionLabel';
+import { Alert } from '../components/ui/Alert';
 
 const ACCEPTED_TYPES = {
   'application/octet-stream': ['.fcbk'],
@@ -281,33 +283,21 @@ export default function FerramentasImportar() {
 
           {/* Resultado */}
           {resultado && (
-            <div
-              className={`flex items-start gap-3 p-4 rounded-xl border ${
-                resultado.tipo === 'sucesso'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-              }`}
+            <Alert
+              variant={resultado.tipo === 'sucesso' ? 'success' : 'error'}
+              icon={resultado.tipo === 'sucesso' ? CheckCircle2 : AlertCircle}
+              title={resultado.tipo === 'sucesso' ? (resultado.dados?.msg || 'Restauração concluída!') : undefined}
             >
               {resultado.tipo === 'sucesso' ? (
-                <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="flex gap-4 text-sm">
+                  <span>+ {resultado.dados?.criados ?? 0} criados/restaurados</span>
+                  <span>~ {resultado.dados?.atualizados ?? 0} atualizados</span>
+                  <span>- {resultado.dados?.ignorados ?? 0} ignorados</span>
+                </div>
               ) : (
-                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <span className="font-semibold">{resultado.msg}</span>
               )}
-              <div className="flex-1">
-                {resultado.tipo === 'sucesso' ? (
-                  <>
-                    <p className="font-semibold">{resultado.dados?.msg || 'Restauração concluída!'}</p>
-                    <div className="flex gap-4 mt-1 text-sm opacity-80">
-                      <span>+ {resultado.dados?.criados ?? 0} criados/restaurados</span>
-                      <span>~ {resultado.dados?.atualizados ?? 0} atualizados</span>
-                      <span>- {resultado.dados?.ignorados ?? 0} ignorados</span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="font-semibold">{resultado.msg}</p>
-                )}
-              </div>
-            </div>
+            </Alert>
           )}
 
           {/* Action Buttons */}
@@ -335,9 +325,7 @@ export default function FerramentasImportar() {
 
         {/* Info Panel */}
         <div className="lg:col-span-2 space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Backup Exclusivo FreeCash
-          </h2>
+          <SectionLabel as="h2">Backup Exclusivo FreeCash</SectionLabel>
           <div className="p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20">
             <div className="flex items-center gap-2 mb-1">
               <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
@@ -349,14 +337,9 @@ export default function FerramentasImportar() {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-            <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
-              <span>
-                <span className="font-bold">Atenção:</span> A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup. Certifique-se de que possui a senha de descriptografia correta.
-              </span>
-            </div>
-          </div>
+          <Alert variant="warning" icon={AlertCircle} title="Atenção" className="text-xs">
+            A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup. Certifique-se de que possui a senha de descriptografia correta.
+          </Alert>
         </div>
       </div>
     </div>

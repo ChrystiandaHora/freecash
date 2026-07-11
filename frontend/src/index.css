@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Restaura dark mode por classe (.dark), como o tailwind.config.js já previa
+   com darkMode: ["class"] — no Tailwind v4 (CSS-first) isso não é lido
+   automaticamente, então sem esta linha todo `dark:` do projeto reagia só à
+   preferência de SO/navegador, nunca ao toggle manual de tema do app. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

@@ -19,6 +19,7 @@ import Chart from 'react-apexcharts';
 import { fetchCartoes } from '../services/financeiro';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
 
@@ -276,9 +277,9 @@ export default function MeusCartoes() {
 
       {/* Error state */}
       {isError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600 dark:text-red-400">
+        <Alert variant="error">
           Não foi possível carregar os cartões. Verifique a conexão com a API.
-        </div>
+        </Alert>
       )}
 
       {/* Grid de Cartões */}

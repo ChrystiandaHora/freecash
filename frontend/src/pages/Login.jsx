@@ -32,6 +32,7 @@ import { Input } from '../components/ui/Input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
 import { cn } from '../lib/utils';
 import { Wallet, Loader2, AlertCircle, ShieldCheck, Sun, Moon, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
 
@@ -231,10 +232,9 @@ export default function Login() {
 
                 {/* Error Toast */}
                 {error && (
-                  <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs animate-shake">
-                    <AlertCircle className="h-4.5 w-4.5 shrink-0" />
-                    <p className="font-medium leading-relaxed">{error}</p>
-                  </div>
+                  <Alert variant="error" icon={AlertCircle} className="text-xs animate-shake">
+                    <span className="font-medium leading-relaxed">{error}</span>
+                  </Alert>
                 )}
 
                 <div className="space-y-1.5">

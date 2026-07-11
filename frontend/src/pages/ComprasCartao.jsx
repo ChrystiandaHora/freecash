@@ -42,6 +42,7 @@ import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
+import { Alert } from '../components/ui/Alert';
 
 const fetchConciliacao = async () => {
   const res = await api.get('/api/ferramentas/conciliacao/');
@@ -391,20 +392,12 @@ export default function ComprasCartao() {
             </div>
 
             {uploadResult && (
-              <div
-                className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${
-                  uploadResult.tipo === 'sucesso'
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-                }`}
+              <Alert
+                variant={uploadResult.tipo === 'sucesso' ? 'success' : 'error'}
+                icon={uploadResult.tipo === 'sucesso' ? CheckCircle2 : AlertCircle}
               >
-                {uploadResult.tipo === 'sucesso' ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                )}
-                <p className="flex-1">{uploadResult.msg}</p>
-              </div>
+                {uploadResult.msg}
+              </Alert>
             )}
 
             <Button
@@ -469,10 +462,9 @@ export default function ComprasCartao() {
       )}
 
       {isContasError && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>Erro ao carregar histórico de compras do cartão. Verifique a conexão com o servidor.</p>
-        </div>
+        <Alert variant="error" icon={AlertCircle}>
+          Erro ao carregar histórico de compras do cartão. Verifique a conexão com o servidor.
+        </Alert>
       )}
 
       {!isContasLoading && !isContasError && filteredPurchases.length === 0 && (

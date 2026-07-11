@@ -27,6 +27,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Alert } from '../components/ui/Alert';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -357,24 +358,24 @@ export default function AtivosBalanceamento() {
 
       {/* ── Alerts ── */}
       {metaError && (
-        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <p className="font-semibold">{metaError}</p>
-        </div>
+        <Alert variant="error" icon={AlertCircle} className="p-3.5 text-xs">
+          <span className="font-semibold">{metaError}</span>
+        </Alert>
       )}
       {saveMetasMutation.isSuccess && (
-        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <p className="font-semibold">Metas salvas com sucesso!</p>
-        </div>
+        <Alert variant="success" icon={CheckCircle2} className="p-3.5 text-xs">
+          <span className="font-semibold">Metas salvas com sucesso!</span>
+        </Alert>
       )}
       {isEditing && (
-        <div className={`flex items-center justify-between p-3.5 rounded-xl border text-xs transition-colors ${pctSumOk ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}>
-          <span className="text-muted-foreground font-semibold">Soma das metas configuradas:</span>
-          <span className={`font-extrabold text-base ${pctSumOk ? 'text-primary' : 'text-amber-500'}`}>
-            {formatPct(somaEditingMetas)} / 100%
-          </span>
-        </div>
+        <Alert variant={pctSumOk ? 'success' : 'warning'} className="p-3.5 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold opacity-80">Soma das metas configuradas:</span>
+            <span className="font-extrabold text-base">
+              {formatPct(somaEditingMetas)} / 100%
+            </span>
+          </div>
+        </Alert>
       )}
 
       {/* ── Slider Table per class ── */}
@@ -535,15 +536,19 @@ export default function AtivosBalanceamento() {
 
           {aporteNum > 0 && somaAportes > 0.01 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-3.5 rounded-xl border text-xs bg-primary/10 border-primary/20 text-primary">
-                <span className="font-semibold">Total recomendado para aporte:</span>
-                <span className="font-extrabold text-base">{formatCurrency(somaAportes)}</span>
-              </div>
-              {aporteNum - somaAportes > 0.01 && (
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs">
-                  <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
-                  <span className="font-extrabold text-sm">{formatCurrency(aporteNum - somaAportes)}</span>
+              <Alert variant="info" className="p-3.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Total recomendado para aporte:</span>
+                  <span className="font-extrabold text-base">{formatCurrency(somaAportes)}</span>
                 </div>
+              </Alert>
+              {aporteNum - somaAportes > 0.01 && (
+                <Alert variant="warning" className="p-3.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
+                    <span className="font-extrabold text-sm">{formatCurrency(aporteNum - somaAportes)}</span>
+                  </div>
+                </Alert>
               )}
             </div>
           )}

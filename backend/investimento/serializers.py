@@ -5,7 +5,9 @@ e a base de dados de ativos da bolsa, classes de investimento e ordens históric
 """
 
 from rest_framework import serializers
-from .models import ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo, Ativo, Transacao, Cotacao
+from .models import ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo, Ativo, DetalheRendaFixa, Transacao, Cotacao
+
+DETALHE_RENDA_FIXA_FIELDS = ("data_vencimento", "emissor", "indexador", "taxa")
 
 
 class ClasseAtivoSerializer(serializers.ModelSerializer):
@@ -58,18 +60,23 @@ class AtivoSerializer(serializers.ModelSerializer):
     rentabilidade = serializers.DecimalField(max_digits=19, decimal_places=4, read_only=True)
     rentabilidade_percentual = serializers.DecimalField(max_digits=19, decimal_places=4, read_only=True)
 
-    emissor = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-    indexador = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-    taxa = serializers.DecimalField(max_digits=9, decimal_places=4, allow_null=True, required=False)
+    # Campos de Renda Fixa: não são mais atributos de `Ativo` (vivem em
+    # `DetalheRendaFixa`, ligado 1:1). Declarados aqui como campos "soltos" para
+    # manter o payload da API idêntico ao anterior — nenhuma mudança de contrato
+    # para o frontend. Ver to_representation/create/update abaixo.
+    data_vencimento = serializers.DateField(allow_null=True, required=False, write_only=True)
+    emissor = serializers.CharField(allow_null=True, allow_blank=True, required=False, write_only=True)
+    indexador = serializers.CharField(allow_null=True, allow_blank=True, required=False, write_only=True)
+    taxa = serializers.DecimalField(max_digits=9, decimal_places=4, allow_null=True, required=False, write_only=True)
     cnpj = serializers.CharField(allow_null=True, allow_blank=True, required=False)
- 
+
     historico_cotacoes = serializers.SerializerMethodField()
 
     class Meta:
         model = Ativo
         fields = [
             'id', 'uuid', 'ticker', 'nome', 'cnpj', 'subcategoria', 'subcategoria_detalhe',
-            'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo', 
+            'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo',
             'meta_porcentagem', 'quantidade', 'preco_medio', 'valor_total',
             'cotacao_atual', 'valor_total_atual', 'rentabilidade', 'rentabilidade_percentual',
             'historico_cotacoes', 'criada_em', 'atualizada_em'
@@ -82,6 +89,15 @@ class AtivoSerializer(serializers.ModelSerializer):
             {"data": str(c.data), "valor": float(c.valor)}
             for c in obj.cotacoes.all().order_by('data')[:30]
         ]
+
+    def to_representation(self, instance):
+        """Injeta os campos de `DetalheRendaFixa` no payload plano de saída."""
+        rep = super().to_representation(instance)
+        detalhe = getattr(instance, "detalhe_renda_fixa", None)
+        for field in DETALHE_RENDA_FIXA_FIELDS:
+            value = getattr(detalhe, field, None) if detalhe else None
+            rep[field] = value.isoformat() if hasattr(value, "isoformat") else value
+        return rep
 
     def validate_cnpj(self, value):
         if value:
@@ -108,6 +124,28 @@ class AtivoSerializer(serializers.ModelSerializer):
         if 'taxa' in attrs and attrs['taxa'] is None:
             attrs['taxa'] = 0
         return super().validate(attrs)
+
+    def _extrair_detalhe_renda_fixa(self, validated_data) -> dict:
+        """Remove e retorna os campos de renda fixa de `validated_data`."""
+        return {
+            field: validated_data.pop(field)
+            for field in DETALHE_RENDA_FIXA_FIELDS
+            if field in validated_data
+        }
+
+    def create(self, validated_data):
+        detalhe_data = self._extrair_detalhe_renda_fixa(validated_data)
+        ativo = super().create(validated_data)
+        if any(detalhe_data.values()):
+            DetalheRendaFixa.objects.create(ativo=ativo, **detalhe_data)
+        return ativo
+
+    def update(self, instance, validated_data):
+        detalhe_data = self._extrair_detalhe_renda_fixa(validated_data)
+        ativo = super().update(instance, validated_data)
+        if detalhe_data:
+            DetalheRendaFixa.objects.update_or_create(ativo=ativo, defaults=detalhe_data)
+        return ativo
 
 
 class TransacaoInvestimentoSerializer(serializers.ModelSerializer):

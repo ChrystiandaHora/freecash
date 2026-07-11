@@ -20,6 +20,7 @@ import { createContasPagarLote } from '../services/financeiro';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
 
 const createEmptyRows = (count) => {
   return Array.from({ length: count }, () => ({
@@ -157,10 +158,9 @@ export default function ContasPagarLote() {
 
       {/* Erro */}
       {errorAlert && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 animate-in fade-in duration-300">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="text-xs font-semibold leading-relaxed">{errorAlert}</p>
-        </div>
+        <Alert variant="error" icon={AlertCircle} className="animate-in fade-in duration-300">
+          <span className="text-xs font-semibold leading-relaxed">{errorAlert}</span>
+        </Alert>
       )}
 
       {/* Main Table Form */}

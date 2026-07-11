@@ -15,14 +15,18 @@
 import * as React from "react"
 import { cn } from "../../lib/utils"
 
+// Nota de acessibilidade: destructive/warning/success/urgent usam tons -700/-800
+// (não -600) no modo claro para manter contraste >= 4.5:1 (WCAG AA / WAVE)
+// contra o fundo mais claro do tema (`--background: #eee`) — -600 falha nesses
+// quatro casos (~3.1:1 a ~4.2:1).
 const variantStyles = {
   default: "bg-primary/10 text-primary border border-primary/20",
-  destructive: "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20",
-  warning: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20",
-  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+  destructive: "bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20",
+  warning: "bg-orange-500/10 text-orange-800 dark:text-orange-400 border border-orange-500/20",
+  success: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-500/20",
   secondary: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50",
   outline: "border border-border text-foreground",
-  urgent: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
+  urgent: "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20",
 }
 
 const Badge = React.forwardRef(({ className, variant = "default", ...props }, ref) => (
