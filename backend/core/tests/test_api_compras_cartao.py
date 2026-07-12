@@ -40,6 +40,20 @@ class ComprasCartaoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["descricao"], "Lanche da Tarde")
         self.assertEqual(response.data["data_vencimento"], "2026-08-05")
+        
+        # Test generic category fields
+        self.assertEqual(response.data["categoria"], self.categoria.id)
+        self.assertIsNotNone(response.data["categoria_detalhe"])
+        self.assertEqual(response.data["categoria_detalhe"]["id"], self.categoria.id)
+
+        # Check if the consolidated invoice inherited the category
+        fatura = Conta.objects.get(
+            usuario=self.user,
+            cartao=self.cartao,
+            eh_fatura_cartao=True,
+            data_prevista="2026-08-05"
+        )
+        self.assertEqual(fatura.categoria_id, self.categoria.id)
 
         # 2. Compra após o fechamento (dia 26 > dia 25)
         # Deve vencer na fatura subsequente (05/09/2026)
@@ -53,6 +67,7 @@ class ComprasCartaoAPITestCase(APITestCase):
         response_pos = self.client.post(url, payload_pos, format="json")
         self.assertEqual(response_pos.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response_pos.data["data_vencimento"], "2026-09-05")
+        self.assertEqual(response_pos.data["categoria"], self.categoria.id)
 
     def test_editar_compra_cartao_recalcula_vencimento(self):
         # Cria uma compra
@@ -71,8 +86,10 @@ class ComprasCartaoAPITestCase(APITestCase):
             "descricao": "Compra Inicial Editada",
             "valor": 150.00,
             "data_compra": "2026-07-26", # Move para após o fechamento
-            "cartao": self.cartao.id
+            "cartao": self.cartao.id,
+            "categoria": self.categoria.id
         }
         response = self.client.put(url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data_vencimento"], "2026-09-05")
+        self.assertEqual(response.data["categoria"], self.categoria.id)

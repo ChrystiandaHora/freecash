@@ -47,6 +47,9 @@ def _consolidar_fatura(conta: Conta) -> None:
         cartao=conta.cartao,
         data_vencimento=conta.data_prevista,
     )
+    if not fatura.categoria_id and conta.categoria_id:
+        fatura.categoria = conta.categoria
+        fatura.save(update_fields=["categoria", "atualizada_em"])
     atualizar_valor_fatura(fatura)
 
 
