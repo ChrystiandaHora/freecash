@@ -1049,6 +1049,35 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
             )
         return None
 
+    def _preencher_data_prevista(self, data, request, instance=None) -> dict:
+        """Calcula e preenche o campo data_prevista com base na data_compra e cartao."""
+        if not data.get('data_prevista'):
+            cartao_id = data.get('cartao') or (instance.cartao_id if instance else None)
+            data_compra = data.get('data_compra') or (instance.data_compra if instance else None)
+            if cartao_id and data_compra:
+                try:
+                    from core.models import CartaoCredito
+                    from core.services.fatura_service import calcular_vencimento_fatura
+                    import datetime
+                    
+                    cartao_obj = CartaoCredito.objects.get(id=cartao_id, usuario=request.user)
+                    if isinstance(data_compra, str):
+                        data_compra_date = datetime.datetime.strptime(data_compra, "%Y-%m-%d").date()
+                    else:
+                        data_compra_date = data_compra
+                    
+                    calculado = calcular_vencimento_fatura(
+                        data_compra_date,
+                        cartao_obj.dia_fechamento,
+                        cartao_obj.dia_vencimento
+                    )
+                    data['data_prevista'] = calculado.strftime("%Y-%m-%d")
+                except Exception:
+                    data['data_prevista'] = data_compra.strftime("%Y-%m-%d") if hasattr(data_compra, 'strftime') else data_compra
+            elif data_compra:
+                data['data_prevista'] = data_compra.strftime("%Y-%m-%d") if hasattr(data_compra, 'strftime') else data_compra
+        return data
+
     def perform_create(self, serializer):
         """Salva a compra associando ao usuário autenticado.
 
@@ -1076,6 +1105,9 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         data['tipo'] = Conta.TIPO_DESPESA
         data['eh_fatura_cartao'] = False
+
+        # Preenche data_prevista antes da validação
+        data = self._preencher_data_prevista(data, request)
 
         # Resolve categoria pelo nome se passada como string
         categoria_nome = data.get('categoria_nome') or data.get('categoria')
@@ -1118,6 +1150,9 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         data['tipo'] = Conta.TIPO_DESPESA
         data['eh_fatura_cartao'] = False
+
+        # Preenche data_prevista antes da validação
+        data = self._preencher_data_prevista(data, request, instance)
 
         # Resolve categoria pelo nome se passada como string
         categoria_nome = data.get('categoria_nome') or data.get('categoria')
