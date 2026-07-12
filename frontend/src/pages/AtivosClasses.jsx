@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element}
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
@@ -24,8 +24,7 @@ import {
   CheckCircle2,
   FolderOpen,
   Folder,
-  Tag,
-  Bookmark
+  Tag
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';

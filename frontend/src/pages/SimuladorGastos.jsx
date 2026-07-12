@@ -5,21 +5,16 @@
  * cruzando lançamentos temporários com despesas/receitas reais do banco de dados
  * para os próximos 12 meses.
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Plus, 
-  Trash2, 
-  AlertCircle, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown, 
-  Layers, 
+import {
+  Plus,
+  Trash2,
+  AlertCircle,
+  Calendar,
+  Layers,
   Activity,
   Sparkles,
-  Info,
   RefreshCw,
   FolderOpen
 } from 'lucide-react';

@@ -7,7 +7,6 @@
  *
  * @component
  */
-import * as React from "react"
 import { useState, useMemo, useRef, useEffect } from "react"
 import { 
   ArrowUpDown, ChevronUp, ChevronDown, 

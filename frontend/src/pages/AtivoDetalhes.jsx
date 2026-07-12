@@ -7,16 +7,13 @@
  * @component
  * @returns {React.JSX.Element} Tela widescreen SaaS Flat Premium.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft,
-  RefreshCw, 
-  AlertCircle, 
-  TrendingUp, 
-  TrendingDown, 
-  Gift, 
+  RefreshCw,
+  AlertCircle,
   Calendar,
   Gem,
   Coins,
@@ -27,7 +24,6 @@ import api from '../services/api';
 import Chart from 'react-apexcharts';
 import { fetchAtivo, atualizarAtivo } from '../services/investimentos';
 import { useToast } from '../context/ToastContext';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
 // Helpers de formatação
@@ -59,13 +55,13 @@ export default function AtivoDetalhes() {
   const [activeTab, setActiveTab] = useState('geral'); // 'geral' | 'rentabilidade' | 'transacoes'
 
   /* ── Queries ── */
-  const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo, refetch: refetchAtivo } = useQuery({
+  const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo } = useQuery({
     queryKey: ['ativoDetalhe', id],
     queryFn: () => fetchAtivo(id),
     enabled: !!id
   });
 
-  const { data: transacoes = [], isLoading: loadingTransacoes, refetch: refetchTransacoes } = useQuery({
+  const { data: transacoes = [], isLoading: loadingTransacoes } = useQuery({
     queryKey: ['transacoesAtivo', id],
     queryFn: async () => {
       const res = await api.get(`/api/investimentos/transacoes/?ativo=${id}`);

@@ -27,17 +27,15 @@
  * // Rota configurada em App.jsx:
  * <Route path="importar" element={<FerramentasImportar />} />
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import {
   UploadCloud,
   FileText,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight,
   X,
   FileSpreadsheet,
   Lock,
@@ -61,7 +59,6 @@ function formatBytes(bytes) {
 }
 
 export default function FerramentasImportar() {
-  const navigate = useNavigate();
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [resultado, setResultado] = useState(null);

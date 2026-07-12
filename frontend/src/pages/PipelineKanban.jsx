@@ -26,7 +26,7 @@
  * // Rota configurada em App.jsx:
  * <Route path="contas-kanban" element={<PipelineKanban />} />
  */
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
@@ -47,7 +47,7 @@ const formatCurrency = (val) =>
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-  const [year, month, day] = dateStr.split('-')
+  const [, month, day] = dateStr.split('-')
   return `${day}/${month}`
 }
 

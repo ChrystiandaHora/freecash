@@ -8,17 +8,15 @@
  * @component
  * @returns {React.JSX.Element} Grid com cartões e resumos consolidados de faturas.
  */
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  CreditCard, Wallet, TrendingUp, RefreshCw,
+  CreditCard, Wallet, RefreshCw,
   ShoppingCart, Utensils, Car, Fuel
 } from 'lucide-react';
 
 import Chart from 'react-apexcharts';
 import { fetchCartoes } from '../services/financeiro';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
@@ -27,12 +25,6 @@ import { Accordion, AccordionItem } from '../components/ui/Accordion';
 
 const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
-
-const getUsageVariant = (pct) => {
-  if (pct >= 90) return 'destructive'
-  if (pct >= 70) return 'warning'
-  return 'default'
-}
 
 const CARD_BGS = [
   'bg-[#007acc] text-white',
@@ -75,7 +67,6 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
   const usado = Number(cartao.fatura_atual ?? 0)
   const disponivel = Math.max(limite - usado, 0)
   const pct = limite > 0 ? (usado / limite) * 100 : 0
-  const usageVariant = getUsageVariant(pct)
 
   const compras = cartao.compras_recentes ?? []
 

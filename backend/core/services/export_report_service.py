@@ -9,7 +9,6 @@ from decimal import Decimal
 from django.db.models import Q
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -27,7 +26,7 @@ from reportlab.graphics.shapes import Drawing
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
 
-from django.db.models import Q, Sum, F
+from django.db.models import Sum
 from core.models import Conta
 from investimento.models import Ativo, Transacao as TransacaoInvestimento
 

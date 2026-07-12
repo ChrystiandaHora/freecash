@@ -28,12 +28,11 @@
  * // Rota configurada em App.jsx:
  * <Route path="relatorios" element={<Relatorios />} />
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
 import {
-  FileText,
   Printer,
   RefreshCw,
   AlertCircle,
@@ -42,8 +41,7 @@ import {
   DollarSign,
   BarChart3,
   ChevronDown,
-  ChevronUp,
-  Minus
+  ChevronUp
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -53,11 +51,6 @@ import { Alert } from '../components/ui/Alert';
 const formatCurrency = (value) => {
   if (value === undefined || value === null) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-
-const formatPct = (value) => {
-  const num = parseFloat(value) || 0;
-  return (num >= 0 ? '+' : '') + num.toFixed(2).replace('.', ',') + '%';
 };
 
 const currentYear = new Date().getFullYear();

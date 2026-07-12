@@ -8,14 +8,14 @@
  * @component
  * @returns {React.JSX.Element} Dashboard analítico e listagem de receitas.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, TrendingUp, CheckCircle2, Clock,
-  Loader2, RefreshCw, ArrowUpCircle, Repeat, DollarSign, Filter, Pencil,
+  Loader2, RefreshCw, ArrowUpCircle, Repeat, Filter, Pencil,
   Trash2
 } from 'lucide-react';
 
@@ -76,7 +76,7 @@ export default function Receitas() {
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingConta, setEditingConta] = useState(null)
-  const [tipoSelecionado, setTipoSelecionado] = useState('unica')
+  const [, setTipoSelecionado] = useState('unica')
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
 

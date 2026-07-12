@@ -3,7 +3,7 @@ import axios from 'axios';
 // Variável em memória para o Access Token (segura contra XSS)
 let _accessToken = null;
 
-export const getAccessToken = () => _accessToken;
+const getAccessToken = () => _accessToken;
 export const setAccessToken = (token) => {
   _accessToken = token;
 };

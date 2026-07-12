@@ -12,32 +12,23 @@
  * @returns {React.JSX.Element} Painel de controle de investimentos contendo abas
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  PieChart, 
-  Layers, 
-  ChevronRight, 
-  HelpCircle, 
-  AlertCircle, 
-  CheckCircle2, 
+import {
+  PieChart,
+  AlertCircle,
+  CheckCircle2,
   RefreshCw,
-  Plus,
   Sliders,
   Save,
-  Percent
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
-import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
 
 
@@ -60,69 +51,6 @@ export default function Investimentos() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
-  const columns = [
-    {
-      key: 'ticker',
-      header: 'Ticker',
-      className: 'px-6 py-3',
-      cellClassName: 'px-6 py-3.5 font-bold text-foreground',
-    },
-    {
-      key: 'nome',
-      header: 'Ativo',
-      className: 'px-6 py-3',
-      cellClassName: 'px-6 py-3.5 text-muted-foreground',
-    },
-    {
-      key: 'preco_medio',
-      header: 'Preço Médio',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left text-muted-foreground',
-      render: (val) => formatCurrency(val),
-    },
-    {
-      key: 'cotacao_atual',
-      header: 'Cotação Atual',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left text-muted-foreground',
-      render: (val) => formatCurrency(val),
-    },
-    {
-      key: 'quantidade',
-      header: 'Quantidade',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left font-semibold text-foreground/80',
-      render: (val) => parseFloat(val).toString().replace('.', ','),
-    },
-    {
-      key: 'valor_investido_total',
-      header: 'Investido',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left text-muted-foreground',
-      render: (val) => formatCurrency(val),
-    },
-    {
-      key: 'valor_total_atual',
-      header: 'Valor Atual',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left font-bold text-foreground',
-      render: (val) => formatCurrency(val),
-    },
-    {
-      key: 'rentabilidade_percentual',
-      header: 'Rentabilidade',
-      className: 'px-6 py-3 text-left',
-      cellClassName: 'px-6 py-3.5 text-left font-bold',
-      render: (val) => {
-        const rentabilidadePerc = parseFloat(val);
-        return (
-          <span className={rentabilidadePerc >= 0 ? 'text-primary' : 'text-rose-500'}>
-            {formatPercentage(rentabilidadePerc)}
-          </span>
-        );
-      },
-    },
-  ];
   const [activeTab, setActiveTab] = useState('portfolio'); // 'portfolio' | 'rebalance'
   const [editingMetas, setEditingMetas] = useState({}); // Stores local target % state by asset ID: { [id]: val }
   const [isEditing, setIsEditing] = useState(false);
@@ -263,11 +191,6 @@ export default function Investimentos() {
     total_rentabilidade_percentual = 0,
     total_dividendos = 0,
     alocacao_classes = { labels: [], valores: [] },
-    ativos = [],
-    top_5_ativos = [],
-    top_rentabilidade = [],
-    proximos_vencimentos = [],
-    ultima_transacao = null
   } = dashboardData;
 
   // Chart configuration for Asset Allocation (Donut)
@@ -381,7 +304,7 @@ export default function Investimentos() {
     },
     tooltip: {
       theme: isDarkTheme ? 'dark' : 'light',
-      custom: ({ series, seriesIndex, dataPointIndex, w }) => {
+      custom: ({ seriesIndex, dataPointIndex, w }) => {
         const point = w.config.series[seriesIndex].data[dataPointIndex];
         if (!point) return '';
         return `
@@ -467,6 +390,80 @@ export default function Investimentos() {
 
   const snowballChartSeries = [
     { name: 'Renda Passiva Acumulada', data: snowballSeriesData }
+  ];
+
+  // Evolução do Patrimônio (últimos 12 meses): patrimônio a mercado vs. custo investido
+  const patrimonioMonthlyData = (dashboardData?.performance_monthly || []).slice(-12);
+  const patrimonioCategories = patrimonioMonthlyData.map(item => {
+    if (!item.data) return '';
+    const parts = item.data.split('-');
+    if (parts.length < 2) return item.data;
+    const year = parts[0].substring(2);
+    const monthIndex = parseInt(parts[1], 10);
+    const monthsPt = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return `${monthsPt[monthIndex]}/${year}`;
+  });
+
+  const patrimonioSeriesData = patrimonioMonthlyData.map(item => parseFloat(item.patrimonio) || 0);
+  const investidoSeriesData = patrimonioMonthlyData.map(item => parseFloat(item.investido) || 0);
+
+  const patrimonioChartOptions = {
+    chart: {
+      type: 'area',
+      height: 320,
+      toolbar: { show: false },
+      fontFamily: 'Outfit, Inter, sans-serif',
+      foreColor: isDarkTheme ? '#888888' : '#666666',
+      background: 'transparent',
+    },
+    colors: ['#10b981', '#64748b'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: [3, 2] },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: [0.45, 0.05],
+        opacityTo: [0.05, 0.02],
+        stops: [0, 90, 100],
+      },
+    },
+    xaxis: {
+      categories: patrimonioCategories,
+      labels: { style: { fontSize: '10px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val) => formatCurrency(val),
+        style: { fontSize: '10px' },
+      },
+    },
+    grid: {
+      borderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      strokeDashArray: 4,
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'right',
+      fontSize: '11px',
+      labels: { colors: isDarkTheme ? '#888888' : '#666666' },
+    },
+    theme: {
+      mode: isDarkTheme ? 'dark' : 'light',
+    },
+    tooltip: {
+      theme: isDarkTheme ? 'dark' : 'light',
+      y: {
+        formatter: (val) => formatCurrency(val),
+      },
+    },
+  };
+
+  const patrimonioChartSeries = [
+    { name: 'Patrimônio (Mercado)', data: patrimonioSeriesData },
+    { name: 'Investido (Custo)', data: investidoSeriesData },
   ];
 
   const donutChartSeries = alocacao_classes.valores || [];
@@ -706,6 +703,32 @@ export default function Investimentos() {
             </Card>
 
           </div>
+
+          {/* Evolução do Patrimônio (12 meses) */}
+          {patrimonioSeriesData.length > 0 && (
+            <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Evolução do Patrimônio
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Patrimônio a mercado vs. total investido (custo) nos últimos 12 meses
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[320px] w-full">
+                  <Chart
+                    key={`patrimonio-${isDarkTheme}`}
+                    options={patrimonioChartOptions}
+                    series={patrimonioChartSeries}
+                    type="area"
+                    height="100%"
+                    width="100%"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Efeito Bola de Neve (Renda Passiva Cumulativa) */}
           {snowballSeriesData.length > 0 && (

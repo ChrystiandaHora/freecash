@@ -6,7 +6,6 @@ de cotações a mercado integrando com coletores remotos.
 """
 
 from decimal import Decimal
-from django.db.models import Sum, F
 from investimento.models import Ativo, Transacao, Cotacao
 from investimento.services.tradingview_screener import (
     fetch_quotes_brazil,

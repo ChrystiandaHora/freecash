@@ -8,11 +8,9 @@
  * @component
  * @returns {React.JSX.Element} Painel contendo formulários de configuração de exportação e informações de privacidade.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   DownloadCloud,
-  FileSpreadsheet,
-  FileText,
   Lock,
   ShieldCheck,
   Database,
@@ -114,7 +112,7 @@ export default function FerramentasBackup() {
           const text = await err.response.data.text();
           const parsed = JSON.parse(text);
           errorMsg = parsed.erro || errorMsg;
-        } catch (_) {}
+        } catch {}
       } else {
         errorMsg = err?.response?.data?.erro || errorMsg;
       }

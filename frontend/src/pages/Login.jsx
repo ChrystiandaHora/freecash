@@ -25,7 +25,7 @@
  * // Rota pública configurada em App.jsx:
  * <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { Input } from '../components/ui/Input';

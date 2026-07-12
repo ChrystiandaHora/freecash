@@ -26,7 +26,7 @@
  * // Uso do hook de autenticação em um componente filho:
  * const { user, login, logout, isAuthenticated } = useAuth();
  */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import api, { setAccessToken } from '../services/api';
 import axios from 'axios';
 
@@ -44,7 +44,7 @@ const decodeToken = (token) => {
         .join('')
     );
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(access);
         const decoded = decodeToken(access);
         setUser(decoded);
-      } catch (err) {
+      } catch {
         setAccessToken(null);
         setUser(null);
       } finally {

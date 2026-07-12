@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} O layout mestre encapsulado com suporte a temas responsivos.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import {

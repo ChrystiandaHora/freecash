@@ -16,7 +16,6 @@
  * @param {"sm" | "md" | "lg" | "xl"} [props.size="md"] - Largura máxima pré-definida para a modal.
  * @returns {React.JSX.Element | null} Elemento JSX ou null caso esteja fechada.
  */
-import * as React from "react"
 import { useEffect, useRef } from "react"
 import { cn } from "../../lib/utils"
 import { X } from "lucide-react"

@@ -27,7 +27,7 @@
  * const { addToast } = useToast();
  * addToast('Operação realizada com sucesso!', 'success');
  */
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 const ToastContext = createContext(null);

@@ -8,12 +8,12 @@
  * @component
  * @returns {React.JSX.Element} Formular tabular para inserção em lote de despesas futuras.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Layers, Table, Info, Save, Trash2, 
-  Plus, CheckSquare, Square, Loader2, AlertCircle
+  ArrowLeft, Layers, Table, Info, Save, Trash2,
+  CheckSquare, Square, Loader2, AlertCircle
 } from 'lucide-react';
 
 import { createContasPagarLote } from '../services/financeiro';

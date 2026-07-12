@@ -9,31 +9,23 @@
  * @component
  * @returns {React.JSX.Element}
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
   CheckCircle2,
-  XCircle,
   Search,
   ChevronDown,
   ChevronUp,
   Loader2,
   RefreshCw,
-  TrendingUp,
-  TrendingDown,
   AlertCircle,
-  CheckSquare,
-  Square,
   FileText,
   UploadCloud,
   X,
-  FileSpreadsheet,
   Edit,
   Trash2,
   Calendar,
-  CreditCard,
-  Tag,
   DollarSign
 } from 'lucide-react';
 import api from '../services/api';
@@ -43,16 +35,6 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
-
-const fetchConciliacao = async () => {
-  const res = await api.get('/api/ferramentas/conciliacao/');
-  return res.data;
-};
-
-const processarLinhas = async (payload) => {
-  const res = await api.post('/api/ferramentas/conciliacao/processar/', payload);
-  return res.data;
-};
 
 const fetchComprasCartao = async (params = {}) => {
   const query = new URLSearchParams();

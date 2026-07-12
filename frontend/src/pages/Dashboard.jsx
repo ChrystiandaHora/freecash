@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
