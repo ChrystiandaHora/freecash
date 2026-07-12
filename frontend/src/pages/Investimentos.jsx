@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Sliders,
   Save,
+  HelpCircle,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -56,6 +57,7 @@ export default function Investimentos() {
   const [isEditing, setIsEditing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [metaError, setMetaError] = useState('');
+  const [patrimonioMonthsFilter, setPatrimonioMonthsFilter] = useState(12);
 
 
   // Fetch investments metrics & charts
@@ -190,37 +192,48 @@ export default function Investimentos() {
     total_rentabilidade = 0,
     total_rentabilidade_percentual = 0,
     total_dividendos = 0,
-    alocacao_classes = { labels: [], valores: [] },
+    alocacao_categorias = { labels: [], valores: [] },
   } = dashboardData;
+
+  const isDarkTheme = document.documentElement.classList.contains('dark');
+  const donutColors = ['#0284c7', '#38bdf8', '#2dd4bf', '#fb923c', '#fb7185', '#c084fc', '#facc15', '#a855f7'];
+
+  // Sort categories by value descending for consistent chart and legend mapping
+  const categoryPairs = (alocacao_categorias.labels || []).map((label, idx) => {
+    const valor = (alocacao_categorias.valores || [])[idx] || 0;
+    return { label, valor };
+  });
+  categoryPairs.sort((a, b) => b.valor - a.valor);
+
+  const sortedLabels = categoryPairs.map(item => item.label);
+  const sortedValues = categoryPairs.map(item => item.valor);
 
   // Chart configuration for Asset Allocation (Donut)
   const donutChartOptions = {
     chart: {
       type: 'donut',
-      fontFamily: 'inherit',
+      fontFamily: 'Outfit, Inter, sans-serif',
       background: 'transparent',
       animations: { enabled: false },
     },
-    labels: alocacao_classes.labels || [],
-    colors: ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'],
+    labels: sortedLabels,
+    colors: donutColors,
     dataLabels: { enabled: false },
-    stroke: { width: 1, colors: ['rgba(255, 255, 255, 0.05)'] },
+    stroke: { width: 1, colors: [isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'] },
     legend: {
-      position: 'bottom',
-      fontSize: '11px',
-      labels: { colors: '#888888' },
-      markers: { radius: 12 }
+      show: false, // Hidden to use custom HTML legend next to the chart
     },
     plotOptions: {
       pie: {
+        expandOnClick: false,
         donut: {
-          size: '72%',
+          size: '75%',
           labels: {
             show: true,
             value: {
               formatter: (val) => formatCurrency(val),
-              color: '#888888',
-              fontSize: '15px',
+              color: isDarkTheme ? '#e2e8f0' : '#1e293b',
+              fontSize: '18px',
               fontWeight: 700
             },
             total: {
@@ -236,10 +249,10 @@ export default function Investimentos() {
       }
     },
     theme: {
-      mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+      mode: isDarkTheme ? 'dark' : 'light',
     },
     tooltip: {
-      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+      theme: isDarkTheme ? 'dark' : 'light',
       y: {
         formatter: (val) => formatCurrency(val)
       }
@@ -257,7 +270,6 @@ export default function Investimentos() {
     }))
   }));
 
-  const isDarkTheme = document.documentElement.classList.contains('dark');
 
   const scatterOptions = {
     chart: {
@@ -392,8 +404,10 @@ export default function Investimentos() {
     { name: 'Renda Passiva Acumulada', data: snowballSeriesData }
   ];
 
-  // Evolução do Patrimônio (últimos 12 meses): patrimônio a mercado vs. custo investido
-  const patrimonioMonthlyData = (dashboardData?.performance_monthly || []).slice(-12);
+  // Evolução do Patrimônio: patrimônio a mercado vs. custo investido com base no filtro
+  const patrimonioMonthlyData = patrimonioMonthsFilter === 0
+    ? (dashboardData?.performance_monthly || [])
+    : (dashboardData?.performance_monthly || []).slice(-patrimonioMonthsFilter);
   const patrimonioCategories = patrimonioMonthlyData.map(item => {
     if (!item.data) return '';
     const parts = item.data.split('-');
@@ -436,7 +450,7 @@ export default function Investimentos() {
     },
     yaxis: {
       labels: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val),
         style: { fontSize: '10px' },
       },
     },
@@ -445,10 +459,7 @@ export default function Investimentos() {
       strokeDashArray: 4,
     },
     legend: {
-      position: 'top',
-      horizontalAlign: 'right',
-      fontSize: '11px',
-      labels: { colors: isDarkTheme ? '#888888' : '#666666' },
+      show: false,
     },
     theme: {
       mode: isDarkTheme ? 'dark' : 'light',
@@ -466,7 +477,17 @@ export default function Investimentos() {
     { name: 'Investido (Custo)', data: investidoSeriesData },
   ];
 
-  const donutChartSeries = alocacao_classes.valores || [];
+  const donutChartSeries = sortedValues;
+  const totalValores = donutChartSeries.reduce((acc, curr) => acc + curr, 0);
+  const alocacaoItens = categoryPairs.map((item, idx) => {
+    const pct = totalValores > 0 ? (item.valor / totalValores) * 100 : 0;
+    return {
+      label: item.label,
+      valor: item.valor,
+      pct,
+      color: donutColors[idx % donutColors.length]
+    };
+  });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -526,84 +547,104 @@ export default function Investimentos() {
       {/* KPI Cards (Always Shown) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Patrimonio Total */}
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none group-hover:bg-primary/10 transition-all duration-300" />
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Patrimônio Atual
-            </span>
-          </CardHeader>
-          <CardContent>
+        {/* Card 1: Patrimônio Total */}
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              <span>Patrimônio total</span>
+              <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold rounded-full px-2 py-0.5
+                ${total_rentabilidade_percentual >= 0 
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                }
+              `}>
+                {total_rentabilidade_percentual >= 0 ? '▲' : '▼'} {Math.abs(total_rentabilidade_percentual).toFixed(2).replace('.', ',')}%
+              </span>
+            </div>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
               {formatCurrency(total_patrimonio)}
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              Patrimônio avaliado a mercado
-            </p>
-          </CardContent>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/40 flex justify-between items-center text-xs">
+            <span className="text-muted-foreground">Valor investido</span>
+            <span className="font-semibold text-foreground">{formatCurrency(total_investido)}</span>
+          </div>
         </Card>
 
-        {/* Total Investido */}
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none group-hover:bg-primary/10 transition-all duration-300" />
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Investido
-            </span>
-          </CardHeader>
-          <CardContent>
-            <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(total_investido)}
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              Soma histórica de aportes líquidos
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Rentabilidade */}
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none group-hover:bg-primary/10 transition-all duration-300" />
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Rentabilidade
-            </span>
-          </CardHeader>
-          <CardContent>
-            <h3 className={`text-2xl font-bold tracking-tight ${total_rentabilidade >= 0 ? 'text-primary' : 'text-rose-500'}`}>
+        {/* Card 2: Lucro Total */}
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              Lucro total
+            </div>
+            <h3 className={`text-2xl font-bold tracking-tight ${total_rentabilidade >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
               {formatCurrency(total_rentabilidade)}
             </h3>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className={`inline-flex items-center text-[10px] font-semibold rounded px-1.5 py-0.5
-                ${total_rentabilidade_percentual >= 0 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'bg-rose-500/10 text-rose-500'
-                }
-              `}>
-                {formatPercentage(total_rentabilidade_percentual)}
-              </span>
-              <span className="text-[10px] text-muted-foreground">sobre o custo</span>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/40 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <div className="text-[10px] text-muted-foreground uppercase font-semibold">Ganho de Capital</div>
+              <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_patrimonio - total_investido)}</div>
             </div>
-          </CardContent>
+            <div className="border-l border-border/40 pl-3">
+              <div className="text-[10px] text-muted-foreground uppercase font-semibold">Dividendos</div>
+              <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_dividendos)}</div>
+            </div>
+          </div>
         </Card>
 
-        {/* Dividendos */}
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-300" />
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Proventos / JCP
-            </span>
-          </CardHeader>
-          <CardContent>
-            <h3 className="text-2xl font-bold tracking-tight text-amber-500">
+        {/* Card 3: Proventos Recebidos */}
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              Proventos Recebidos (12M)
+            </div>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">
               {formatCurrency(total_dividendos)}
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              Rendimentos recebidos na carteira
-            </p>
-          </CardContent>
+          </div>
+          <div className="mt-4 pt-4 border-t border-border/40 flex justify-between items-center text-xs">
+            <span className="text-muted-foreground">Total</span>
+            <span className="font-semibold text-foreground">{formatCurrency(total_dividendos)}</span>
+          </div>
+        </Card>
+
+        {/* Card 4: Variação / Rentabilidade */}
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl grid grid-cols-2 gap-4 divide-x divide-border/40">
+          <div className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                <span>Variação</span>
+                <HelpCircle className="cursor-help text-muted-foreground/60 hover:text-muted-foreground h-3 w-3 shrink-0" title="Variação patrimonial a mercado sobre o custo aplicado" />
+              </div>
+              <div className={`text-base font-extrabold flex items-center gap-0.5
+                ${(total_patrimonio - total_investido) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}
+              `}>
+                {((total_patrimonio - total_investido) / (total_investido || 1) * 100).toFixed(2).replace('.', ',')}%
+                <span className="text-xs">{(total_patrimonio - total_investido) >= 0 ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            <div className="text-[11px] text-muted-foreground font-semibold mt-1">
+              + {formatCurrency(total_patrimonio - total_investido)}
+            </div>
+          </div>
+          
+          <div className="pl-4 flex flex-col justify-between">
+            <div>
+              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Rentabilidade
+              </div>
+              <div className={`text-base font-extrabold flex items-center gap-0.5
+                ${total_rentabilidade_percentual >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}
+              `}>
+                {total_rentabilidade_percentual.toFixed(2).replace('.', ',')}%
+                <span className="text-xs">↗</span>
+              </div>
+            </div>
+            <div className="text-[10px] text-muted-foreground font-semibold mt-1">
+              Histórica
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -611,124 +652,111 @@ export default function Investimentos() {
       {activeTab === 'portfolio' && (
         <div className="space-y-8">
           
-          {/* Charts & Hierarchy Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             
-            {/* Allocation Donut */}
-            <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-              <CardHeader>
+            {/* Evolução do Patrimônio */}
+            <Card className="lg:col-span-3 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <CardTitle className="text-base font-bold text-foreground">
+                    Evolução do Patrimônio
+                  </CardTitle>
+                </div>
+                
+                {/* Header Actions / Filters / Legends */}
+                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                  {/* Legend */}
+                  <div className="flex items-center gap-3 text-xs font-semibold">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+                      <span className="text-muted-foreground">Patrimônio</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#64748b]" />
+                      <span className="text-muted-foreground">Valor investido</span>
+                    </div>
+                  </div>
+                  
+                  {/* Filters Dropdowns */}
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={patrimonioMonthsFilter}
+                      onChange={(e) => setPatrimonioMonthsFilter(parseInt(e.target.value))}
+                      className="bg-muted text-foreground border border-border/40 rounded-lg pl-2 pr-6 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
+                    >
+                      <option value={12}>12 Meses</option>
+                      <option value={6}>6 Meses</option>
+                      <option value={0}>Todo o período</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <CardContent className="p-0">
+                <div className="h-[320px] w-full">
+                  {patrimonioSeriesData.length > 0 ? (
+                    <Chart
+                      key={`patrimonio-area-${isDarkTheme}`}
+                      options={patrimonioChartOptions}
+                      series={patrimonioChartSeries}
+                      type="area"
+                      height="100%"
+                      width="100%"
+                    />
+                  ) : (
+                    <div className="py-24 text-center text-xs text-muted-foreground">
+                      Dados insuficientes para gerar a evolução patrimonial.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Ativos na Carteira (Allocation Donut) */}
+            <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-6">
                 <CardTitle className="text-base font-bold text-foreground">
-                  Alocação por Classe
+                  Ativos na Carteira
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Divisão patrimonial agrupada por macro-classes
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center py-4">
+              </div>
+              
+              <CardContent className="p-0 flex flex-col sm:flex-row items-center justify-between gap-6 h-full min-h-[220px]">
                 {donutChartSeries.length > 0 ? (
-                  <Chart key={`donut-${donutChartSeries.join("-")}`} options={donutChartOptions} series={donutChartSeries} type="donut" width={320} />
+                  <>
+                    {/* Donut Chart */}
+                    <div className="w-[220px] h-[220px] shrink-0 flex items-center justify-center">
+                      <Chart
+                        key={`donut-${donutChartSeries.join("-")}`}
+                        options={donutChartOptions}
+                        series={donutChartSeries}
+                        type="donut"
+                        width="100%"
+                        height="100%"
+                      />
+                    </div>
+                    
+                    {/* Custom Legend */}
+                    <div className="flex-1 w-full max-h-[220px] overflow-y-auto pr-1 space-y-2">
+                      {alocacaoItens.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs font-semibold">
+                          <div className="flex items-center gap-2 text-muted-foreground truncate flex-1 min-w-0 mr-2">
+                            <span className="w-2.5 h-2.5 rounded shrink-0" style={{ backgroundColor: item.color }} />
+                            <span className="truncate flex-1">{item.label}</span>
+                          </div>
+                          <span className="text-foreground font-bold shrink-0">{item.pct.toFixed(2).replace('.', ',')}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
-                  <div className="py-12 text-center text-xs text-muted-foreground">
+                  <div className="py-24 text-center text-xs text-muted-foreground w-full">
                     Nenhum ativo cadastrado para exibir alocação.
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {/* ANBIMA Expandable Hierarchy Tree */}
-            <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground">
-              <CardHeader>
-                <CardTitle className="text-base font-bold text-foreground">
-                  Estrutura ANBIMA da Carteira
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Hierarquia dinâmica de classes, categorias e ativos ativos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {balanceData && balanceData.classes && balanceData.classes.length > 0 ? (
-                  <Accordion>
-                    {balanceData.classes.map((classe, idx) => (
-                      <AccordionItem 
-                        key={idx} 
-                        title={`${classe.nome} — ${formatCurrency(classe.ativos.reduce((sum, item) => sum + item.valor_atual, 0))}`}
-                      >
-                        <div className="overflow-x-auto mt-2">
-                          <table className="w-full text-xs text-left border-collapse">
-                            <thead>
-                              <tr className="border-b border-border/40 text-muted-foreground font-semibold">
-                                <th className="py-2.5 px-3">Ticker</th>
-                                <th className="py-2.5 px-3">Nome</th>
-                                <th className="py-2.5 px-3 text-right">Peso Atual</th>
-                                <th className="py-2.5 px-3 text-right">Cotação</th>
-                                <th className="py-2.5 px-3 text-right">Saldo Atual</th>
-                                <th className="py-2.5 px-3 text-right">Rentabilidade</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/40">
-                              {classe.ativos.map((at, atIdx) => (
-                                <tr key={atIdx} className="hover:bg-muted/40 transition-colors">
-                                  <td className="py-2.5 px-3 font-bold text-foreground">
-                                    {at.ticker}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-muted-foreground max-w-[150px] truncate">
-                                    {at.nome}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-semibold text-foreground/85">
-                                    {at.perc_atual.toFixed(1).replace('.', ',')}%
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right text-muted-foreground">
-                                    {formatCurrency(at.preco_atual)}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-bold text-foreground">
-                                    {formatCurrency(at.valor_atual)}
-                                  </td>
-                                  <td className={`py-2.5 px-3 text-right font-semibold ${at.rentabilidade_perc >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                                    {formatPercentage(at.rentabilidade_perc)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) : (
-                  <div className="py-12 text-center text-xs text-muted-foreground">
-                    Nenhum dado estruturado de carteira encontrado.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
           </div>
-
-          {/* Evolução do Patrimônio (12 meses) */}
-          {patrimonioSeriesData.length > 0 && (
-            <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-              <CardHeader>
-                <CardTitle className="text-base font-bold text-foreground">
-                  Evolução do Patrimônio
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Patrimônio a mercado vs. total investido (custo) nos últimos 12 meses
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[320px] w-full">
-                  <Chart
-                    key={`patrimonio-${isDarkTheme}`}
-                    options={patrimonioChartOptions}
-                    series={patrimonioChartSeries}
-                    type="area"
-                    height="100%"
-                    width="100%"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Efeito Bola de Neve (Renda Passiva Cumulativa) */}
           {snowballSeriesData.length > 0 && (
