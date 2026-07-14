@@ -237,6 +237,23 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         total_ignorados += 1
                         continue
 
+                    # Parse date/datetime fields from string to actual python objects
+                    from django.db.models import DateField, DateTimeField
+                    from django.utils.dateparse import parse_date, parse_datetime
+
+                    for field in model._meta.fields:
+                        if field.name in row and row[field.name]:
+                            val = row[field.name]
+                            if isinstance(val, str):
+                                if isinstance(field, DateTimeField):
+                                    parsed = parse_datetime(val)
+                                    if parsed:
+                                        row[field.name] = parsed
+                                elif isinstance(field, DateField):
+                                    parsed = parse_date(val)
+                                    if parsed:
+                                        row[field.name] = parsed
+
                     # Resolve FKs usando chave composta (app_label.ModelName)
                     for field in model._meta.fields:
                         if isinstance(field, ForeignKey) and field.name != "usuario":

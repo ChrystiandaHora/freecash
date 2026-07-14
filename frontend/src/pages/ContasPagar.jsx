@@ -116,6 +116,7 @@ export default function ContasPagar() {
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
   const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
+  const [editingConta, setEditingConta] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
 
   // Filtros de Mês e Ano
@@ -165,16 +166,11 @@ export default function ContasPagar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
       setDesfazerPagamentoId(null)
-      setModalOpen(false)
       setEditingConta(null)
-      reset()
     },
   })
 
-  // Mutation: criar conta
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-  })
+
 
   const handleEdit = (conta) => {
     navigate(`/contas-pagar/editar/${conta.id}`)
@@ -284,7 +280,7 @@ export default function ContasPagar() {
       render: (_, row) => {
         return (
           <div className="flex items-center gap-2">
-            {!row.pago && (
+            {!row.pago ? (
               <Button
                 size="sm"
                 variant="ghost"
@@ -293,6 +289,19 @@ export default function ContasPagar() {
                 title="Marcar como Pago"
               >
                 <CheckCircle2 className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                onClick={() => {
+                  setDesfazerPagamentoId(row.id)
+                  setEditingConta(row)
+                }}
+                title="Desfazer Pagamento"
+              >
+                <RotateCcw className="h-4 w-4" />
               </Button>
             )}
             {row.eh_fatura_cartao ? (
@@ -541,7 +550,7 @@ export default function ContasPagar() {
       {/* ─── Modal: Desfazer Pagamento ────────────────────────────────────────── */}
       <Modal
         isOpen={!!desfazerPagamentoId}
-        onClose={() => { setDesfazerPagamentoId(null); setEditingConta(null); reset() }}
+        onClose={() => { setDesfazerPagamentoId(null); setEditingConta(null); }}
         title="Desfazer Pagamento"
         description={
           editingConta?.eh_fatura_cartao
@@ -550,7 +559,7 @@ export default function ContasPagar() {
         }
       >
         <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => { setDesfazerPagamentoId(null); setEditingConta(null); reset() }}>
+          <Button variant="outline" onClick={() => { setDesfazerPagamentoId(null); setEditingConta(null); }}>
             Cancelar
           </Button>
           <Button

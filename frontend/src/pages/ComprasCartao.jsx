@@ -134,6 +134,22 @@ export default function ComprasCartao() {
     }
   });
 
+  const deletePurchaseMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/api/financeiro/contas-pagar/${id}/`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
+      queryClient.invalidateQueries({ queryKey: ['cartoes'] });
+      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
+      setIsDeleteModalOpen(false);
+      setDeletingId(null);
+    },
+    onError: () => {
+      alert('Erro ao excluir compra de cartão.');
+    }
+  });
+
 
 
   // Upload dropzone handlers
