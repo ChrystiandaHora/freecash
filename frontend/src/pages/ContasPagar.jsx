@@ -113,8 +113,6 @@ const EMPTY_FORM = {
 export default function ContasPagar() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingConta, setEditingConta] = useState(null)
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
   const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
@@ -178,42 +176,8 @@ export default function ContasPagar() {
     resolver: zodResolver(schema),
   })
 
-  const createMutation = useMutation({
-    mutationFn: createContaPagar,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
-      setModalOpen(false)
-      reset()
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: updateContaPagar,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
-      setModalOpen(false)
-      setEditingConta(null)
-      reset()
-    },
-  })
-
-  const onSubmit = (values) => {
-    if (editingConta) {
-      updateMutation.mutate({ id: editingConta.id, ...values })
-    } else {
-      createMutation.mutate(values)
-    }
-  }
-
   const handleEdit = (conta) => {
-    setEditingConta(conta)
-    reset({
-      descricao: conta.descricao,
-      categoria: conta.categoria || '',
-      valor: conta.valor,
-      data_vencimento: conta.data_vencimento
-    })
-    setModalOpen(true)
+    navigate(`/contas-pagar/editar/${conta.id}`)
   }
 
   // ─── Ordenação inteligente: atrasadas → pendentes → pagas ─────────────────
@@ -403,7 +367,7 @@ export default function ContasPagar() {
           <Button variant="outline" size="sm" onClick={() => navigate('/contas-pagar/lote')}>
             Cadastro em Lote
           </Button>
-          <Button onClick={() => { setEditingConta(null); reset(EMPTY_FORM); setModalOpen(true); }}>
+          <Button onClick={() => navigate('/contas-pagar/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Conta
           </Button>
@@ -604,106 +568,7 @@ export default function ContasPagar() {
         </div>
       </Modal>
 
-      {/* ─── Modal: Nova Conta ────────────────────────────────────────────────── */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditingConta(null); reset() }}
-        title={editingConta ? 'Editar Conta a Pagar' : 'Nova Conta a Pagar'}
-        description={editingConta ? 'Altere os dados da obrigação financeira' : 'Preencha os dados da obrigação financeira'}
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Descrição <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('descricao')} placeholder="Ex: Aluguel Março" />
-              {errors.descricao && (
-                <p className="mt-1 text-xs text-red-500">{errors.descricao.message}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Categoria <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('categoria')} placeholder="Ex: Moradia" />
-              {errors.categoria && (
-                <p className="mt-1 text-xs text-red-500">{errors.categoria.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Valor (R$) <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('valor')}
-                type="number"
-                step="0.01"
-                placeholder="0,00"
-                readOnly={!!editingConta?.eh_fatura_cartao}
-                className={editingConta?.eh_fatura_cartao ? "bg-muted cursor-not-allowed" : ""}
-              />
-              {errors.valor && (
-                <p className="mt-1 text-xs text-red-500">{errors.valor.message}</p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Data de Vencimento <span className="text-red-500">*</span>
-              </label>
-              <Input
-                {...register('data_vencimento')}
-                type="date"
-                readOnly={!!editingConta?.eh_fatura_cartao}
-                className={editingConta?.eh_fatura_cartao ? "bg-muted cursor-not-allowed" : ""}
-              />
-              {errors.data_vencimento && (
-                <p className="mt-1 text-xs text-red-500">{errors.data_vencimento.message}</p>
-              )}
-            </div>
-          </div>
-
-          {(createMutation.isError || updateMutation.isError) && (
-            <p className="text-sm text-red-500">
-              Erro ao salvar conta. Tente novamente.
-            </p>
-          )}
-
-          {editingConta?.pago && (
-            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-amber-800 dark:text-amber-300">
-                Esta conta está marcada como <strong>paga</strong>. Deseja reverter o status?
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 border-amber-400 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-300"
-                onClick={() => { setModalOpen(false); setDesfazerPagamentoId(editingConta.id) }}
-              >
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                Desfazer Pagamento
-              </Button>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" type="button" onClick={() => { setModalOpen(false); setEditingConta(null); reset() }}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}>
-              {(isSubmitting || createMutation.isPending || updateMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              <DollarSign className="mr-1.5 h-4 w-4" />
-              Salvar Conta
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   )
 }

@@ -10,6 +10,7 @@
  * @returns {React.JSX.Element} Painel administrativo contendo grid de cartões ativos e inativos.
  */
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -189,264 +190,15 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
   );
 }
 
-// ─── Modal Form ────────────────────────────────────────────
-function ContaModal({ isOpen, onClose, onSave, initialData, isSaving }) {
-  const [form, setForm] = useState(initialData || EMPTY_FORM);
-
-  React.useEffect(() => {
-    setForm(initialData || EMPTY_FORM);
-  }, [initialData, isOpen]);
-
-  if (!isOpen) return null;
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200/50 dark:border-slate-800/50">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-            {initialData ? 'Editar Cartão / Conta' : 'Novo Cartão / Conta'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto custom-scrollbar">
-          {/* Nome */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Nome *
-            </label>
-            <Input
-              id="input-nome-conta"
-              name="nome"
-              value={form.nome}
-              onChange={handleChange}
-              placeholder="Ex: Nubank, Inter, Itaú..."
-              required
-            />
-          </div>
-
-          {/* Bandeira + Últimos dígitos */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Bandeira
-              </label>
-              <select
-                id="select-bandeira"
-                name="bandeira"
-                value={form.bandeira}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                {BANDEIRAS.map((b) => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Últimos 4 dígitos
-              </label>
-              <Input
-                id="input-ultimos-digitos"
-                name="ultimos_digitos"
-                value={form.ultimos_digitos}
-                onChange={handleChange}
-                placeholder="0000"
-                maxLength={4}
-              />
-            </div>
-          </div>
-
-          {/* Limite + Fechamento + Vencimento */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Limite (R$)
-              </label>
-              <Input
-                id="input-limite"
-                name="limite"
-                type="number"
-                value={form.limite}
-                onChange={handleChange}
-                placeholder="0,00"
-                step="0.01"
-                min="0"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Fechamento
-              </label>
-              <Input
-                id="input-fechamento"
-                name="dia_fechamento"
-                type="number"
-                value={form.dia_fechamento}
-                onChange={handleChange}
-                min="1"
-                max="31"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Vencimento
-              </label>
-              <Input
-                id="input-vencimento"
-                name="dia_vencimento"
-                type="number"
-                value={form.dia_vencimento}
-                onChange={handleChange}
-                min="1"
-                max="31"
-              />
-            </div>
-          </div>
-
-          {/* Ícone */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Ícone
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {ICONES.map(({ value, label, Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  id={`btn-icone-${value}`}
-                  onClick={() => setForm((prev) => ({ ...prev, icone: value }))}
-                  title={label}
-                  className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
-                    form.icone === value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary/50'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-[10px] font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Cor */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Cor de Identificação
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  id={`btn-cor-${label.replace(/\s/g, '-').toLowerCase()}`}
-                  onClick={() => setForm((prev) => ({ ...prev, cor: value }))}
-                  title={label}
-                  className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                    form.cor === value
-                      ? 'border-slate-800 dark:border-white scale-110 shadow-md'
-                      : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: value }}
-                />
-              ))}
-              {/* Custom Color Picker */}
-              <label title="Cor personalizada" className="relative w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 cursor-pointer flex items-center justify-center hover:border-primary transition-colors">
-                <input
-                  type="color"
-                  value={form.cor}
-                  onChange={(e) => setForm((prev) => ({ ...prev, cor: e.target.value }))}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full"
-                />
-                <Plus className="h-3.5 w-3.5 text-slate-400" />
-              </label>
-            </div>
-            {/* Preview */}
-            <div
-              className="mt-3 flex items-center gap-3 p-3 rounded-xl border"
-              style={{ borderLeftColor: form.cor, borderLeftWidth: 4, backgroundColor: `${form.cor}10` }}
-            >
-              {React.createElement(IconMap[form.icone] || CreditCard, {
-                className: 'h-5 w-5 shrink-0',
-                style: { color: form.cor },
-              })}
-              <span className="text-sm font-semibold" style={{ color: form.cor }}>
-                {form.nome || 'Nome do cartão'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="flex gap-3 p-5 border-t border-slate-200/50 dark:border-slate-800/50">
-          <Button
-            id="btn-cancelar-modal"
-            variant="outline"
-            onClick={onClose}
-            className="flex-1"
-          >
-            Cancelar
-          </Button>
-          <Button
-            id="btn-salvar-conta"
-            onClick={() => onSave(form)}
-            disabled={!form.nome || isSaving}
-            className="flex-1 gap-2"
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-            {isSaving ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Page ─────────────────────────────────────────────
 export default function AjustesPagamentos() {
   const queryClient = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingConta, setEditingConta] = useState(null);
+  const navigate = useNavigate();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const { data: contas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['contas-bancarias'],
     queryFn: () => fetchContas(),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createConta,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contas-bancarias'] });
-      setModalOpen(false);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: updateConta,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contas-bancarias'] });
-      setModalOpen(false);
-      setEditingConta(null);
-    },
   });
 
   const deleteMutation = useMutation({
@@ -464,41 +216,13 @@ export default function AjustesPagamentos() {
     },
   });
 
-  const handleSave = (formData) => {
-    const payload = {
-      nome: formData.nome,
-      bandeira: formData.bandeira,
-      ultimos_digitos: formData.ultimos_digitos,
-      limite: formData.limite || null,
-      dia_fechamento: parseInt(formData.dia_fechamento) || 1,
-      dia_vencimento: parseInt(formData.dia_vencimento) || 10,
-      ativo: formData.ativo,
-      // Cor e ícone são armazenados na nomenclatura do modelo (ultimos_digitos usado como nome)
-      // Nota: campos extras como cor/icone dependem de migração futura; por ora são passados e ignorados pelo backend
-    };
-
-    if (editingConta) {
-      updateMutation.mutate({ id: editingConta.id, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
-  };
-
   const handleEdit = (conta) => {
-    setEditingConta({
-      ...conta,
-      cor: conta.cor || '#6366f1',
-      icone: conta.icone || 'CreditCard',
-    });
-    setModalOpen(true);
+    navigate(`/pagamentos/editar/${conta.id}`);
   };
 
   const handleNew = () => {
-    setEditingConta(null);
-    setModalOpen(true);
+    navigate('/pagamentos/novo');
   };
-
-  const isSaving = createMutation.isPending || updateMutation.isPending;
   const ativas = contas.filter((c) => c.ativo);
   const inativas = contas.filter((c) => !c.ativo);
 
@@ -604,14 +328,7 @@ export default function AjustesPagamentos() {
         </div>
       )}
 
-      {/* Modal */}
-      <ContaModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditingConta(null); }}
-        onSave={handleSave}
-        initialData={editingConta}
-        isSaving={isSaving}
-      />
+
 
       {/* Delete Confirm */}
       {deleteConfirm && (

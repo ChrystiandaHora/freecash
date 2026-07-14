@@ -9,6 +9,7 @@
  * @returns {React.JSX.Element} Dashboard analítico e listagem de receitas.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -73,10 +74,8 @@ const YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i)
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function Receitas() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingConta, setEditingConta] = useState(null)
-  const [, setTipoSelecionado] = useState('unica')
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
 
@@ -131,27 +130,8 @@ export default function Receitas() {
     },
   })
 
-  const onSubmit = (values) => {
-    if (editingConta) {
-      updateMutation.mutate({ id: editingConta.id, ...values })
-    } else {
-      createMutation.mutate(values)
-    }
-  }
-
   const handleEdit = (conta) => {
-    setEditingConta(conta)
-    reset({
-      descricao: conta.descricao,
-      categoria: conta.categoria || '',
-      valor: conta.valor,
-      data_recebimento: conta.data_recebimento,
-      tipo: conta.tipo === 'recorrente' ? 'recorrente' : 'unica',
-      recorrencia: conta.recorrencia || '',
-      data_fim: conta.data_fim || '',
-    })
-    setTipoSelecionado(conta.tipo === 'recorrente' ? 'recorrente' : 'unica')
-    setModalOpen(true)
+    navigate(`/receitas/editar/${conta.id}`)
   }
 
   // ─── KPIs ──────────────────────────────────────────────────────────────────
@@ -259,7 +239,7 @@ export default function Receitas() {
             <RefreshCw className="mr-1.5 h-4 w-4" />
             Atualizar
           </Button>
-          <Button onClick={() => { setEditingConta(null); reset({ tipo: 'unica', descricao: '', categoria: '', valor: '', data_recebimento: '', recorrencia: '', data_fim: '' }); setModalOpen(true); }}>
+          <Button onClick={() => navigate('/receitas/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Receita
           </Button>
@@ -377,130 +357,7 @@ export default function Receitas() {
       />
 
       {/* ─── Modal: Cadastro / Edição ─────────────────────────────────────────── */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEditingConta(null); reset() }}
-        title={editingConta ? 'Editar Receita' : 'Nova Receita'}
-        description={editingConta ? 'Altere os dados da entrada financeira' : 'Cadastre uma entrada financeira única ou recorrente'}
-        size="md"
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Tipo: Única ou Recorrente */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">
-              Tipo de Receita
-            </label>
-            <div className="flex gap-3">
-              {[
-                { value: 'unica', label: 'Receita Única', Icon: ArrowUpCircle },
-                { value: 'recorrente', label: 'Recorrente', Icon: Repeat },
-              ].map(({ value, label, Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => { setValue('tipo', value); setTipoSelecionado(value) }}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                    watchTipo === value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Descrição <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('descricao')} placeholder="Ex: Salário, Freelance React..." />
-              {errors.descricao && (
-                <p className="mt-1 text-xs text-red-500">{errors.descricao.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Categoria <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('categoria')} placeholder="Ex: Salário, Dividendos" />
-              {errors.categoria && (
-                <p className="mt-1 text-xs text-red-500">{errors.categoria.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Valor (R$) <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('valor')} type="number" step="0.01" placeholder="0,00" />
-              {errors.valor && (
-                <p className="mt-1 text-xs text-red-500">{errors.valor.message}</p>
-              )}
-            </div>
-
-            <div className={watchTipo === 'recorrente' ? '' : 'sm:col-span-2'}>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Data de Recebimento <span className="text-red-500">*</span>
-              </label>
-              <Input {...register('data_recebimento')} type="date" />
-              {errors.data_recebimento && (
-                <p className="mt-1 text-xs text-red-500">{errors.data_recebimento.message}</p>
-              )}
-            </div>
-
-            {watchTipo === 'recorrente' && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Frequência
-                </label>
-                <Select {...register('recorrencia')}>
-                  <option value="">Selecione...</option>
-                  <option value="mensal">Mensal</option>
-                  <option value="quinzenal">Quinzenal</option>
-                  <option value="semanal">Semanal</option>
-                  <option value="anual">Anual</option>
-                </Select>
-              </div>
-            )}
-
-            {watchTipo === 'recorrente' && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Repetir Até (opcional)
-                </label>
-                <Input {...register('data_fim')} type="date" />
-                <p className="mt-1 text-xs text-muted-foreground">Deixe em branco para recorrência indefinida.</p>
-              </div>
-            )}
-          </div>
-
-          {(createMutation.isError || updateMutation.isError) && (
-            <p className="text-sm text-red-500">Erro ao salvar receita. Tente novamente.</p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" type="button" onClick={() => { setModalOpen(false); setEditingConta(null); reset() }}>
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground border-0"
-            >
-              {(isSubmitting || createMutation.isPending || updateMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              <TrendingUp className="mr-1.5 h-4 w-4" />
-              Salvar Receita
-            </Button>
-          </div>
-        </form>
-      </Modal>
 
       {/* ─── Modal: Confirmar Exclusão ─────────────────────────────────────────── */}
       <Modal

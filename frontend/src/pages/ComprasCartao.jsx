@@ -10,6 +10,7 @@
  * @returns {React.JSX.Element}
  */
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -68,6 +69,7 @@ function formatCurrency(value) {
 
 export default function ComprasCartao() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Upload states
   const [selectedCard, setSelectedCard] = useState('');
@@ -80,26 +82,9 @@ export default function ComprasCartao() {
   const [searchTerm, setSearchTerm] = useState('');
   const [cardFilter, setCardFilter] = useState('');
 
-  // Edit Modal states
-  const [editingPurchase, setEditingPurchase] = useState(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editDesc, setEditDesc] = useState('');
-  const [editValue, setEditValue] = useState('');
-  const [editDate, setEditDate] = useState('');
-  const [editCardId, setEditCardId] = useState('');
-  const [editCategoryId, setEditCategoryId] = useState('');
-
   // Delete Modal states
   const [deletingId, setDeletingId] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // Add Modal states
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addDesc, setAddDesc] = useState('');
-  const [addValue, setAddValue] = useState('');
-  const [addDate, setAddDate] = useState('');
-  const [addCardId, setAddCardId] = useState('');
-  const [addCategoryId, setAddCategoryId] = useState('');
 
   // Queries
   const { data: cartoesData } = useQuery({
@@ -149,59 +134,7 @@ export default function ComprasCartao() {
     }
   });
 
-  const updatePurchaseMutation = useMutation({
-    mutationFn: async (payload) => {
-      const { id, ...data } = payload;
-      const res = await api.put(`/api/financeiro/compras-cartao/${id}/`, data);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
-      queryClient.invalidateQueries({ queryKey: ['cartoes'] });
-      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
-      setIsEditModalOpen(false);
-      setEditingPurchase(null);
-    },
-    onError: (err) => {
-      const msg = err?.response?.data?.detail || err?.response?.data?.erro || err.message;
-      alert('Erro ao atualizar compra: ' + msg);
-    }
-  });
 
-  const deletePurchaseMutation = useMutation({
-    mutationFn: async (id) => {
-      await api.delete(`/api/financeiro/compras-cartao/${id}/`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
-      queryClient.invalidateQueries({ queryKey: ['cartoes'] });
-      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
-      setIsDeleteModalOpen(false);
-      setDeletingId(null);
-    },
-    onError: (err) => {
-      const msg = err?.response?.data?.detail || err?.response?.data?.erro || err.message;
-      alert('Erro ao excluir compra: ' + msg);
-    }
-  });
-
-  const createPurchaseMutation = useMutation({
-    mutationFn: async (payload) => {
-      const res = await api.post('/api/financeiro/compras-cartao/', payload);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
-      queryClient.invalidateQueries({ queryKey: ['cartoes'] });
-      queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
-      setIsAddModalOpen(false);
-      resetAddForm();
-    },
-    onError: (err) => {
-      const msg = err?.response?.data?.detail || err?.response?.data?.erro || err.message;
-      alert('Erro ao cadastrar compra: ' + msg);
-    }
-  });
 
   // Upload dropzone handlers
   const onDrop = useCallback((acceptedFiles) => {
@@ -218,32 +151,8 @@ export default function ComprasCartao() {
     multiple: false,
   });
 
-  // Tab 2 handlers
   const handleOpenEditModal = (purchase) => {
-    setEditingPurchase(purchase);
-    setEditDesc(purchase.descricao);
-    setEditValue(purchase.valor);
-    setEditDate(purchase.data_compra || purchase.data_prevista);
-    setEditCardId(purchase.cartao || '');
-    setEditCategoryId(purchase.categoria || '');
-    setIsEditModalOpen(true);
-  };
-
-  const handleSaveEdit = (e) => {
-    e.preventDefault();
-    if (!editDesc || !editValue || !editDate || !editCardId) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-    updatePurchaseMutation.mutate({
-      id: editingPurchase.id,
-      tipo: 'D',
-      descricao: editDesc,
-      valor: editValue,
-      data_compra: editDate,
-      cartao: parseInt(editCardId),
-      categoria: editCategoryId ? parseInt(editCategoryId) : null,
-    });
+    navigate(`/compras-cartao/editar/${purchase.id}`);
   };
 
   const handleOpenDeleteModal = (id) => {
@@ -257,35 +166,8 @@ export default function ComprasCartao() {
     }
   };
 
-  const resetAddForm = () => {
-    setAddDesc('');
-    setAddValue('');
-    setAddDate('');
-    setAddCardId('');
-    setAddCategoryId('');
-  };
-
   const handleOpenAddModal = () => {
-    resetAddForm();
-    const today = new Date().toISOString().split('T')[0];
-    setAddDate(today);
-    setAddCardId(cardFilter || '');
-    setIsAddModalOpen(true);
-  };
-
-  const handleSaveAdd = (e) => {
-    e.preventDefault();
-    if (!addDesc || !addValue || !addDate || !addCardId) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-    createPurchaseMutation.mutate({
-      descricao: addDesc,
-      valor: parseFloat(addValue),
-      data_compra: addDate,
-      cartao: parseInt(addCardId),
-      categoria: addCategoryId ? parseInt(addCategoryId) : null,
-    });
+    navigate('/compras-cartao/novo');
   };
 
   // Filter purchases
@@ -608,257 +490,6 @@ export default function ComprasCartao() {
           </div>
         </div>
       )}
-
-
-      {/* ───────────────── MODAL: EDITAR COMPRA ───────────────── */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingPurchase(null);
-        }}
-        title="Editar Compra do Cartão"
-        description="Ajuste os dados da compra individual. O vencimento correspondente será calculado automaticamente."
-        size="md"
-      >
-        <form onSubmit={handleSaveEdit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Descrição *
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                required
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Valor (R$) *
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Data da Compra *
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  required
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Cartão de Crédito *
-              </label>
-              <Select
-                value={editCardId}
-                onChange={(e) => setEditCardId(e.target.value)}
-                required
-              >
-                <option value="">Selecione...</option>
-                {cartoes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome} ({c.bandeira})
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Categoria
-              </label>
-              <Select
-                value={editCategoryId}
-                onChange={(e) => setEditCategoryId(e.target.value)}
-              >
-                <option value="">Sem Categoria (default)</option>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border/40 mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setEditingPurchase(null);
-              }}
-              disabled={updatePurchaseMutation.isPending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={updatePurchaseMutation.isPending}
-              className="gap-2"
-            >
-              {updatePurchaseMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salvar Alterações
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* ───────────────── MODAL: NOVA COMPRA ───────────────── */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          resetAddForm();
-        }}
-        title="Nova Compra do Cartão de Crédito"
-        description="Cadastre uma nova compra individual de cartão de crédito. O vencimento correspondente será calculado automaticamente."
-        size="md"
-      >
-        <form onSubmit={handleSaveAdd} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Descrição *
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                required
-                placeholder="Ex: Supermercado"
-                value={addDesc}
-                onChange={(e) => setAddDesc(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Valor (R$) *
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0,00"
-                  value={addValue}
-                  onChange={(e) => setAddValue(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Data da Compra *
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  required
-                  value={addDate}
-                  onChange={(e) => setAddDate(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Cartão de Crédito *
-              </label>
-              <Select
-                value={addCardId}
-                onChange={(e) => setAddCardId(e.target.value)}
-                required
-              >
-                <option value="">Selecione...</option>
-                {cartoes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome} ({c.bandeira})
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Categoria
-              </label>
-              <Select
-                value={addCategoryId}
-                onChange={(e) => setAddCategoryId(e.target.value)}
-              >
-                <option value="">Sem Categoria (default)</option>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border/40 mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsAddModalOpen(false);
-                resetAddForm();
-              }}
-              disabled={createPurchaseMutation.isPending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={createPurchaseMutation.isPending}
-              className="gap-2"
-            >
-              {createPurchaseMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salvar Compra
-            </Button>
-          </div>
-        </form>
-      </Modal>
 
       {/* ───────────────── MODAL: CONFIRMAR EXCLUSÃO ───────────────── */}
       <Modal

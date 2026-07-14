@@ -77,6 +77,26 @@ export const deleteReceita = async (id) => {
   return data
 }
 
+export const fetchReceita = async (id) => {
+  const { data } = await api.get(`/api/financeiro/receitas/${id}/`)
+  return data
+}
+
+export const fetchContaPagar = async (id) => {
+  const { data } = await api.get(`/api/financeiro/contas-pagar/${id}/`)
+  return data
+}
+
+export const fetchCompraCartao = async (id) => {
+  const { data } = await api.get(`/api/financeiro/compras-cartao/${id}/`)
+  return data
+}
+
+export const fetchContaBancaria = async (id) => {
+  const { data } = await api.get(`/api/configuracoes/contas-bancarias/${id}/`)
+  return data
+}
+
 export const fetchContas = async (params = {}) => {
   const { data } = await api.get('/api/contas/', { params })
   return data

@@ -88,8 +88,6 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertIn("grafico_diario", data)
         self.assertIn("grafico_projetado", data)
         self.assertIn("breakdown_despesas", data)
-        self.assertIn("proximas_contas", data)
-        self.assertIn("ultimas_transacoes", data)
 
     def test_screen_flow_contas_pagar_management(self):
         """

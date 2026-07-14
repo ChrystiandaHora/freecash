@@ -240,5 +240,147 @@ export const helpContent = {
     actions: {
       "Cadastrar Simulação": "Defina despesas temporárias únicas, recorrentes ou parceladas em memória."
     }
+  },
+
+  "/receitas/novo": {
+    title: "Formulário de Receita",
+    overview: "Insira os dados da sua entrada de receita única ou recorrente.",
+    features: [
+      "Escolha o tipo de receita (única ou recorrente).",
+      "Defina descrição, valor, data de recebimento e termos de recorrência."
+    ],
+    actions: {
+      "Salvar": "Grava a receita na base de dados."
+    }
+  },
+  "/receitas/editar/:id": {
+    title: "Editar Receita",
+    overview: "Altere os dados da sua receita cadastrada no sistema.",
+    features: [
+      "Corrija valores, descrição, datas ou recorrências das parcelas."
+    ],
+    actions: {
+      "Salvar": "Salva as alterações na receita."
+    }
+  },
+
+  "/contas-pagar/novo": {
+    title: "Formulário de Conta a Pagar",
+    overview: "Cadastre uma nova despesa ou obrigação financeira no sistema.",
+    features: [
+      "Defina a descrição, categoria, valor e vencimento da despesa."
+    ],
+    actions: {
+      "Salvar": "Grava a despesa na base de dados."
+    }
+  },
+  "/contas-pagar/editar/:id": {
+    title: "Editar Conta a Pagar",
+    overview: "Altere as informações de uma despesa a pagar cadastrada.",
+    features: [
+      "Corrija descrição, categoria, valor ou data de vencimento."
+    ],
+    actions: {
+      "Salvar": "Salva as alterações na despesa."
+    }
+  },
+
+  "/compras-cartao/novo": {
+    title: "Nova Compra no Cartão",
+    overview: "Lance uma nova despesa individual de compra no cartão de crédito.",
+    features: [
+      "Selecione o cartão de crédito e a categoria correspondente.",
+      "Defina descrição, valor e a data real da transação."
+    ],
+    actions: {
+      "Salvar": "Salva a compra na fatura correspondente do cartão."
+    }
+  },
+  "/compras-cartao/editar/:id": {
+    title: "Editar Compra no Cartão",
+    overview: "Altere os dados de uma compra individual lançada no cartão.",
+    features: [
+      "Corrija descrição, valor, data ou altere o cartão vinculado à compra."
+    ],
+    actions: {
+      "Salvar": "Salva as alterações da compra."
+    }
+  },
+
+  "/pagamentos/novo": {
+    title: "Cadastrar Meio de Pagamento",
+    overview: "Configure uma nova conta bancária ou cartão de crédito no sistema.",
+    features: [
+      "Defina limite, dia de fechamento e dia de vencimento de faturas de cartões.",
+      "Defina cores e selecione um ícone para personalização e identificação visual do meio de pagamento."
+    ],
+    actions: {
+      "Salvar": "Grava as configurações do novo meio de pagamento."
+    }
+  },
+  "/pagamentos/editar/:id": {
+    title: "Editar Meio de Pagamento",
+    overview: "Altere os dados cadastrais da conta ou cartão de crédito.",
+    features: [
+      "Ajuste limites, datas de fatura, ícone representativo ou cores do cartão."
+    ],
+    actions: {
+      "Salvar": "Salva as alterações no meio de pagamento."
+    }
+  },
+
+  "/investimentos/ativos/novo": {
+    title: "Cadastrar Novo Ativo",
+    overview: "Adicione um novo ativo para investimentos à custódia da carteira.",
+    features: [
+      "Defina ticker, nome, subclasse ANBIMA e meta estratégica de alocação.",
+      "Lance detalhes de renda fixa (emissor, indexadores, vencimento) e quantidade/preço de compra inicial."
+    ],
+    actions: {
+      "Salvar": "Cadastra o ativo e lança a ordem de compra inicial (se informada)."
+    }
+  },
+  "/investimentos/ativos/editar/:id": {
+    title: "Editar Ativo",
+    overview: "Altere as configurações cadastrais e metas de alocação do ativo.",
+    features: [
+      "Ajuste a meta de alocação %, indexador, taxa contratada ou arquive o ativo."
+    ],
+    actions: {
+      "Salvar": "Salva as alterações nas configurações do ativo."
+    }
+  },
+
+  "/investimentos/classes/formulario": {
+    title: "Hierarquia ANBIMA",
+    overview: "Gerencie os níveis de classificação ANBIMA dos ativos.",
+    features: [
+      "Insira ou modifique o nome de Classes, Categorias ou Subcategorias."
+    ],
+    actions: {
+      "Salvar": "Grava a alteração da classificação no sistema."
+    }
+  },
+
+  "/investimentos/historico/novo": {
+    title: "Registrar Nova Ordem",
+    overview: "Registre uma operação de compra, venda ou provento de investimento.",
+    features: [
+      "Vincule a transação ao ativo correspondente na carteira.",
+      "Informe quantidade, preço unitário, taxas ou valor total de dividendos recebidos."
+    ],
+    actions: {
+      "Salvar": "Registra a transação e atualiza a rentabilidade e saldo da carteira."
+    }
+  },
+  "/investimentos/historico/editar/:id": {
+    title: "Editar Ordem de Investimento",
+    overview: "Corrija os dados lançados de uma transação no histórico.",
+    features: [
+      "Ajuste a quantidade, preço médio, taxas ou valor dos proventos."
+    ],
+    actions: {
+      "Salvar": "Salva as correções do lançamento da ordem."
+    }
   }
 };

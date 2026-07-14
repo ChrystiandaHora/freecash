@@ -51,6 +51,15 @@ import ComprasCartao from './pages/ComprasCartao';
 import FerramentasBackup from './pages/FerramentasBackup';
 import AjustesPagamentos from './pages/AjustesPagamentos';
 
+// Forms
+import ReceitaForm from './pages/forms/ReceitaForm';
+import ContaPagarForm from './pages/forms/ContaPagarForm';
+import AjustePagamentoForm from './pages/forms/AjustePagamentoForm';
+import CompraCartaoForm from './pages/forms/CompraCartaoForm';
+import AtivoForm from './pages/forms/AtivoForm';
+import AtivosClassesForm from './pages/forms/AtivosClassesForm';
+import OrdemForm from './pages/forms/OrdemForm';
+
 // Create TanStack Query Client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -141,9 +150,24 @@ function App() {
 
                 <Route path="importar" element={<FerramentasImportar />} />
                 <Route path="compras-cartao" element={<ComprasCartao />} />
+                <Route path="compras-cartao/novo" element={<CompraCartaoForm />} />
+                <Route path="compras-cartao/editar/:id" element={<CompraCartaoForm />} />
                 <Route path="backup" element={<FerramentasBackup />} />
 
                 <Route path="pagamentos" element={<AjustesPagamentos />} />
+                <Route path="pagamentos/novo" element={<AjustePagamentoForm />} />
+                <Route path="pagamentos/editar/:id" element={<AjustePagamentoForm />} />
+
+                {/* Sub-rotas de formulários para receitas, contas a pagar, ativos e classes */}
+                <Route path="receitas/novo" element={<ReceitaForm />} />
+                <Route path="receitas/editar/:id" element={<ReceitaForm />} />
+                <Route path="contas-pagar/novo" element={<ContaPagarForm />} />
+                <Route path="contas-pagar/editar/:id" element={<ContaPagarForm />} />
+                <Route path="investimentos/ativos/novo" element={<AtivoForm />} />
+                <Route path="investimentos/ativos/editar/:id" element={<AtivoForm />} />
+                <Route path="investimentos/classes/formulario" element={<AtivosClassesForm />} />
+                <Route path="investimentos/historico/novo" element={<OrdemForm />} />
+                <Route path="investimentos/historico/editar/:id" element={<OrdemForm />} />
               </Route>
 
               {/* Fallback Redirect */}

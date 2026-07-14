@@ -9,6 +9,7 @@
  * @returns {React.JSX.Element}
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
@@ -53,251 +54,6 @@ const TIPO_CONFIG = {
  * Componente modal para registro e lançamento de novas ordens na carteira.
  * 
  * Abstrai abas separadas para registrar operações padrão de Compra/Venda (C/V)
- * ou recebimento direto de proventos (JCP, Dividendos, Rendimentos de FII).
- * Integra-se dinamicamente com o TanStack React Query para invalidar dados
- * e forçar o re-fetch automático de cotações pós-mutação.
- *
- * @component
- * @param {Object} props - Propriedades do componente.
- * @param {Object[]} props.ativos - Coleção de ativos disponíveis para seleção.
- * @param {Function} props.onClose - Callback disparado ao fechar a modal.
- * @param {Function} props.onSuccess - Callback acionado pós-sucesso da mutação.
- * @returns {React.JSX.Element}
- */
-function OrdemModal({ ativos, transacao, onClose, onSuccess }) {
-  const isEditing = !!transacao;
-  const [tab, setTab] = useState(() => {
-    if (isEditing && transacao.tipo === 'D') return 'proventos';
-    return 'cv';
-  });
-  const [form, setForm] = useState({
-    ativo: transacao?.ativo ?? '',
-    tipo: transacao?.tipo ?? 'C',
-    data: transacao?.data ?? new Date().toISOString().split('T')[0],
-    quantidade: transacao?.quantidade ?? '',
-    preco_unitario: transacao?.preco_unitario ?? '',
-    taxas: transacao?.taxas ?? '',
-    valor_total_provento: transacao?.tipo === 'D' ? transacao?.preco_unitario : '',
-  });
-  const [error, setError] = useState('');
-
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: async (payload) => {
-      if (isEditing) {
-        const res = await api.put(`/api/investimentos/transacoes/${transacao.id}/`, payload);
-        return res.data;
-      } else {
-        const res = await api.post('/api/investimentos/transacoes/', payload);
-        return res.data;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['ativos']);
-      queryClient.invalidateQueries(['investimentosDashboard']);
-      queryClient.invalidateQueries(['investimentosBalanceamento']);
-      queryClient.invalidateQueries(['transacoesInvestimento']);
-      onSuccess(isEditing);
-    },
-    onError: (err) => {
-      const apiErr = err.response?.data;
-      if (typeof apiErr === 'object' && apiErr !== null) {
-        setError(Object.entries(apiErr).map(([key, val]) => `${key}: ${val}`).join(' | '));
-      } else {
-        setError(isEditing ? 'Erro ao atualizar ordem.' : 'Erro ao registrar ordem.');
-      }
-    },
-  });
-
-  const set = (key) => (e) => {
-    setForm((f) => ({ ...f, [key]: e.target.value }));
-    setError('');
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.ativo) { setError('Selecione um ativo.'); return; }
-    if (!form.data) { setError('Selecione a data da operação.'); return; }
-
-    let payload = {};
-    if (tab === 'proventos') {
-      if (!form.valor_total_provento) {
-        setError('Preencha o valor do provento.'); return;
-      }
-      payload = {
-        ativo: parseInt(form.ativo),
-        tipo: 'D',
-        data: form.data,
-        quantidade: 1,
-        preco_unitario: parseFloat(form.valor_total_provento),
-        taxas: 0,
-      };
-    } else {
-      if (!form.quantidade || !form.preco_unitario) {
-        setError('Preencha quantidade e preço unitário.'); return;
-      }
-      payload = {
-        ativo: parseInt(form.ativo),
-        tipo: form.tipo,
-        data: form.data,
-        quantidade: parseFloat(form.quantidade),
-        preco_unitario: parseFloat(form.preco_unitario),
-        taxas: parseFloat(form.taxas) || 0,
-      };
-    }
-    mutation.mutate(payload);
-  };
-
-  const labelClass = 'block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5';
-  const fieldClass = 'h-10 text-sm rounded-xl border-slate-200 dark:border-slate-700';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-lg border border-border/40 flex flex-col max-h-[90vh]">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border/40 shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-foreground">{isEditing ? 'Editar Ordem' : 'Nova Ordem'}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {isEditing ? 'Atualize os dados do lançamento da carteira' : 'Registre uma compra, venda ou recebimento de proventos'}
-            </p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Tab selector */}
-        <div className="px-6 pt-5 shrink-0">
-          <div className="flex bg-muted p-1 rounded-xl">
-            {[{ id: 'cv', label: 'Compra / Venda' }, { id: 'proventos', label: 'Proventos / JCP' }].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => { setTab(t.id); setError(''); }}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all
-                  ${tab === t.id ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
-
-          {/* Ativo */}
-          <div>
-            <label className={labelClass}>Ativo</label>
-            <select
-              value={form.ativo}
-              onChange={set('ativo')}
-              className="w-full h-10 text-sm rounded-xl border border-border bg-card text-foreground px-3 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="">Selecione...</option>
-              {ativos.map((a) => (
-                <option key={a.id} value={a.id}>{a.ticker} — {a.nome}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Data */}
-          <div>
-            <label className={labelClass}>Data</label>
-            <Input type="date" value={form.data} onChange={set('data')} className={fieldClass} />
-          </div>
-
-          {tab === 'cv' ? (
-            <>
-              {/* Tipo C/V */}
-              <div>
-                <label className={labelClass}>Tipo de operação</label>
-                <div className="flex gap-3">
-                  {[{ v: 'C', l: 'Compra', color: 'emerald' }, { v: 'V', l: 'Venda', color: 'rose' }].map(({ v, l, color }) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, tipo: v }))}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
-                        ${form.tipo === v
-                          ? `border-${color}-500 bg-${color}-500/10 text-${color}-600 dark:text-${color}-400`
-                          : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quantidade */}
-              <div>
-                <label className={labelClass}>Quantidade</label>
-                <Input type="number" placeholder="0" min="0" step="0.00000001" value={form.quantidade} onChange={set('quantidade')} className={fieldClass} />
-              </div>
-
-              {/* Preço unitário */}
-              <div>
-                <label className={labelClass}>Preço unitário (R$)</label>
-                <Input type="number" placeholder="0,00" min="0" step="0.01" value={form.preco_unitario} onChange={set('preco_unitario')} className={fieldClass} />
-              </div>
-
-              {/* Taxas */}
-              <div>
-                <label className={labelClass}>Taxas / Corretagem (R$)</label>
-                <Input type="number" placeholder="0,00" min="0" step="0.01" value={form.taxas} onChange={set('taxas')} className={fieldClass} />
-              </div>
-
-              {/* Preview total */}
-              {form.quantidade && form.preco_unitario && (
-                <div className="p-3 rounded-xl bg-muted flex justify-between items-center">
-                  <span className="text-xs font-semibold text-muted-foreground">Valor total estimado:</span>
-                  <span className="text-sm font-extrabold text-foreground">
-                    {formatCurrency(
-                      parseFloat(form.quantidade) * parseFloat(form.preco_unitario) +
-                      (form.tipo === 'C' ? 1 : -1) * parseFloat(form.taxas || 0)
-                    )}
-                  </span>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div>
-                <label className={labelClass}>Valor do provento recebido (R$)</label>
-                <Input type="number" placeholder="0,00" min="0" step="0.01" value={form.valor_total_provento} onChange={set('valor_total_provento')} className={fieldClass} />
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Dividendos, JCP, Rendimentos de FII, Cupons, etc. O valor será registrado como tipo "Provento" e não altera sua quantidade de cotas.
-              </p>
-            </>
-          )}
-
-          {error && (
-            <Alert variant="error" icon={AlertCircle} className="text-xs">
-              <span className="font-semibold">{error}</span>
-            </Alert>
-          )}
-        </form>
-
-        {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-border/40 shrink-0">
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10">
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="nova-ordem-form"
-            onClick={handleSubmit}
-            disabled={mutation.isPending}
-            className="flex-1 rounded-xl h-10 bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-semibold"
-          >
-            {mutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : (isEditing ? 'Salvar Alterações' : 'Registrar Ordem')}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -332,21 +88,14 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
 /* ─────────────────────────── Main Page ─────────────────────────── */
 export default function AtivosHistorico() {
   const queryClient = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTransacao, setEditingTransacao] = useState(null);
+  const navigate = useNavigate();
   const [deletingTransacao, setDeletingTransacao] = useState(null);
   const [filterTipo, setFilterTipo] = useState(''); // '' | 'C' | 'V' | 'D'
   const [filterAtivo, setFilterAtivo] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const handleEdit = (transacao) => {
-    setEditingTransacao(transacao);
-    setModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setEditingTransacao(null);
+    navigate(`/investimentos/historico/editar/${transacao.id}`);
   };
 
   const deleteMutation = useMutation({
@@ -544,8 +293,8 @@ export default function AtivosHistorico() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <Button
-            onClick={() => setModalOpen(true)}
-            className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground border-0 flex items-center gap-1.5"
+            onClick={() => navigate('/investimentos/historico/novo')}
+            className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground border-0 flex items-center gap-1.5"
           >
             <Plus className="h-4 w-4" />
             Nova Ordem
@@ -646,15 +395,7 @@ export default function AtivosHistorico() {
         </CardContent>
       </Card>
 
-      {/* ── Modal ── */}
-      {modalOpen && (
-        <OrdemModal
-          ativos={ativos ?? []}
-          transacao={editingTransacao}
-          onClose={handleCloseModal}
-          onSuccess={handleSuccess}
-        />
-      )}
+
 
       {/* ── Delete Confirmation ── */}
       {deletingTransacao && (
