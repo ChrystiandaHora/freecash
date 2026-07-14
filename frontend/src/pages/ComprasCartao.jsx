@@ -465,13 +465,13 @@ export default function ComprasCartao() {
                       {p.data_compra ? formatDate(p.data_compra) : '—'}
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {formatDate(p.data_prevista)}
+                      {formatDate(p.data_vencimento)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-red-500 dark:text-red-400">
                       {formatCurrency(p.valor)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {p.transacao_realizada ? (
+                      {p.pago ? (
                         <Badge variant="success">Pago</Badge>
                       ) : (
                         <Badge variant="secondary">Pendente</Badge>
