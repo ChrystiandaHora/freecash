@@ -85,9 +85,11 @@ class AtivoSerializer(serializers.ModelSerializer):
 
     def get_historico_cotacoes(self, obj) -> list[dict]:
         """Retorna a série histórica das últimas 30 cotações ordenadas cronologicamente."""
+        recent_cotacoes = list(obj.cotacoes.all().order_by('-data')[:30])
+        recent_cotacoes.reverse()
         return [
             {"data": str(c.data), "valor": float(c.valor)}
-            for c in obj.cotacoes.all().order_by('data')[:30]
+            for c in recent_cotacoes
         ]
 
     def to_representation(self, instance):

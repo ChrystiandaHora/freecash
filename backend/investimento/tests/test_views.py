@@ -126,3 +126,34 @@ class AtivoViewSetTests(APITestCase):
         self.assertIn("PRIO3.SA", requested_req.full_url)
         self.assertNotIn("PRIO3F", requested_req.full_url)
 
+    def test_retrieve_ativo_returns_latest_30_quotes_in_chronological_order(self):
+        # Create 35 quotes for the asset, one per day starting from 35 days ago
+        base_date = datetime.date.today() - datetime.timedelta(days=35)
+        for i in range(35):
+            Cotacao.objects.create(
+                ativo=self.ativo,
+                data=base_date + datetime.timedelta(days=i),
+                valor=Decimal("100.00") + Decimal(i)
+            )
+
+        url = reverse("api-ativo-detail", kwargs={"pk": self.ativo.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        historico = response.data["historico_cotacoes"]
+        
+        # Should return exactly 30 quotes
+        self.assertEqual(len(historico), 30)
+        
+        # The first returned quote should be the 6th created quote (day 5 of offset, i.e., index 5)
+        expected_first_date = str(base_date + datetime.timedelta(days=5))
+        expected_last_date = str(base_date + datetime.timedelta(days=34))
+        
+        self.assertEqual(historico[0]["data"], expected_first_date)
+        self.assertEqual(historico[0]["valor"], 105.0)
+        
+        # The last returned quote should be the 35th created quote (day 34 of offset, i.e., index 34)
+        self.assertEqual(historico[-1]["data"], expected_last_date)
+        self.assertEqual(historico[-1]["valor"], 134.0)
+
+
