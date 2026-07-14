@@ -99,7 +99,10 @@ class ContaViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Contas filtradas do usuário.
         """
-        queryset = Conta.objects.filter(usuario=self.request.user)
+        from django.db.models import Q
+        queryset = Conta.objects.filter(usuario=self.request.user).filter(
+            Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
+        )
         tipo = self.request.query_params.get('tipo')
         realizada = self.request.query_params.get('realizada')
         data_inicio = self.request.query_params.get('data_inicio')
