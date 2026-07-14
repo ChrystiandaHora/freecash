@@ -194,7 +194,7 @@ export default function SimuladorGastos() {
       const [currYear, currMonth] = monthKey.split('-').map(Number);
       
       const diffMonths = (currYear - startYear) * 12 + (currMonth - startMonth);
-      return diffMonths < item.parcelas ? item.valor : 0;
+      return diffMonths < item.parcelas ? (item.valor / item.parcelas) : 0;
     }
     
     return 0;
@@ -520,15 +520,24 @@ export default function SimuladorGastos() {
                     <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Quantidade de Parcelas (Meses)
                     </label>
-                    <Input 
-                      value={parcelas} 
-                      onChange={e => setParcelas(e.target.value)} 
-                      type="number" 
-                      min="1" 
-                      max="12"
+                    <Select
+                      value={parcelas}
+                      onChange={e => setParcelas(e.target.value)}
                       required
                       id="sim-parcelas"
-                    />
+                    >
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
+                        const numericValor = parseFloat(valor);
+                        const labelSuffix = (!isNaN(numericValor) && numericValor > 0)
+                          ? ` (${n}x de ${formatCurrency(numericValor / n)})`
+                          : '';
+                        return (
+                          <option key={n} value={String(n)}>
+                            {n} meses{labelSuffix}
+                          </option>
+                        );
+                      })}
+                    </Select>
                   </div>
                 )}
 
@@ -579,7 +588,10 @@ export default function SimuladorGastos() {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground/80">{formatCurrency(item.valor)}</span>
+                        <span className="font-semibold text-foreground/80">
+                          {formatCurrency(item.valor)}
+                          {item.frequencia === 'parcelada' && ` (${item.parcelas}x de ${formatCurrency(item.valor / item.parcelas)})`}
+                        </span>
                         <span>•</span>
                         <span>{item.categoria}</span>
                         <span>•</span>
