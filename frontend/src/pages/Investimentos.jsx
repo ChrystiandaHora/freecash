@@ -954,8 +954,14 @@ export default function Investimentos() {
                             <td className="py-3 px-4 text-right font-medium text-muted-foreground">
                               {formatCurrency(idealVal)}
                             </td>
-                            <td className={`py-3 px-4 text-right font-extrabold ${diff > 0.01 ? 'text-primary' : 'text-muted-foreground'}`}>
-                              {diff > 0.01 ? `COMPRAR ${formatCurrency(diff)}` : 'Aguardar / Manter'}
+                            <td className={`py-3 px-4 text-right font-extrabold`}>
+                              {diff > 0.01 ? (
+                                <span className="text-primary">COMPRAR {formatCurrency(diff)}</span>
+                              ) : diff < -0.01 ? (
+                                <span className="text-red-500 dark:text-red-400">VENDER {formatCurrency(Math.abs(diff))}</span>
+                              ) : (
+                                <span className="text-muted-foreground">Aguardar / Manter</span>
+                              )}
                             </td>
                           </tr>
                         );

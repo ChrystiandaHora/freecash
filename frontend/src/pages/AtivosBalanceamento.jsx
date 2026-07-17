@@ -187,24 +187,42 @@ export default function AtivosBalanceamento() {
   const allocationState = allAtivos.map((at) => {
     const meta = (isEditing ? editingMetas[at.id] : at.meta_porcentagem) ?? 0;
     const isExcluded = excludedAssetIds.has(at.id);
+    const cotacao = at.preco_atual ?? 0;
     return {
       ...at,
       meta,
       qtdComprar: 0,
       aporte: 0,
       isExcluded,
+      cotacao,
     };
   });
 
-  let remainingBudget = aporteNum;
+  // Calculate sales first for non-excluded assets based on target future portfolio
+  let totalSalesCash = 0;
+  allocationState.forEach((at) => {
+    if (at.isExcluded) return;
+    const finalPatrimonio = totalPatrimonio + aporteNum;
+    const valorIdeal = (at.meta / 100) * finalPatrimonio;
+    const diferencaIdeal = valorIdeal - at.valor_atual;
+    if (diferencaIdeal < -0.01) {
+      const excesso = -diferencaIdeal;
+      const qtdIdealVender = (at.cotacao > 0) ? Math.floor(excesso / at.cotacao) : 0;
+      const vendaCash = qtdIdealVender * at.cotacao;
+      at.qtdComprar = -qtdIdealVender;
+      at.aporte = -vendaCash;
+      totalSalesCash += vendaCash;
+    }
+  });
+
+  let remainingBudget = aporteNum + totalSalesCash;
   if (remainingBudget > 0) {
     let iterations = 0;
     const MAX_ITERATIONS = 10000; // safety cap to prevent infinite loops
+    const simulatedTotal = totalPatrimonio + aporteNum;
     
     while (remainingBudget > 0 && iterations < MAX_ITERATIONS) {
       iterations++;
-      
-      const simulatedTotal = totalPatrimonio + (aporteNum - remainingBudget);
       
       let bestAssetIndex = -1;
       let maxDeficit = -Infinity;
@@ -215,7 +233,7 @@ export default function AtivosBalanceamento() {
         // Skip assets that are excluded by the user
         if (at.isExcluded) continue;
 
-        const cotacao = at.preco_atual ?? 0;
+        const cotacao = at.cotacao;
         
         // Skip assets we cannot afford or that have invalid/zero price
         if (cotacao <= 0 || cotacao > remainingBudget) continue;
@@ -237,26 +255,36 @@ export default function AtivosBalanceamento() {
       
       const bestAsset = allocationState[bestAssetIndex];
       bestAsset.qtdComprar += 1;
-      bestAsset.aporte = bestAsset.qtdComprar * (bestAsset.preco_atual ?? 0);
-      remainingBudget -= (bestAsset.preco_atual ?? 0);
+      bestAsset.aporte = bestAsset.qtdComprar * bestAsset.cotacao;
+      remainingBudget -= bestAsset.cotacao;
     }
   }
 
   const magicAllocation = allocationState.map((at) => {
-    const finalPatrimonio = totalPatrimonio + (aporteNum - remainingBudget);
+    const finalPatrimonio = totalPatrimonio + aporteNum;
     const valorIdeal = (at.meta / 100) * finalPatrimonio;
-    const cotacao = at.preco_atual ?? 0;
-    const aporteIdeal = Math.max(0, valorIdeal - at.valor_atual);
+    const diferencaIdeal = valorIdeal - at.valor_atual;
+    const isOverAllocated = at.aporte < -0.01;
+    const excesso = isOverAllocated ? -at.aporte : 0;
+    const qtdIdealVender = isOverAllocated ? -at.qtdComprar : 0;
+    const qtdIdealComprar = (!isOverAllocated && at.cotacao > 0) ? Math.floor(diferencaIdeal / at.cotacao) : 0;
+    const aporteIdeal = Math.max(0, diferencaIdeal);
     return {
       ...at,
       valorIdeal,
-      cotacao,
+      diferencaIdeal,
+      isOverAllocated,
+      excesso,
+      qtdIdealVender,
+      qtdIdealComprar,
       aporteIdeal,
     };
   });
 
-  const somaAportes = magicAllocation.reduce((s, a) => s + a.aporte, 0);
-  const futuroPatrimonio = totalPatrimonio + somaAportes;
+  const totalBuysCash = magicAllocation.reduce((s, a) => s + (a.aporte > 0 ? a.aporte : 0), 0);
+  const finalSalesCash = magicAllocation.reduce((s, a) => s + (a.aporte < 0 ? -a.aporte : 0), 0);
+  const netContribution = totalBuysCash - finalSalesCash;
+  const futuroPatrimonio = totalPatrimonio + netContribution;
   const somaEditingMetas = Object.values(editingMetas).reduce((a, b) => a + b, 0);
   const pctSumOk = Math.abs(somaEditingMetas - 100) < 0.01;
 
@@ -323,6 +351,141 @@ export default function AtivosBalanceamento() {
           </Button>
         </div>
       </div>
+
+      {/* ── Aporte Mágico Calculator ── */}
+      <Card className="border border-primary/20 bg-card shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+            <Coins className="h-4 w-4 text-amber-500" />
+            Calculadora de Aporte Mágico
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Informe quanto deseja aportar e veja a distribuição automática baseada nos déficits da carteira
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-4 flex-col sm:flex-row">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                Quanto você quer aportar hoje?
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-primary">R$</span>
+                <Input
+                  type="number"
+                  placeholder="0,00"
+                  value={aporteValue}
+                  onChange={(e) => setAporteValue(e.target.value)}
+                  className="pl-10 h-12 text-lg font-bold"
+                  min="0"
+                  step="100"
+                />
+              </div>
+            </div>
+             {(aporteNum > 0 || finalSalesCash > 0) && (
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
+                <p className="text-xl font-extrabold text-foreground">{formatCurrency(futuroPatrimonio)}</p>
+              </div>
+            )}
+          </div>
+
+          {magicAllocation.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-border/40">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
+                    <th className="py-3 px-4 w-12 text-center">Aplicar</th>
+                    <th className="py-3 px-4">Ativo</th>
+                    <th className="py-3 px-4 text-right">Meta</th>
+                    <th className="py-3 px-4 text-right">Cotação</th>
+                    <th className="py-3 px-4 text-right">Valor Investido</th>
+                    <th className="py-3 px-4 text-right">Saldo Ideal</th>
+                    <th className="py-3 px-4 text-right">Qtd. Ajuste</th>
+                    <th className="py-3 px-4 text-right">Valor Ajuste</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {magicAllocation.map((at) => (
+                    <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.isExcluded ? 'opacity-50' : ''}`}>
+                      <td className="py-3 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={!at.isExcluded}
+                          onChange={() => toggleAssetExcluded(at.id)}
+                          className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-foreground">{at.ticker}</p>
+                        <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatCurrency(at.cotacao)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valor_atual)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valorIdeal)}</td>
+                      <td className={`py-3 px-4 text-right font-extrabold font-mono`}>
+                        {at.isOverAllocated ? (
+                          <span className="text-red-500 dark:text-red-400">
+                            - {at.qtdIdealVender} un.
+                          </span>
+                        ) : at.qtdComprar > 0 ? (
+                          <span className="text-emerald-500">
+                            + {at.qtdComprar} un.
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className={`py-3 px-4 text-right font-extrabold`}>
+                        {at.isOverAllocated ? (
+                          <span className="text-red-500 dark:text-red-400">
+                            - {formatCurrency(at.excesso)}
+                          </span>
+                        ) : at.aporte > 0.01 ? (
+                          <span className="text-emerald-500">
+                            + {formatCurrency(at.aporte)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {magicAllocation.length > 0 && (totalBuysCash > 0.01 || finalSalesCash > 0.01) && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 text-xs">
+                  <p className="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-400">Total em Compras</p>
+                  <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">{formatCurrency(totalBuysCash)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 text-xs">
+                  <p className="text-[10px] uppercase font-semibold text-red-600 dark:text-red-400">Total em Vendas</p>
+                  <p className="text-base font-extrabold text-red-700 dark:text-red-300 mt-1">{formatCurrency(finalSalesCash)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
+                  <p className="text-[10px] uppercase font-semibold text-primary">Aporte Líquido Requerido</p>
+                  <p className="text-base font-extrabold text-primary mt-1">{formatCurrency(Math.max(0, netContribution))}</p>
+                </div>
+              </div>
+
+              {remainingBudget > 0.01 && (
+                <Alert variant="warning" className="p-3.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
+                    <span className="font-extrabold text-sm">{formatCurrency(remainingBudget)}</span>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── KPIs ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -422,19 +585,29 @@ export default function AtivosBalanceamento() {
                       disabled={!isEditing}
                     />
 
-                    {/* Aporte info */}
-                    {magicoItem && !magicoItem.isExcluded && magicoItem.aporteIdeal > 0.01 && (
-                      <div className="flex items-center gap-2 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-1.5 flex-wrap">
-                        <ArrowRight className="h-3 w-3 shrink-0" />
-                        <span className="font-semibold">
-                          {magicoItem.aporte > 0.01 ? (
-                            <>Aporte sugerido: {formatCurrency(magicoItem.aporte)} ({magicoItem.qtdComprar} cota{magicoItem.qtdComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
-                          ) : (
-                            <>Aporte ideal: {formatCurrency(magicoItem.aporteIdeal)} (cotação: {formatCurrency(magicoItem.cotacao)})</>
-                          )}
-                        </span>
-                        <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
-                      </div>
+                    {/* Aporte/Venda info */}
+                    {magicoItem && !magicoItem.isExcluded && (
+                      magicoItem.diferencaIdeal > 0.01 ? (
+                        <div className="flex items-center gap-2 text-[11px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-emerald-100 dark:border-emerald-900/30">
+                          <ArrowRight className="h-3 w-3 shrink-0 text-emerald-500" />
+                          <span className="font-semibold">
+                            {magicoItem.aporte > 0.01 ? (
+                              <>Aporte sugerido: {formatCurrency(magicoItem.aporte)} ({magicoItem.qtdComprar} cota{magicoItem.qtdComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
+                            ) : (
+                              <>Aporte ideal: {formatCurrency(magicoItem.diferencaIdeal)} ({magicoItem.qtdIdealComprar} cota{magicoItem.qtdIdealComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
+                        </div>
+                      ) : magicoItem.diferencaIdeal < -0.01 ? (
+                        <div className="flex items-center gap-2 text-[11px] text-red-600 bg-red-50 dark:bg-red-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-red-100 dark:border-red-900/30">
+                          <ArrowRight className="h-3 w-3 shrink-0 text-red-500" />
+                          <span className="font-semibold">
+                            Excesso (Venda ideal): {formatCurrency(magicoItem.excesso)} ({magicoItem.qtdIdealVender} cota{magicoItem.qtdIdealVender !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})
+                          </span>
+                          <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
+                        </div>
+                      ) : null
                     )}
                     {magicoItem && magicoItem.isExcluded && (
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5 w-fit">
@@ -449,111 +622,7 @@ export default function AtivosBalanceamento() {
         </Card>
       ))}
 
-      {/* ── Aporte Mágico Calculator ── */}
-      <Card className="border border-primary/20 bg-card shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-            <Coins className="h-4 w-4 text-amber-500" />
-            Calculadora de Aporte Mágico
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Informe quanto deseja aportar e veja a distribuição automática baseada nos déficits da carteira
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center gap-4 flex-col sm:flex-row">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                Quanto você quer aportar hoje?
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-primary">R$</span>
-                <Input
-                  type="number"
-                  placeholder="0,00"
-                  value={aporteValue}
-                  onChange={(e) => setAporteValue(e.target.value)}
-                  className="pl-10 h-12 text-lg font-bold"
-                  min="0"
-                  step="100"
-                />
-              </div>
-            </div>
-             {aporteNum > 0 && (
-              <div className="text-right shrink-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
-                <p className="text-xl font-extrabold text-foreground">{formatCurrency(futuroPatrimonio)}</p>
-              </div>
-            )}
-          </div>
 
-          {aporteNum > 0 && magicAllocation.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-border/40">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
-                    <th className="py-3 px-4 w-12 text-center">Aplicar</th>
-                    <th className="py-3 px-4">Ativo</th>
-                    <th className="py-3 px-4 text-right">Meta</th>
-                    <th className="py-3 px-4 text-right">Cotação</th>
-                    <th className="py-3 px-4 text-right">Valor Investido</th>
-                    <th className="py-3 px-4 text-right">Saldo Ideal</th>
-                    <th className="py-3 px-4 text-right">Qtd. a Comprar</th>
-                    <th className="py-3 px-4 text-right">Aportar</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {magicAllocation.map((at) => (
-                    <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.isExcluded ? 'opacity-50' : ''}`}>
-                      <td className="py-3 px-4 text-center">
-                        <input
-                          type="checkbox"
-                          checked={!at.isExcluded}
-                          onChange={() => toggleAssetExcluded(at.id)}
-                          className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-bold text-foreground">{at.ticker}</p>
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatCurrency(at.cotacao)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valor_atual)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valorIdeal)}</td>
-                      <td className={`py-3 px-4 text-right font-extrabold font-mono ${at.qtdComprar > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {at.qtdComprar > 0 ? `${at.qtdComprar} un.` : '—'}
-                      </td>
-                      <td className={`py-3 px-4 text-right font-extrabold ${at.aporte > 0.01 ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {at.aporte > 0.01 ? formatCurrency(at.aporte) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {aporteNum > 0 && somaAportes > 0.01 && (
-            <div className="space-y-2">
-              <Alert variant="info" className="p-3.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Total recomendado para aporte:</span>
-                  <span className="font-extrabold text-base">{formatCurrency(somaAportes)}</span>
-                </div>
-              </Alert>
-              {aporteNum - somaAportes > 0.01 && (
-                <Alert variant="warning" className="p-3.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
-                    <span className="font-extrabold text-sm">{formatCurrency(aporteNum - somaAportes)}</span>
-                  </div>
-                </Alert>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
     </div>
   );
