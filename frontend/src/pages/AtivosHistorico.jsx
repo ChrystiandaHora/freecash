@@ -105,7 +105,6 @@ export default function AtivosHistorico() {
     onSuccess: () => {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
-      queryClient.invalidateQueries(['investimentosBalanceamento']);
       queryClient.invalidateQueries(['transacoesInvestimento']);
       setDeletingTransacao(null);
       setSuccessMsg('Ordem excluída com sucesso!');

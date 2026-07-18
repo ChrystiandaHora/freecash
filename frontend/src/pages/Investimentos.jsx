@@ -13,7 +13,7 @@
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
 import {
@@ -21,14 +21,10 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-  Sliders,
-  Save,
-  HelpCircle,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
-import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
 import { Alert } from '../components/ui/Alert';
 
@@ -52,11 +48,7 @@ export default function Investimentos() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('portfolio'); // 'portfolio' | 'rebalance'
-  const [editingMetas, setEditingMetas] = useState({}); // Stores local target % state by asset ID: { [id]: val }
-  const [isEditing, setIsEditing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [metaError, setMetaError] = useState('');
   const [patrimonioMonthsFilter, setPatrimonioMonthsFilter] = useState(12);
 
 
@@ -74,75 +66,6 @@ export default function Investimentos() {
     }
   });
 
-  // Fetch rebalancing metrics
-  const { 
-    data: balanceData, 
-    isLoading: isBalanceLoading, 
-    isError: isBalanceError, 
-    refetch: refetchBalance 
-  } = useQuery({
-    queryKey: ['investimentosBalanceamento'],
-    queryFn: async () => {
-      const response = await api.get('/api/investimentos/balanceamento/');
-      return response.data;
-    }
-  });
-
-  // Save metas mutation
-  const saveMetasMutation = useMutation({
-    mutationFn: async (metasArray) => {
-      const response = await api.post('/api/investimentos/balanceamento/', { metas: metasArray });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['investimentosBalanceamento']);
-      setIsEditing(false);
-      setEditingMetas({});
-      setMetaError('');
-    },
-    onError: (err) => {
-      setMetaError('Erro ao atualizar metas. Tente novamente.');
-      console.error(err);
-    }
-  });
-
-  const handleStartEditing = () => {
-    if (!balanceData) return;
-    const initialMetas = {};
-    balanceData.classes.forEach(cls => {
-      cls.ativos.forEach(at => {
-        initialMetas[at.id] = at.meta_porcentagem;
-      });
-    });
-    setEditingMetas(initialMetas);
-    setIsEditing(true);
-    setMetaError('');
-  };
-
-  const handleMetaChange = (id, val) => {
-    setEditingMetas(prev => ({
-      ...prev,
-      [id]: val === '' ? 0 : parseFloat(val) || 0
-    }));
-  };
-
-  const handleSaveMetas = () => {
-    // Validate sum of metas adds up to 100%
-    const totalSum = Object.values(editingMetas).reduce((acc, curr) => acc + curr, 0);
-    if (Math.abs(totalSum - 100) > 0.01 && totalSum > 0) {
-      // Allow saving 0 total metas, but if metas are configured, warn if they don't sum 100%
-      setMetaError(`A soma das metas deve ser exatamente 100%. Soma atual: ${totalSum.toFixed(1).replace('.', ',')}%`);
-      return;
-    }
-
-    const payload = Object.entries(editingMetas).map(([id, meta]) => ({
-      id: parseInt(id),
-      meta: meta
-    }));
-
-    saveMetasMutation.mutate(payload);
-  };
-
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
     addToast('Atualizando cotações em tempo real...', 'info', 3000);
@@ -155,12 +78,11 @@ export default function Investimentos() {
       addToast('Falha ao comunicar com o servidor de cotações.', 'error');
     } finally {
       refetchDash();
-      refetchBalance();
       setIsRefreshing(false);
     }
   };
 
-  if (isDashLoading || isBalanceLoading) {
+  if (isDashLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
         <RefreshCw className="h-8 w-8 text-primary animate-spin" />
@@ -171,7 +93,7 @@ export default function Investimentos() {
     );
   }
 
-  if (isDashError || isBalanceError) {
+  if (isDashError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
         <AlertCircle className="h-12 w-12 text-red-500" />
@@ -259,83 +181,8 @@ export default function Investimentos() {
     }
   };
 
-  const scatterSeries = (balanceData?.classes || []).map(classe => ({
-    name: classe.nome,
-    data: (classe.ativos || []).map(at => ({
-      x: parseFloat(at.rentabilidade_perc) || 0,
-      y: parseFloat(at.perc_atual - at.meta_porcentagem) || 0,
-      ticker: at.ticker,
-      nome: at.nome,
-      valor_atual: at.valor_atual
-    }))
-  }));
 
 
-  const scatterOptions = {
-    chart: {
-      type: 'scatter',
-      zoom: { enabled: true, type: 'xy' },
-      toolbar: { show: false },
-      fontFamily: 'Outfit, Inter, sans-serif',
-      foreColor: isDarkTheme ? '#888888' : '#666666',
-      background: 'transparent',
-    },
-    xaxis: {
-      tickAmount: 6,
-      labels: {
-        formatter: (val) => parseFloat(val).toFixed(1) + '%'
-      },
-      title: {
-        text: 'Rentabilidade Acumulada (%)',
-        style: { fontSize: '11px', fontWeight: 600, color: isDarkTheme ? '#888888' : '#666666' }
-      }
-    },
-    yaxis: {
-      tickAmount: 6,
-      labels: {
-        formatter: (val) => (val > 0 ? '+' : '') + parseFloat(val).toFixed(1) + '%'
-      },
-      title: {
-        text: 'Desvio da Meta Alvo (%)',
-        style: { fontSize: '11px', fontWeight: 600, color: isDarkTheme ? '#888888' : '#666666' }
-      }
-    },
-    grid: {
-      borderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-      xaxis: { lines: { show: true } },
-      yaxis: { lines: { show: true } }
-    },
-    theme: {
-      mode: isDarkTheme ? 'dark' : 'light',
-    },
-    markers: {
-      size: 10,
-      strokeWidth: 2,
-      strokeColors: '#fff',
-      hover: { size: 12 }
-    },
-    tooltip: {
-      theme: isDarkTheme ? 'dark' : 'light',
-      custom: ({ seriesIndex, dataPointIndex, w }) => {
-        const point = w.config.series[seriesIndex].data[dataPointIndex];
-        if (!point) return '';
-        return `
-          <div class="p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs" style="min-width: 180px;">
-            <div class="font-extrabold text-sm text-white mb-1">${point.ticker}</div>
-            <div class="text-slate-400 mb-2 truncate max-w-[200px]">${point.nome}</div>
-            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-white">
-              <span class="text-slate-400">Valor:</span>
-              <span class="text-right font-semibold">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(point.valor_atual)}</span>
-              <span class="text-slate-400">Rentabilidade:</span>
-              <span class="text-right font-semibold text-emerald-400">${point.x.toFixed(2)}%</span>
-              <span class="text-slate-400">Desvio Meta:</span>
-              <span class="text-right font-semibold ${point.y < 0 ? 'text-rose-400' : 'text-primary'}">${point.y.toFixed(2)}%</span>
-            </div>
-          </div>
-        `;
-      }
-    }
-  };
 
   const snowballMonthlyData = dashboardData?.performance_monthly || [];
   const snowballCategories = snowballMonthlyData.map(item => {
@@ -466,8 +313,20 @@ export default function Investimentos() {
     },
     tooltip: {
       theme: isDarkTheme ? 'dark' : 'light',
-      y: {
-        formatter: (val) => formatCurrency(val),
+      custom: ({ series, seriesIndex, dataPointIndex }) => {
+        const patrimonio = series[0]?.[dataPointIndex] ?? 0;
+        const investido = series[1]?.[dataPointIndex] ?? 0;
+        const delta = patrimonio - investido;
+        const deltaColor = delta >= 0 ? '#10b981' : '#f43f5e';
+        const deltaSign = delta >= 0 ? '+' : '';
+        const fmt = (v) => formatCurrency(v);
+        return [
+          '<div style="padding:10px 14px;font-family:Outfit,Inter,sans-serif;font-size:12px;line-height:1.6;">',
+          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:6px;"></span><strong>Patrimônio:</strong> ${fmt(patrimonio)}</div>`,
+          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:6px;"></span><strong>Investido:</strong> ${fmt(investido)}</div>`,
+          `<div style="border-top:1px solid rgba(128,128,128,0.2);margin-top:6px;padding-top:6px;color:${deltaColor};"><strong>Ganho/Perda:</strong> ${deltaSign}${fmt(delta)}</div>`,
+          '</div>',
+        ].join('');
       },
     },
   };
@@ -499,47 +358,20 @@ export default function Investimentos() {
             Painel de Investimentos
           </h1>
           <p className="text-muted-foreground mt-1">
-            Gestão de carteiras, árvore ANBIMA e balanceamento ideal
+            Gestão de carteiras e árvore ANBIMA
           </p>
         </div>
 
-        {/* Tab Selection */}
+        {/* Actions */}
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex bg-muted p-1.5 rounded-xl border border-border/40 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer
-                ${activeTab === 'portfolio' 
-                  ? 'bg-card shadow-sm text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-                }
-              `}
-            >
-              <PieChart className="h-3.5 w-3.5" />
-              <span>Visão da Carteira</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('rebalance')}
-              className={`flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer
-                ${activeTab === 'rebalance' 
-                  ? 'bg-card shadow-sm text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-                }
-              `}
-            >
-              <Sliders className="h-3.5 w-3.5" />
-              <span>Balanceador Ideal</span>
-            </button>
-          </div>
-
           <Button
             variant="outline"
-            size="icon"
             onClick={handleRefreshAll}
             disabled={isRefreshing}
-            className="rounded-xl h-9 w-9 shrink-0"
+            className="rounded-xl h-9 px-4 shrink-0 flex items-center gap-2"
           >
             <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="text-xs font-semibold text-muted-foreground">Atualizar Dados</span>
           </Button>
         </div>
       </div>
@@ -613,9 +445,8 @@ export default function Investimentos() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl grid grid-cols-2 gap-4 divide-x divide-border/40">
           <div className="flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                <span>Variação</span>
-                <HelpCircle className="cursor-help text-muted-foreground/60 hover:text-muted-foreground h-3 w-3 shrink-0" title="Variação patrimonial a mercado sobre o custo aplicado" />
+              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Variação
               </div>
               <div className={`text-base font-extrabold flex items-center gap-0.5
                 ${(total_patrimonio - total_investido) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}
@@ -624,8 +455,12 @@ export default function Investimentos() {
                 <span className="text-xs">{(total_patrimonio - total_investido) >= 0 ? '▲' : '▼'}</span>
               </div>
             </div>
-            <div className="text-[11px] text-muted-foreground font-semibold mt-1">
-              + {formatCurrency(total_patrimonio - total_investido)}
+            <div className={`text-[11px] font-semibold mt-1 ${
+              (total_patrimonio - total_investido) >= 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-500'
+            }`}>
+              {formatCurrency(total_patrimonio - total_investido)}
             </div>
           </div>
           
@@ -638,344 +473,145 @@ export default function Investimentos() {
                 ${total_rentabilidade_percentual >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}
               `}>
                 {total_rentabilidade_percentual.toFixed(2).replace('.', ',')}%
-                <span className="text-xs">↗</span>
+                <span className="text-xs">{total_rentabilidade_percentual >= 0 ? '▲' : '▼'}</span>
               </div>
             </div>
             <div className="text-[10px] text-muted-foreground font-semibold mt-1">
-              Histórica
+              Cap. + dividendos
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Tab 1: Portfolio View */}
-      {activeTab === 'portfolio' && (
-        <div className="space-y-8">
+      <div className="space-y-8">
+        
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            
-            {/* Evolução do Patrimônio */}
-            <Card className="lg:col-span-3 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div>
-                  <CardTitle className="text-base font-bold text-foreground">
-                    Evolução do Patrimônio
-                  </CardTitle>
+          {/* Evolução do Patrimônio */}
+          <Card className="lg:col-span-3 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">
+                  Evolução do Patrimônio
+                </CardTitle>
+              </div>
+              
+              {/* Header Actions / Filters / Legends */}
+              <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                {/* Legend */}
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+                    <span className="text-muted-foreground">Patrimônio</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#64748b]" />
+                    <span className="text-muted-foreground">Valor investido</span>
+                  </div>
                 </div>
                 
-                {/* Header Actions / Filters / Legends */}
-                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-                  {/* Legend */}
-                  <div className="flex items-center gap-3 text-xs font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
-                      <span className="text-muted-foreground">Patrimônio</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#64748b]" />
-                      <span className="text-muted-foreground">Valor investido</span>
-                    </div>
-                  </div>
-                  
-                  {/* Filters Dropdowns */}
-                  <div className="flex items-center gap-2">
-                    <select 
-                      value={patrimonioMonthsFilter}
-                      onChange={(e) => setPatrimonioMonthsFilter(parseInt(e.target.value))}
-                      className="bg-muted text-foreground border border-border/40 rounded-lg pl-2 pr-6 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
-                    >
-                      <option value={12}>12 Meses</option>
-                      <option value={6}>6 Meses</option>
-                      <option value={0}>Todo o período</option>
-                    </select>
-                  </div>
+                {/* Filters Dropdowns */}
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={patrimonioMonthsFilter}
+                    onChange={(e) => setPatrimonioMonthsFilter(parseInt(e.target.value))}
+                    className="bg-muted text-foreground border border-border/40 rounded-lg pl-2 pr-6 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
+                  >
+                    <option value={12}>12 Meses</option>
+                    <option value={6}>6 Meses</option>
+                    <option value={0}>Todo o período</option>
+                  </select>
                 </div>
               </div>
-              
-              <CardContent className="p-0">
-                <div className="h-[320px] w-full">
-                  {patrimonioSeriesData.length > 0 ? (
-                    <Chart
-                      key={`patrimonio-area-${isDarkTheme}`}
-                      options={patrimonioChartOptions}
-                      series={patrimonioChartSeries}
-                      type="area"
-                      height="100%"
-                      width="100%"
-                    />
-                  ) : (
-                    <div className="py-24 text-center text-xs text-muted-foreground">
-                      Dados insuficientes para gerar a evolução patrimonial.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Ativos na Carteira (Allocation Donut) */}
-            <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
-              <div className="flex justify-between items-center mb-6">
-                <CardTitle className="text-base font-bold text-foreground">
-                  Ativos na Carteira
-                </CardTitle>
-              </div>
-              
-              <CardContent className="p-0 flex flex-col sm:flex-row items-center justify-between gap-6 h-full min-h-[220px]">
-                {donutChartSeries.length > 0 ? (
-                  <>
-                    {/* Donut Chart */}
-                    <div className="w-[220px] h-[220px] shrink-0 flex items-center justify-center">
-                      <Chart
-                        key={`donut-${donutChartSeries.join("-")}`}
-                        options={donutChartOptions}
-                        series={donutChartSeries}
-                        type="donut"
-                        width="100%"
-                        height="100%"
-                      />
-                    </div>
-                    
-                    {/* Custom Legend */}
-                    <div className="flex-1 w-full max-h-[220px] overflow-y-auto pr-1 space-y-2">
-                      {alocacaoItens.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-xs font-semibold">
-                          <div className="flex items-center gap-2 text-muted-foreground truncate flex-1 min-w-0 mr-2">
-                            <span className="w-2.5 h-2.5 rounded shrink-0" style={{ backgroundColor: item.color }} />
-                            <span className="truncate flex-1">{item.label}</span>
-                          </div>
-                          <span className="text-foreground font-bold shrink-0">{item.pct.toFixed(2).replace('.', ',')}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="py-24 text-center text-xs text-muted-foreground w-full">
-                    Nenhum ativo cadastrado para exibir alocação.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Efeito Bola de Neve (Renda Passiva Cumulativa) */}
-          {snowballSeriesData.length > 0 && (
-            <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-              <CardHeader>
-                <CardTitle className="text-base font-bold text-foreground">
-                  Efeito Bola de Neve (Renda Passiva Acumulada)
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Crescimento real e exponencial dos proventos e dividendos acumulados da sua carteira de investimentos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[280px] w-full">
+            </div>
+            
+            <CardContent className="p-0">
+              <div className="h-[320px] w-full">
+                {patrimonioSeriesData.length > 0 ? (
                   <Chart
-                    key={`snowball-${isDarkTheme}`}
-                    options={snowballChartOptions}
-                    series={snowballChartSeries}
+                    key={`patrimonio-area-${isDarkTheme}`}
+                    options={patrimonioChartOptions}
+                    series={patrimonioChartSeries}
                     type="area"
                     height="100%"
                     width="100%"
                   />
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                    Sem dados históricos suficientes.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ativos na Carteira (Donut) */}
+          <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+            <CardHeader className="p-0 mb-6">
+              <CardTitle className="text-base font-bold text-foreground">Ativos na Carteira</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex flex-col sm:flex-row items-center gap-6 justify-between flex-1">
+              <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0">
+                {donutChartSeries.length > 0 ? (
+                  <Chart
+                    options={donutChartOptions}
+                    series={donutChartSeries}
+                    type="donut"
+                    width="100%"
+                    height="100%"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                    Sem ativos cadastrados.
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Legend */}
+              <div className="flex-1 w-full space-y-2.5 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+                {alocacaoItens.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-muted-foreground truncate">{item.label}</span>
+                    </div>
+                    <span className="text-foreground shrink-0 pl-2">{item.pct.toFixed(2).replace('.', ',')}%</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
         </div>
-      )}
 
-      {/* Tab 2: Rebalancing Tool */}
-      {activeTab === 'rebalance' && balanceData && (
-        <div className="space-y-6">
-          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-            <CardHeader>
+        {/* Efeito Bola de Neve */}
+        {snowballSeriesData.length > 0 && (
+          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl">
+            <CardHeader className="p-0 mb-6">
               <CardTitle className="text-base font-bold text-foreground">
-                Matriz de Alocação Estratégica (Rentabilidade vs Desvio da Meta)
+                Efeito Bola de Neve (Renda Passiva Acumulada)
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Compare a rentabilidade acumulada de cada ativo com o seu desvio percentual em relação à meta alocada
+                Crescimento real e exponencial dos proventos e dividendos acumulados da sua carteira de investimentos
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[320px] w-full">
+              <div className="h-[280px] w-full">
                 <Chart
-                  key={`scatter-${isDarkTheme}`}
-                  options={scatterOptions}
-                  series={scatterSeries}
-                  type="scatter"
+                  key={`snowball-${isDarkTheme}`}
+                  options={snowballChartOptions}
+                  series={snowballChartSeries}
+                  type="area"
                   height="100%"
                   width="100%"
                 />
               </div>
             </CardContent>
           </Card>
+        )}
 
-          <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-base font-bold text-foreground">
-                Simulador de Balanceamento Inteligente
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Ajuste os percentuais alvos para cada ativo e o algoritmo recomendará os aportes necessários
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              {isEditing ? (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setMetaError('');
-                    }}
-                    disabled={saveMetasMutation.isPending}
-                    className="h-9 px-4 rounded-xl text-xs font-semibold"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleSaveMetas}
-                    disabled={saveMetasMutation.isPending}
-                    className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 flex items-center gap-1.5 border-0 text-white"
-                  >
-                    {saveMetasMutation.isPending ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-white" />
-                    ) : (
-                      <Save className="h-3.5 w-3.5 text-white" />
-                    )}
-                    <span>Salvar Metas</span>
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={handleStartEditing}
-                  className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-white border-0 flex items-center gap-1.5"
-                >
-                  <Sliders className="h-3.5 w-3.5 text-white" />
-                  <span>Ajustar Metas Alvo</span>
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            
-            {/* Meta validation error */}
-            {metaError && (
-              <Alert variant="error" icon={AlertCircle} className="p-3.5 text-xs">
-                <span className="font-semibold leading-relaxed">{metaError}</span>
-              </Alert>
-            )}
-
-            {saveMetasMutation.isSuccess && (
-              <Alert variant="success" icon={CheckCircle2} className="p-3.5 text-xs">
-                <span className="font-semibold leading-relaxed">Metas de alocação salvas e sincronizadas com sucesso!</span>
-              </Alert>
-            )}
-
-            {/* Sum Indicator */}
-            {isEditing && (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted border border-border/40 text-xs">
-                <span className="text-muted-foreground font-semibold">Soma atual das metas configuradas:</span>
-                <span className={`font-extrabold text-sm ${Math.abs(Object.values(editingMetas).reduce((a, b) => a + b, 0) - 100) < 0.01 ? 'text-primary' : 'text-amber-500'}`}>
-                  {Object.values(editingMetas).reduce((a, b) => a + b, 0).toFixed(1).replace('.', ',')}% / 100%
-                </span>
-              </div>
-            )}
-
-            {/* Class tables for rebalancing */}
-            {balanceData.classes.map((classe, idx) => (
-              <div key={idx} className="space-y-3.5">
-                <h3 className="text-sm font-bold text-foreground border-l-3 border-primary pl-2">
-                  {classe.nome}
-                </h3>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/40 text-muted-foreground font-semibold">
-                        <th className="py-2.5 px-4">Ticker</th>
-                        <th className="py-2.5 px-4">Nome</th>
-                        <th className="py-2.5 px-4 text-right">Peso Atual</th>
-                        <th className="py-2.5 px-4 text-right">Meta Alvo (%)</th>
-                        <th className="py-2.5 px-4 text-right">Saldo Atual</th>
-                        <th className="py-2.5 px-4 text-right">Saldo Ideal</th>
-                        <th className="py-2.5 px-4 text-right">Aporte Recomendado</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {classe.ativos.map((at, atIdx) => {
-                        const localMeta = isEditing ? editingMetas[at.id] : at.meta_porcentagem;
-                        const idealVal = isEditing 
-                          ? (localMeta / 100.0) * balanceData.total_patrimonio 
-                          : at.valor_ideal;
-                        const diff = isEditing 
-                          ? idealVal - at.valor_atual 
-                          : at.diferenca;
-
-                        return (
-                          <tr key={atIdx} className="hover:bg-muted/40 transition-colors">
-                            <td className="py-3 px-4 font-bold text-foreground">
-                              {at.ticker}
-                            </td>
-                            <td className="py-3 px-4 text-muted-foreground max-w-[180px] truncate">
-                              {at.nome}
-                            </td>
-                            <td className="py-3 px-4 text-right font-semibold text-foreground/80">
-                              {at.perc_atual.toFixed(2).replace('.', ',')}%
-                            </td>
-                            <td className="py-3 px-4 text-right w-36">
-                              {isEditing ? (
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <Input
-                                    type="number"
-                                    value={editingMetas[at.id] !== undefined ? editingMetas[at.id] : at.meta_porcentagem}
-                                    onChange={(e) => handleMetaChange(at.id, e.target.value)}
-                                    className="h-8 w-20 text-right font-bold text-xs bg-muted rounded-lg px-2 border border-border/40 text-foreground"
-                                    min="0"
-                                    max="100"
-                                    step="0.5"
-                                  />
-                                  <span className="text-muted-foreground font-semibold">%</span>
-                                </div>
-                              ) : (
-                                <span className="font-bold text-foreground">
-                                  {at.meta_porcentagem.toFixed(1).replace('.', ',')}%
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right font-medium text-muted-foreground">
-                              {formatCurrency(at.valor_atual)}
-                            </td>
-                            <td className="py-3 px-4 text-right font-medium text-muted-foreground">
-                              {formatCurrency(idealVal)}
-                            </td>
-                            <td className={`py-3 px-4 text-right font-extrabold`}>
-                              {diff > 0.01 ? (
-                                <span className="text-primary">COMPRAR {formatCurrency(diff)}</span>
-                              ) : diff < -0.01 ? (
-                                <span className="text-red-500 dark:text-red-400">VENDER {formatCurrency(Math.abs(diff))}</span>
-                              ) : (
-                                <span className="text-muted-foreground">Aguardar / Manter</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-
-          </CardContent>
-        </Card>
-        </div>
-      )}
+      </div>
 
     </div>
   );

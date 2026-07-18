@@ -79,7 +79,6 @@ export default function AtivoDetalhes() {
       queryClient.invalidateQueries(['ativoDetalhe', id]);
       queryClient.invalidateQueries(['transacoesAtivo', id]);
       queryClient.invalidateQueries(['investimentosDashboard']);
-      queryClient.invalidateQueries(['investimentosBalanceamento']);
 
       const count = data?.count || 0;
       if (count > 0) {

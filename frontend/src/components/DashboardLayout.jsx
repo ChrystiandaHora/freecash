@@ -28,7 +28,6 @@ import {
   List,
   Activity,
   Gem,
-  Scale,
   History,
   Layers,
   UploadCloud,
@@ -172,7 +171,6 @@ export default function DashboardLayout() {
       items: [
         { name: 'Dashboard', path: '/investimentos', icon: Activity },
         { name: 'Meus Ativos', path: '/investimentos/ativos', icon: Gem },
-        { name: 'Balanceamento', path: '/investimentos/balanceamento', icon: Scale },
         { name: 'Histórico', path: '/investimentos/historico', icon: History },
         { name: 'Classes', path: '/investimentos/classes', icon: Layers },
       ]
@@ -461,6 +459,21 @@ export default function DashboardLayout() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Conceitos Importantes */}
+              {currentHelp.concepts && Object.keys(currentHelp.concepts).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Conceitos Importantes</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {Object.entries(currentHelp.concepts).map(([concept, desc]) => (
+                      <div key={concept} className="p-3.5 rounded-xl border border-border/40 bg-muted/20 space-y-1.5">
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider">{concept}</span>
+                        <p className="text-xs text-foreground/80 leading-relaxed font-medium">{desc}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

@@ -220,10 +220,12 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertIn("Mercado", descriptions)
         self.assertNotIn("Fretamento", descriptions)
 
+
+
     def test_screen_flow_investimentos_dashboard(self):
         """
         [Fluxo da Tela de Investimentos]
-        Testa o acesso à carteira de ativos e painel de balanceamento.
+        Testa o acesso à carteira de ativos.
         """
         url_dashboard_invest = reverse('api-investimentos-dashboard')
         response = self.client.get(url_dashboard_invest)
@@ -234,9 +236,6 @@ class EndToEndFlowScreensTestCase(APITestCase):
         self.assertIn("total_investido", data)
         self.assertIn("total_rentabilidade", data)
 
-        url_balanceamento = reverse('api-investimentos-balanceamento')
-        response_bal = self.client.get(url_balanceamento)
-        self.assertEqual(response_bal.status_code, status.HTTP_200_OK)
 
     def test_screen_flow_ferramentas_e_relatorios(self):
         """

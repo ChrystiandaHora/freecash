@@ -119,6 +119,12 @@ export const helpContent = {
       "Gráfico de alocação de carteira por classe de ativo.",
       "Árvore interativa de classificação ANBIMA em 3 níveis (Classe -> Categoria -> Subcategoria)."
     ],
+    concepts: {
+      "Variação": "Diferença entre o valor de mercado atual da carteira e o custo total de aquisição dos ativos (preço médio × quantidade). Reflete exclusivamente o ganho ou perda de capital (a mercado), sem considerar dividendos.",
+      "Rentabilidade": "Retorno total histórico da carteira: soma o ganho de capital com todos os proventos e dividendos recebidos. Fórmula: (Patrimônio + Vendas + Dividendos - Compras) / Compras.",
+      "Evolução do Patrimônio": "O gráfico exibe duas linhas mensais: Patrimônio (valor de mercado no último dia do mês) e Valor Investido (compras acumuladas menos vendas). A diferença entre as linhas é o ganho ou perda de capital no período.",
+      "Lucro Total": "Resultado financeiro consolidado: Ganho de Capital (mercado - custo) mais Dividendos recebidos nos últimos 12 meses. Pode ser positivo mesmo com ganho de capital negativo se os proventos compensarem."
+    },
     actions: {
       "Atualizar Cotações": "Clique para buscar preços atuais de mercado via Yahoo Finance (yfinance)."
     }
@@ -148,18 +154,6 @@ export const helpContent = {
     }
   },
 
-  "/investimentos/balanceamento": {
-    title: "Balanceador Ideal",
-    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas.",
-    features: [
-      "Sliders interativos para definir o percentual ideal de alocação de cada ativo.",
-      "Cálculo do aporte sugerido para reequilibrar a alocação sem vender ativos."
-    ],
-    actions: {
-      "Simular Aporte": "Insira o valor que deseja investir e veja quais ativos comprar."
-    }
-  },
-
   "/investimentos/historico": {
     title: "Histórico da Carteira",
     overview: "Evolução histórica mensal da carteira de investimentos consolidada.",
@@ -178,7 +172,7 @@ export const helpContent = {
       "Configuração de metas ideais de alocação macro (Ações, FIIs, Renda Fixa, Cripto)."
     ],
     actions: {
-      "Ajustar Pesos": "Defina o peso estratégico de cada classe para balizar o simulador de balanceamento."
+      "Ajustar Pesos": "Defina o peso estratégico de cada classe para balizar a alocação macro."
     }
   },
 

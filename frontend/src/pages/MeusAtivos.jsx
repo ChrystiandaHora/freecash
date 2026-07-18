@@ -210,7 +210,6 @@ export default function MeusAtivos() {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
-      queryClient.invalidateQueries(['investimentosBalanceamento']);
       
       const count = data?.count || 0;
       const errors = data?.errors || [];

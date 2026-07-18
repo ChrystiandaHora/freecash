@@ -41,7 +41,6 @@ import MeusCartoes from './pages/MeusCartoes';
 import Receitas from './pages/Receitas';
 import Transacoes from './pages/Transacoes';
 import SimuladorGastos from './pages/SimuladorGastos';
-import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
 import MeusAtivos from './pages/MeusAtivos';
@@ -144,7 +143,6 @@ function App() {
                 <Route path="investimentos" element={<Investimentos />} />
                 <Route path="investimentos/ativos" element={<MeusAtivos />} />
                 <Route path="investimentos/ativos/:id" element={<AtivoDetalhes />} />
-                <Route path="investimentos/balanceamento" element={<AtivosBalanceamento />} />
                 <Route path="investimentos/historico" element={<AtivosHistorico />} />
                 <Route path="investimentos/classes" element={<AtivosClasses />} />
 

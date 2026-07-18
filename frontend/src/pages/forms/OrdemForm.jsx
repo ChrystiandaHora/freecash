@@ -80,7 +80,6 @@ export default function OrdemForm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
       queryClient.invalidateQueries({ queryKey: ['transacoesInvestimento'] });
       navigate('/investimentos/historico');
     },
