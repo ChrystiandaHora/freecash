@@ -18,6 +18,7 @@ import {
   X, 
   Sun, 
   Moon, 
+  SunMoon,
   User,
   CreditCard,
   Wallet,
@@ -84,36 +85,52 @@ export default function DashboardLayout() {
 
   const currentHelp = getHelpForPath(location.pathname) || fallbackHelp;
   
-  // Theme Management
-  const [theme, setTheme] = useState(() => {
+  // Theme Management (Supports 'light', 'dark', 'auto')
+  const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem('theme');
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') {
+      return saved;
+    }
+    return 'auto';
   });
-  
+
+  // Calculate theme based on local machine time (06:00 to 17:59 -> light, 18:00 to 05:59 -> dark)
+  const getAutoTheme = () => {
+    const hours = new Date().getHours();
+    return (hours >= 6 && hours < 18) ? 'light' : 'dark';
+  };
+
+  const activeTheme = themeMode === 'auto' ? getAutoTheme() : themeMode;
+
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', collapsed);
   }, [collapsed]);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
+    if (activeTheme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-  }, [theme]);
+  }, [activeTheme]);
 
-  // Listen to OS theme changes if the user hasn't set an explicit preference
+  // Periodic check for auto mode to handle hour changes in real-time
   useEffect(() => {
-    if (localStorage.getItem('theme')) return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      setTheme(e.matches ? 'dark' : 'light');
-    };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    if (themeMode !== 'auto') return;
+
+    const interval = setInterval(() => {
+      const currentResolved = getAutoTheme();
+      const root = window.document.documentElement;
+      if (currentResolved === 'dark') {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [themeMode]);
 
   // Real-time dynamic clock timer
   useEffect(() => {
@@ -133,10 +150,10 @@ export default function DashboardLayout() {
     else setOpenGroup('geral');
   }, [location.pathname]);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('theme', nextTheme);
+  const cycleThemeMode = () => {
+    const nextMode = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'auto' : 'light';
+    setThemeMode(nextMode);
+    localStorage.setItem('theme', nextMode);
   };
 
   const handleLogout = async () => {
@@ -374,14 +391,19 @@ export default function DashboardLayout() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleTheme}
-              className="rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9"
+              onClick={cycleThemeMode}
+              className="rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9 relative"
+              title={
+                themeMode === 'light'
+                  ? 'Tema: Claro (clique para alternar)'
+                  : themeMode === 'dark'
+                  ? 'Tema: Escuro (clique para alternar)'
+                  : `Tema: Automático (${activeTheme === 'dark' ? 'Modo Noturno' : 'Modo Diurno'} por horário)`
+              }
             >
-              {theme === 'dark' ? (
-                <Sun className="h-[1.1rem] w-[1.1rem]" />
-              ) : (
-                <Moon className="h-[1.1rem] w-[1.1rem]" />
-              )}
+              {themeMode === 'light' && <Sun className="h-[1.1rem] w-[1.1rem]" />}
+              {themeMode === 'dark' && <Moon className="h-[1.1rem] w-[1.1rem]" />}
+              {themeMode === 'auto' && <SunMoon className="h-[1.1rem] w-[1.1rem] text-primary" />}
             </Button>
 
             <div className="h-5 w-[1px] bg-border mx-1" />
