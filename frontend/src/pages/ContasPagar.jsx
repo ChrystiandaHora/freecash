@@ -268,6 +268,14 @@ export default function ContasPagar() {
       key: 'status',
       header: 'Status',
       sortable: false,
+      // Coluna derivada: não é ordenável, mas o filtro é útil e usa o status calculado
+      filterable: true,
+      filterType: 'select',
+      filterOptions: ['Pago', 'Atrasado', 'Vence em breve', 'Pendente'],
+      filterAccessor: (row) => {
+        const { label } = getStatusInfo(row)
+        return label.startsWith('Vence') ? 'Vence em breve' : label
+      },
       render: (_, row) => {
         const { label, variant, Icon } = getStatusInfo(row)
         return (

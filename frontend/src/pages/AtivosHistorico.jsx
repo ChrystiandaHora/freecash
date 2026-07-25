@@ -128,6 +128,11 @@ export default function AtivosHistorico() {
     {
       key: 'tipo',
       header: 'Tipo',
+      filterType: 'select',
+      filterOptions: Object.entries(TIPO_CONFIG).map(([value, cfg]) => ({
+        value,
+        label: cfg.label,
+      })),
       render: (val) => {
         const cfg = TIPO_CONFIG[val] ?? TIPO_CONFIG['C'];
         const Icon = cfg.icon;
@@ -148,6 +153,11 @@ export default function AtivosHistorico() {
     {
       key: 'ativo',
       header: 'Ativo',
+      filterType: 'text',
+      filterPlaceholder: 'Ticker ou nome...',
+      // O valor bruto é o ID do ativo; filtra-se pelo texto efetivamente exibido
+      filterAccessor: (row) =>
+        `${row.ativo_detalhe?.ticker ?? ''} ${row.ativo_detalhe?.nome ?? ''}`,
       render: (_, row) => (
         <>
           <p className="font-bold text-foreground">{row.ativo_detalhe?.ticker ?? '—'}</p>

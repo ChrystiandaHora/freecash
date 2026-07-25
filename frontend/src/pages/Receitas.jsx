@@ -180,6 +180,8 @@ export default function Receitas() {
     {
       key: 'realizada',
       header: 'Status',
+      filterTrueLabel: 'Recebida',
+      filterFalseLabel: 'Prevista',
       render: (val) =>
         val ? (
           <Badge variant="success">
