@@ -220,6 +220,7 @@ class ContasPagarAPISerializer(serializers.ModelSerializer):
     categoria = serializers.CharField(source='categoria.nome', read_only=True)
     pago = serializers.BooleanField(source='transacao_realizada', read_only=True)
     data_vencimento = serializers.DateField(source='data_prevista', read_only=True)
+    qtd_compras_vinculadas = serializers.SerializerMethodField()
 
     class Meta:
         model = Conta
@@ -227,9 +228,20 @@ class ContasPagarAPISerializer(serializers.ModelSerializer):
             'id', 'uuid', 'tipo', 'descricao', 'valor', 'data_vencimento',
             'pago', 'data_realizacao', 'categoria', 'cartao',
             'data_compra', 'eh_fatura_cartao', 'esta_atrasada',
-            'criada_em', 'atualizada_em'
+            'qtd_compras_vinculadas', 'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
+
+    def get_qtd_compras_vinculadas(self, obj) -> int:
+        """Retorna quantas compras individuais do cartão pertencem a esta fatura.
+
+        Usado pelo frontend para avisar, na confirmação de exclusão, quantos
+        lançamentos serão removidos em cascata. Zero para despesas comuns.
+        """
+        if not obj.eh_fatura_cartao:
+            return 0
+        from core.services.fatura_service import compras_da_fatura
+        return compras_da_fatura(obj).count()
 
 
 class ReceitasAPISerializer(serializers.ModelSerializer):

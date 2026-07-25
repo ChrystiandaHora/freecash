@@ -627,6 +627,31 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         response_serializer = ContasPagarAPISerializer(serializer.instance, context={'request': request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
+    def destroy(self, request, *args, **kwargs) -> Response:
+        """Exclui a despesa; se for uma fatura de cartão, remove também suas compras.
+
+        Uma fatura consolidada é apenas o agregado das compras individuais do
+        cartão naquele vencimento. Excluir só a fatura deixaria as compras órfãs
+        (invisíveis em Contas a Pagar, mas ainda somando no cartão) e o signal de
+        consolidação recriaria a fatura no próximo salvamento. Por isso a
+        exclusão de uma fatura remove o período inteiro.
+
+        Args:
+            request (Request): Requisição HTTP.
+
+        Returns:
+            Response: 204 sem conteúdo em caso de sucesso.
+        """
+        instance = self.get_object()
+
+        if instance.eh_fatura_cartao:
+            from core.services.fatura_service import excluir_fatura
+            excluir_fatura(instance)
+        else:
+            instance.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=['put'])
     def pagar(self, request, pk=None) -> Response:
         """Liquida a despesa marcando-a como paga na data atual.

@@ -8,11 +8,14 @@ pagamentos e estornos das compras parceladas e individuais do cartão de crédit
 from datetime import date
 from decimal import Decimal
 import calendar
+import logging
 
 from django.db import transaction
 from django.db.models import Sum
 
 from core.models import Conta
+
+logger = logging.getLogger(__name__)
 
 
 def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
@@ -32,17 +35,32 @@ def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
     mes = data_vencimento.month
     ano = data_vencimento.year
 
-    # Buscar fatura existente para este cartão/mês/ano
-    fatura = Conta.objects.filter(
-        usuario=usuario,
-        cartao=cartao,
-        eh_fatura_cartao=True,
-        data_prevista__year=ano,
-        data_prevista__month=mes,
-    ).first()
+    # Buscar fatura existente para este cartão/mês/ano.
+    # Ordenamos por id para que a escolha seja determinística caso a base já
+    # contenha faturas duplicadas do mesmo período (ver comando
+    # `corrigir_faturas_duplicadas`), evitando que o sistema alterne entre elas.
+    existentes = list(
+        Conta.objects.filter(
+            usuario=usuario,
+            cartao=cartao,
+            eh_fatura_cartao=True,
+            data_prevista__year=ano,
+            data_prevista__month=mes,
+        ).order_by("id")
+    )
 
-    if fatura:
-        return fatura
+    if existentes:
+        if len(existentes) > 1:
+            logger.warning(
+                "Encontradas %d faturas duplicadas para o cartão %s em %02d/%d "
+                "(ids=%s). Execute `manage.py corrigir_faturas_duplicadas`.",
+                len(existentes), cartao, mes, ano, [f.id for f in existentes],
+            )
+        # Prioriza uma fatura já liquidada, que carrega o histórico de pagamento
+        for fatura in existentes:
+            if fatura.transacao_realizada:
+                return fatura
+        return existentes[0]
 
     # Criar nova fatura
     descricao = f"Fatura {cartao.nome} - {mes:02d}/{ano}"
@@ -142,6 +160,128 @@ def desfazer_pagamento_fatura(fatura: Conta) -> None:
         transacao_realizada=False,
         data_realizacao=None,
     )
+
+
+def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
+    """Garante uma única fatura consolidada por usuário/cartão/mês.
+
+    Faturas consolidadas duplicadas surgem quando um mesmo período ganha mais de
+    uma linha `Conta` com `eh_fatura_cartao=True` — tipicamente ao restaurar um
+    backup gerado por uma versão que criava faturas "fantasma" durante o import.
+
+    Em cada grupo duplicado preserva a fatura liquidada (que carrega a data de
+    pagamento real) ou, na ausência de uma paga, a mais antiga. As compras
+    individuais do cartão NÃO são tocadas: elas se vinculam à fatura por
+    `data_prevista`, portanto seguem corretamente associadas à fatura preservada.
+
+    Args:
+        usuario (User, optional): Restringe a limpeza a um usuário. None varre todos.
+        dry_run (bool): Se True, apenas relata as duplicidades sem excluir nada.
+
+    Returns:
+        list[dict]: Um registro por período duplicado, com as chaves `cartao_id`,
+            `usuario_id`, `ano`, `mes`, `mantida` (Conta) e `removidas` (list[Conta]).
+    """
+    from collections import defaultdict
+
+    queryset = Conta.objects.filter(eh_fatura_cartao=True)
+    if usuario is not None:
+        queryset = queryset.filter(usuario=usuario)
+
+    grupos = defaultdict(list)
+    for fatura in queryset.order_by("id"):
+        chave = (
+            fatura.usuario_id,
+            fatura.cartao_id,
+            fatura.data_prevista.year,
+            fatura.data_prevista.month,
+        )
+        grupos[chave].append(fatura)
+
+    relatorio = []
+    ids_para_remover = []
+
+    for (usuario_id, cartao_id, ano, mes), lista in sorted(grupos.items()):
+        if len(lista) < 2:
+            continue
+
+        mantida = next(
+            (f for f in lista if f.transacao_realizada),
+            lista[0],
+        )
+        removidas = [f for f in lista if f.id != mantida.id]
+
+        relatorio.append({
+            "usuario_id": usuario_id,
+            "cartao_id": cartao_id,
+            "ano": ano,
+            "mes": mes,
+            "mantida": mantida,
+            "removidas": removidas,
+        })
+        ids_para_remover.extend(f.id for f in removidas)
+
+    if ids_para_remover and not dry_run:
+        with transaction.atomic():
+            Conta.objects.filter(id__in=ids_para_remover).delete()
+        logger.info(
+            "Deduplicação de faturas: %d fatura(s) duplicada(s) removida(s) (ids=%s).",
+            len(ids_para_remover), ids_para_remover,
+        )
+
+    return relatorio
+
+
+def compras_da_fatura(fatura: Conta):
+    """Retorna o queryset das compras individuais vinculadas a uma fatura consolidada.
+
+    O vínculo entre uma compra e sua fatura é implícito: mesmo usuário, mesmo
+    cartão e mesma data de vencimento (`data_prevista`).
+
+    Args:
+        fatura (Conta): Instância da fatura consolidada.
+
+    Returns:
+        QuerySet: Compras individuais do cartão pertencentes a esta fatura.
+    """
+    return Conta.objects.filter(
+        usuario=fatura.usuario,
+        cartao=fatura.cartao,
+        eh_fatura_cartao=False,
+        data_prevista=fatura.data_prevista,
+    )
+
+
+@transaction.atomic
+def excluir_fatura(fatura: Conta) -> int:
+    """Exclui a fatura consolidada junto com todas as compras individuais dela.
+
+    A remoção é atômica e os signals de reconsolidação são desconectados durante
+    a operação: sem isso, a exclusão de cada compra tentaria recalcular (e
+    possivelmente recriar) a fatura que está sendo removida.
+
+    Args:
+        fatura (Conta): Instância da fatura consolidada a excluir.
+
+    Returns:
+        int: Quantidade de compras individuais removidas junto com a fatura.
+    """
+    from django.db.models.signals import post_save, post_delete
+    from core.signals import monitorar_salvamento_conta, monitorar_delecao_conta
+
+    compras = compras_da_fatura(fatura)
+    total_compras = compras.count()
+
+    post_save.disconnect(monitorar_salvamento_conta, sender=Conta)
+    post_delete.disconnect(monitorar_delecao_conta, sender=Conta)
+    try:
+        compras.delete()
+        fatura.delete()
+    finally:
+        post_save.connect(monitorar_salvamento_conta, sender=Conta)
+        post_delete.connect(monitorar_delecao_conta, sender=Conta)
+
+    return total_compras
 
 
 def fatura_pode_ser_editada(fatura: Conta) -> bool:

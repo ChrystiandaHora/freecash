@@ -144,6 +144,11 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     quantidade dos ativos enquanto as transações são reinseridas individualmente.
     Após a restauração completa, força o recálculo de todos os ativos afetados.
 
+    Desconecta também os signals de consolidação de fatura do módulo core: o
+    backup já contém as faturas consolidadas com seus próprios UUIDs, e deixar o
+    signal ativo faria a restauração de uma compra de cartão criar uma fatura
+    "fantasma" (UUID novo) que depois duplicaria a fatura original do backup.
+
     Args:
         data_dict (dict): Dicionário contendo os dados decodificados do backup.
         user (User): O usuário Django que está restaurando a base de dados.
@@ -167,10 +172,27 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
         logger.warning("Não foi possível desconectar signals de investimento: %s", e)
         signals_disconnected = False
 
+    # ── Desconectar signals de consolidação de fatura do core ────────────────
+    # O post_save de Conta chama _consolidar_fatura() para cada compra de cartão
+    # restaurada, criando uma fatura consolidada nova (com UUID gerado na hora).
+    # Como o backup também contém a fatura original — restaurada por
+    # update_or_create(uuid=...) — o resultado é uma fatura duplicada por mês.
+    try:
+        from core.signals import monitorar_salvamento_conta, monitorar_delecao_conta
+        from core.models import Conta as ContaCore
+
+        post_save.disconnect(monitorar_salvamento_conta, sender=ContaCore)
+        post_delete.disconnect(monitorar_delecao_conta, sender=ContaCore)
+        core_signals_disconnected = True
+    except Exception as e:
+        logger.warning("Não foi possível desconectar signals de fatura do core: %s", e)
+        core_signals_disconnected = False
+
     backup_models = get_backupable_models()
     uuid_to_id = {}
     total_restored = 0
     total_ignorados = 0
+    faturas_removidas = 0  # faturas de cartão duplicadas descartadas na normalização
     ativos_restaurados = []  # rastreia ativos para recálculo posterior
 
     def get_model_field_names(model):
@@ -398,6 +420,26 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 except ImportError:
                     logger.debug("Módulo de investimentos não disponível para recálculo.")
 
+            # 5. DEDUPLICAR FATURAS DE CARTÃO
+            # Rede de segurança na fronteira do import: backups gerados por versões
+            # antigas podem já conter duas faturas para o mesmo mês (uma fantasma,
+            # criada pelo signal na máquina de origem). Como a restauração é fiel
+            # aos dados do arquivo, a duplicidade viria junto — então normalizamos
+            # aqui, ainda dentro da transação atômica.
+            try:
+                from core.services.fatura_service import deduplicar_faturas
+                relatorio_faturas = deduplicar_faturas(usuario=user)
+                faturas_removidas = sum(len(g["removidas"]) for g in relatorio_faturas)
+                if faturas_removidas:
+                    logger.warning(
+                        "Backup continha %d fatura(s) de cartão duplicada(s); "
+                        "removida(s) durante a restauração para o usuário %s.",
+                        faturas_removidas, user.username,
+                    )
+            except Exception as e:
+                logger.error("Falha ao deduplicar faturas na restauração: %s", e)
+                faturas_removidas = 0
+
     finally:
         # ── Reconectar signals de investimento ───────────────────────────────
         if signals_disconnected:
@@ -406,6 +448,14 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 post_delete.connect(atualizar_ativo_apos_transacao, sender=TransacaoInvestimento)
             except Exception as e:
                 logger.error("Erro ao reconectar signals de investimento: %s", e)
+
+        # ── Reconectar signals de consolidação de fatura do core ─────────────
+        if core_signals_disconnected:
+            try:
+                post_save.connect(monitorar_salvamento_conta, sender=ContaCore)
+                post_delete.connect(monitorar_delecao_conta, sender=ContaCore)
+            except Exception as e:
+                logger.error("Erro ao reconectar signals de fatura do core: %s", e)
 
     if total_ignorados:
         logger.warning(
@@ -416,6 +466,11 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     msg = f"Backup restaurado com sucesso. {total_restored} registros processados."
     if total_ignorados:
         msg += f" {total_ignorados} registro(s) não puderam ser restaurados (ver logs)."
+    if faturas_removidas:
+        msg += (
+            f" {faturas_removidas} fatura(s) de cartão duplicada(s) no backup "
+            "foram consolidadas automaticamente."
+        )
 
     return {
         "tipo": "fcbk",
@@ -423,6 +478,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
         "criados": total_restored,
         "atualizados": 0,
         "ignorados": total_ignorados,
+        "faturas_deduplicadas": faturas_removidas,
     }
 
 

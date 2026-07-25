@@ -12,6 +12,7 @@ import base64
 import hashlib
 import uuid
 import zlib
+import logging
 from decimal import Decimal
 from django.utils import timezone
 from django.apps import apps
@@ -19,6 +20,8 @@ from django.db.models.fields.related import ForeignKey
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+logger = logging.getLogger(__name__)
 
 VERSION = "4.1"
 
@@ -136,6 +139,21 @@ def export_user_data(user, password):
     Returns:
         str: O conteúdo do backup final criptografado em Base64.
     """
+    # Normaliza faturas de cartão duplicadas antes de coletar os dados, para que o
+    # backup não perpetue a inconsistência em futuras restaurações. É idempotente:
+    # em uma base saudável não altera nada.
+    try:
+        from core.services.fatura_service import deduplicar_faturas
+        relatorio_faturas = deduplicar_faturas(usuario=user)
+        if relatorio_faturas:
+            logger.warning(
+                "Exportação de %s: %d fatura(s) duplicada(s) consolidada(s) antes do backup.",
+                user.username,
+                sum(len(g["removidas"]) for g in relatorio_faturas),
+            )
+    except Exception as e:
+        logger.error("Falha ao deduplicar faturas antes da exportação: %s", e)
+
     models_to_backup = get_backupable_models()
     data = {
         "metadata": {

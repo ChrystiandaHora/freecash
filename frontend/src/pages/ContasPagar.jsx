@@ -115,6 +115,7 @@ export default function ContasPagar() {
   const navigate = useNavigate()
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
+  const [deletingConta, setDeletingConta] = useState(null) // Conta em exclusão (para o aviso de cascata)
   const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
   const [editingConta, setEditingConta] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
@@ -154,8 +155,12 @@ export default function ContasPagar() {
     onSuccess: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
+        // Excluir uma fatura remove também as compras do cartão: revalida essas telas
+        queryClient.invalidateQueries({ queryKey: ['compras-cartao'] })
+        queryClient.invalidateQueries({ queryKey: ['cartoes'] })
         setFadingIds(new Set())
         setDeleteId(null)
+        setDeletingConta(null)
       }, 500)
     },
   })
@@ -305,7 +310,7 @@ export default function ContasPagar() {
               </Button>
             )}
             {row.eh_fatura_cartao ? (
-              // Faturas de cartão: navegar para Compras Cartão para ver/editar compras individuais + editar metadados
+              // Faturas de cartão: ver/editar compras individuais, editar metadados e excluir o período inteiro
               <div className="flex items-center gap-1">
                 <Button
                   size="sm"
@@ -325,6 +330,15 @@ export default function ContasPagar() {
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                  onClick={() => { setDeleteId(row.id); setDeletingConta(row); }}
+                  title="Excluir fatura e suas compras"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ) : (
               // Contas normais: editar e excluir
@@ -342,7 +356,7 @@ export default function ContasPagar() {
                   size="sm"
                   variant="ghost"
                   className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                  onClick={() => setDeleteId(row.id)}
+                  onClick={() => { setDeleteId(row.id); setDeletingConta(row); }}
                   title="Excluir"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -524,12 +538,16 @@ export default function ContasPagar() {
       {/* ─── Modal: Confirmar Exclusão ─────────────────────────────────────────── */}
       <Modal
         isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title="Confirmar Exclusão"
-        description="Esta ação excluirá permanentemente a despesa. Deseja continuar?"
+        onClose={() => { setDeleteId(null); setDeletingConta(null); }}
+        title={deletingConta?.eh_fatura_cartao ? 'Excluir Fatura do Cartão' : 'Confirmar Exclusão'}
+        description={
+          deletingConta?.eh_fatura_cartao
+            ? `Esta é uma fatura de cartão. Excluí-la removerá permanentemente a fatura e também ${deletingConta.qtd_compras_vinculadas ?? 0} compra(s) individual(is) lançada(s) neste vencimento. Esta ação não pode ser desfeita. Deseja continuar?`
+            : 'Esta ação excluirá permanentemente a despesa. Deseja continuar?'
+        }
       >
         <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => setDeleteId(null)}>
+          <Button variant="outline" onClick={() => { setDeleteId(null); setDeletingConta(null); }}>
             Cancelar
           </Button>
           <Button
