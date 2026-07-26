@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, TrendingUp, Repeat, ArrowUpCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Repeat, ArrowUpCircle } from 'lucide-react';
 
 import { fetchReceita, createReceita, updateReceita } from '../../services/financeiro';
 import { Button } from '../../components/ui/Button';
@@ -27,8 +27,6 @@ export default function ReceitaForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEdit = !!id;
-
-  const [tipoSelecionado, setTipoSelecionado] = useState('unica');
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
@@ -55,7 +53,6 @@ export default function ReceitaForm() {
         recorrencia: receita.recorrencia || '',
         data_fim: receita.data_fim || '',
       });
-      setTipoSelecionado(receita.tipo === 'recorrente' ? 'recorrente' : 'unica');
     }
   }, [receita, reset]);
 
@@ -136,7 +133,6 @@ export default function ReceitaForm() {
                     type="button"
                     onClick={() => {
                       setValue('tipo', value);
-                      setTipoSelecionado(value);
                     }}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200 ${
                       watchTipo === value

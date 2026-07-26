@@ -17,7 +17,6 @@ import {
   RefreshCw,
   AlertCircle,
   Plus,
-  X,
   Pencil,
   Trash2,
   ChevronDown,
@@ -29,7 +28,6 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 
 /* ─────────────────────────── Delete Confirm ─────────────────────────── */
@@ -110,47 +108,47 @@ export default function AtivosClasses() {
   };
 
   /* ── Mutations ── */
-  const buildMutation = (fn, successMsg) => useMutation({
+  const useBuildMutation = (fn, successMsg) => useMutation({
     mutationFn: fn,
     onSuccess: () => { invalidateAll(); setModal(null); setMutError(''); showSuccess(successMsg); },
     onError: (e) => setMutError(e?.response?.data?.detail || e?.response?.data?.nome?.[0] || 'Erro ao salvar.'),
   });
 
-  const createClasseMut = buildMutation(
+  const createClasseMut = useBuildMutation(
     (nome) => api.post('/api/investimentos/classes/', { nome }),
     'Classe criada!'
   );
-  const updateClasseMut = buildMutation(
+  const updateClasseMut = useBuildMutation(
     ({ id, nome }) => api.patch(`/api/investimentos/classes/${id}/`, { nome }),
     'Classe atualizada!'
   );
-  const deleteClasseMut = buildMutation(
+  const deleteClasseMut = useBuildMutation(
     (id) => api.delete(`/api/investimentos/classes/${id}/`),
     'Classe excluída!'
   );
 
-  const createCatMut = buildMutation(
+  const createCatMut = useBuildMutation(
     ({ nome, classe }) => api.post('/api/investimentos/categorias/', { nome, classe }),
     'Categoria criada!'
   );
-  const updateCatMut = buildMutation(
+  const updateCatMut = useBuildMutation(
     ({ id, nome }) => api.patch(`/api/investimentos/categorias/${id}/`, { nome }),
     'Categoria atualizada!'
   );
-  const deleteCatMut = buildMutation(
+  const deleteCatMut = useBuildMutation(
     (id) => api.delete(`/api/investimentos/categorias/${id}/`),
     'Categoria excluída!'
   );
 
-  const createSubMut = buildMutation(
+  const createSubMut = useBuildMutation(
     ({ nome, categoria }) => api.post('/api/investimentos/subcategorias/', { nome, categoria }),
     'Subcategoria criada!'
   );
-  const updateSubMut = buildMutation(
+  const updateSubMut = useBuildMutation(
     ({ id, nome }) => api.patch(`/api/investimentos/subcategorias/${id}/`, { nome }),
     'Subcategoria atualizada!'
   );
-  const deleteSubMut = buildMutation(
+  const deleteSubMut = useBuildMutation(
     (id) => api.delete(`/api/investimentos/subcategorias/${id}/`),
     'Subcategoria excluída!'
   );

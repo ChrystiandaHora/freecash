@@ -22,15 +22,12 @@ import {
   CheckCircle2, 
   RefreshCw, 
   Gem, 
-  Calendar, 
   Eye, 
   EyeOff
 } from 'lucide-react';
 
 import { 
   fetchAtivos, 
-  createAtivo, 
-  updateAtivo, 
   deleteAtivo, 
   fetchSubcategoriasAtivos,
   atualizarCotacoes
@@ -41,7 +38,6 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
-import { SectionLabel } from '../components/ui/SectionLabel';
 import { Alert } from '../components/ui/Alert';
 
 // Helper de formatação de moedas
@@ -255,13 +251,9 @@ export default function MeusAtivos() {
     }
   };
 
-  /* ── Cálculos de Métricas ── */
-  const activeAtivosList = ativos.filter(a => a.ativo);
-  const totalPatrimonio = activeAtivosList.reduce((sum, item) => sum + parseFloat(item.valor_total_atual || 0), 0);
-  const totalMeta = activeAtivosList.reduce((sum, item) => sum + parseFloat(item.meta_porcentagem || 0), 0);
-  const totalInvestido = activeAtivosList.reduce((sum, item) => sum + (parseFloat(item.quantidade || 0) * parseFloat(item.preco_medio || 0)), 0);
+  const [tableFilteredAtivos, setTableFilteredAtivos] = useState(null);
 
-  // Lista Filtrada
+  // Lista Filtrada por Busca e Subcategoria
   const filteredAtivos = ativos.filter(ativo => {
     // Filtragem de Aba (Ativos x Arquivados)
     const matchesTab = activeTab === 'ativos' ? ativo.ativo : !ativo.ativo;
@@ -277,6 +269,12 @@ export default function MeusAtivos() {
 
     return matchesSearch && matchesSub;
   });
+
+  /* ── Cálculos de Métricas (dinâmicos com base nos filtros) ── */
+  const ativosParaKpis = tableFilteredAtivos ?? filteredAtivos;
+  const totalPatrimonio = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.valor_total_atual || 0), 0);
+  const totalMeta = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.meta_porcentagem || 0), 0);
+  const totalInvestido = ativosParaKpis.reduce((sum, item) => sum + (parseFloat(item.quantidade || 0) * parseFloat(item.preco_medio || 0)), 0);
 
   if (loadingAtivos || loadingSubs) {
     return (
@@ -468,6 +466,7 @@ export default function MeusAtivos() {
           data={filteredAtivos}
           pageSize={20}
           emptyMessage="Nenhum ativo encontrado nesta aba."
+          onFilteredDataChange={setTableFilteredAtivos}
         />
 
       </div>

@@ -137,7 +137,7 @@ const describeFilter = (type, value) => {
  * Popover de filtro individual de coluna, renderizado em portal para escapar
  * do recorte imposto pelo container de rolagem horizontal da tabela.
  */
-const ColumnFilterPopover = ({ column, type, value, anchorRect, onChange, onClear, onClose }) => {
+const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onChange, onClear, onClose }) => {
   const panelRef = useRef(null)
 
   useEffect(() => {
@@ -259,7 +259,17 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, onChange, onClea
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">Todos</option>
-          {(column.filterOptions ?? []).map((opt) => {
+          {((column.filterOptions && column.filterOptions.length > 0)
+            ? column.filterOptions
+            : Array.from(
+                new Set(
+                  (data || [])
+                    .map((row) => getFilterValue(column, row))
+                    .filter((val) => val !== null && val !== undefined && val !== "")
+                    .map((val) => String(val))
+                )
+              ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+          ).map((opt) => {
             const optValue = typeof opt === "object" ? opt.value : opt
             const optLabel = typeof opt === "object" ? opt.label : opt
             return (
@@ -335,6 +345,9 @@ const DataTable = ({
   // Filtros Controlados (Server-side)
   filters,
   onFilterChange,
+
+  // Callback ao alterar dados filtrados (para atualizar cards/KPIs no pai)
+  onFilteredDataChange,
 }) => {
   // --- Estados Locais para Ordenação (Uncontrolled) ---
   const [localSortKey, setLocalSortKey] = useState(defaultSortKey)
@@ -438,18 +451,50 @@ const DataTable = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, columns, filterTypes, filterSignature, onFilterChange])
 
+  // --- Notificar o componente pai sobre os dados filtrados ---
+  const lastEmittedRef = useRef(null)
+  useEffect(() => {
+    if (!onFilteredDataChange) return
+
+    const prev = lastEmittedRef.current
+    const curr = filteredData
+
+    if (prev && prev.length === curr.length) {
+      let isSame = true
+      for (let i = 0; i < curr.length; i++) {
+        if (prev[i] !== curr[i] && (prev[i]?.id === undefined || prev[i]?.id !== curr[i]?.id)) {
+          isSame = false
+          break
+        }
+      }
+      if (isSame) return
+    }
+
+    lastEmittedRef.current = curr
+    onFilteredDataChange(curr)
+  }, [filteredData, onFilteredDataChange])
+
   // --- Resolução de Ordenação Ativa ---
   const activeSortKey = sortKey !== undefined ? sortKey : localSortKey
   const activeSortDir = sortDir !== undefined ? sortDir : localSortDir
 
   const handleSortClick = (key) => {
-    const isAsc = activeSortKey === key && activeSortDir === "asc"
-    const nextDir = isAsc ? "desc" : "asc"
+    let nextKey = key
+    let nextDir = "asc"
+
+    if (activeSortKey === key) {
+      if (activeSortDir === "asc") {
+        nextDir = "desc"
+      } else if (activeSortDir === "desc") {
+        nextKey = null
+        nextDir = null
+      }
+    }
 
     if (onSort) {
-      onSort(key, nextDir)
+      onSort(nextKey, nextDir)
     } else {
-      setLocalSortKey(key)
+      setLocalSortKey(nextKey)
       setLocalSortDir(nextDir)
     }
   }
@@ -458,7 +503,7 @@ const DataTable = ({
   const sortedData = useMemo(() => {
     if (onSort) return filteredData // Ordenação controlada por API externa
 
-    if (!activeSortKey) return filteredData
+    if (!activeSortKey || !activeSortDir) return filteredData
 
     return [...filteredData].sort((a, b) => {
       const valA = a[activeSortKey]
@@ -664,7 +709,7 @@ const DataTable = ({
             <tr className="border-b border-border/60 bg-muted/40">
               {columns.map((col) => {
                 const isSortable = col.sortable !== false && !!col.key
-                const isCurrentlySorted = activeSortKey === col.key
+                const isCurrentlySorted = activeSortKey === col.key && !!activeSortDir
                 const filterType = filterTypes[col.key]
                 const columnFilterActive = !!filterType && isFilterActive(filterType, activeFilters[col.key])
 
@@ -776,6 +821,7 @@ const DataTable = ({
           type={filterTypes[openFilterKey]}
           value={activeFilters[openFilterKey]}
           anchorRect={anchorRect}
+          data={data}
           onChange={(value) => handleFilterValueChange(openFilterKey, value)}
           onClear={() => handleFilterClear(openFilterKey)}
           onClose={closeFilter}

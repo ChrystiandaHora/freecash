@@ -31,7 +31,7 @@ from core.views.api import (
 )
 from investimento.views_api import (
     ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet, 
-    AtivoViewSet, TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView
+    AtivoViewSet, TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView, BalanceamentoAPIView
 )
 from core.views.ferramentas_api import (
     FerramentasImportarAPIView,
@@ -72,6 +72,7 @@ urlpatterns += [
     path('api/dashboard/', DashboardAPIView.as_view(), name='api-dashboard'),
     path('api/dashboard/executivo/', ExecutiveBIDashboardAPIView.as_view(), name='api-dashboard-executivo'),
     path('api/investimentos/dashboard/', DashboardInvestimentoAPIView.as_view(), name='api-investimentos-dashboard'),
+    path('api/investimentos/balanceamento/', BalanceamentoAPIView.as_view(), name='api-investimentos-balanceamento'),
     path('api/relatorios/dre/', RelatoriosDREAPIView.as_view(), name='api-relatorios-dre'),
     # Ferramentas
     path('api/ferramentas/importar/', FerramentasImportarAPIView.as_view(), name='api-ferramentas-importar'),

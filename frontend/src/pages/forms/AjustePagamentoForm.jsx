@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, Plus, CreditCard, Wallet, Building2, Landmark, Coins, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Plus, CreditCard, Wallet, Building2, Landmark, Coins } from 'lucide-react';
 
 import api from '../../services/api';
 import { fetchContaBancaria } from '../../services/financeiro';

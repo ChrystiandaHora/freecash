@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, DollarSign, Calendar, CreditCard, Tag } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, DollarSign, Calendar } from 'lucide-react';
 
 import api from '../../services/api';
 import { fetchCompraCartao } from '../../services/financeiro';

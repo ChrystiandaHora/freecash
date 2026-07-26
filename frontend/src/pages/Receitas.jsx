@@ -1,34 +1,30 @@
 /**
  * Tela de Gestão de Receitas e Entradas Financeiras.
  * 
- * Permite listar, filtrar por período (mês/ano) e cadastrar novas receitas ou fluxos
- * recorrentes de caixa. Renderiza cartões informativos contendo o consolidado previsto,
- * realizado e restante de entradas do mês de competência selecionado.
+ * Permite listar, filtrar por coluna (data, status, categoria) e cadastrar novas
+ * receitas ou fluxos recorrentes de caixa. Renderiza cartões informativos contendo o
+ * previsto do mês atual e o consolidado realizado/restante de todo o histórico.
  *
  * @component
  * @returns {React.JSX.Element} Dashboard analítico e listagem de receitas.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
-  Plus, TrendingUp, CheckCircle2, Clock,
-  Loader2, RefreshCw, ArrowUpCircle, Repeat, Filter, Pencil,
+  Plus, CheckCircle2, Clock,
+  Loader2, RefreshCw, Repeat, Pencil,
   Trash2
 } from 'lucide-react';
 
-import { fetchReceitas, createReceita, updateReceita, deleteReceita } from '../services/financeiro';
+import { fetchReceitas, deleteReceita } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { getCurrentMonthDateRange } from '../lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,40 +32,12 @@ const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
-  const [year, month, day] = dateStr.split('-')
+  if (!dateStr || typeof dateStr !== 'string') return '—'
+  const parts = dateStr.split('-')
+  if (parts.length < 3) return dateStr
+  const [year, month, day] = parts
   return `${day}/${month}/${year}`
 }
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const schema = z.object({
-  descricao: z.string().min(3, 'Descrição obrigatória (mín. 3 caracteres)'),
-  categoria: z.string().min(1, 'Informe a categoria'),
-  valor: z.coerce.number().positive('Valor deve ser positivo'),
-  data_recebimento: z.string().min(1, 'Data obrigatória'),
-  tipo: z.enum(['unica', 'recorrente']),
-  recorrencia: z.string().optional(),
-  data_fim: z.string().optional(),
-})
-
-const MONTHS = [
-  { value: 1, label: 'Janeiro' },
-  { value: 2, label: 'Fevereiro' },
-  { value: 3, label: 'Março' },
-  { value: 4, label: 'Abril' },
-  { value: 5, label: 'Maio' },
-  { value: 6, label: 'Junho' },
-  { value: 7, label: 'Julho' },
-  { value: 8, label: 'Agosto' },
-  { value: 9, label: 'Setembro' },
-  { value: 10, label: 'Outubro' },
-  { value: 11, label: 'Novembro' },
-  { value: 12, label: 'Dezembro' }
-]
-
-const currentYear = new Date().getFullYear()
-const YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i)
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
@@ -78,23 +46,12 @@ export default function Receitas() {
   const queryClient = useQueryClient()
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
-
-  // Filtros de Mês e Ano
-  const today = new Date()
-  const [mes, setMes] = useState(today.getMonth() + 1)
-  const [ano, setAno] = useState(today.getFullYear())
+  const [filteredReceitas, setFilteredReceitas] = useState(null)
 
   const { data: receitas = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['receitas', mes, ano],
-    queryFn: () => fetchReceitas({ mes, ano }),
+    queryKey: ['receitas'],
+    queryFn: () => fetchReceitas(),
   })
-
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: { tipo: 'unica' },
-  })
-
-  const watchTipo = watch('tipo')
 
   const deleteMutation = useMutation({
     mutationFn: deleteReceita,
@@ -110,37 +67,36 @@ export default function Receitas() {
     },
   })
 
-  const createMutation = useMutation({
-    queryKey: ['receitas'],
-    mutationFn: createReceita,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['receitas'] })
-      setModalOpen(false)
-      reset()
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: updateReceita,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['receitas'] })
-      setModalOpen(false)
-      setEditingConta(null)
-      reset()
-    },
-  })
-
   const handleEdit = (conta) => {
     navigate(`/receitas/editar/${conta.id}`)
   }
 
-  // ─── KPIs ──────────────────────────────────────────────────────────────────
-  const receitasMes = receitas
-  const realizadas = receitasMes.filter((r) => r.realizada)
-  const previstas = receitasMes.filter((r) => !r.realizada)
+  // ─── KPIs (calculados dinamicamente com base nos filtros da tabela) ────────
+  const receitasParaKpis = filteredReceitas ?? receitas
+  const realizadas = (receitasParaKpis || []).filter((r) => r.realizada)
+  const previstas = (receitasParaKpis || []).filter((r) => !r.realizada)
 
-  const totalPrevisto = receitasMes.reduce((a, r) => a + Number(r.valor ?? 0), 0)
   const totalRealizado = realizadas.reduce((a, r) => a + Number(r.valor ?? 0), 0)
+
+  // "Previsto no Mês" fica restrito ao mês atual: somar todo o histórico (anos de
+  // receitas) não é uma métrica útil — a listagem completa já está na tabela abaixo.
+  const hoje = new Date()
+  const receitasMesAtual = (receitasParaKpis || []).filter((r) => {
+    if (!r.data_recebimento || typeof r.data_recebimento !== 'string') return false
+    const parts = r.data_recebimento.split('-')
+    if (parts.length < 2) return false
+    const [year, month] = parts
+    return Number(month) === hoje.getMonth() + 1 && Number(year) === hoje.getFullYear()
+  })
+  const totalPrevistoMes = receitasMesAtual.reduce((a, r) => a + Number(r.valor ?? 0), 0)
+
+  // ─── Dados da Tabela Memoizados ───────────────────────────────────────────
+  const tableData = useMemo(() => {
+    return (receitas || []).map((r) => ({
+      ...r,
+      _fading: fadingIds.has(r.id),
+    }))
+  }, [receitas, fadingIds])
 
   // ─── Colunas ───────────────────────────────────────────────────────────────
   const columns = [
@@ -166,6 +122,7 @@ export default function Receitas() {
     {
       key: 'categoria',
       header: 'Categoria',
+      filterType: 'select',
       render: (val) => <span className="text-muted-foreground">{val || '—'}</span>,
     },
     {
@@ -180,6 +137,7 @@ export default function Receitas() {
     {
       key: 'realizada',
       header: 'Status',
+      filterType: 'boolean',
       filterTrueLabel: 'Recebida',
       filterFalseLabel: 'Prevista',
       render: (val) =>
@@ -248,54 +206,7 @@ export default function Receitas() {
         </div>
       </div>
 
-      {/* Filtro de Período */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-card border border-border/40 p-4 rounded-xl shadow-sm">
-        <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-          <Filter className="h-4 w-4 text-primary" />
-          <span>Filtrar Período:</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Seletor de Mês */}
-          <div className="w-[160px]">
-            <Select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Seletor de Ano */}
-          <div className="w-[110px]">
-            <Select value={ano} onChange={(e) => setAno(Number(e.target.value))}>
-              {YEARS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Botão de Reset Mês Atual */}
-          {(mes !== today.getMonth() + 1 || ano !== today.getFullYear()) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setMes(today.getMonth() + 1);
-                setAno(today.getFullYear());
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground h-10 px-3"
-            >
-              Mês Atual
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* KPIs do Mês */}
+      {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
@@ -304,8 +215,8 @@ export default function Receitas() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPrevisto)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{receitasMes.length} receita(s)</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPrevistoMes)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{receitasMesAtual.length} receita(s)</p>
           </CardContent>
         </Card>
  
@@ -346,13 +257,12 @@ export default function Receitas() {
       {/* Tabela */}
       <DataTable
         columns={columns}
-        data={receitas.map((r) => ({
-          ...r,
-          _fading: fadingIds.has(r.id),
-        }))}
+        data={tableData}
         isLoading={isLoading}
         pageSize={10}
-        emptyMessage="Nenhuma receita cadastrada para o período selecionado."
+        defaultFilters={{ data_recebimento: getCurrentMonthDateRange() }}
+        emptyMessage="Nenhuma receita cadastrada."
+        onFilteredDataChange={setFilteredReceitas}
         rowClassName={(row) =>
           row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
         }

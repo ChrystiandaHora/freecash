@@ -15,29 +15,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
   CheckCircle2,
-  Search,
   ChevronDown,
   ChevronUp,
   Loader2,
   RefreshCw,
   AlertCircle,
-  FileText,
   UploadCloud,
   X,
   Edit,
   Trash2,
-  Calendar,
-  DollarSign,
   Plus,
   FileSpreadsheet
 } from 'lucide-react';
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
-import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
+import { DataTable } from '../components/ui/DataTable';
+import { getCurrentMonthDateRange } from '../lib/utils';
 
 const fetchComprasCartao = async (params = {}) => {
   const query = new URLSearchParams();
@@ -78,10 +75,6 @@ export default function ComprasCartao() {
   const [isUploadPanelOpen, setIsUploadPanelOpen] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
 
-  // Historico filters states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [cardFilter, setCardFilter] = useState('');
-
   // Delete Modal states
   const [deletingId, setDeletingId] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -97,8 +90,8 @@ export default function ComprasCartao() {
   const cartoes = cartoesData || [];
 
   const { data: contasData, isLoading: isContasLoading, isError: isContasError, refetch: refetchContas } = useQuery({
-    queryKey: ['compras-cartao', cardFilter],
-    queryFn: () => fetchComprasCartao({ cartao_uuid: cardFilter || undefined }),
+    queryKey: ['compras-cartao'],
+    queryFn: () => fetchComprasCartao(),
   });
   const contas = contasData || [];
 
@@ -186,13 +179,95 @@ export default function ComprasCartao() {
     navigate('/compras-cartao/novo');
   };
 
-  // Filter purchases
-  const filteredPurchases = contas.filter(p => {
-    const matchesSearch = !searchTerm ||
-      p.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.categoria_detalhe?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  // ─── Colunas da tabela ─────────────────────────────────────────────────────
+  const columns = [
+    {
+      key: 'data_compra',
+      header: 'Data Compra',
+      render: (val) => (
+        <span className="text-xs text-muted-foreground">{val ? formatDate(val) : '—'}</span>
+      ),
+    },
+    {
+      key: 'descricao',
+      header: 'Descrição',
+      render: (val) => (
+        <span className="font-medium text-foreground truncate max-w-xs block">{val}</span>
+      ),
+    },
+    {
+      key: 'cartao',
+      header: 'Cartão',
+      filterType: 'select',
+      filterOptions: cartoes.map((c) => c.nome),
+      filterAccessor: (row) => row.cartao_detalhe?.nome,
+      render: (_, row) => (
+        <span className="text-xs text-muted-foreground">{row.cartao_detalhe?.nome || '—'}</span>
+      ),
+    },
+    {
+      key: 'categoria',
+      header: 'Categoria',
+      filterType: 'select',
+      filterOptions: categorias.map((cat) => cat.nome),
+      filterAccessor: (row) => row.categoria_detalhe?.nome,
+      render: (_, row) => (
+        <span className="inline-block text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+          {row.categoria_detalhe?.nome || 'default'}
+        </span>
+      ),
+    },
+    {
+      key: 'data_vencimento',
+      header: 'Fatura (Venc.)',
+      render: (val) => (
+        <span className="text-xs text-muted-foreground">{formatDate(val)}</span>
+      ),
+    },
+    {
+      key: 'valor',
+      header: 'Valor',
+      render: (val) => (
+        <span className="font-semibold text-red-500 dark:text-red-400">{formatCurrency(val)}</span>
+      ),
+    },
+    {
+      key: 'pago',
+      header: 'Status',
+      filterType: 'boolean',
+      filterTrueLabel: 'Pago',
+      filterFalseLabel: 'Pendente',
+      render: (val) =>
+        val ? <Badge variant="success">Pago</Badge> : <Badge variant="secondary">Pendente</Badge>,
+    },
+    {
+      key: 'acoes',
+      header: 'Ações',
+      sortable: false,
+      render: (_, row) => (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground"
+            onClick={() => handleOpenEditModal(row)}
+            title="Editar compra"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-muted-foreground"
+            onClick={() => handleOpenDeleteModal(row.id)}
+            title="Excluir compra"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -376,136 +451,22 @@ export default function ComprasCartao() {
         )}
       </div>
 
-      {/* Filters Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-xl border border-border/40 shadow-sm">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Buscar por descrição ou categoria..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="w-full sm:w-64">
-          <Select
-            value={cardFilter}
-            onChange={(e) => setCardFilter(e.target.value)}
-          >
-            <option value="">Todos os Cartões</option>
-            {cartoes.map((c) => (
-              <option key={c.uuid} value={c.uuid}>
-                {c.nome} (Final {c.final})
-              </option>
-            ))}
-          </Select>
-        </div>
-      </div>
-
-      {/* Loading / Error states */}
-      {isContasLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
-
+      {/* Error */}
       {isContasError && (
         <Alert variant="error" icon={AlertCircle}>
           Erro ao carregar histórico de compras do cartão. Verifique a conexão com o servidor.
         </Alert>
       )}
 
-      {!isContasLoading && !isContasError && filteredPurchases.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border/60 rounded-2xl bg-card/40">
-          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-3">
-            <Search className="h-6 w-6 text-slate-400" />
-          </div>
-          <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-1">
-            Nenhuma compra encontrada
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
-            Tente redefinir seus filtros ou concilie lançamentos para povoar o histórico.
-          </p>
-        </div>
-      )}
-
-      {/* Purchases List */}
-      {!isContasLoading && !isContasError && filteredPurchases.length > 0 && (
-        <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/40 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <th className="px-4 py-3">Descrição</th>
-                  <th className="px-4 py-3">Cartão</th>
-                  <th className="px-4 py-3">Categoria</th>
-                  <th className="px-4 py-3 text-right">Data Compra</th>
-                  <th className="px-4 py-3 text-right">Fatura (Venc.)</th>
-                  <th className="px-4 py-3 text-right">Valor</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {filteredPurchases.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted/30 transition-colors text-sm">
-                    <td className="px-4 py-3 font-medium text-foreground truncate max-w-xs">
-                      {p.descricao}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {p.cartao_detalhe?.nome || '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                        {p.categoria_detalhe?.nome || 'default'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {p.data_compra ? formatDate(p.data_compra) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {formatDate(p.data_vencimento)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-red-500 dark:text-red-400">
-                      {formatCurrency(p.valor)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {p.pago ? (
-                        <Badge variant="success">Pago</Badge>
-                      ) : (
-                        <Badge variant="secondary">Pendente</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground"
-                          onClick={() => handleOpenEditModal(p)}
-                          title="Editar compra"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-muted-foreground"
-                          onClick={() => handleOpenDeleteModal(p.id)}
-                          title="Excluir compra"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Tabela */}
+      <DataTable
+        columns={columns}
+        data={contas}
+        isLoading={isContasLoading}
+        pageSize={15}
+        defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
+        emptyMessage="Nenhuma compra encontrada."
+      />
 
       {/* ───────────────── MODAL: CONFIRMAR EXCLUSÃO ───────────────── */}
       <Modal

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, TrendingUp, TrendingDown, Gift, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, AlertCircle } from 'lucide-react';
 
 import api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Card, CardContent } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
 
 const formatCurrency = (value) => {
@@ -105,7 +105,7 @@ export default function OrdemForm() {
     if (!form.ativo) { setError('Selecione um ativo.'); return; }
     if (!form.data) { setError('Selecione a data da operação.'); return; }
 
-    let payload = {};
+    let payload;
     if (tab === 'proventos') {
       if (!form.valor_total_provento) {
         setError('Preencha o valor do provento.'); return;

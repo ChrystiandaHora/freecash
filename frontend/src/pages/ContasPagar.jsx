@@ -11,25 +11,20 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
-  CalendarDays, Tag, DollarSign, RefreshCw, Filter, Pencil, CreditCard, ExternalLink,
+  CalendarDays, Tag, RefreshCw, Pencil, CreditCard, ExternalLink,
   Trash2, RotateCcw
 } from 'lucide-react';
 
-
-import { fetchContasPagar, createContaPagar, updateContaPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
+import { fetchContasPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
 import { DataTable } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { getCurrentMonthDateRange } from '../lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,12 +38,20 @@ const formatDate = (dateStr) => {
 }
 
 const getStatusInfo = (conta) => {
+  if (!conta) return { label: 'Pendente', variant: 'secondary', Icon: Clock }
   if (conta.pago) return { label: 'Pago', variant: 'success', Icon: CheckCircle2 }
+
+  if (!conta.data_vencimento || typeof conta.data_vencimento !== 'string') {
+    return { label: 'Pendente', variant: 'secondary', Icon: Clock }
+  }
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [year, month, day] = conta.data_vencimento.split('-')
+  const parts = conta.data_vencimento.split('-')
+  if (parts.length < 3) return { label: 'Pendente', variant: 'secondary', Icon: Clock }
+
+  const [year, month, day] = parts
   const due = new Date(Number(year), Number(month) - 1, Number(day))
   due.setHours(0, 0, 0, 0)
 
@@ -64,46 +67,12 @@ const getStatusInfo = (conta) => {
   return { label: 'Pendente', variant: 'secondary', Icon: Clock }
 }
 
-// ─── Schema de validação ──────────────────────────────────────────────────────
-
-const schema = z.object({
-  descricao: z.string().min(3, 'Descrição obrigatória (mín. 3 caracteres)'),
-  categoria: z.string().min(1, 'Informe a categoria'),
-  valor: z.coerce.number().positive('Valor deve ser positivo'),
-  data_vencimento: z.string().min(1, 'Data de vencimento obrigatória'),
-})
-
-const MONTHS = [
-  { value: 1, label: 'Janeiro' },
-  { value: 2, label: 'Fevereiro' },
-  { value: 3, label: 'Março' },
-  { value: 4, label: 'Abril' },
-  { value: 5, label: 'Maio' },
-  { value: 6, label: 'Junho' },
-  { value: 7, label: 'Julho' },
-  { value: 8, label: 'Agosto' },
-  { value: 9, label: 'Setembro' },
-  { value: 10, label: 'Outubro' },
-  { value: 11, label: 'Novembro' },
-  { value: 12, label: 'Dezembro' }
-]
-
-const currentYear = new Date().getFullYear()
-const YEARS = Array.from({ length: 7 }, (_, i) => currentYear - 2 + i)
-
-const EMPTY_FORM = {
-  descricao: '',
-  categoria: '',
-  valor: '',
-  data_vencimento: ''
-}
-
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 /**
  * Tela de Gerenciamento de Contas a Pagar e Obrigações Financeiras.
  * 
- * Permite a listagem, filtragem mensal/anual e manipulação de obrigações financeiras (CRUD).
+ * Permite a listagem, filtragem por coluna (data, status, categoria) e manipulação de obrigações financeiras (CRUD).
  * Oferece ações rápidas para quitar/marcar contas como pagas com animação de fading visual de linha
  * e modais dedicados de cadastros com esquemas de validação robustos via Zod e React Hook Form.
  *
@@ -119,16 +88,12 @@ export default function ContasPagar() {
   const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
   const [editingConta, setEditingConta] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
-
-  // Filtros de Mês e Ano
-  const today = new Date()
-  const [mes, setMes] = useState(today.getMonth() + 1)
-  const [ano, setAno] = useState(today.getFullYear())
+  const [filteredContas, setFilteredContas] = useState(null)
 
   // Query
   const { data: contas = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['contasPagar', mes, ano],
-    queryFn: () => fetchContasPagar({ mes, ano }),
+    queryKey: ['contasPagar'],
+    queryFn: () => fetchContasPagar(),
   })
 
   // Mutation: pagar conta
@@ -186,35 +151,59 @@ export default function ContasPagar() {
     const todayMs = new Date().setHours(0, 0, 0, 0)
 
     const prioridade = (c) => {
+      if (!c) return 3
       if (c.pago) return 3
-      const [y, m, d] = c.data_vencimento.split('-')
+      if (!c.data_vencimento || typeof c.data_vencimento !== 'string') return 2
+      const parts = c.data_vencimento.split('-')
+      if (parts.length < 3) return 2
+      const [y, m, d] = parts
       const due = new Date(Number(y), Number(m) - 1, Number(d)).setHours(0, 0, 0, 0)
       if (due < todayMs) return 0  // atrasada
       if (due === todayMs) return 1 // vence hoje
       return 2                      // pendente futura
     }
 
-    return [...contas].sort((a, b) => {
+    return [...(contas || [])].sort((a, b) => {
       const diff = prioridade(a) - prioridade(b)
       if (diff !== 0) return diff
-      return a.data_vencimento.localeCompare(b.data_vencimento)
+      return (a?.data_vencimento || '').localeCompare(b?.data_vencimento || '')
     })
   }, [contas])
 
-  // ─── KPIs ──────────────────────────────────────────────────────────────────
-  const pendentes = contas.filter((c) => !c.pago)
-  const atrasadas = contas.filter((c) => {
-    if (c.pago) return false
-    const [year, month, day] = c.data_vencimento.split('-')
+  // ─── KPIs (calculados dinamicamente com base nos filtros da tabela) ────────
+  const contasParaKpis = filteredContas ?? contasOrdenadas
+  const pendentes = (contasParaKpis || []).filter((c) => !c.pago)
+  const atrasadas = (contasParaKpis || []).filter((c) => {
+    if (c.pago || !c.data_vencimento || typeof c.data_vencimento !== 'string') return false
+    const parts = c.data_vencimento.split('-')
+    if (parts.length < 3) return false
+    const [year, month, day] = parts
     const due = new Date(Number(year), Number(month) - 1, Number(day))
     due.setHours(0, 0, 0, 0)
     const today = new Date(); today.setHours(0, 0, 0, 0)
     return due < today
   })
   const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
-  const totalGeral = contas.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
-  // ─── Colunas da tabela ─────────────────────────────────────────────────────
+  // "Total Geral" fica restrito ao mês atual: somar todo o histórico (anos de contas)
+  // não é uma métrica útil — o Livro-Razão completo já está disponível na tabela abaixo.
+  const hoje = new Date()
+  const contasMesAtual = (contasParaKpis || []).filter((c) => {
+    if (!c.data_vencimento || typeof c.data_vencimento !== 'string') return false
+    const parts = c.data_vencimento.split('-')
+    if (parts.length < 2) return false
+    const [year, month] = parts
+    return Number(month) === hoje.getMonth() + 1 && Number(year) === hoje.getFullYear()
+  })
+  const totalMesAtual = contasMesAtual.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
+
+  // ─── Dados da Tabela Memoizados ───────────────────────────────────────────
+  const tableData = useMemo(() => {
+    return (contasOrdenadas || []).map((c) => ({
+      ...c,
+      _fading: fadingIds.has(c.id),
+    }))
+  }, [contasOrdenadas, fadingIds])
   const columns = [
     {
       key: 'data_vencimento',
@@ -248,6 +237,7 @@ export default function ContasPagar() {
     {
       key: 'categoria',
       header: 'Categoria',
+      filterType: 'select',
       render: (val) => (
         <span className="flex items-center gap-1.5 text-muted-foreground">
           <Tag className="h-3.5 w-3.5" />
@@ -405,53 +395,6 @@ export default function ContasPagar() {
         </div>
       </div>
 
-      {/* Filtro de Período */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-card border border-border/40 p-4 rounded-xl shadow-sm">
-        <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
-          <Filter className="h-4 w-4 text-primary" />
-          <span>Filtrar Período:</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Seletor de Mês */}
-          <div className="w-40">
-            <Select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Seletor de Ano */}
-          <div className="w-[110px]">
-            <Select value={ano} onChange={(e) => setAno(Number(e.target.value))}>
-              {YEARS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Botão de Reset Mês Atual */}
-          {(mes !== today.getMonth() + 1 || ano !== today.getFullYear()) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setMes(today.getMonth() + 1);
-                setAno(today.getFullYear());
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground h-10 px-3"
-            >
-              Mês Atual
-            </Button>
-          )}
-        </div>
-      </div>
-
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
@@ -483,12 +426,12 @@ export default function ContasPagar() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Total Geral
+              Total do Mês Atual
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalGeral)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{contas.length} conta(s) no total</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalMesAtual)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{contasMesAtual.length} conta(s) no mês</p>
           </CardContent>
         </Card>
       </div>
@@ -504,13 +447,12 @@ export default function ContasPagar() {
       <div>
         <DataTable
           columns={columns}
-          data={contasOrdenadas.map((c) => ({
-            ...c,
-            _fading: fadingIds.has(c.id),
-          }))}
+          data={tableData}
           isLoading={isLoading}
           pageSize={10}
-          emptyMessage="Nenhuma conta cadastrada para o período selecionado."
+          defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
+          emptyMessage="Nenhuma conta cadastrada."
+          onFilteredDataChange={setFilteredContas}
           rowClassName={(row) =>
             row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
           }

@@ -154,6 +154,18 @@ export const helpContent = {
     }
   },
 
+  "/investimentos/balanceamento": {
+    title: "Balanceador Ideal",
+    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas.",
+    features: [
+      "Sliders interativos para definir o percentual ideal de alocação de cada ativo.",
+      "Cálculo do aporte sugerido para reequilibrar a alocação sem vender ativos."
+    ],
+    actions: {
+      "Simular Aporte": "Insira o valor que deseja investir e veja quais ativos comprar."
+    }
+  },
+
   "/investimentos/historico": {
     title: "Histórico da Carteira",
     overview: "Evolução histórica mensal da carteira de investimentos consolidada.",

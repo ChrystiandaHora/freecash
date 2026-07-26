@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, DollarSign, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, RotateCcw } from 'lucide-react';
 
 import { fetchContaPagar, createContaPagar, updateContaPagar, desfazerPagamentoConta } from '../../services/financeiro';
 import { Button } from '../../components/ui/Button';

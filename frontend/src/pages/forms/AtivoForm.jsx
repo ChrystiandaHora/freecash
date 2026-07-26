@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Save, Calendar, TrendingUp, RefreshCw, HelpCircle, Archive } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Calendar, TrendingUp, RefreshCw, Archive } from 'lucide-react';
 
 import { fetchAtivo, createAtivo, updateAtivo, fetchSubcategoriasAtivos } from '../../services/investimentos';
 import { Button } from '../../components/ui/Button';
@@ -37,7 +37,7 @@ export default function AtivoForm() {
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch subcategories
-  const { data: subcategorias = [], isLoading: loadingSubs } = useQuery({
+  const { data: subcategorias = [] } = useQuery({
     queryKey: ['subcategoriasAtivos'],
     queryFn: () => fetchSubcategoriasAtivos(),
   });

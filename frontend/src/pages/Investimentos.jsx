@@ -13,20 +13,16 @@
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
 import {
-  PieChart,
   AlertCircle,
-  CheckCircle2,
   RefreshCw,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Accordion, AccordionItem } from '../components/ui/Accordion';
 import { useToast } from '../context/ToastContext';
-import { Alert } from '../components/ui/Alert';
 
 
 const formatCurrency = (value) => {
@@ -37,15 +33,7 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-const formatPercentage = (value) => {
-  if (value === undefined || value === null) return '0%';
-  const num = parseFloat(value);
-  const formatted = num.toFixed(2).replace('.', ',');
-  return num >= 0 ? `+${formatted}%` : `${formatted}%`;
-};
-
 export default function Investimentos() {
-  const queryClient = useQueryClient();
   const { addToast } = useToast();
 
   const [isRefreshing, setIsRefreshing] = useState(false);

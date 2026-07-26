@@ -29,6 +29,7 @@ import {
   List,
   Activity,
   Gem,
+  Scale,
   History,
   Layers,
   UploadCloud,
@@ -188,6 +189,7 @@ export default function DashboardLayout() {
       items: [
         { name: 'Dashboard', path: '/investimentos', icon: Activity },
         { name: 'Meus Ativos', path: '/investimentos/ativos', icon: Gem },
+        { name: 'Balanceamento', path: '/investimentos/balanceamento', icon: Scale },
         { name: 'Histórico', path: '/investimentos/historico', icon: History },
         { name: 'Classes', path: '/investimentos/classes', icon: Layers },
       ]

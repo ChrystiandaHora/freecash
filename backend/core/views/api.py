@@ -505,23 +505,15 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         if self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'pagar']:
             return queryset.order_by('-data_prevista')
 
+        # Mês/ano são opcionais: se não informados, retorna o histórico completo do usuário
         mes = self.request.query_params.get('mes')
         ano = self.request.query_params.get('ano')
 
-        if not mes or not ano:
-            from django.utils import timezone
-            today = timezone.localdate()
-            if not mes:
-                mes = today.month
-            if not ano:
-                ano = today.year
-
-        try:
-            mes = int(mes)
-            ano = int(ano)
-            queryset = queryset.filter(data_prevista__month=mes, data_prevista__year=ano)
-        except (ValueError, TypeError):
-            pass
+        if mes and ano:
+            try:
+                queryset = queryset.filter(data_prevista__month=int(mes), data_prevista__year=int(ano))
+            except (ValueError, TypeError):
+                pass
 
         return queryset.order_by('-data_prevista')
 
@@ -821,25 +813,28 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
             return queryset.order_by('-data_prevista')
 
+        from django.utils import timezone
+        from core.services.recorrencia_service import estender_horizonte_se_necessario
+
         mes = self.request.query_params.get('mes')
         ano = self.request.query_params.get('ano')
 
-        if not mes or not ano:
-            from django.utils import timezone
-            today = timezone.localdate()
-            if not mes:
-                mes = today.month
-            if not ano:
-                ano = today.year
-
+        # Estende o horizonte de ocorrências recorrentes sempre a partir do mês/ano
+        # atuais (ou do período pedido, se informado), independentemente de filtrar o queryset.
+        today = timezone.localdate()
         try:
-            mes = int(mes)
-            ano = int(ano)
-            from core.services.recorrencia_service import estender_horizonte_se_necessario
-            estender_horizonte_se_necessario(self.request.user, mes, ano)
-            queryset = queryset.filter(data_prevista__month=mes, data_prevista__year=ano)
+            horizonte_mes = int(mes) if mes else today.month
+            horizonte_ano = int(ano) if ano else today.year
+            estender_horizonte_se_necessario(self.request.user, horizonte_mes, horizonte_ano)
         except (ValueError, TypeError):
             pass
+
+        # Mês/ano são opcionais: se não informados, retorna o histórico completo do usuário
+        if mes and ano:
+            try:
+                queryset = queryset.filter(data_prevista__month=int(mes), data_prevista__year=int(ano))
+            except (ValueError, TypeError):
+                pass
 
         return queryset.order_by('-data_prevista')
 

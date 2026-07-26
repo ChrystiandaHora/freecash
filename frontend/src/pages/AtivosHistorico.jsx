@@ -17,18 +17,15 @@ import {
   RefreshCw,
   AlertCircle,
   Plus,
-  X,
   TrendingUp,
   TrendingDown,
   Gift,
   CheckCircle2,
-  Filter,
   Pencil,
   Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
 
@@ -90,9 +87,8 @@ export default function AtivosHistorico() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [deletingTransacao, setDeletingTransacao] = useState(null);
-  const [filterTipo, setFilterTipo] = useState(''); // '' | 'C' | 'V' | 'D'
-  const [filterAtivo, setFilterAtivo] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [filteredTransacoes, setFilteredTransacoes] = useState(null);
 
   const handleEdit = (transacao) => {
     navigate(`/investimentos/historico/editar/${transacao.id}`);
@@ -244,33 +240,7 @@ export default function AtivosHistorico() {
     },
   });
 
-  const {
-    data: ativos,
-    isLoading: isLoadingA,
-  } = useQuery({
-    queryKey: ['ativos'],
-    queryFn: async () => {
-      const res = await api.get('/api/investimentos/ativos/');
-      return res.data;
-    },
-  });
-
-  const handleSuccess = (isEdit) => {
-    setModalOpen(false);
-    setEditingTransacao(null);
-    setSuccessMsg(isEdit ? 'Ordem atualizada com sucesso!' : 'Ordem registrada com sucesso!');
-    setTimeout(() => setSuccessMsg(''), 3000);
-    refetchT();
-  };
-
-  /* Filtered list */
-  const filtered = (transacoes ?? []).filter((t) => {
-    if (filterTipo && t.tipo !== filterTipo) return false;
-    if (filterAtivo && !(`${t.ativo_detalhe?.ticker} ${t.ativo_detalhe?.nome}`).toLowerCase().includes(filterAtivo.toLowerCase())) return false;
-    return true;
-  });
-
-  const isLoading = isLoadingT || isLoadingA;
+  const isLoading = isLoadingT;
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
@@ -326,8 +296,9 @@ export default function AtivosHistorico() {
         {(['C', 'V', 'D']).map((tipo) => {
           const cfg = TIPO_CONFIG[tipo];
           const Icon = cfg.icon;
-          const count = (transacoes ?? []).filter((t) => t.tipo === tipo).length;
-          const total = (transacoes ?? []).filter((t) => t.tipo === tipo).reduce((s, t) => s + parseFloat(t.valor_total || 0), 0);
+          const transacoesParaKpis = filteredTransacoes ?? transacoes;
+          const count = (transacoesParaKpis ?? []).filter((t) => t.tipo === tipo).length;
+          const total = (transacoesParaKpis ?? []).filter((t) => t.tipo === tipo).reduce((s, t) => s + parseFloat(t.valor_total || 0), 0);
           return (
             <Card key={tipo} className="border border-border/40 bg-card shadow-sm relative overflow-hidden">
               <CardContent className="pt-4 pb-4">
@@ -347,44 +318,6 @@ export default function AtivosHistorico() {
         })}
       </div>
 
-      {/* ── Filters ── */}
-      <Card className="border border-border/40 bg-card shadow-sm">
-        <CardContent className="py-4 flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <Filter className="h-3.5 w-3.5" />
-            Filtros:
-          </div>
-
-          <div className="flex gap-2">
-            {(['', 'C', 'V', 'D']).map((t) => (
-              <button
-                key={t || 'all'}
-                onClick={() => setFilterTipo(t)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
-                  ${filterTipo === t
-                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
-              >
-                {t ? TIPO_CONFIG[t].label : 'Todos'}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1 min-w-[160px] max-w-xs">
-            <Input
-              placeholder="Buscar ativo..."
-              value={filterAtivo}
-              onChange={(e) => setFilterAtivo(e.target.value)}
-              className="h-8 text-xs rounded-xl"
-            />
-          </div>
-
-          <span className="text-xs text-muted-foreground ml-auto">
-            {filtered.length} registro{filtered.length !== 1 ? 's' : ''}
-          </span>
-        </CardContent>
-      </Card>
-
       {/* ── Ledger Table ── */}
       <Card className="border border-border/40 bg-card shadow-sm">
         <CardHeader>
@@ -397,9 +330,10 @@ export default function AtivosHistorico() {
         <CardContent className="px-0">
           <DataTable
             columns={columns}
-            data={filtered}
+            data={transacoes ?? []}
             pageSize={10}
             emptyMessage="Nenhuma ordem encontrada no histórico."
+            onFilteredDataChange={setFilteredTransacoes}
           />
         </CardContent>
       </Card>

@@ -9,15 +9,13 @@
  * @component
  * @returns {React.JSX.Element} Painel administrativo contendo grid de cartões ativos e inativos.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Pencil,
   Trash2,
-  X,
-  Check,
   Loader2,
   CreditCard,
   Wallet,
@@ -31,18 +29,11 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 
 // ─── API helpers ───────────────────────────────────────────
 const fetchContas = () =>
   api.get('/api/configuracoes/contas-bancarias/').then((r) => r.data);
-
-const createConta = (data) =>
-  api.post('/api/configuracoes/contas-bancarias/', data).then((r) => r.data);
-
-const updateConta = ({ id, ...data }) =>
-  api.put(`/api/configuracoes/contas-bancarias/${id}/`, data).then((r) => r.data);
 
 const deleteConta = (id) =>
   api.delete(`/api/configuracoes/contas-bancarias/${id}/`).then((r) => r.data);
@@ -50,54 +41,7 @@ const deleteConta = (id) =>
 const toggleAtivoConta = (id) =>
   api.post(`/api/configuracoes/contas-bancarias/${id}/toggle_ativo/`).then((r) => r.data);
 
-// ─── Palette options ──────────────────────────────────────
-const BANDEIRAS = [
-  { value: 'VISA', label: 'Visa' },
-  { value: 'MASTERCARD', label: 'Mastercard' },
-  { value: 'ELO', label: 'Elo' },
-  { value: 'AMEX', label: 'American Express' },
-  { value: 'HIPERCARD', label: 'Hipercard' },
-  { value: 'DINERS', label: 'Diners Club' },
-  { value: 'OUTRO', label: 'Outro' },
-];
-
-const PRESET_COLORS = [
-  { label: 'Nubank Roxo', value: '#820ad1' },
-  { label: 'Inter Laranja', value: '#ff7a00' },
-  { label: 'C6 Cinza', value: '#4a4a4a' },
-  { label: 'Itaú Laranja', value: '#ec7000' },
-  { label: 'Bradesco Vermelho', value: '#cc092f' },
-  { label: 'BB Amarelo', value: '#f9dc2e' },
-  { label: 'Caixa Azul', value: '#006caf' },
-  { label: 'Santander Vermelho', value: '#ec0000' },
-  { label: 'XP Verde', value: '#00b14f' },
-  { label: 'Mercado Pago Azul', value: '#009ee3' },
-  { label: 'PicPay Verde', value: '#21c25e' },
-  { label: 'Padrão', value: '#6366f1' },
-];
-
-const ICONES = [
-  { value: 'CreditCard', label: 'Cartão', Icon: CreditCard },
-  { value: 'Wallet', label: 'Carteira', Icon: Wallet },
-  { value: 'Building2', label: 'Banco', Icon: Building2 },
-  { value: 'Landmark', label: 'Caixa', Icon: Landmark },
-  { value: 'Coins', label: 'Moedas', Icon: Coins },
-];
-
 const IconMap = { CreditCard, Wallet, Building2, Landmark, Coins };
-
-// ─── Empty form state ─────────────────────────────────────
-const EMPTY_FORM = {
-  nome: '',
-  bandeira: 'VISA',
-  ultimos_digitos: '',
-  limite: '',
-  dia_fechamento: 1,
-  dia_vencimento: 10,
-  ativo: true,
-  cor: '#6366f1',
-  icone: 'CreditCard',
-};
 
 // ─── CartaoCard Component ─────────────────────────────────
 function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {

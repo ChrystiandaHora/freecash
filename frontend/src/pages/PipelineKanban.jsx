@@ -45,9 +45,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
-  const [, month, day] = dateStr.split('-')
+const formatDueDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return 'Sem data'
+  const parts = dateStr.split('-')
+  if (parts.length < 3) return dateStr
+  const [, month, day] = parts
   return `${day}/${month}`
 }
 
@@ -122,12 +124,18 @@ const COLUMNS = [
 
 // Classifica uma conta em uma coluna
 const getColumnId = (conta) => {
+  if (!conta) return 'pendentes'
   if (conta.pago) return 'pagas'
+
+  if (!conta.data_vencimento || typeof conta.data_vencimento !== 'string') return 'pendentes'
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [year, month, day] = conta.data_vencimento.split('-')
+  const parts = conta.data_vencimento.split('-')
+  if (parts.length < 3) return 'pendentes'
+
+  const [year, month, day] = parts
   const due = new Date(Number(year), Number(month) - 1, Number(day))
   due.setHours(0, 0, 0, 0)
 
@@ -192,7 +200,7 @@ const ContaCard = ({ conta, provided, snapshot, colId }) => {
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
         <span className="text-xs text-muted-foreground flex items-center gap-1">
           <CalendarDays className="h-3 w-3" />
-          {formatDate(conta.data_vencimento)}
+          {formatDueDate(conta.data_vencimento)}
         </span>
         <span className={`text-sm font-bold ${isAtrasada ? 'text-red-500' : 'text-foreground'}`}>
           {formatCurrency(conta.valor)}
@@ -262,9 +270,11 @@ const KanbanColumn = ({ col, contas, provided, snapshot }) => {
 export default function PipelineKanban() {
   const queryClient = useQueryClient()
 
+  const hoje = new Date()
+
   const { data: contas = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['contasPagar'],
-    queryFn: () => fetchContasPagar(),
+    queryKey: ['contasPagar', hoje.getMonth() + 1, hoje.getFullYear()],
+    queryFn: () => fetchContasPagar({ mes: hoje.getMonth() + 1, ano: hoje.getFullYear() }),
   })
 
   const pagarMutation = useMutation({
