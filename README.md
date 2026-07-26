@@ -2,49 +2,89 @@
 
 **FreeCash** é uma suíte completa de gestão financeira pessoal e controle avançado de investimentos. A aplicação combina uma API robusta em **Django 6** com uma interface moderna e reativa em **React 19** e **Tailwind CSS v4**, entregando controle patrimonial de nível profissional direto no seu servidor.
 
-Vai além do registro de entradas e saídas: integra carteira multi-ativos com hierarquia ANBIMA, cotações em tempo real, pipeline Kanban de contas, importação de extratos bancários, DRE mensal e backup criptografado — tudo num ecossistema isolado em containers Docker.
+Vai além do registro de entradas e saídas: integra carteira multi-ativos com hierarquia ANBIMA de 3 níveis, cotações em tempo real, pipeline Kanban de contas, importação de extratos bancários e faturas em PDF, simulador de cenários de gastos, DRE mensal/anual e backup criptografado — tudo num ecossistema isolado em containers Docker.
 
 ---
 
 ## Telas do Sistema
 
-### Login e Dashboard Principal
+### 1. Login e Dashboard Principal
 
 | Tela de Login | Dashboard Financeiro |
 |---|---|
 | ![Login](docs/screenshots/00-login.png) | ![Dashboard](docs/screenshots/01-dashboard.png) |
 
-> O dashboard consolida receitas, despesas e saldo do mês em tempo real, com gráfico de fluxo de caixa diário, breakdown de maiores gastos por categoria e projeção de 6 meses.
+> A **Tela de Login** garante acesso seguro via autenticação JWT HttpOnly. O **Dashboard Financeiro** consolida receitas, despesas e saldo do mês em tempo real, com gráfico de fluxo de caixa diário, breakdown de maiores gastos por categoria e projeção de 6 meses.
 
 ---
 
-### Gestão Financeira
+### 2. Gestão de Contas a Pagar e Pipeline Kanban
 
 | Contas a Pagar | Pipeline Kanban |
 |---|---|
 | ![Contas a Pagar](docs/screenshots/02-contas-pagar.png) | ![Pipeline Kanban](docs/screenshots/03-pipeline-kanban.png) |
 
-> **Contas a Pagar** apresenta status visual inteligente (Atrasado, Pendente, Pago) com alertas de vencimento. O **Pipeline Kanban** permite arrastar contas entre colunas — ao mover para "Pagas", o pagamento é registrado automaticamente no backend.
+> A tela de **Contas a Pagar** apresenta status visual inteligente (Atrasado, Pendente, Vence Hoje, Pago) com liquidação rápida e cadastro em lote. O **Pipeline Kanban** permite arrastar contas entre colunas — ao mover para "Pagas", o pagamento é registrado automaticamente no backend.
 
 ---
 
-### Carteira de Investimentos
+### 3. Receitas e Extrato de Transações
+
+| Gestão de Receitas | Extrato de Transações |
+|---|---|
+| ![Receitas](docs/screenshots/04-receitas.png) | ![Transações](docs/screenshots/05-transacoes.png) |
+
+> O módulo de **Receitas** oferece controle de entradas recorrentes e avulsas com KPIs de total previsto vs. recebido. O **Extrato de Transações** apresenta a linha do tempo cronológica unificada de todas as movimentações financeiras com busca global e filtros por categoria.
+
+---
+
+### 4. Meus Cartões de Crédito e Simulador de Gastos
+
+| Meus Cartões de Crédito | Simulador de Gastos |
+|---|---|
+| ![Meus Cartões](docs/screenshots/06-meus-cartoes.png) | ![Simulador de Gastos](docs/screenshots/12-simulador-gastos.png) |
+
+> A página **Meus Cartões** traz gauges de utilização do limite, datas de fechamento/vencimento e histórico de compras. O **Simulador de Gastos** permite simular cenários financeiros em até 12 meses, cruzando projeções temporárias client-side com dados reais do sistema.
+
+---
+
+### 5. Carteira de Investimentos e Meus Ativos
 
 | Dashboard de Investimentos | Meus Ativos |
 |---|---|
 | ![Investimentos](docs/screenshots/07-investimentos-dashboard.png) | ![Meus Ativos](docs/screenshots/08-meus-ativos.png) |
 
-> O painel de investimentos exibe patrimônio total, rentabilidade acumulada, alocação por classe em gráfico donut e a árvore hierárquica ANBIMA expansível. A tabela de ativos mostra ticker, quantidade, preço médio, cotação atual e retorno colorido.
+> O **Dashboard de Investimentos** exibe patrimônio total, rentabilidade acumulada, alocação por classe em gráfico donut e o gráfico de Efeito Bola de Neve (proventos). A tabela de **Meus Ativos** exibe tickers, quantidade, preço médio, cotação via Yahoo Finance e retorno colorido.
 
 ---
 
-### Balanceamento e Relatórios
+### 6. Balanceamento de Carteira e Histórico de Operações
 
-| Balanceamento de Carteira | Relatórios Financeiros (DRE) |
+| Balanceamento de Carteira | Histórico de Investimentos |
 |---|---|
-| ![Balanceamento](docs/screenshots/09-balanceamento.png) | ![Relatórios](docs/screenshots/11-relatorios.png) |
+| ![Balanceamento](docs/screenshots/09-balanceamento.png) | ![Histórico](docs/screenshots/10-historico.png) |
 
-> O **Balanceador** calcula o aporte ideal por ativo com sliders de meta percentual — indica exatamente quanto comprar para atingir a alocação alvo. Os **Relatórios** geram DRE completo com EBITDA, Resultado Líquido e margem líquida por ano.
+> O **Balanceamento de Carteira** calcula o aporte ideal por ativo com sliders de meta percentual em tempo real (soma 100%), indicando quanto comprar para atingir a alocação alvo. O **Histórico de Operações** mantém o ledger de compras, vendas e proventos com recálculo automático de preço médio via Django Signals.
+
+---
+
+### 7. Hierarquia ANBIMA e Relatórios DRE
+
+| Hierarquia & Classes ANBIMA | Relatórios Financeiros (DRE) |
+|---|---|
+| ![Classes ANBIMA](docs/screenshots/13-classes-ativos.png) | ![Relatórios](docs/screenshots/11-relatorios.png) |
+
+> O gerenciador de **Classes de Ativos** disponibiliza uma árvore expansível de 3 níveis (Classe → Categoria → Subcategoria) com CRUD completo para customizar a estrutura ANBIMA. A página de **Relatórios** constrói o DRE anual com EBITDA, Resultado Líquido e exportação para PDF.
+
+---
+
+### 8. Compras no Cartão e Ajustes de Pagamentos
+
+| Compras no Cartão | Ajustes de Pagamentos |
+|---|---|
+| ![Compras Cartão](docs/screenshots/14-compras-cartao.png) | ![Ajustes Pagamentos](docs/screenshots/15-ajustes-pagamentos.png) |
+
+> **Compras no Cartão** gerencia a importação e conciliação de faturas PDF (Nubank, Santander) e controle de parcelamentos. **Ajustes de Pagamentos** permite cadastrar e configurar contas bancárias e cartões de crédito com presets de cores de bancos brasileiros e ícones personalizados.
 
 ---
 
@@ -63,8 +103,8 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - CRUD completo com formulário validado (React Hook Form + Zod)
 - Status inteligente: Atrasado, Pendente, Vence Hoje, Pago
 - Ação de pagamento rápido com desfazer (undo)
-- Cadastro em lote via tabela editável
-- Filtros por mês/ano
+- Cadastro em lote via tabela editável (`/contas-pagar/lote`)
+- Filtros por mês/ano e busca por favorecido ou categoria
 
 **Pipeline Kanban**
 - Quadro visual com 5 colunas: Atrasadas / Para Hoje / Próximos 7 Dias / Final do Mês / Pagas
@@ -79,18 +119,24 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 **Extrato de Transações**
 - Listagem cronológica de todas as movimentações agrupadas por dia
 - Busca por descrição, categoria ou valor
+- Ordenação por múltiplos critérios nas colunas
 
 **Cartões de Crédito**
 - Cadastro de cartões com limite, dia de fechamento, dia de vencimento e cor personalizada
 - Gauge de utilização do limite por cartão
 - Histórico de compras recentes por cartão
-- Importação de faturas PDF (Nubank, Santander)
+
+**Simulador de Gastos e Projeção Financeira**
+- Simulação de cenários financeiros temporários client-side (em memória) para 12 meses
+- Adição dinâmica de receitas e despesas hipotéticas (avulsas ou recorrentes)
+- Cruzamento de dados simulados com contas e receitas reais cadastradas no banco
+- Gráficos ApexCharts de linha do tempo e saldo mensal projetado
 
 **Relatórios Financeiros**
 - DRE (Demonstração do Resultado) anual com Receita Bruta, Despesas Operacionais, EBITDA e Resultado Líquido com margem
 - Fluxo de caixa consolidado por ano
 - Heatmap de sazonalidade de despesas (últimos 6 meses)
-- Exportação para PDF via impressão do navegador
+- Exportação para PDF via impressão otimizada do navegador
 
 ---
 
@@ -107,18 +153,14 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - **Nível 1 — Classe:** Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos
 - **Nível 2 — Categoria:** Pós-fixado, IPCA, Pré-fixado, Ações, FIIs, ETFs, Moedas, Moedas Digitais
 - **Nível 3 — Subcategoria:** Tesouro Selic, CDB/RDB, LCI/LCA, Ações Brasil, BDRs, FII de Tijolo, FII de Papel, Bitcoin, Ethereum, etc.
-- Estrutura criada automaticamente para cada novo usuário via Django Signals
+- Gerenciador visual interativo de classes (`/investimentos/classes`) com suporte a criação, edição e remoção de categorias e subcategorias
+- Estrutura inicial populada automaticamente via Django Signals
 
-**Meus Ativos**
+**Meus Ativos & Detalhe de Posição**
 - Tabela com Ticker, Quantidade, Preço Médio, Cotação Atual, Valor Total e Retorno (% colorido)
 - Busca e filtro por classe de ativo
-- Atualização de cotações via Yahoo Finance (yfinance) com um clique
-- CRUD completo: cadastro de ações, FIIs, ETFs, renda fixa (com indexador, taxa, vencimento) e criptoativos
-
-**Detalhe do Ativo**
-- 3 abas: Dados Gerais, Rentabilidade e Histórico de Transações
-- Posição atual: quantidade, preço médio, cotação, valor e retorno
-- Renda fixa: emissor, indexador (CDI, IPCA, SELIC, Pré), taxa e data de vencimento
+- Atualização de cotações via Yahoo Finance (`yfinance`) com um clique
+- Tela de detalhamento do ativo (`/investimentos/ativos/:id`) com abas de Dados Gerais, Rentabilidade e Histórico de Transações
 
 **Balanceamento de Carteira**
 - Sliders de meta percentual por ativo (botões +/−)
@@ -126,7 +168,7 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - Cálculo do aporte ideal: quanto comprar de cada ativo para atingir a alocação alvo
 - Scatter plot: rentabilidade vs. desvio da meta (Balanceador Ideal)
 
-**Histórico de Transações**
+**Histórico de Transações (Ledger)**
 - Ledger cronológico de todas as operações: Compra (C), Venda (V), Provento (D)
 - Filtros por tipo de transação e busca por ticker
 - CRUD: adicionar, editar e excluir transações com recálculo automático de preço médio
@@ -136,25 +178,25 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 
 ---
 
-### Ferramentas
+### Ferramentas & Ajustes
 
 **Importação de Extratos**
 - Engine universal para extratos bancários (Nubank, Banco Inter, Itaú, Bradesco) em XLS/CSV
 - Mapeamento automático de linhas para transações com conciliação
 
+**Compras no Cartão de Crédito**
+- Importação e leitura automática de faturas PDF (Nubank, Santander) via `pdfplumber`
+- Registro e controle de parcelamentos e compras individuais de cartão
+- Filtros por cartão, mês/ano e categoria com edição/exclusão em modal
+
 **Backup e Exportação**
 - Formatos: Excel (.xlsx), CSV, PDF e `.fcbk` (backup proprietário)
 - Backup `.fcbk` criptografado com AES-GCM e senha opcional
-- Escopo por data ou exportação completa
+- Escopo por data ou exportação completa com restauração por drag-and-drop
 
-**Importação de Backup**
-- Drag-and-drop de arquivo `.fcbk` com suporte a senha
-- Relatório de importação: registros criados e atualizados por categoria
-
-**Ajustes de Pagamentos**
-- Cadastro e gerenciamento de cartões de crédito e contas bancárias
-- Toggle ativo/inativo por cartão
-- Paleta de cores e ícones personalizáveis (Nubank, Inter, Itaú, Bradesco...)
+**Ajustes de Pagamentos (Contas e Cartões)**
+- Cadastro, edição e ativação/desativação de cartões de crédito e contas bancárias
+- Personalização visual com presets de cores de bancos brasileiros (Nubank, Inter, Itaú, Bradesco) e ícones customizáveis
 
 ---
 
@@ -248,12 +290,12 @@ Acesse http://localhost:5173. O cliente React conecta automaticamente ao backend
 ```
 freecash/
 ├── backend/
-│   ├── core/                   # Módulo financeiro (contas, cartões, extratos, dashboard)
-│   │   ├── models.py           # Conta, CartaoCredito, Categoria, ExtratoImportado
+│   ├── core/                   # Módulo financeiro (contas, cartões, extratos, faturas, compras, simulador)
+│   │   ├── models.py           # Conta, CartaoCredito, Categoria, ExtratoImportado, CompraCartao
 │   │   ├── views/api.py        # Endpoints DRF + autenticação JWT
-│   │   └── services/           # dashboard_helper, import_service
+│   │   └── services/           # dashboard_helper, import_service, recorrencia_service
 │   ├── investimento/           # Módulo de investimentos (ativos, ANBIMA, cotações)
-│   │   ├── models.py           # Ativo, TransacaoInvestimento, ClasseAtivo, etc.
+│   │   ├── models.py           # Ativo, TransacaoInvestimento, ClasseAtivo, CategoriaAtivo, etc.
 │   │   ├── signals.py          # Recálculo automático de preço médio
 │   │   └── services/           # dashboard_service, calculators, yfinance sync
 │   ├── freecash/               # Configurações globais Django (settings, urls)
@@ -261,13 +303,13 @@ freecash/
 │
 ├── frontend/
 │   └── src/
-│       ├── pages/              # 20+ telas (Dashboard, Investimentos, Kanban, etc.)
+│       ├── pages/              # Telas (Dashboard, Investimentos, Kanban, Simulador, Compras, Pagamentos, etc.)
 │       ├── components/         # UI atômico (Button, Card, Modal, DataTable...)
 │       ├── layouts/            # DashboardLayout com sidebar colapsável
 │       ├── services/           # Axios + custom hooks React Query por domínio
 │       └── App.jsx             # Roteamento + provedores globais
 │
-├── docs/screenshots/           # Screenshots do sistema
+├── docs/screenshots/           # 16 Screenshots de alta resolução do sistema
 ├── docker-compose.yml
 ├── Dockerfile.backend
 ├── Dockerfile.frontend
