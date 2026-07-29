@@ -60,12 +60,19 @@ export default function FerramentasBackup() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [backupPassword, setBackupPassword] = useState('');
+  const [confirmBackupPassword, setConfirmBackupPassword] = useState('');
   const [showBackupPassword, setShowBackupPassword] = useState(false);
 
   const handleDownload = async () => {
-    if (formato === 'fcbk' && !backupPassword.trim()) {
-      setFeedback({ tipo: 'erro', msg: 'Por favor, digite uma senha para proteger seu backup seguro.' });
-      return;
+    if (formato === 'fcbk') {
+      if (!backupPassword.trim()) {
+        setFeedback({ tipo: 'erro', msg: 'Por favor, digite uma senha para proteger seu backup seguro.' });
+        return;
+      }
+      if (backupPassword !== confirmBackupPassword) {
+        setFeedback({ tipo: 'erro', msg: 'As senhas digitadas não coincidem.' });
+        return;
+      }
     }
     
     setIsDownloading(true);
@@ -102,6 +109,7 @@ export default function FerramentasBackup() {
       
       if (formato === 'fcbk') {
         setBackupPassword(''); // Limpa a senha por segurança
+        setConfirmBackupPassword('');
       }
 
       setFeedback({ tipo: 'sucesso', msg: 'Download iniciado com sucesso!' });
@@ -227,7 +235,7 @@ export default function FerramentasBackup() {
 
             {/* Password input for fcbk */}
             {formato === 'fcbk' && (
-              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
                     <Lock className="h-3.5 w-3.5" />
@@ -252,6 +260,32 @@ export default function FerramentasBackup() {
                     </button>
                   </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5" />
+                    Confirmar Senha de Criptografia
+                  </label>
+                  <Input
+                    type={showBackupPassword ? 'text' : 'password'}
+                    placeholder="Digite a senha novamente para conferência..."
+                    value={confirmBackupPassword}
+                    onChange={(e) => setConfirmBackupPassword(e.target.value)}
+                    className={`border-primary/30 focus-visible:ring-primary bg-card ${
+                      confirmBackupPassword && backupPassword !== confirmBackupPassword
+                        ? 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500'
+                        : ''
+                    }`}
+                    disabled={isDownloading}
+                  />
+                  {confirmBackupPassword && backupPassword !== confirmBackupPassword && (
+                    <p className="text-xs text-red-500 flex items-center gap-1.5 mt-1 animate-fade-in">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                      As senhas não coincidem.
+                    </p>
+                  )}
+                </div>
+
                 <p className="text-[10px] text-muted-foreground">
                   * Importante: Sem esta senha, não será possível restaurar seus dados caso precise utilizar o backup futuramente.
                 </p>
@@ -262,7 +296,10 @@ export default function FerramentasBackup() {
           <Button
             id="btn-exportar"
             onClick={handleDownload}
-            disabled={isDownloading || (formato === 'fcbk' && !backupPassword.trim())}
+            disabled={
+              isDownloading || 
+              (formato === 'fcbk' && (!backupPassword.trim() || backupPassword !== confirmBackupPassword))
+            }
             className="w-full gap-2 py-3 text-sm font-bold animate-pulse-slow"
           >
             {isDownloading ? (
