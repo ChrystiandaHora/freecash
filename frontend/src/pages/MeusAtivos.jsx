@@ -124,26 +124,29 @@ export default function MeusAtivos() {
             onClick={() => navigate(`/investimentos/ativos/${row.id}`)}
             className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
             title="Visualizar Detalhes"
+            aria-label={`Visualizar detalhes de ${row.ticker}`}
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => openEditModal(row)}
             className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
             title="Editar Ativo"
+            aria-label={`Editar ${row.ticker}`}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => openDeleteModal(row)}
             className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
             title="Excluir Ativo"
+            aria-label={`Excluir ${row.ticker}`}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </div>
       ),
@@ -278,8 +281,8 @@ export default function MeusAtivos() {
 
   if (loadingAtivos || loadingSubs) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
         <p className="text-sm font-semibold text-muted-foreground">
           Carregando inventário de ativos...
         </p>
@@ -289,8 +292,8 @@ export default function MeusAtivos() {
 
   if (errorAtivos) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
-        <AlertCircle className="h-12 w-12 text-destructive" />
+      <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-destructive" aria-hidden="true" />
         <h3 className="text-xl font-bold text-foreground">Falha ao ler ativos</h3>
         <p className="text-sm text-muted-foreground">
           Não conseguimos obter comunicação com o servidor de carteiras.
@@ -359,7 +362,7 @@ export default function MeusAtivos() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <TrendingUp className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
             {formatCurrency(totalPatrimonio)}
           </h3>
@@ -372,7 +375,7 @@ export default function MeusAtivos() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Gem className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ativos em Carteira</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Ativos em Carteira</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
             {ativos.filter(a => a.ativo).length} ativos
           </h3>
@@ -385,7 +388,7 @@ export default function MeusAtivos() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Percent className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Metas Configuradas</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Metas Configuradas</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
             {totalMeta.toFixed(1).replace('.', ',')}%
           </h3>
@@ -410,30 +413,37 @@ export default function MeusAtivos() {
         {/* Barra de Filtros e Abas */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           
-          {/* Abas */}
-          <div className="flex border-b border-border/40 self-start">
+          {/* Abas — filtro de lista (seleção única), não troca de região da página */}
+          <div role="radiogroup" aria-label="Filtrar por situação do ativo" className="flex border-b border-border/40 self-start">
             <button
+              role="radio"
+              aria-checked={activeTab === 'ativos'}
               onClick={() => { setActiveTab('ativos'); setSearchTerm(''); }}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === 'ativos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-4 py-2 text-xs uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === 'ativos' ? 'border-primary text-primary font-extrabold' : 'border-transparent text-muted-foreground hover:text-foreground font-bold'}`}
             >
-              <Gem className="h-3.5 w-3.5" />
+              <Gem className="h-3.5 w-3.5" aria-hidden="true" />
               Ativos ({ativos.filter(a => a.ativo).length})
             </button>
             <button
+              role="radio"
+              aria-checked={activeTab === 'arquivados'}
               onClick={() => { setActiveTab('arquivados'); setSearchTerm(''); }}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === 'arquivados' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`px-4 py-2 text-xs uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === 'arquivados' ? 'border-primary text-primary font-extrabold' : 'border-transparent text-muted-foreground hover:text-foreground font-bold'}`}
             >
-              <EyeOff className="h-3.5 w-3.5" />
+              <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
               Arquivados ({ativos.filter(a => !a.ativo).length})
             </button>
           </div>
 
           {/* Filtros */}
           <div className="flex flex-col sm:flex-row gap-3 flex-1 lg:max-w-xl">
-            
+
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <label htmlFor="ativos-busca" className="sr-only">Buscar por ticker ou nome</label>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Input
+                id="ativos-busca"
+                type="search"
                 placeholder="Buscar por Ticker ou Nome..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -442,7 +452,9 @@ export default function MeusAtivos() {
             </div>
 
             <div className="w-full sm:w-56">
+              <label htmlFor="ativos-filtro-classe" className="sr-only">Filtrar por classe de ativo</label>
               <Select
+                id="ativos-filtro-classe"
                 value={filterSubcategoria}
                 onChange={(e) => setFilterSubcategoria(e.target.value)}
                 className="h-10 text-xs rounded-xl"

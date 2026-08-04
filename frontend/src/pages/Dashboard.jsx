@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
@@ -74,6 +74,16 @@ export default function Dashboard() {
     return { mes: d.getMonth() + 1, ano: d.getFullYear() };
   });
 
+  // Escape fecha o seletor de período, equivalente ao clique fora (WCAG 2.1.1).
+  useEffect(() => {
+    if (!showDatePicker) return;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setShowDatePicker(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [showDatePicker]);
+
   // Fetch dashboard data
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard', periodo, periodo === -1 ? customDate : null],
@@ -92,8 +102,8 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
           Carregando dados consolidados...
         </p>
@@ -103,8 +113,8 @@ export default function Dashboard() {
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
-        <AlertTriangle className="h-12 w-12 text-red-500" />
+      <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+        <AlertTriangle className="h-12 w-12 text-red-500" aria-hidden="true" />
         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Erro ao carregar dados</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Não conseguimos nos comunicar com as APIs do backend. Por favor, verifique se os serviços do Docker estão funcionando corretamente.
@@ -160,7 +170,7 @@ export default function Dashboard() {
     xaxis: {
       categories: grafico_diario.labels || [],
       labels: {
-        style: { colors: '#888888', fontSize: '10px' },
+        style: { colors: '#888888', fontSize: '12px' },
       },
       axisBorder: { show: false },
       axisTicks: { show: false },
@@ -168,7 +178,7 @@ export default function Dashboard() {
     yaxis: {
       labels: {
         formatter: (val) => formatCurrency(val),
-        style: { colors: '#888888', fontSize: '10px' },
+        style: { colors: '#888888', fontSize: '12px' },
       },
     },
     grid: {
@@ -214,13 +224,13 @@ export default function Dashboard() {
     xaxis: {
       categories: grafico_projetado.labels || [],
       labels: {
-        style: { colors: '#888888', fontSize: '10px' },
+        style: { colors: '#888888', fontSize: '12px' },
       },
     },
     yaxis: {
       labels: {
         formatter: (val) => formatCurrency(val),
-        style: { colors: '#888888', fontSize: '10px' },
+        style: { colors: '#888888', fontSize: '12px' },
       },
     },
     grid: {
@@ -273,7 +283,7 @@ export default function Dashboard() {
               show: true,
               label: 'Despesas',
               color: '#888888',
-              fontSize: '9px',
+              fontSize: '12px',
               fontWeight: 600,
               formatter: () => formatCurrency(total_despesas)
             }
@@ -356,9 +366,11 @@ export default function Dashboard() {
                 setTempDate(periodo === -1 ? customDate : { mes: new Date().getMonth() + 1, ano: new Date().getFullYear() });
                 setShowDatePicker(!showDatePicker);
               }}
+              aria-haspopup="dialog"
+              aria-expanded={showDatePicker}
               className={`flex-1 sm:flex-initial px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer
-                ${periodo === -1 
-                  ? 'bg-card shadow-sm text-primary' 
+                ${periodo === -1
+                  ? 'bg-card shadow-sm text-primary'
                   : 'text-muted-foreground hover:text-foreground'
                 }
               `}
@@ -366,36 +378,43 @@ export default function Dashboard() {
               {periodo === -1 ? `${getMonthNameShort(customDate.mes)}/${customDate.ano}` : 'Personalizado...'}
             </button>
           </div>
- 
+
           {showDatePicker && (
             <>
-              <div 
-                className="fixed inset-0 z-40 bg-transparent" 
-                onClick={() => setShowDatePicker(false)} 
+              <div
+                aria-hidden="true"
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setShowDatePicker(false)}
               />
-              <div className="absolute right-0 sm:right-12 top-full mt-2 z-50 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div
+                role="dialog"
+                aria-label="Selecione o período"
+                className="absolute right-0 sm:right-12 top-full mt-2 z-50 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150"
+              >
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between pb-2 border-b border-border/40">
                     <span className="text-xs font-bold text-foreground">
                       Selecione o Período
                     </span>
                     <div className="flex items-center gap-3">
-                      <button 
+                      <button
                         onClick={() => setTempDate(prev => ({ ...prev, ano: prev.ano - 1 }))}
-                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         title="Ano Anterior"
+                        aria-label="Ano anterior"
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                       </button>
-                      <span className="text-xs font-bold text-foreground font-mono select-none">
+                      <span className="text-xs font-bold text-foreground font-mono select-none" aria-live="polite">
                         {tempDate.ano}
                       </span>
-                      <button 
+                      <button
                         onClick={() => setTempDate(prev => ({ ...prev, ano: prev.ano + 1 }))}
-                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         title="Próximo Ano"
+                        aria-label="Próximo ano"
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -467,7 +486,7 @@ export default function Dashboard() {
               {formatCurrency(total_receitas)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
-              <span className={`inline-flex items-center text-[11px] font-semibold rounded px-1.5 py-0.5
+              <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
                 ${receitas_pct >= 0 
                   ? 'bg-primary/10 text-primary' 
                   : 'bg-rose-500/10 text-rose-600'
@@ -475,7 +494,7 @@ export default function Dashboard() {
               `}>
                 {formatPercentage(receitas_pct)}
               </span>
-              <span className="text-[10px] text-muted-foreground">vs mês anterior</span>
+              <span className="text-xs text-muted-foreground">vs mês anterior</span>
             </div>
           </CardContent>
         </Card>
@@ -498,7 +517,7 @@ export default function Dashboard() {
               {formatCurrency(total_despesas)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
-              <span className={`inline-flex items-center text-[11px] font-semibold rounded px-1.5 py-0.5
+              <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
                 ${despesas_pct <= 0 
                   ? 'bg-primary/10 text-primary' 
                   : 'bg-rose-500/10 text-rose-600'
@@ -506,7 +525,7 @@ export default function Dashboard() {
               `}>
                 {formatPercentage(despesas_pct)}
               </span>
-              <span className="text-[10px] text-muted-foreground">vs mês anterior</span>
+              <span className="text-xs text-muted-foreground">vs mês anterior</span>
             </div>
           </CardContent>
         </Card>
@@ -529,7 +548,7 @@ export default function Dashboard() {
               {formatCurrency(saldo_mes)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
-              <span className={`inline-flex items-center text-[11px] font-semibold rounded px-1.5 py-0.5
+              <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
                 ${saldo_mes >= 0 
                   ? 'bg-primary/10 text-primary' 
                   : 'bg-rose-500/10 text-rose-600'
@@ -537,7 +556,7 @@ export default function Dashboard() {
               `}>
                 {formatPercentage(saldo_pct)}
               </span>
-              <span className="text-[10px] text-muted-foreground">taxa de poupança: {typeof taxa_poupanca === 'number' ? `${taxa_poupanca.toFixed(1).replace('.', ',')}%` : 'N/A'}</span>
+              <span className="text-xs text-muted-foreground">taxa de poupança: {typeof taxa_poupanca === 'number' ? `${taxa_poupanca.toFixed(1).replace('.', ',')}%` : 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -609,7 +628,7 @@ export default function Dashboard() {
                         <span className="text-foreground font-medium truncate max-w-[120px]">
                           {item.nome}
                         </span>
-                        <span className="text-foreground font-bold text-[11px]">
+                        <span className="text-foreground font-bold text-xs">
                           {formatCurrency(item.valor)} ({(parseFloat(item.pct) || 0).toFixed(0)}%)
                         </span>
                       </div>

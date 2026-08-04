@@ -26,8 +26,14 @@ import { Accordion, AccordionItem } from '../components/ui/Accordion';
 const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
+/**
+ * Fundos dos cartões. O primeiro tom era `#007acc`, no qual texto branco com
+ * opacidade reduzida ficava entre 2,57:1 e 3,44:1 — abaixo do mínimo de 4,5:1
+ * (WCAG 1.4.3). Escurecido para `#005a99`, onde branco a 85% dá 5,66:1 e a 80%
+ * dá 5,20:1. Os outros quatro tons já eram escuros o suficiente.
+ */
 const CARD_BGS = [
-  'bg-[#007acc] text-white',
+  'bg-[#005a99] text-white',
   'bg-[#161b22] text-white border border-border/40',
   'bg-[#1f2937] text-white',
   'bg-[#0f172a] text-white',
@@ -117,10 +123,10 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-medium opacity-60 uppercase tracking-wider">Banco</p>
+            <p className="text-xs font-medium opacity-85 uppercase tracking-wider">Banco</p>
             <p className="text-lg font-bold">{cartao.banco || cartao.nome || 'Cartão'}</p>
           </div>
-          <CreditCard className="h-8 w-8 opacity-70" />
+          <CreditCard className="h-8 w-8 opacity-70" aria-hidden="true" />
         </div>
 
         <div>
@@ -129,11 +135,11 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
           </p>
           <div className="flex items-center justify-between mt-2">
             <div>
-              <p className="text-xs opacity-60">Titular</p>
+              <p className="text-xs opacity-85">Titular</p>
               <p className="text-sm font-semibold">{cartao.titular || 'Usuário'}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs opacity-60">Validade</p>
+              <p className="text-xs opacity-85">Validade</p>
               <p className="text-sm font-semibold">{cartao.validade || '12/29'}</p>
             </div>
           </div>

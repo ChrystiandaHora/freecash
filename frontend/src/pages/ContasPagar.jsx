@@ -89,6 +89,30 @@ export default function ContasPagar() {
   const [editingConta, setEditingConta] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
   const [filteredContas, setFilteredContas] = useState(null)
+  const [actionError, setActionError] = useState('')
+
+  /**
+   * Reverte o fade otimista da linha e informa o erro.
+   * Sem isso, uma falha de API deixaria a linha "desaparecida" para sempre, sem feedback algum.
+   */
+  const handleMutationError = (mensagem) => {
+    setFadingIds(new Set())
+    setConfirmId(null)
+    setDeleteId(null)
+    setDeletingConta(null)
+    setDesfazerPagamentoId(null)
+    setActionError(mensagem)
+  }
+
+  /**
+   * Limpa o erro anterior ao iniciar uma nova tentativa. Sem isso o banner
+   * `role="alert"` ficaria na tela permanentemente, inclusive após um retry
+   * bem-sucedido, e reanunciaria a cada remontagem.
+   */
+  const beginMutation = (id) => {
+    setActionError('')
+    if (id !== undefined) setFadingIds((prev) => new Set(prev).add(id))
+  }
 
   // Query
   const { data: contas = [], isLoading, isError, refetch } = useQuery({
@@ -99,9 +123,7 @@ export default function ContasPagar() {
   // Mutation: pagar conta
   const pagarMutation = useMutation({
     mutationFn: pagarConta,
-    onMutate: (id) => {
-      setFadingIds((prev) => new Set(prev).add(id))
-    },
+    onMutate: beginMutation,
     onSuccess: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
@@ -109,14 +131,13 @@ export default function ContasPagar() {
         setConfirmId(null)
       }, 500)
     },
+    onError: () => handleMutationError('Não foi possível registrar o pagamento. Tente novamente.'),
   })
 
   // Mutation: excluir conta
   const deleteMutation = useMutation({
     mutationFn: deleteContaPagar,
-    onMutate: (id) => {
-      setFadingIds((prev) => new Set(prev).add(id))
-    },
+    onMutate: beginMutation,
     onSuccess: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
@@ -128,16 +149,19 @@ export default function ContasPagar() {
         setDeletingConta(null)
       }, 500)
     },
+    onError: () => handleMutationError('Não foi possível excluir a conta. Tente novamente.'),
   })
 
   // Mutation: desfazer pagamento
   const desfazerPagamentoMutation = useMutation({
     mutationFn: desfazerPagamentoConta,
+    onMutate: () => beginMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
       setDesfazerPagamentoId(null)
       setEditingConta(null)
     },
+    onError: () => handleMutationError('Não foi possível desfazer o pagamento. Tente novamente.'),
   })
 
 
@@ -223,7 +247,7 @@ export default function ContasPagar() {
           {row.eh_fatura_cartao && (
             <span
               title="Fatura de cartão de crédito — valor calculado automaticamente"
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0"
             >
               <CreditCard className="h-2.5 w-2.5" />
               Cartão
@@ -290,8 +314,9 @@ export default function ContasPagar() {
                 className="h-8 w-8 p-0 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                 onClick={() => setConfirmId(row.id)}
                 title="Marcar como Pago"
+                aria-label={`Marcar ${row.descricao} como pago`}
               >
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </Button>
             ) : (
               <Button
@@ -303,8 +328,9 @@ export default function ContasPagar() {
                   setEditingConta(row)
                 }}
                 title="Desfazer Pagamento"
+                aria-label={`Desfazer pagamento de ${row.descricao}`}
               >
-                <RotateCcw className="h-4 w-4" />
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
             {row.eh_fatura_cartao ? (
@@ -316,8 +342,9 @@ export default function ContasPagar() {
                   className="h-8 w-8 p-0 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                   onClick={() => navigate('/compras-cartao')}
                   title="Ver compras individuais desta fatura"
+                  aria-label={`Ver compras individuais da fatura ${row.descricao}`}
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
                   size="sm"
@@ -325,8 +352,9 @@ export default function ContasPagar() {
                   className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                   onClick={() => handleEdit(row)}
                   title="Editar"
+                  aria-label={`Editar ${row.descricao}`}
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
                   size="sm"
@@ -334,8 +362,9 @@ export default function ContasPagar() {
                   className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                   onClick={() => { setDeleteId(row.id); setDeletingConta(row); }}
                   title="Excluir fatura e suas compras"
+                  aria-label={`Excluir fatura ${row.descricao} e suas compras`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             ) : (
@@ -347,8 +376,9 @@ export default function ContasPagar() {
                   className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                   onClick={() => handleEdit(row)}
                   title="Editar"
+                  aria-label={`Editar ${row.descricao}`}
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
                   size="sm"
@@ -356,8 +386,9 @@ export default function ContasPagar() {
                   className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                   onClick={() => { setDeleteId(row.id); setDeletingConta(row); }}
                   title="Excluir"
+                  aria-label={`Excluir ${row.descricao}`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             )}
@@ -440,6 +471,13 @@ export default function ContasPagar() {
       {isError && (
         <Alert variant="error">
           Não foi possível carregar as contas. Verifique a conexão com a API.
+        </Alert>
+      )}
+
+      {/* Erro de ação (pagar / excluir / desfazer) */}
+      {actionError && (
+        <Alert variant="error">
+          {actionError}
         </Alert>
       )}
 

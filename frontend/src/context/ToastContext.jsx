@@ -27,29 +27,102 @@
  * const { addToast } = useToast();
  * addToast('Operação realizada com sucesso!', 'success');
  */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
+// Papel ARIA por tipo (WCAG 4.1.3): erro/aviso interrompem (assertive), sucesso/info só informam (polite).
+const roleByType = {
+  error: 'alert',
+  warning: 'alert',
+  success: 'status',
+  info: 'status',
+};
+
+/** Intervalo de reavaliação do auto-dismiss. */
+const TICK_MS = 250;
+/** Folga concedida após o usuário soltar o toast, antes de dispensá-lo. */
+const GRACE_MS = 750;
+/** Teto de retenção por hover: além disso o toast sai mesmo com o ponteiro parado sobre ele. */
+const MAX_HOVER_HOLD_FACTOR = 3;
+
+/**
+ * Como o usuário está retendo o toast, se estiver. Consultamos o DOM em vez de
+ * confiar em eventos pareados de hover/foco, porque mouseleave é pouco confiável:
+ * pode disparar com o foco de teclado ainda dentro do toast, e não dispara quando o
+ * toast se reposiciona por outro ter sido removido sem o ponteiro se mover.
+ */
+const getHoldState = (id) => {
+  const el = document.querySelector(`[data-toast-id="${id}"]`);
+  if (!el) return { porFoco: false, porHover: false };
+  return {
+    // Foco de teclado é interação deliberada: retém sem teto, pois dispensar
+    // destruiria o elemento focado e jogaria o foco no <body>.
+    porFoco: el.contains(document.activeElement),
+    // Hover pode ser acidental — a pilha fica no canto inferior direito, ponto
+    // comum de repouso do mouse — então tem teto.
+    porHover: el.matches(':hover'),
+  };
+};
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  // Prazos absolutos de cada toast, fora do state para não re-renderizar a cada tick.
+  const timersRef = useRef(new Map());
 
   const removeToast = useCallback((id) => {
+    timersRef.current.delete(id);
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const addToast = useCallback((message, type = 'info', duration = 4000) => {
-    const id = Date.now() + Math.random().toString(36).substr(2, 9);
-    
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
-
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, duration);
+      const agora = Date.now();
+      timersRef.current.set(id, {
+        // Prazos absolutos (em vez de decrementar um contador) para que reinícios
+        // do intervalo não estendam indefinidamente a vida do toast.
+        prazo: agora + duration,
+        prazoMaximo: agora + duration * MAX_HOVER_HOLD_FACTOR,
+      });
     }
-  }, [removeToast]);
+    setToasts((prev) => [...prev, { id, message, type, duration }]);
+  }, []);
+
+  /**
+   * Um único tick reavalia todos os toasts, em vez de um setTimeout por toast.
+   * A checagem de retenção acontece a cada ciclo, o que trata de forma uniforme
+   * hover, foco de teclado e reposicionamento da pilha — casos em que depender de
+   * mouseenter/mouseleave pareados deixava o toast preso na tela ou o dispensava
+   * com o foco ainda dentro dele (SC 2.2.1 e perda de foco).
+   */
+  useEffect(() => {
+    if (toasts.length === 0) return;
+
+    const intervalId = setInterval(() => {
+      const agora = Date.now();
+      const expirados = [];
+
+      timersRef.current.forEach((estado, id) => {
+        const { porFoco, porHover } = getHoldState(id);
+
+        if (porFoco) return; // retenção sem teto
+        if (porHover && agora < estado.prazoMaximo) {
+          // Empurra o prazo enquanto o ponteiro estiver sobre o toast, respeitando o teto.
+          estado.prazo = agora + GRACE_MS;
+          return;
+        }
+        if (agora >= estado.prazo) expirados.push(id);
+      });
+
+      if (expirados.length === 0) return;
+      expirados.forEach((id) => timersRef.current.delete(id));
+      setToasts((prev) => prev.filter((toast) => !expirados.includes(toast.id)));
+    }, TICK_MS);
+
+    return () => clearInterval(intervalId);
+  }, [toasts.length]);
 
   // Mapear tipos para tokens visuais e ícones
   const getToastConfig = (type) => {
@@ -87,25 +160,37 @@ export function ToastProvider({ children }) {
       {children}
       
       {/* Container Absoluto no Canto Inferior Direito */}
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+      {/* A live region fica no container PERSISTENTE, não no toast: um nó com
+          role="status" inserido junto com seu próprio texto costuma não ser
+          anunciado por NVDA/JAWS. Com o container já presente na árvore, a
+          inserção do toast é percebida como mudança de conteúdo. O role por
+          toast (alert para erros) continua valendo para a urgência. */}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"
+      >
         {toasts.map((toast) => {
           const config = getToastConfig(toast.type);
           return (
             <div
               key={toast.id}
+              data-toast-id={toast.id}
               className={`w-full pointer-events-auto flex items-start gap-3 rounded-xl p-4 shadow-lg border backdrop-blur-md text-xs font-semibold text-foreground/90 transition-all transform animate-toast-in ${config.borderClass} ${config.bgClass}`}
-              role="alert"
+              role={roleByType[toast.type] ?? 'status'}
             >
+              {/* A pausa por hover/foco é resolvida pelo tick, que consulta
+                  :hover e o foco ativo — não precisa de handlers aqui. */}
               {config.icon}
               <div className="flex-1 leading-relaxed break-words pr-2">
                 {toast.message}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer p-0.5 hover:bg-muted/50 rounded-md transition-colors"
+                className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer p-1.5 hover:bg-muted/50 rounded-md transition-colors"
                 aria-label="Fechar"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           );

@@ -29,27 +29,35 @@ import { ChevronDown } from "lucide-react"
  */
 export const AccordionItem = React.forwardRef(({ title, children, className, ...props }, ref) => {
   const [isOpen, setIsOpen] = useState(false)
+  const panelId = React.useId()
 
   return (
-    <div 
-      ref={ref} 
-      className={cn("border-b border-border/60 py-1 transition-all duration-300", className)} 
+    <div
+      ref={ref}
+      className={cn("border-b border-border/60 py-1 transition-all duration-300", className)}
       {...props}
     >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between py-3 text-sm font-medium transition-all hover:text-primary text-left text-foreground/80"
       >
         <span className="font-semibold">{title}</span>
         <ChevronDown
+          aria-hidden="true"
           className={cn(
             "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300",
             isOpen && "rotate-180"
           )}
         />
       </button>
+      {/* `inert` remove o painel colapsado da árvore de foco/AT sem quebrar a transição de altura via grid-rows */}
       <div
+        id={panelId}
+        inert={!isOpen}
+        aria-hidden={!isOpen}
         className={cn(
           "grid transition-all duration-300 ease-in-out text-sm overflow-hidden",
           isOpen ? "grid-rows-[1fr] opacity-100 py-2" : "grid-rows-[0fr] opacity-0"

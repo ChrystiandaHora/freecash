@@ -47,6 +47,7 @@ export default function Receitas() {
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
   const [filteredReceitas, setFilteredReceitas] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   const { data: receitas = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['receitas'],
@@ -56,6 +57,9 @@ export default function Receitas() {
   const deleteMutation = useMutation({
     mutationFn: deleteReceita,
     onMutate: (id) => {
+      // Limpa o erro anterior: sem isso o banner role="alert" ficaria na tela
+      // permanentemente, inclusive após um retry bem-sucedido.
+      setActionError('')
       setFadingIds((prev) => new Set(prev).add(id))
     },
     onSuccess: () => {
@@ -64,6 +68,13 @@ export default function Receitas() {
         setFadingIds(new Set())
         setDeleteId(null)
       }, 500)
+    },
+    // Sem isto, uma falha de API deixaria a linha com fade otimista aplicado
+    // permanentemente, sem qualquer aviso ao usuário.
+    onError: () => {
+      setFadingIds(new Set())
+      setDeleteId(null)
+      setActionError('Não foi possível excluir a receita. Tente novamente.')
     },
   })
 
@@ -165,8 +176,9 @@ export default function Receitas() {
             className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
             onClick={() => handleEdit(row)}
             title="Editar"
+            aria-label={`Editar ${row.descricao}`}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button
             size="sm"
@@ -174,8 +186,9 @@ export default function Receitas() {
             className="h-8 w-8 p-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
             onClick={() => setDeleteId(row.id)}
             title="Excluir"
+            aria-label={`Excluir ${row.descricao}`}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       ),
@@ -251,6 +264,13 @@ export default function Receitas() {
       {isError && (
         <Alert variant="error">
           Não foi possível carregar as receitas. Verifique a conexão com a API.
+        </Alert>
+      )}
+
+      {/* Erro de exclusão */}
+      {actionError && (
+        <Alert variant="error">
+          {actionError}
         </Alert>
       )}
 

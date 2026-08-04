@@ -47,12 +47,13 @@ const formatPct = (value) => {
  * @component
  * @param {Object} props - Propriedades do componente.
  * @param {number} props.id - ID único do ativo.
+ * @param {string} props.label - Nome do ativo, usado para nomear os controles a leitores de tela.
  * @param {number} props.value - O valor percentual atual da meta.
  * @param {Function} props.onChange - Callback disparado ao alterar o valor da meta.
  * @param {boolean} props.disabled - Flag que desabilita a interação com o controle.
  * @returns {React.JSX.Element}
  */
-function MetaSlider({ id, value, onChange, disabled }) {
+function MetaSlider({ id, label, value, onChange, disabled }) {
   return (
     <div className="relative flex items-center gap-3 w-full">
       <button
@@ -60,8 +61,9 @@ function MetaSlider({ id, value, onChange, disabled }) {
         disabled={disabled || value <= 0}
         onClick={() => onChange(Math.max(0, value - 0.5))}
         className="w-7 h-7 rounded-lg flex items-center justify-center border border-border bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-40 shrink-0"
+        aria-label={`Diminuir meta de ${label}`}
       >
-        <Minus className="h-3 w-3" />
+        <Minus className="h-3 w-3" aria-hidden="true" />
       </button>
 
       <div className="flex-1 relative">
@@ -82,6 +84,8 @@ function MetaSlider({ id, value, onChange, disabled }) {
           disabled={disabled}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+          aria-label={`Meta de alocação para ${label}`}
+          aria-valuetext={formatPct(value)}
         />
       </div>
 
@@ -90,8 +94,9 @@ function MetaSlider({ id, value, onChange, disabled }) {
         disabled={disabled || value >= 100}
         onClick={() => onChange(Math.min(100, value + 0.5))}
         className="w-7 h-7 rounded-lg flex items-center justify-center border border-border bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-40 shrink-0"
+        aria-label={`Aumentar meta de ${label}`}
       >
-        <Plus className="h-3 w-3" />
+        <Plus className="h-3 w-3" aria-hidden="true" />
       </button>
 
       <span className="w-14 text-right text-sm font-bold text-foreground tabular-nums shrink-0">
@@ -290,15 +295,15 @@ export default function AtivosBalanceamento() {
 
   /* ── Loading / Error states ── */
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-      <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+    <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+      <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
       <p className="text-sm font-semibold text-muted-foreground">Carregando dados de balanceamento...</p>
     </div>
   );
 
   if (isError) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
-      <AlertCircle className="h-12 w-12 text-red-500" />
+    <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+      <AlertCircle className="h-12 w-12 text-red-500" aria-hidden="true" />
       <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Erro ao carregar balanceamento</h3>
       <Button onClick={() => refetch()} className="mt-2">Tentar novamente</Button>
     </div>
@@ -346,8 +351,14 @@ export default function AtivosBalanceamento() {
               Ajustar Metas
             </Button>
           )}
-          <Button variant="outline" size="icon" onClick={() => refetch()} className="rounded-xl h-9 w-9 shrink-0">
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            className="rounded-xl h-9 w-9 shrink-0"
+            aria-label="Atualizar dados de balanceamento"
+          >
+            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -366,12 +377,13 @@ export default function AtivosBalanceamento() {
         <CardContent className="space-y-5">
           <div className="flex items-center gap-4 flex-col sm:flex-row">
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+              <label htmlFor="aporte-valor" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
                 Quanto você quer aportar hoje?
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-primary">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-primary" aria-hidden="true">R$</span>
                 <Input
+                  id="aporte-valor"
                   type="number"
                   placeholder="0,00"
                   value={aporteValue}
@@ -384,7 +396,7 @@ export default function AtivosBalanceamento() {
             </div>
              {(aporteNum > 0 || finalSalesCash > 0) && (
               <div className="text-right shrink-0">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
                 <p className="text-xl font-extrabold text-foreground">{formatCurrency(futuroPatrimonio)}</p>
               </div>
             )}
@@ -395,30 +407,34 @@ export default function AtivosBalanceamento() {
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
-                    <th className="py-3 px-4 w-12 text-center">Aplicar</th>
-                    <th className="py-3 px-4">Ativo</th>
-                    <th className="py-3 px-4 text-right">Meta</th>
-                    <th className="py-3 px-4 text-right">Cotação</th>
-                    <th className="py-3 px-4 text-right">Valor Investido</th>
-                    <th className="py-3 px-4 text-right">Saldo Ideal</th>
-                    <th className="py-3 px-4 text-right">Qtd. Ajuste</th>
-                    <th className="py-3 px-4 text-right">Valor Ajuste</th>
+                    <th scope="col" className="py-3 px-4 w-12 text-center">Aplicar</th>
+                    <th scope="col" className="py-3 px-4">Ativo</th>
+                    <th scope="col" className="py-3 px-4 text-right">Meta</th>
+                    <th scope="col" className="py-3 px-4 text-right">Cotação</th>
+                    <th scope="col" className="py-3 px-4 text-right">Valor Investido</th>
+                    <th scope="col" className="py-3 px-4 text-right">Saldo Ideal</th>
+                    <th scope="col" className="py-3 px-4 text-right">Qtd. Ajuste</th>
+                    <th scope="col" className="py-3 px-4 text-right">Valor Ajuste</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {magicAllocation.map((at) => (
                     <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.isExcluded ? 'opacity-50' : ''}`}>
                       <td className="py-3 px-4 text-center">
-                        <input
-                          type="checkbox"
-                          checked={!at.isExcluded}
-                          onChange={() => toggleAssetExcluded(at.id)}
-                          className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
-                        />
+                        {/* Área de clique estendida para ≥24px sem alterar o tamanho visual da caixa */}
+                        <label className="inline-flex min-h-6 min-w-6 items-center justify-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!at.isExcluded}
+                            onChange={() => toggleAssetExcluded(at.id)}
+                            className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+                            aria-label={`Incluir ${at.ticker} no aporte mágico`}
+                          />
+                        </label>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-bold text-foreground">{at.ticker}</p>
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatCurrency(at.cotacao)}</td>
@@ -461,15 +477,15 @@ export default function AtivosBalanceamento() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 text-xs">
-                  <p className="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-400">Total em Compras</p>
+                  <p className="text-xs uppercase font-semibold text-emerald-600 dark:text-emerald-400">Total em Compras</p>
                   <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">{formatCurrency(totalBuysCash)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 text-xs">
-                  <p className="text-[10px] uppercase font-semibold text-red-600 dark:text-red-400">Total em Vendas</p>
+                  <p className="text-xs uppercase font-semibold text-red-600 dark:text-red-400">Total em Vendas</p>
                   <p className="text-base font-extrabold text-red-700 dark:text-red-300 mt-1">{formatCurrency(finalSalesCash)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
-                  <p className="text-[10px] uppercase font-semibold text-primary">Aporte Líquido Requerido</p>
+                  <p className="text-xs uppercase font-semibold text-primary">Aporte Líquido Requerido</p>
                   <p className="text-base font-extrabold text-primary mt-1">{formatCurrency(Math.max(0, netContribution))}</p>
                 </div>
               </div>
@@ -491,7 +507,7 @@ export default function AtivosBalanceamento() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <Card className="border border-border/40 bg-card shadow-sm relative overflow-hidden group">
           <CardHeader className="pb-1">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Investido</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Investido</span>
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalPatrimonio)}</h3>
@@ -500,7 +516,7 @@ export default function AtivosBalanceamento() {
 
         <Card className="border border-border/40 bg-card shadow-sm relative overflow-hidden group">
           <CardHeader className="pb-1">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ativos na carteira</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ativos na carteira</span>
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">{allAtivos.length}</h3>
@@ -509,7 +525,7 @@ export default function AtivosBalanceamento() {
 
         <Card className="border border-border/40 bg-card shadow-sm relative overflow-hidden group">
           <CardHeader className="pb-1">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Soma das metas</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Soma das metas</span>
           </CardHeader>
           <CardContent>
             <h3 className={`text-2xl font-bold tracking-tight ${Math.abs(balanceData?.soma_metas - 100) < 0.01 ? 'text-primary' : 'text-amber-500'}`}>
@@ -568,18 +584,19 @@ export default function AtivosBalanceamento() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-foreground truncate">{at.ticker}</p>
-                          <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">{at.nome}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{at.nome}</p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs font-bold text-foreground">{formatCurrency(at.valor_atual)}</p>
-                        <p className="text-[10px] text-muted-foreground">investido • {formatPct(at.perc_atual)} carteira</p>
+                        <p className="text-xs text-muted-foreground">investido • {formatPct(at.perc_atual)} carteira</p>
                       </div>
                     </div>
 
                     {/* Slider */}
                     <MetaSlider
                       id={at.id}
+                      label={at.ticker}
                       value={localMeta}
                       onChange={(v) => handleMetaChange(at.id, v)}
                       disabled={!isEditing}
@@ -588,7 +605,7 @@ export default function AtivosBalanceamento() {
                     {/* Aporte/Venda info */}
                     {magicoItem && !magicoItem.isExcluded && (
                       magicoItem.diferencaIdeal > 0.01 ? (
-                        <div className="flex items-center gap-2 text-[11px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-emerald-100 dark:border-emerald-900/30">
+                        <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-emerald-100 dark:border-emerald-900/30">
                           <ArrowRight className="h-3 w-3 shrink-0 text-emerald-500" />
                           <span className="font-semibold">
                             {magicoItem.aporte > 0.01 ? (
@@ -600,7 +617,7 @@ export default function AtivosBalanceamento() {
                           <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
                         </div>
                       ) : magicoItem.diferencaIdeal < -0.01 ? (
-                        <div className="flex items-center gap-2 text-[11px] text-red-600 bg-red-50 dark:bg-red-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-red-100 dark:border-red-900/30">
+                        <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-red-100 dark:border-red-900/30">
                           <ArrowRight className="h-3 w-3 shrink-0 text-red-500" />
                           <span className="font-semibold">
                             Excesso (Venda ideal): {formatCurrency(magicoItem.excesso)} ({magicoItem.qtdIdealVender} cota{magicoItem.qtdIdealVender !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})
@@ -610,7 +627,7 @@ export default function AtivosBalanceamento() {
                       ) : null
                     )}
                     {magicoItem && magicoItem.isExcluded && (
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5 w-fit">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5 w-fit">
                         <span className="font-semibold">Excluído do Aporte Mágico</span>
                       </div>
                     )}

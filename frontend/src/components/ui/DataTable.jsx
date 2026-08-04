@@ -241,6 +241,7 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
       {type === "boolean" && (
         <select
           autoFocus
+          aria-label={`Valor do filtro de ${typeof column.header === "string" ? column.header : column.key}`}
           className={inputClass}
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
@@ -254,6 +255,7 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
       {type === "select" && (
         <select
           autoFocus
+          aria-label={`Valor do filtro de ${typeof column.header === "string" ? column.header : column.key}`}
           className={inputClass}
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
@@ -285,6 +287,7 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
         <input
           type="text"
           autoFocus
+          aria-label={`Valor do filtro de ${typeof column.header === "string" ? column.header : column.key}`}
           placeholder={column.filterPlaceholder ?? "Buscar..."}
           className={inputClass}
           value={value ?? ""}
@@ -318,6 +321,7 @@ const DataTable = ({
   data = [],
   isLoading = false,
   emptyMessage = "Nenhum registro encontrado.",
+  caption,
   className,
   rowClassName,
 
@@ -609,8 +613,14 @@ const DataTable = ({
   // --- Renderização do Esqueleto Skeletal (Loading State) ---
   if (isLoading) {
     return (
-      <div className="w-full rounded-xl border border-border/60 overflow-hidden bg-card shadow-sm">
+      <div
+        className="w-full rounded-xl border border-border/60 overflow-hidden bg-card shadow-sm"
+        role="status"
+        aria-busy="true"
+      >
+        <span className="sr-only">Carregando registros...</span>
         <table className="w-full text-sm">
+          {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
             <tr className="border-b border-border/60 bg-muted/40">
               {columns.map((col) => (
@@ -680,9 +690,9 @@ const DataTable = ({
                 type="button"
                 onClick={() => handleFilterClear(col.key)}
                 aria-label={`Remover filtro de ${typeof col.header === "string" ? col.header : col.key}`}
-                className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
             </span>
           ))}
@@ -705,6 +715,7 @@ const DataTable = ({
         <div ref={leftSentinelRef} className="absolute left-0 top-0 w-px h-full pointer-events-none" />
 
         <table className="w-full text-sm">
+          {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
             <tr className="border-b border-border/60 bg-muted/40">
               {columns.map((col) => {
@@ -719,28 +730,36 @@ const DataTable = ({
                     scope="col"
                     className={cn(
                       "px-4 py-3 text-left font-semibold text-muted-foreground whitespace-nowrap",
-                      isSortable && "cursor-pointer select-none hover:bg-muted/60 transition-colors",
                       col.className
                     )}
-                    onClick={() => isSortable && handleSortClick(col.key)}
                     aria-sort={
                       isCurrentlySorted ? (activeSortDir === "asc" ? "ascending" : "descending") : undefined
                     }
                   >
                     <div className="flex items-center gap-1.5">
-                      {col.header}
-                      {isSortable && (
-                        <span className="text-muted-foreground/60 transition-colors duration-150">
-                          {isCurrentlySorted ? (
-                            activeSortDir === "asc" ? (
-                              <ChevronUp className="h-4 w-4 text-primary" />
+                      {isSortable ? (
+                        // Botão nativo (em vez de onClick no <th>) dá suporte a teclado de graça
+                        // e preserva a semântica de columnheader do <th>, que role="button" quebraria.
+                        <button
+                          type="button"
+                          onClick={() => handleSortClick(col.key)}
+                          className="flex items-center gap-1.5 -mx-1.5 -my-1 rounded px-1.5 py-1 select-none hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                          <span>{col.header}</span>
+                          <span className="text-muted-foreground/60 transition-colors duration-150">
+                            {isCurrentlySorted ? (
+                              activeSortDir === "asc" ? (
+                                <ChevronUp className="h-4 w-4 text-primary" aria-hidden="true" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-primary" aria-hidden="true" />
+                              )
                             ) : (
-                              <ChevronDown className="h-4 w-4 text-primary" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="h-3.5 w-3.5 opacity-40 hover:opacity-100" />
-                          )}
-                        </span>
+                              <ArrowUpDown className="h-3.5 w-3.5 opacity-40 hover:opacity-100" aria-hidden="true" />
+                            )}
+                          </span>
+                        </button>
+                      ) : (
+                        col.header
                       )}
                       {filterType && (
                         <button
@@ -751,7 +770,7 @@ const DataTable = ({
                           aria-expanded={openFilterKey === col.key}
                           aria-label={`Filtrar coluna ${typeof col.header === "string" ? col.header : col.key}`}
                           className={cn(
-                            "ml-0.5 rounded p-0.5 transition-colors",
+                            "ml-0.5 rounded p-1.5 transition-colors",
                             "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/40",
                             columnFilterActive || openFilterKey === col.key
                               ? "text-primary"
@@ -760,6 +779,7 @@ const DataTable = ({
                         >
                           <Filter
                             className="h-3.5 w-3.5"
+                            aria-hidden="true"
                             fill={columnFilterActive ? "currentColor" : "none"}
                           />
                         </button>

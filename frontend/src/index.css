@@ -194,3 +194,25 @@ body {
 }
 
 
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Respeito à preferência de movimento reduzido do sistema (WCAG 2.3.3).
+ *
+ * Cobre de uma vez todas as animações do app: as keyframes declaradas acima
+ * (fadeIn, scaleUp, shake, toast-in), os utilitários do Tailwind
+ * (animate-pulse, animate-spin, animate-in/zoom-in/fade-in) e as transições
+ * de altura/opacidade do Accordion, Modal e DataTable.
+ *
+ * Durações viram quase instantâneas em vez de zero para não quebrar handlers
+ * que dependem do disparo de transitionend/animationend.
+ * ────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

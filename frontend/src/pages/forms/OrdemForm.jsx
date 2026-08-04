@@ -152,8 +152,9 @@ export default function OrdemForm() {
           onClick={() => navigate('/investimentos/historico')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -170,11 +171,13 @@ export default function OrdemForm() {
         {/* Tab Selector */}
         {!isEditing && (
           <div className="p-6 pb-2 shrink-0">
-            <div className="flex bg-muted p-1 rounded-xl">
+            <div role="radiogroup" aria-label="Tipo de lançamento" className="flex bg-muted p-1 rounded-xl">
               {[{ id: 'cv', label: 'Compra / Venda' }, { id: 'proventos', label: 'Proventos / JCP' }].map((t) => (
                 <button
                   key={t.id}
                   type="button"
+                  role="radio"
+                  aria-checked={tab === t.id}
                   onClick={() => { setTab(t.id); setError(''); }}
                   className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all
                     ${tab === t.id ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
@@ -191,13 +194,14 @@ export default function OrdemForm() {
             
             {/* Ativo */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-foreground">Ativo *</label>
+              <label htmlFor="ordem-ativo" className="text-sm font-semibold text-foreground">Ativo *</label>
               {isLoadingAtivos ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Carregando ativos...
+                <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Carregando ativos...
                 </div>
               ) : (
                 <Select
+                  id="ordem-ativo"
                   value={form.ativo}
                   onChange={handleChange('ativo')}
                   required
@@ -212,20 +216,22 @@ export default function OrdemForm() {
 
             {/* Data */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-foreground">Data da Operação *</label>
-              <Input type="date" value={form.data} onChange={handleChange('data')} required />
+              <label htmlFor="ordem-data" className="text-sm font-semibold text-foreground">Data da Operação *</label>
+              <Input id="ordem-data" type="date" value={form.data} onChange={handleChange('data')} required />
             </div>
 
             {tab === 'cv' ? (
               <>
                 {/* Tipo C/V */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-foreground">Tipo de Operação</label>
-                  <div className="flex gap-3">
+                  <span id="tipo-operacao-label" className="text-sm font-semibold text-foreground">Tipo de Operação</span>
+                  <div role="radiogroup" aria-labelledby="tipo-operacao-label" className="flex gap-3">
                     {[{ v: 'C', l: 'Compra', color: 'emerald' }, { v: 'V', l: 'Venda', color: 'rose' }].map(({ v, l, color }) => (
                       <button
                         key={v}
                         type="button"
+                        role="radio"
+                        aria-checked={form.tipo === v}
                         onClick={() => setForm((f) => ({ ...f, tipo: v }))}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
                           ${form.tipo === v
@@ -240,42 +246,45 @@ export default function OrdemForm() {
 
                 {/* Quantidade */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-foreground">Quantidade *</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    min="0" 
-                    step="0.00000001" 
-                    value={form.quantidade} 
-                    onChange={handleChange('quantidade')} 
-                    required 
+                  <label htmlFor="ordem-quantidade" className="text-sm font-semibold text-foreground">Quantidade *</label>
+                  <Input
+                    id="ordem-quantidade"
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    step="0.00000001"
+                    value={form.quantidade}
+                    onChange={handleChange('quantidade')}
+                    required
                   />
                 </div>
 
                 {/* Preço Unitário */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-foreground">Preço Unitário (R$) *</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0,00" 
-                    min="0" 
-                    step="0.01" 
-                    value={form.preco_unitario} 
-                    onChange={handleChange('preco_unitario')} 
-                    required 
+                  <label htmlFor="ordem-preco" className="text-sm font-semibold text-foreground">Preço Unitário (R$) *</label>
+                  <Input
+                    id="ordem-preco"
+                    type="number"
+                    placeholder="0,00"
+                    min="0"
+                    step="0.01"
+                    value={form.preco_unitario}
+                    onChange={handleChange('preco_unitario')}
+                    required
                   />
                 </div>
 
                 {/* Taxas */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-foreground">Taxas / Corretagem (R$)</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0,00" 
-                    min="0" 
-                    step="0.01" 
-                    value={form.taxas} 
-                    onChange={handleChange('taxas')} 
+                  <label htmlFor="ordem-taxas" className="text-sm font-semibold text-foreground">Taxas / Corretagem (R$)</label>
+                  <Input
+                    id="ordem-taxas"
+                    type="number"
+                    placeholder="0,00"
+                    min="0"
+                    step="0.01"
+                    value={form.taxas}
+                    onChange={handleChange('taxas')}
                   />
                 </div>
 
@@ -296,15 +305,16 @@ export default function OrdemForm() {
               <>
                 {/* Proventos */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-foreground">Valor do provento recebido (R$) *</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0,00" 
-                    min="0" 
-                    step="0.01" 
-                    value={form.valor_total_provento} 
-                    onChange={handleChange('valor_total_provento')} 
-                    required 
+                  <label htmlFor="ordem-provento" className="text-sm font-semibold text-foreground">Valor do provento recebido (R$) *</label>
+                  <Input
+                    id="ordem-provento"
+                    type="number"
+                    placeholder="0,00"
+                    min="0"
+                    step="0.01"
+                    value={form.valor_total_provento}
+                    onChange={handleChange('valor_total_provento')}
+                    required
                   />
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">

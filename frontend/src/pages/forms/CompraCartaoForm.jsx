@@ -139,8 +139,9 @@ export default function CompraCartaoForm() {
           onClick={() => navigate('/compras-cartao')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -164,10 +165,11 @@ export default function CompraCartaoForm() {
             
             {/* Descrição */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
+              <label htmlFor="compra-desc" className="text-sm font-medium text-foreground">
                 Descrição <span className="text-red-500">*</span>
               </label>
               <Input
+                id="compra-desc"
                 type="text"
                 required
                 placeholder="Ex: Supermercado"
@@ -179,12 +181,13 @@ export default function CompraCartaoForm() {
             {/* Valor + Data da Compra */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="compra-valor" className="text-sm font-medium text-foreground">
                   Valor (R$) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <Input
+                    id="compra-valor"
                     type="number"
                     step="0.01"
                     required
@@ -197,12 +200,13 @@ export default function CompraCartaoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="compra-data" className="text-sm font-medium text-foreground">
                   Data da Compra <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <Input
+                    id="compra-data"
                     type="date"
                     required
                     value={date}
@@ -216,10 +220,11 @@ export default function CompraCartaoForm() {
             {/* Cartão de Crédito + Categoria */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="compra-cartao" className="text-sm font-medium text-foreground">
                   Cartão de Crédito <span className="text-red-500">*</span>
                 </label>
                 <Select
+                  id="compra-cartao"
                   value={cardId}
                   onChange={(e) => setCardId(e.target.value)}
                   required
@@ -234,10 +239,11 @@ export default function CompraCartaoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="compra-categoria" className="text-sm font-medium text-foreground">
                   Categoria
                 </label>
                 <Select
+                  id="compra-categoria"
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                 >
@@ -252,7 +258,7 @@ export default function CompraCartaoForm() {
             </div>
 
             {validationError && (
-              <p className="text-sm text-red-500">{validationError}</p>
+              <p role="alert" className="text-sm text-red-500">{validationError}</p>
             )}
 
             {/* Actions */}

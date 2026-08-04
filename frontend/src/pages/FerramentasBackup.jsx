@@ -18,8 +18,6 @@ import {
   CheckCircle2,
   Loader2,
   Info,
-  Eye,
-  EyeOff,
   Calendar,
   Layers,
   FileCheck
@@ -27,6 +25,7 @@ import {
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { Alert } from '../components/ui/Alert';
 
@@ -61,7 +60,6 @@ export default function FerramentasBackup() {
   const [feedback, setFeedback] = useState(null);
   const [backupPassword, setBackupPassword] = useState('');
   const [confirmBackupPassword, setConfirmBackupPassword] = useState('');
-  const [showBackupPassword, setShowBackupPassword] = useState(false);
 
   const handleDownload = async () => {
     if (formato === 'fcbk') {
@@ -166,11 +164,12 @@ export default function FerramentasBackup() {
           <div className="space-y-4">
             {/* Formato */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <FileCheck className="h-3.5 w-3.5" />
+              <label htmlFor="backup-formato" className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <FileCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 Formato do Arquivo
               </label>
               <select
+                id="backup-formato"
                 value={formato}
                 onChange={(e) => {
                   setFormato(e.target.value);
@@ -187,11 +186,12 @@ export default function FerramentasBackup() {
 
             {/* Escopo */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5" />
+              <label htmlFor="backup-escopo" className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" aria-hidden="true" />
                 Tipo de Dados / Escopo
               </label>
               <select
+                id="backup-escopo"
                 value={escopo}
                 onChange={(e) => setEscopo(e.target.value)}
                 disabled={formato === 'fcbk'}
@@ -207,11 +207,12 @@ export default function FerramentasBackup() {
             {formato !== 'fcbk' && (
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
+                  <label htmlFor="backup-data-inicio" className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                     Data de Início
                   </label>
                   <Input
+                    id="backup-data-inicio"
                     type="date"
                     value={dataInicio}
                     onChange={(e) => setDataInicio(e.target.value)}
@@ -219,11 +220,12 @@ export default function FerramentasBackup() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
+                  <label htmlFor="backup-data-fim" className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                     Data de Fim
                   </label>
                   <Input
+                    id="backup-data-fim"
                     type="date"
                     value={dataFim}
                     onChange={(e) => setDataFim(e.target.value)}
@@ -237,37 +239,30 @@ export default function FerramentasBackup() {
             {formato === 'fcbk' && (
               <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <Lock className="h-3.5 w-3.5" />
+                  <label htmlFor="backup-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                     Senha de Criptografia
                   </label>
-                  <div className="relative">
-                    <Input
-                      type={showBackupPassword ? 'text' : 'password'}
-                      placeholder="Defina uma senha forte para seu backup..."
-                      value={backupPassword}
-                      onChange={(e) => setBackupPassword(e.target.value)}
-                      className="pr-10 border-primary/30 focus-visible:ring-primary bg-card"
-                      disabled={isDownloading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowBackupPassword(!showBackupPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                      disabled={isDownloading}
-                    >
-                      {showBackupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
+                  {/* PasswordInput compartilhado: toggle já com aria-label/aria-pressed dinâmicos */}
+                  <PasswordInput
+                    id="backup-senha"
+                    autoComplete="new-password"
+                    placeholder="Defina uma senha forte para seu backup..."
+                    value={backupPassword}
+                    onChange={(e) => setBackupPassword(e.target.value)}
+                    className="border-primary/30 focus-visible:ring-primary bg-card"
+                    disabled={isDownloading}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <Lock className="h-3.5 w-3.5" />
+                  <label htmlFor="backup-confirmar-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                     Confirmar Senha de Criptografia
                   </label>
-                  <Input
-                    type={showBackupPassword ? 'text' : 'password'}
+                  <PasswordInput
+                    id="backup-confirmar-senha"
+                    autoComplete="new-password"
                     placeholder="Digite a senha novamente para conferência..."
                     value={confirmBackupPassword}
                     onChange={(e) => setConfirmBackupPassword(e.target.value)}
@@ -277,16 +272,22 @@ export default function FerramentasBackup() {
                         : ''
                     }`}
                     disabled={isDownloading}
+                    aria-invalid={!!(confirmBackupPassword && backupPassword !== confirmBackupPassword)}
+                    aria-describedby={
+                      confirmBackupPassword && backupPassword !== confirmBackupPassword
+                        ? 'backup-senha-erro'
+                        : undefined
+                    }
                   />
                   {confirmBackupPassword && backupPassword !== confirmBackupPassword && (
-                    <p className="text-xs text-red-500 flex items-center gap-1.5 mt-1 animate-fade-in">
-                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                    <p id="backup-senha-erro" role="alert" className="text-xs text-red-500 flex items-center gap-1.5 mt-1 animate-fade-in">
+                      <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" aria-hidden="true" />
                       As senhas não coincidem.
                     </p>
                   )}
                 </div>
 
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   * Importante: Sem esta senha, não será possível restaurar seus dados caso precise utilizar o backup futuramente.
                 </p>
               </div>

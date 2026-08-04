@@ -47,12 +47,38 @@ const formatCNPJ = (cnpj) => {
   return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
 };
 
+const TABS = [
+  { id: 'geral', label: 'Parâmetros & Dados Gerais' },
+  { id: 'rentabilidade', label: 'Desempenho Financeiro' },
+  { id: 'transacoes', label: 'Histórico do Razão' },
+];
+
 export default function AtivoDetalhes() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('geral'); // 'geral' | 'rentabilidade' | 'transacoes'
+
+  /**
+   * Navegação por setas entre as abas (padrão WAI-ARIA APG): Left/Right e Home/End
+   * movem a seleção e o foco, já que apenas a aba ativa fica na ordem de tabulação.
+   */
+  const handleTabKeyDown = (event, index) => {
+    const keyToIndex = {
+      ArrowRight: (index + 1) % TABS.length,
+      ArrowLeft: (index - 1 + TABS.length) % TABS.length,
+      Home: 0,
+      End: TABS.length - 1,
+    };
+    const nextIndex = keyToIndex[event.key];
+    if (nextIndex === undefined) return;
+
+    event.preventDefault();
+    const nextTab = TABS[nextIndex];
+    setActiveTab(nextTab.id);
+    document.getElementById(`tab-${nextTab.id}`)?.focus();
+  };
 
   /* ── Queries ── */
   const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo } = useQuery({
@@ -101,8 +127,8 @@ export default function AtivoDetalhes() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
         <p className="text-sm font-semibold text-muted-foreground">
           Carregando dados estruturados do ativo...
         </p>
@@ -112,8 +138,8 @@ export default function AtivoDetalhes() {
 
   if (errorAtivo || !ativo) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
-        <AlertCircle className="h-12 w-12 text-destructive" />
+      <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-destructive" aria-hidden="true" />
         <h3 className="text-xl font-bold text-foreground">Ativo não encontrado</h3>
         <p className="text-sm text-muted-foreground">
           Não conseguimos carregar as informações deste ativo ou ele foi removido permanentemente da carteira.
@@ -183,7 +209,7 @@ export default function AtivoDetalhes() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Coins className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
             {formatCurrency(valorTotalAtual)}
           </h3>
@@ -196,7 +222,7 @@ export default function AtivoDetalhes() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Gem className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Original (Principal)</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Original (Principal)</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
             {formatCurrency(totalCustoInvestido)}
           </h3>
@@ -209,7 +235,7 @@ export default function AtivoDetalhes() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Percent className="h-full w-full" />
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Resultado Acumulado</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Resultado Acumulado</p>
           <h3 className={`text-2xl font-bold tracking-tight mt-2 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
             {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
           </h3>
@@ -223,17 +249,21 @@ export default function AtivoDetalhes() {
       {/* Box Principal de Conteúdo */}
       <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
         
-        {/* Abas */}
-        <div className="flex border-b border-border/40 self-start shrink-0 w-full">
-          {[
-            { id: 'geral', label: 'Parâmetros & Dados Gerais' },
-            { id: 'rentabilidade', label: 'Desempenho Financeiro' },
-            { id: 'transacoes', label: 'Histórico do Razão' }
-          ].map((tab) => (
+        {/* Abas — padrão WAI-ARIA de tabs: troca o painel visível, navegável por setas */}
+        <div role="tablist" aria-label="Seções do ativo" className="flex border-b border-border/40 self-start shrink-0 w-full">
+          {TABS.map((tab, index) => (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
+              role="tab"
+              type="button"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`painel-${tab.id}`}
+              // Só a aba ativa fica na ordem de tabulação; as demais são alcançadas por setas.
+              tabIndex={activeTab === tab.id ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              onKeyDown={(e) => handleTabKeyDown(e, index)}
+              className={`px-4 py-2.5 text-xs uppercase tracking-wider border-b-2 transition-all gap-2 flex items-center ${activeTab === tab.id ? 'border-primary text-primary font-extrabold' : 'border-transparent text-muted-foreground hover:text-foreground font-bold'}`}
             >
               {tab.label}
             </button>
@@ -242,7 +272,13 @@ export default function AtivoDetalhes() {
 
         {/* Tab 1: Geral */}
         {activeTab === 'geral' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+          <div
+            id="painel-geral"
+            role="tabpanel"
+            aria-labelledby="tab-geral"
+            tabIndex={0}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200"
+          >
             
             <div className="space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider border-b border-border/20 pb-3">
@@ -275,9 +311,9 @@ export default function AtivoDetalhes() {
                 <span className="font-semibold text-muted-foreground">Status Operacional:</span>
                 <span className="font-bold">
                   {ativo.ativo ? (
-                    <span className="text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md text-[10px]">CUSTÓDIA ATIVA</span>
+                    <span className="text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md text-xs">CUSTÓDIA ATIVA</span>
                   ) : (
-                    <span className="text-muted-foreground bg-muted border border-border/40 px-2 py-0.5 rounded-md text-[10px]">ARQUIVADO</span>
+                    <span className="text-muted-foreground bg-muted border border-border/40 px-2 py-0.5 rounded-md text-xs">ARQUIVADO</span>
                   )}
                 </span>
               </div>
@@ -311,7 +347,13 @@ export default function AtivoDetalhes() {
 
         {/* Tab 2: Rentabilidade */}
         {activeTab === 'rentabilidade' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
+          <div
+            id="painel-rentabilidade"
+            role="tabpanel"
+            aria-labelledby="tab-rentabilidade"
+            tabIndex={0}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200"
+          >
             
             {/* Coluna da esquerda: tabelas de preços e consolidação */}
             <div className="lg:col-span-1 space-y-6">
@@ -396,7 +438,7 @@ export default function AtivoDetalhes() {
                           return `${parts[2]}/${parts[1]}`;
                         }),
                         labels: {
-                          style: { colors: '#888888', fontSize: '9px', fontWeight: 500 }
+                          style: { colors: '#888888', fontSize: '12px', fontWeight: 500 }
                         },
                         axisBorder: { show: false },
                         axisTicks: { show: false },
@@ -405,7 +447,7 @@ export default function AtivoDetalhes() {
                       yaxis: {
                         labels: {
                           formatter: (val) => formatCurrency(val),
-                          style: { colors: '#888888', fontSize: '9px', fontWeight: 500 }
+                          style: { colors: '#888888', fontSize: '12px', fontWeight: 500 }
                         }
                       },
                       grid: {
@@ -448,17 +490,26 @@ export default function AtivoDetalhes() {
 
         {/* Tab 3: Transações */}
         {activeTab === 'transacoes' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
+          <div
+            id="painel-transacoes"
+            role="tabpanel"
+            aria-labelledby="tab-transacoes"
+            tabIndex={0}
+            className="space-y-4 animate-in fade-in duration-200"
+          >
             <div className="overflow-x-auto rounded-xl border border-border/40">
               <table className="w-full text-xs text-left border-collapse">
+                <caption className="sr-only">
+                  Histórico de operações registradas para {ativo.ticker}
+                </caption>
                 <thead>
                   <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/20">
-                    <th className="py-3 px-5">Operação</th>
-                    <th className="py-3 px-5">Data Fiel</th>
-                    <th className="py-3 px-5 text-right">Quantidade</th>
-                    <th className="py-3 px-5 text-right">Preço Unit.</th>
-                    <th className="py-3 px-5 text-right">Taxas / Encargos</th>
-                    <th className="py-3 px-5 text-right">Total Líquido</th>
+                    <th scope="col" className="py-3 px-5">Operação</th>
+                    <th scope="col" className="py-3 px-5">Data Fiel</th>
+                    <th scope="col" className="py-3 px-5 text-right">Quantidade</th>
+                    <th scope="col" className="py-3 px-5 text-right">Preço Unit.</th>
+                    <th scope="col" className="py-3 px-5 text-right">Taxas / Encargos</th>
+                    <th scope="col" className="py-3 px-5 text-right">Total Líquido</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/20">
@@ -484,7 +535,7 @@ export default function AtivoDetalhes() {
                       return (
                         <tr key={t.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3.5 px-5">
-                            <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeColor}`}>
+                            <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${badgeColor}`}>
                               {label}
                             </span>
                           </td>

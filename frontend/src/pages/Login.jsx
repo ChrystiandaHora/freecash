@@ -159,11 +159,12 @@ export default function Login() {
         onClick={toggleTheme}
         className="fixed top-5 right-5 sm:top-6 sm:right-6 z-40 rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9"
         title="Alternar Tema"
+        aria-label={theme === 'dark' ? 'Alternar para tema claro' : 'Alternar para tema escuro'}
       >
         {theme === 'dark' ? (
-          <Sun className="h-[1.1rem] w-[1.1rem]" />
+          <Sun className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
         ) : (
-          <Moon className="h-[1.1rem] w-[1.1rem]" />
+          <Moon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
         )}
       </Button>
 
@@ -238,41 +239,49 @@ export default function Login() {
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+                  <label htmlFor="login-usuario" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                     Usuário
                   </label>
                   <Input
+                    id="login-usuario"
                     type="text"
+                    autoComplete="username"
                     placeholder="Seu nome de usuário"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="rounded-xl"
                     disabled={loading}
+                    aria-invalid={!!error}
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+                    <label htmlFor="login-senha" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                       Senha
                     </label>
                   </div>
                   <PasswordInput
+                    id="login-senha"
+                    autoComplete={isRegister ? 'new-password' : 'current-password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="rounded-xl"
                     disabled={loading}
+                    aria-invalid={!!error}
                   />
                 </div>
 
                 {/* Confirm Password (Registration Only) */}
                 {isRegister && (
                   <div className="space-y-1.5 transition-all duration-300 ease-in-out">
-                    <label className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+                    <label htmlFor="login-confirmar-senha" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                       Confirmar Senha
                     </label>
                     <PasswordInput
+                      id="login-confirmar-senha"
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -313,7 +322,7 @@ export default function Login() {
                   {isRegister ? 'Já possui uma conta? Voltar ao login' : 'Novo por aqui? Cadastre-se agora'}
                 </button>
 
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold pt-1">
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider font-semibold pt-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                   <span>Ambiente Seguro Criptografado</span>
                 </div>

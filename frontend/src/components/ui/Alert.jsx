@@ -17,8 +17,20 @@
  * para manter contraste >= 4.5:1 (WCAG AA / WAVE) mesmo contra o fundo mais
  * claro do tema (`--background: #eee`) — por isso `success`/`warning` usam
  * -800 em vez de -600 (que falha: ~3.2:1 a ~3.8:1 nesse fundo).
+ *
+ * O `role` da região é derivado da variante (WCAG 4.1.3 — Status Messages):
+ * `error`/`warning` usam `role="alert"` (anúncio assertivo), `success`/`info`
+ * usam `role="status"` (anúncio educado). Não definimos `aria-live` explícito
+ * junto, pois o role já carrega a política de live-region implícita correta.
  */
 import { cn } from "../../lib/utils"
+
+const roleByVariant = {
+  error: "alert",
+  warning: "alert",
+  success: "status",
+  info: "status",
+}
 
 const variantStyles = {
   error: "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-400",
@@ -43,11 +55,12 @@ export function Alert({ variant = "info", icon: Icon, title, className, children
         className
       )}
       {...props}
+      role={roleByVariant[variant]}
     >
-      {Icon && <Icon className="h-4 w-4 shrink-0 mt-0.5" />}
+      {Icon && <Icon className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />}
       <div className="flex-1 min-w-0 space-y-1">
         {title && <h4 className={cn("text-xs font-bold", titleStyles[variant])}>{title}</h4>}
-        <div className={title ? "text-[11px] opacity-80" : undefined}>{children}</div>
+        <div className={title ? "text-xs opacity-80" : undefined}>{children}</div>
       </div>
     </div>
   )

@@ -21,9 +21,9 @@ const PasswordInput = React.forwardRef(({ className, disabled, ...props }, ref) 
         disabled={disabled}
         aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
         aria-pressed={visible}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:pointer-events-none"
       >
-        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        {visible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
       </button>
     </div>
   )

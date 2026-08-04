@@ -43,7 +43,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
+import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 
@@ -151,7 +151,7 @@ function DRETable({ ano, data }) {
         </tbody>
         <tfoot>
           <tr className="bg-muted/30">
-            <td className="py-3 px-6 text-[11px] font-semibold text-muted-foreground">
+            <td className="py-3 px-6 text-xs font-semibold text-muted-foreground">
               Margem líquida sobre receita bruta
             </td>
             <td className="py-3 px-6 text-right">
@@ -213,7 +213,7 @@ function FallbackDRETable({ ano }) {
       <div className="p-5 border-t border-border/40 flex items-center justify-center gap-2">
         <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
         <p className="text-xs text-muted-foreground italic">
-          API de Relatórios em construção — os valores acima serão preenchidos automaticamente quando o endpoint <code className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">/api/relatorios/dre/?ano={ano}</code> estiver disponível.
+          API de Relatórios em construção — os valores acima serão preenchidos automaticamente quando o endpoint <code className="bg-muted px-1.5 py-0.5 rounded text-xs text-muted-foreground">/api/relatorios/dre/?ano={ano}</code> estiver disponível.
         </p>
       </div>
     </div>
@@ -288,6 +288,10 @@ export default function Relatorios() {
       foreColor: 'var(--muted-foreground)',
       background: 'transparent',
     },
+    // Rótulos por célula ficam desligados de propósito: a grade é 7 dias × 26 semanas
+    // (182 células), onde rótulos legíveis (>=12px) se sobrepõem. A dependência de cor
+    // (WCAG 1.4.1) e o acesso por leitor de tela (1.1.1) são resolvidos pela tabela
+    // textual equivalente logo abaixo do gráfico — mesmo padrão de SimuladorGastos.
     dataLabels: { enabled: false },
     stroke: { width: 1, colors: ['var(--background)'] },
     plotOptions: {
@@ -309,17 +313,17 @@ export default function Relatorios() {
       type: 'category',
       title: {
         text: 'Semanas (últimos 6 meses)',
-        style: { fontSize: '11px', fontWeight: 600, color: 'var(--muted-foreground)' }
+        style: { fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)' }
       },
       axisBorder: { show: false },
       axisTicks: { show: false },
       labels: {
-        style: { fontSize: '10px' }
+        style: { fontSize: '12px' }
       }
     },
     yaxis: {
       labels: {
-        style: { fontSize: '10px' }
+        style: { fontSize: '12px' }
       }
     },
     grid: {
@@ -384,8 +388,14 @@ export default function Relatorios() {
               Imprimir / PDF
             </Button>
 
-            <Button variant="outline" size="icon" onClick={() => refetch()} className="rounded-xl h-9 w-9 shrink-0">
-              <RefreshCw className={`h-4 w-4 text-muted-foreground ${isLoading ? 'animate-spin' : ''}`} />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              className="rounded-xl h-9 w-9 shrink-0"
+              aria-label="Atualizar relatórios"
+            >
+              <RefreshCw className={`h-4 w-4 text-muted-foreground ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -426,7 +436,7 @@ export default function Relatorios() {
                   <div className={`w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3`}>
                     <Icon className="h-4 w-4 text-primary" />
                   </div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
                   <p className={`text-lg font-extrabold mt-0.5 ${
                     kpi.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
                     kpi.color === 'rose' || val < 0 ? 'text-rose-600 dark:text-rose-400' :
@@ -456,24 +466,36 @@ export default function Relatorios() {
             const isOpen = expandedSection === section.id;
             return (
               <Card key={section.id} className="border-border/40 shadow-sm mb-4">
-                <CardHeader
-                  className="cursor-pointer flex flex-row items-center justify-between no-print"
-                  onClick={() => setExpandedSection(isOpen ? null : section.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Icon className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-bold text-foreground">{section.label}</CardTitle>
-                      <CardDescription className="text-[10px]">Exercício {ano}</CardDescription>
-                    </div>
-                  </div>
-                  {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                {/* Padrão de acordeão do WAI-ARIA APG: o heading ENVOLVE o botão.
+                    Assim o título permanece no outline do documento e o conteúdo do
+                    <button> fica restrito a phrasing content (spans), como exige o HTML. */}
+                <CardHeader className="p-0 no-print">
+                  <h3 className="text-sm font-bold leading-none tracking-tight text-foreground">
+                    <button
+                      type="button"
+                      className="w-full flex flex-row items-center justify-between gap-3 p-6 text-left cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                      onClick={() => setExpandedSection(isOpen ? null : section.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`secao-${section.id}`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <span className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                        </span>
+                        <span className="block">
+                          <span className="block">{section.label}</span>
+                          <span className="mt-1 block text-xs font-normal text-muted-foreground">Exercício {ano}</span>
+                        </span>
+                      </span>
+                      {isOpen
+                        ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                        : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />}
+                    </button>
+                  </h3>
                 </CardHeader>
 
                 {/* Always shown on print */}
-                <CardContent className={`${isOpen ? 'block' : 'hidden'} print:!block`}>
+                <CardContent id={`secao-${section.id}`} className={`${isOpen ? 'block' : 'hidden'} print:!block`}>
                   {section.id === 'dre' && (
                     apiDataReady
                       ? <DRETable ano={ano} data={compositeData} />
@@ -515,15 +537,52 @@ export default function Relatorios() {
                   {section.id === 'heatmap' && (
                     <div className="p-4 rounded-xl border border-border/40 bg-card/30 backdrop-blur-md">
                       {compositeData?.sazonalidade?.series ? (
-                        <div className="h-[320px] w-full">
-                          <Chart
-                            options={heatmapOptions}
-                            series={compositeData.sazonalidade.series}
-                            type="heatmap"
-                            height="100%"
-                            width="100%"
-                          />
-                        </div>
+                        <>
+                          <div className="h-[320px] w-full">
+                            <Chart
+                              options={heatmapOptions}
+                              series={compositeData.sazonalidade.series}
+                              type="heatmap"
+                              height="100%"
+                              width="100%"
+                            />
+                          </div>
+
+                          {/* Equivalente textual do mapa de calor: torna os dados legíveis
+                              sem depender de cor e acessíveis a leitores de tela. */}
+                          <details className="mt-4 group">
+                            <summary className="cursor-pointer text-xs font-semibold text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+                              Ver dados do mapa de calor em tabela
+                            </summary>
+                            <div className="mt-3 overflow-x-auto rounded-xl border border-border/40">
+                              <table className="w-full text-xs text-left border-collapse">
+                                <caption className="sr-only">
+                                  Total de despesas por dia da semana nos últimos 6 meses
+                                </caption>
+                                <thead>
+                                  <tr className="border-b border-border/40 bg-muted/20 text-muted-foreground">
+                                    <th scope="col" className="py-2.5 px-4 font-bold uppercase tracking-wider">Dia da semana</th>
+                                    <th scope="col" className="py-2.5 px-4 font-bold uppercase tracking-wider text-right">Total no período</th>
+                                    <th scope="col" className="py-2.5 px-4 font-bold uppercase tracking-wider text-right">Média por semana</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/20">
+                                  {compositeData.sazonalidade.series.map((serie) => {
+                                    const total = (serie.data ?? []).reduce((acc, ponto) => acc + Number(ponto.y ?? 0), 0);
+                                    const semanas = (serie.data ?? []).length || 1;
+                                    return (
+                                      <tr key={serie.name}>
+                                        <th scope="row" className="py-2.5 px-4 font-semibold text-foreground">{serie.name}</th>
+                                        <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{formatCurrency(total)}</td>
+                                        <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">{formatCurrency(total / semanas)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        </>
                       ) : (
                         <div className="h-[320px] w-full flex items-center justify-center bg-muted/20 animate-pulse rounded-xl">
                           <div className="text-center">

@@ -76,15 +76,15 @@ const ProtectedRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
         <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
           Iniciando sessão segura...
         </p>
       </div>
     );
   }
-  
+
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
@@ -94,12 +94,15 @@ const PublicRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
+        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
+          Verificando sessão...
+        </p>
       </div>
     );
   }
-  
+
   return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
 };
 

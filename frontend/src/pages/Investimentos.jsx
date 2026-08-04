@@ -72,8 +72,8 @@ export default function Investimentos() {
 
   if (isDashLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+      <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
           Analisando carteira e rentabilidades...
         </p>
@@ -83,8 +83,8 @@ export default function Investimentos() {
 
   if (isDashError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
-        <AlertCircle className="h-12 w-12 text-red-500" />
+      <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center max-w-md mx-auto">
+        <AlertCircle className="h-12 w-12 text-red-500" aria-hidden="true" />
         <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Erro ao carregar carteira</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Não foi possível carregar os dados de investimentos. Verifique sua conexão com o servidor.
@@ -151,7 +151,7 @@ export default function Investimentos() {
               show: true,
               label: 'Patrimônio',
               color: '#888888',
-              fontSize: '11px',
+              fontSize: '12px',
               fontWeight: 600,
               formatter: () => formatCurrency(total_patrimonio)
             }
@@ -210,7 +210,7 @@ export default function Investimentos() {
     xaxis: {
       categories: snowballCategories,
       labels: {
-        style: { fontSize: '10px' },
+        style: { fontSize: '12px' },
       },
       axisBorder: { show: false },
       axisTicks: { show: false },
@@ -218,7 +218,7 @@ export default function Investimentos() {
     yaxis: {
       labels: {
         formatter: (val) => formatCurrency(val),
-        style: { fontSize: '10px' },
+        style: { fontSize: '12px' },
       },
     },
     grid: {
@@ -280,14 +280,14 @@ export default function Investimentos() {
     },
     xaxis: {
       categories: patrimonioCategories,
-      labels: { style: { fontSize: '10px' } },
+      labels: { style: { fontSize: '12px' } },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
     yaxis: {
       labels: {
         formatter: (val) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val),
-        style: { fontSize: '10px' },
+        style: { fontSize: '12px' },
       },
     },
     grid: {
@@ -373,7 +373,7 @@ export default function Investimentos() {
           <div>
             <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
               <span>Patrimônio total</span>
-              <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold rounded-full px-2 py-0.5
+              <span className={`inline-flex items-center gap-0.5 text-xs font-bold rounded-full px-2 py-0.5
                 ${total_rentabilidade_percentual >= 0 
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -404,11 +404,11 @@ export default function Investimentos() {
           </div>
           <div className="mt-4 pt-4 border-t border-border/40 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <div className="text-[10px] text-muted-foreground uppercase font-semibold">Ganho de Capital</div>
+              <div className="text-xs text-muted-foreground uppercase font-semibold">Ganho de Capital</div>
               <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_patrimonio - total_investido)}</div>
             </div>
             <div className="border-l border-border/40 pl-3">
-              <div className="text-[10px] text-muted-foreground uppercase font-semibold">Dividendos</div>
+              <div className="text-xs text-muted-foreground uppercase font-semibold">Dividendos</div>
               <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_dividendos)}</div>
             </div>
           </div>
@@ -434,7 +434,7 @@ export default function Investimentos() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl grid grid-cols-2 gap-4 divide-x divide-border/40">
           <div className="flex flex-col justify-between">
             <div>
-              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                 Variação
               </div>
               <div className={`text-base font-extrabold flex items-center gap-0.5
@@ -444,7 +444,7 @@ export default function Investimentos() {
                 <span className="text-xs">{(total_patrimonio - total_investido) >= 0 ? '▲' : '▼'}</span>
               </div>
             </div>
-            <div className={`text-[11px] font-semibold mt-1 ${
+            <div className={`text-xs font-semibold mt-1 ${
               (total_patrimonio - total_investido) >= 0
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-rose-500'
@@ -455,7 +455,7 @@ export default function Investimentos() {
           
           <div className="pl-4 flex flex-col justify-between">
             <div>
-              <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                 Rentabilidade
               </div>
               <div className={`text-base font-extrabold flex items-center gap-0.5
@@ -465,7 +465,7 @@ export default function Investimentos() {
                 <span className="text-xs">{total_rentabilidade_percentual >= 0 ? '▲' : '▼'}</span>
               </div>
             </div>
-            <div className="text-[10px] text-muted-foreground font-semibold mt-1">
+            <div className="text-xs text-muted-foreground font-semibold mt-1">
               Cap. + dividendos
             </div>
           </div>

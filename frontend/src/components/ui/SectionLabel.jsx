@@ -27,7 +27,7 @@ export function SectionLabel({ icon: Icon, iconClassName, className, children, a
       )}
       {...props}
     >
-      {Icon && <Icon className={cn("h-4 w-4 text-primary", iconClassName)} />}
+      {Icon && <Icon className={cn("h-4 w-4 text-primary", iconClassName)} aria-hidden="true" />}
       {children}
     </Component>
   )

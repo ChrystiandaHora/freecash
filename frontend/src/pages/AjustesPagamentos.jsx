@@ -30,6 +30,7 @@ import {
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
+import { Modal } from '../components/ui/Modal';
 
 // ─── API helpers ───────────────────────────────────────────
 const fetchContas = () =>
@@ -67,7 +68,7 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
           className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${cor}20`, border: `1.5px solid ${cor}40` }}
         >
-          <IconComponent className="h-5 w-5" style={{ color: cor }} />
+          <IconComponent className="h-5 w-5" aria-hidden="true" style={{ color: cor }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground truncate">{conta.nome}</p>
@@ -110,7 +111,7 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
           `}
           title={conta.ativo ? 'Desativar' : 'Ativar'}
         >
-          {conta.ativo ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+          {conta.ativo ? <PowerOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Power className="h-3.5 w-3.5" aria-hidden="true" />}
           {conta.ativo ? 'Desativar' : 'Ativar'}
         </button>
         <button
@@ -118,7 +119,7 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
           onClick={() => onEdit(conta)}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
         >
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
           Editar
         </button>
         <button
@@ -126,8 +127,9 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
           onClick={() => onDelete(conta.id)}
           className="p-1.5 rounded-lg text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors"
           title="Excluir"
+          aria-label={`Excluir ${conta.nome}`}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -189,11 +191,12 @@ export default function AjustesPagamentos() {
             onClick={() => refetch()}
             disabled={isLoading}
             className="gap-2"
+            aria-label="Atualizar cartões e contas"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
           <Button id="btn-novo-cartao" onClick={handleNew} className="gap-2">
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
             Novo Cartão
           </Button>
         </div>
@@ -208,8 +211,9 @@ export default function AjustesPagamentos() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div role="status" className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">Carregando cartões e contas...</span>
         </div>
       )}
 
@@ -276,12 +280,13 @@ export default function AjustesPagamentos() {
 
       {/* Delete Confirm */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <AlertCircle className="h-6 w-6 shrink-0" />
-              <h3 className="font-bold text-lg">Confirmar Exclusão</h3>
-            </div>
+        <Modal
+          isOpen
+          title="Confirmar Exclusão"
+          onClose={() => setDeleteConfirm(null)}
+          size="sm"
+        >
+          <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Tem certeza que deseja excluir este cartão? Esta ação não pode ser desfeita.
             </p>
@@ -301,15 +306,15 @@ export default function AjustesPagamentos() {
                 className="flex-1 gap-2 bg-red-600 hover:bg-red-700 text-white border-red-600"
               >
                 {deleteMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 )}
                 Excluir
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

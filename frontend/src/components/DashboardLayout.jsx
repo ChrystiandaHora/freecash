@@ -8,7 +8,7 @@
  * @component
  * @returns {React.JSX.Element} O layout mestre encapsulado com suporte a temas responsivos.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import {
@@ -41,7 +41,32 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { Modal } from './ui/Modal';
 import { helpContent } from '../config/helpContent';
+
+/** Título legível de cada rota, usado para atualizar `document.title` na navegação (WCAG 2.4.2). */
+const routeTitles = [
+  { match: (p) => p === '/dashboard' || p === '/', title: 'Dashboard' },
+  { match: (p) => p === '/investimentos', title: 'Investimentos' },
+  { match: (p) => p.startsWith('/investimentos/ativos'), title: 'Meus Ativos' },
+  { match: (p) => p.startsWith('/investimentos/balanceamento'), title: 'Balanceamento' },
+  { match: (p) => p.startsWith('/investimentos/historico'), title: 'Histórico de Ordens' },
+  { match: (p) => p.startsWith('/investimentos/classes'), title: 'Classes de Ativos' },
+  { match: (p) => p.startsWith('/contas-pagar'), title: 'Contas a Pagar' },
+  { match: (p) => p.startsWith('/contas-kanban'), title: 'Kanban de Contas' },
+  { match: (p) => p.startsWith('/cartoes'), title: 'Meus Cartões' },
+  { match: (p) => p.startsWith('/receitas'), title: 'Receitas' },
+  { match: (p) => p.startsWith('/transacoes'), title: 'Transações' },
+  { match: (p) => p.startsWith('/simulador'), title: 'Simulador de Gastos' },
+  { match: (p) => p.startsWith('/relatorios'), title: 'Relatórios' },
+  { match: (p) => p.startsWith('/importar'), title: 'Importar' },
+  { match: (p) => p.startsWith('/compras-cartao'), title: 'Compras no Cartão' },
+  { match: (p) => p.startsWith('/backup'), title: 'Backup' },
+  { match: (p) => p.startsWith('/pagamentos'), title: 'Formas de Pagamento' },
+];
+
+const getRouteTitle = (path) =>
+  routeTitles.find((r) => r.match(path))?.title ?? 'FreeCash';
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
@@ -52,7 +77,17 @@ export default function DashboardLayout() {
   const [openGroup, setOpenGroup] = useState('geral');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [helpOpen, setHelpOpen] = useState(false);
-  
+  const mainRef = useRef(null);
+  // Evita roubar o foco na primeira renderização — só realoca a partir da 1ª navegação.
+  const isFirstRenderRef = useRef(true);
+  // `lg` do Tailwind = 1024px. Precisamos disso em JS (não só como classe) porque
+  // `inert` é atributo do DOM e não pode ser condicionado por breakpoint no CSS.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+  const sidebarRef = useRef(null);
+  const mobileTriggerRef = useRef(null);
+
   // Helper para casar a rota atual com o dicionário de ajuda usando Expressões Regulares
   const getHelpForPath = (path) => {
     for (const pattern in helpContent) {
@@ -151,6 +186,81 @@ export default function DashboardLayout() {
     else setOpenGroup('geral');
   }, [location.pathname]);
 
+  // Ao navegar (SPA): atualiza o título da aba e devolve o foco ao conteúdo principal,
+  // para que usuários de teclado/leitor de tela percebam a mudança de página (WCAG 2.4.2 / 2.4.3).
+  useEffect(() => {
+    document.title = `${getRouteTitle(location.pathname)} · FreeCash`;
+
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    mainRef.current?.focus();
+  }, [location.pathname]);
+
+  // Escape fecha a sidebar mobile, equivalente ao clique no backdrop.
+  // Espelha `closeMobileSidebar` (declarada abaixo) em vez de chamá-la, para não
+  // precisar dela nas dependências deste efeito — mantenha as duas em sincronia.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKey = (e) => {
+      if (e.key !== 'Escape') return;
+      setMobileOpen(false);
+      mobileTriggerRef.current?.focus();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [mobileOpen]);
+
+  // Acompanha o breakpoint para saber se a sidebar está fora da tela (mobile fechado)
+  // ou fixa e visível (desktop).
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e) => {
+      setIsDesktop(e.matches);
+      // Ao entrar em desktop, zera o estado do menu mobile. Sem isso ele ficaria
+      // `true` de forma invisível e, ao voltar para mobile, o efeito de abertura
+      // roubaria o foco para o botão de fechar durante um simples resize.
+      if (e.matches) setMobileOpen(false);
+    };
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  // Ao ABRIR no mobile, leva o foco para dentro da sidebar.
+  // O caminho de fechamento NÃO fica aqui de propósito: um efeito não distingue
+  // "usuário fechou o menu" de "efeito re-executou" (troca de breakpoint) nem de
+  // "fechou porque navegou". Devolver o foco é responsabilidade de quem fecha —
+  // ver `closeMobileSidebar` abaixo. Antes, este efeito roubava o foco no resize
+  // desktop→mobile e anulava o foco de troca de rota no mobile.
+  useEffect(() => {
+    if (isDesktop || !mobileOpen) return;
+    sidebarRef.current?.querySelector('a, button')?.focus();
+  }, [mobileOpen, isDesktop]);
+
+  /**
+   * Fecha a sidebar mobile por ação explícita do usuário (X, Escape ou backdrop)
+   * e devolve o foco ao gatilho. Não usar ao fechar por navegação: nesse caso o
+   * efeito de troca de rota é que posiciona o foco no conteúdo principal.
+   */
+  const closeMobileSidebar = () => {
+    setMobileOpen(false);
+    mobileTriggerRef.current?.focus();
+  };
+
+  /**
+   * Fecha a sidebar ao clicar num item de navegação. Normalmente o foco é
+   * posicionado pelo efeito de troca de rota — mas se o item clicado JÁ é a rota
+   * atual, `location.pathname` não muda, aquele efeito não dispara e o foco
+   * cairia no <body> quando a sidebar fica inert. Nesse caso posicionamos aqui.
+   */
+  const handleNavItemClick = (path) => {
+    setMobileOpen(false);
+    if (path === location.pathname) {
+      mainRef.current?.focus();
+    }
+  };
+
   const cycleThemeMode = () => {
     const nextMode = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'auto' : 'light';
     setThemeMode(nextMode);
@@ -227,19 +337,33 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300 font-sans">
-      
-      {/* Mobile Sidebar Overlay */}
+
+      {/* Skip link: primeiro elemento focável da página, permite pular a navegação repetida (WCAG 2.4.1) */}
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        Pular para o conteúdo principal
+      </a>
+
+      {/* Mobile Sidebar Overlay (fechamento também disponível via Escape e botão X) */}
       {mobileOpen && (
-        <div 
+        <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden transition-opacity"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileSidebar}
         />
       )}
 
-      {/* Sidebar Component */}
-      <aside 
+      {/* Sidebar Component.
+          `inert` quando está fora da tela (mobile fechado): sem isso o usuário de
+          teclado tabulava por todos os links de um painel invisível (WCAG 2.4.3).
+          Em desktop a sidebar é sempre visível, então nunca fica inert. */}
+      <aside
+        ref={sidebarRef}
+        inert={!isDesktop && !mobileOpen}
         className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-card/80 backdrop-blur-md border-r border-border/50 transition-all duration-300 ease-in-out
-          ${collapsed ? 'w-20' : 'w-72'} 
+          ${collapsed ? 'w-20' : 'w-72'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
@@ -247,7 +371,7 @@ export default function DashboardLayout() {
         <div className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border/50">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-              <Wallet className="h-5 w-5 text-primary-foreground" />
+              <Wallet className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
             </div>
             {!collapsed && (
               <span className="font-bold text-xl tracking-tight text-primary">
@@ -255,32 +379,37 @@ export default function DashboardLayout() {
               </span>
             )}
           </div>
-          <button 
-            onClick={() => setMobileOpen(false)} 
+          <button
+            onClick={closeMobileSidebar}
             className="lg:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted/80"
+            aria-label="Fechar menu"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Navigation Items (Scrollable) */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar" aria-label="Navegação principal">
           {navGroups.map((group) => {
             const isOpen = openGroup === group.id || collapsed;
             return (
               <div key={group.id} className="space-y-1">
                 {!collapsed && (
-                  <button 
+                  <button
                     onClick={() => toggleGroup(group.id)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground font-bold hover:text-foreground transition-colors"
+                    aria-expanded={isOpen}
+                    aria-controls={`nav-group-${group.id}`}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs uppercase tracking-widest text-muted-foreground font-bold hover:text-foreground transition-colors"
                   >
                     <span>{group.label}</span>
-                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${isOpen ? 'rotate-0' : '-rotate-90'}`} aria-hidden="true" />
                   </button>
                 )}
-                
+
                 {/* Items Container */}
-                <div 
+                <div
+                  id={`nav-group-${group.id}`}
+                  inert={!isOpen}
                   className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
                 >
                   {group.items.map((item) => {
@@ -294,17 +423,21 @@ export default function DashboardLayout() {
                       <Link
                         key={item.path}
                         to={item.path}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                          ${isHighlighted 
-                            ? 'bg-primary/10 text-primary dark:bg-primary/20' 
-                            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                        // Item ativo é sinalizado por peso da fonte + barra lateral além da cor,
+                        // para não depender de cor isolada (WCAG 1.4.1), e por aria-current (4.1.2).
+                        aria-current={isHighlighted ? 'page' : undefined}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 border-l-2
+                          ${isHighlighted
+                            ? 'bg-primary/10 text-primary dark:bg-primary/20 font-bold border-l-primary'
+                            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium border-l-transparent'
                           }
                           ${collapsed ? 'justify-center' : ''}
                         `}
-                        onClick={() => setMobileOpen(false)}
+                        onClick={() => handleNavItemClick(item.path)}
                         title={collapsed ? item.name : undefined}
+                        aria-label={collapsed ? item.name : undefined}
                       >
-                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
                         {!collapsed && <span>{item.name}</span>}
                       </Link>
                     );
@@ -323,7 +456,7 @@ export default function DashboardLayout() {
                 className="w-9 h-9 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shadow-sm transition-all hover:scale-105 duration-200"
                 title={collapsed ? (user.username || 'Usuário') : undefined}
               >
-                {user.username ? user.username.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+                {user.username ? user.username.charAt(0).toUpperCase() : <User className="h-4 w-4" aria-hidden="true" />}
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0">
@@ -340,8 +473,9 @@ export default function DashboardLayout() {
             onClick={handleLogout}
             className={`w-full flex items-center gap-3 hover:bg-red-500/10 hover:text-red-500 dark:hover:bg-red-500/20 ${collapsed ? 'justify-center px-0' : 'justify-start px-4'} py-2.5 rounded-xl text-muted-foreground`}
             title={collapsed ? 'Sair' : undefined}
+            aria-label={collapsed ? 'Sair' : undefined}
           >
-            <LogOut className="h-5 w-5 shrink-0 text-red-500" />
+            <LogOut className="h-5 w-5 shrink-0 text-red-500" aria-hidden="true" />
             {!collapsed && <span className="font-semibold text-sm">Sair</span>}
           </Button>
         </div>
@@ -361,15 +495,20 @@ export default function DashboardLayout() {
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden lg:flex p-2 rounded-lg text-muted-foreground hover:bg-muted/50"
+              aria-label={collapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+              aria-expanded={!collapsed}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
             {/* Mobile menu trigger */}
             <button
+              ref={mobileTriggerRef}
               onClick={() => setMobileOpen(true)}
               className="lg:hidden p-2 rounded-lg text-muted-foreground hover:bg-muted/50"
+              aria-label="Abrir menu"
+              aria-expanded={mobileOpen}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
 
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider hidden sm:block">
@@ -385,8 +524,9 @@ export default function DashboardLayout() {
               onClick={() => setHelpOpen(true)}
               className="rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9"
               title="Ajuda desta tela"
+              aria-label="Ajuda desta tela"
             >
-              <HelpCircle className="h-[1.1rem] w-[1.1rem]" />
+              <HelpCircle className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
             </Button>
 
             {/* Theme Toggle */}
@@ -402,24 +542,36 @@ export default function DashboardLayout() {
                   ? 'Tema: Escuro (clique para alternar)'
                   : `Tema: Automático (${activeTheme === 'dark' ? 'Modo Noturno' : 'Modo Diurno'} por horário)`
               }
+              aria-label={
+                themeMode === 'light'
+                  ? 'Tema: Claro. Clique para alternar'
+                  : themeMode === 'dark'
+                  ? 'Tema: Escuro. Clique para alternar'
+                  : `Tema: Automático, ${activeTheme === 'dark' ? 'modo noturno' : 'modo diurno'} por horário. Clique para alternar`
+              }
             >
-              {themeMode === 'light' && <Sun className="h-[1.1rem] w-[1.1rem]" />}
-              {themeMode === 'dark' && <Moon className="h-[1.1rem] w-[1.1rem]" />}
-              {themeMode === 'auto' && <SunMoon className="h-[1.1rem] w-[1.1rem] text-primary" />}
+              {themeMode === 'light' && <Sun className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />}
+              {themeMode === 'dark' && <Moon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />}
+              {themeMode === 'auto' && <SunMoon className="h-[1.1rem] w-[1.1rem] text-primary" aria-hidden="true" />}
             </Button>
 
-            <div className="h-5 w-[1px] bg-border mx-1" />
+            <div className="h-5 w-[1px] bg-border mx-1" aria-hidden="true" />
 
             {/* Real-time dynamic clock */}
             <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-muted border border-border/50 text-xs font-semibold text-muted-foreground shadow-sm">
-              <Clock className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
+              <Clock className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" aria-hidden="true" />
               <span>{formattedDateTime}</span>
             </div>
           </div>
         </header>
 
-        {/* Content Viewport */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden min-w-0">
+        {/* Content Viewport — alvo do skip link e do foco realocado na troca de rota */}
+        <main
+          id="conteudo-principal"
+          ref={mainRef}
+          tabIndex={-1}
+          className="flex-grow p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden min-w-0 focus:outline-none"
+        >
           <div className="w-full space-y-8 min-w-0">
             <Outlet />
           </div>
@@ -431,38 +583,24 @@ export default function DashboardLayout() {
         </footer>
       </div>
 
-      {/* Help Modal */}
+      {/* Help Modal — usa o Modal compartilhado (role="dialog", foco inicial, trap de Tab, Escape) */}
       {helpOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          {/* Backdrop Blur Overlay */}
-          <div 
-            className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setHelpOpen(false)}
-          />
-
-          {/* Modal Content Card */}
-          <div className="relative bg-card border border-border/60 shadow-2xl rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-scale-up z-10 transition-all duration-300">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border/50 bg-muted/20 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                  <HelpCircle className="h-4 w-4" />
-                </div>
-                <h3 className="font-bold text-base text-foreground leading-tight">
-                  Ajuda: {currentHelp.title}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setHelpOpen(false)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
-                title="Fechar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
+        <Modal
+          isOpen
+          onClose={() => setHelpOpen(false)}
+          size="lg"
+          title={
+            <span className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <HelpCircle className="h-4 w-4" aria-hidden="true" />
+              </span>
+              Ajuda: {currentHelp.title}
+            </span>
+          }
+        >
+          <div className="space-y-6">
             {/* Body (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+            <div className="max-h-[60vh] overflow-y-auto space-y-6 custom-scrollbar pr-1">
               {/* Visão Geral */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Visão Geral</h4>
@@ -505,12 +643,12 @@ export default function DashboardLayout() {
               {currentHelp.actions && Object.keys(currentHelp.actions).length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Guia de Ações e Botões</h4>
-                  <div className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
+                  <div className="overflow-x-auto rounded-xl border border-border/40 bg-muted/10">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead>
                         <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/20">
-                          <th className="py-2.5 px-4 font-bold uppercase tracking-wider">Elemento / Ação</th>
-                          <th className="py-2.5 px-4 font-bold uppercase tracking-wider">O que faz</th>
+                          <th scope="col" className="py-2.5 px-4 font-bold uppercase tracking-wider">Elemento / Ação</th>
+                          <th scope="col" className="py-2.5 px-4 font-bold uppercase tracking-wider">O que faz</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/20 text-foreground/90 font-medium">
@@ -528,8 +666,8 @@ export default function DashboardLayout() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border/50 bg-muted/10 flex justify-end shrink-0">
-              <Button 
+            <div className="pt-4 border-t border-border/50 flex justify-end shrink-0">
+              <Button
                 onClick={() => setHelpOpen(false)}
                 className="rounded-xl px-5 font-semibold text-xs py-2 shadow-sm"
               >
@@ -537,7 +675,7 @@ export default function DashboardLayout() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

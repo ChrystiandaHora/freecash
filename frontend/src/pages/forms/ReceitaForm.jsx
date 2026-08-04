@@ -96,8 +96,9 @@ export default function ReceitaForm() {
           onClick={() => navigate('/receitas')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -120,10 +121,10 @@ export default function ReceitaForm() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Tipo: Única ou Recorrente */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <span id="tipo-receita-label" className="text-sm font-medium text-foreground">
                 Tipo de Receita
-              </label>
-              <div className="flex gap-4">
+              </span>
+              <div role="radiogroup" aria-labelledby="tipo-receita-label" className="flex gap-4">
                 {[
                   { value: 'unica', label: 'Receita Única', Icon: ArrowUpCircle },
                   { value: 'recorrente', label: 'Recorrente', Icon: Repeat },
@@ -131,6 +132,8 @@ export default function ReceitaForm() {
                   <button
                     key={value}
                     type="button"
+                    role="radio"
+                    aria-checked={watchTipo === value}
                     onClick={() => {
                       setValue('tipo', value);
                     }}
@@ -140,7 +143,7 @@ export default function ReceitaForm() {
                         : 'border-border bg-background text-muted-foreground hover:border-primary/40'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4" aria-hidden="true" />
                     {label}
                   </button>
                 ))}
@@ -149,51 +152,77 @@ export default function ReceitaForm() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="receita-descricao" className="text-sm font-medium text-foreground">
                   Descrição <span className="text-red-500">*</span>
                 </label>
-                <Input {...register('descricao')} placeholder="Ex: Salário, Freelance React..." />
+                <Input
+                  id="receita-descricao"
+                  {...register('descricao')}
+                  placeholder="Ex: Salário, Freelance React..."
+                  aria-invalid={!!errors.descricao}
+                  aria-describedby={errors.descricao ? "receita-descricao-error" : undefined}
+                />
                 {errors.descricao && (
-                  <p className="text-xs text-red-500">{errors.descricao.message}</p>
+                  <p id="receita-descricao-error" role="alert" className="text-xs text-red-500">{errors.descricao.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="receita-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
-                <Input {...register('categoria')} placeholder="Ex: Salário, Dividendos" />
+                <Input
+                  id="receita-categoria"
+                  {...register('categoria')}
+                  placeholder="Ex: Salário, Dividendos"
+                  aria-invalid={!!errors.categoria}
+                  aria-describedby={errors.categoria ? "receita-categoria-error" : undefined}
+                />
                 {errors.categoria && (
-                  <p className="text-xs text-red-500">{errors.categoria.message}</p>
+                  <p id="receita-categoria-error" role="alert" className="text-xs text-red-500">{errors.categoria.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="receita-valor" className="text-sm font-medium text-foreground">
                   Valor (R$) <span className="text-red-500">*</span>
                 </label>
-                <Input {...register('valor')} type="number" step="0.01" placeholder="0,00" />
+                <Input
+                  id="receita-valor"
+                  {...register('valor')}
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  aria-invalid={!!errors.valor}
+                  aria-describedby={errors.valor ? "receita-valor-error" : undefined}
+                />
                 {errors.valor && (
-                  <p className="text-xs text-red-500">{errors.valor.message}</p>
+                  <p id="receita-valor-error" role="alert" className="text-xs text-red-500">{errors.valor.message}</p>
                 )}
               </div>
 
               <div className={`space-y-1.5 ${watchTipo === 'recorrente' ? '' : 'sm:col-span-2'}`}>
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="receita-data-recebimento" className="text-sm font-medium text-foreground">
                   Data de Recebimento <span className="text-red-500">*</span>
                 </label>
-                <Input {...register('data_recebimento')} type="date" />
+                <Input
+                  id="receita-data-recebimento"
+                  {...register('data_recebimento')}
+                  type="date"
+                  aria-invalid={!!errors.data_recebimento}
+                  aria-describedby={errors.data_recebimento ? "receita-data-recebimento-error" : undefined}
+                />
                 {errors.data_recebimento && (
-                  <p className="text-xs text-red-500">{errors.data_recebimento.message}</p>
+                  <p id="receita-data-recebimento-error" role="alert" className="text-xs text-red-500">{errors.data_recebimento.message}</p>
                 )}
               </div>
 
               {watchTipo === 'recorrente' && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">
+                  <label htmlFor="receita-frequencia" className="text-sm font-medium text-foreground">
                     Frequência
                   </label>
-                  <Select {...register('recorrencia')}>
+                  <Select id="receita-frequencia" {...register('recorrencia')}>
                     <option value="">Selecione...</option>
                     <option value="mensal">Mensal</option>
                     <option value="quinzenal">Quinzenal</option>
@@ -205,17 +234,17 @@ export default function ReceitaForm() {
 
               {watchTipo === 'recorrente' && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground">
+                  <label htmlFor="receita-data-fim" className="text-sm font-medium text-foreground">
                     Repetir Até (opcional)
                   </label>
-                  <Input {...register('data_fim')} type="date" />
-                  <p className="text-[10px] text-muted-foreground">Deixe em branco para recorrência indefinida.</p>
+                  <Input id="receita-data-fim" {...register('data_fim')} type="date" />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para recorrência indefinida.</p>
                 </div>
               )}
             </div>
 
             {(createMutation.isError || updateMutation.isError) && (
-              <p className="text-sm text-red-500">Erro ao salvar receita. Tente novamente.</p>
+              <p role="alert" className="text-sm text-red-500">Erro ao salvar receita. Tente novamente.</p>
             )}
 
             <div className="flex justify-end gap-3 pt-4 border-t border-border/60">

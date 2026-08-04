@@ -96,8 +96,9 @@ export default function ContaPagarForm() {
           onClick={() => navigate('/contas-pagar')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -120,70 +121,82 @@ export default function ContaPagarForm() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="conta-descricao" className="text-sm font-medium text-foreground">
                   Descrição <span className="text-red-500">*</span>
                 </label>
                 <Input
+                  id="conta-descricao"
                   {...register('descricao')}
                   placeholder="Ex: Aluguel Março"
                   readOnly={isFaturaCartao}
                   className={isFaturaCartao ? "bg-muted cursor-not-allowed" : ""}
+                  aria-invalid={!!errors.descricao}
+                  aria-describedby={errors.descricao ? "conta-descricao-error" : undefined}
                 />
                 {errors.descricao && (
-                  <p className="text-xs text-red-500">{errors.descricao.message}</p>
+                  <p id="conta-descricao-error" role="alert" className="text-xs text-red-500">{errors.descricao.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="conta-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
                 <Input
+                  id="conta-categoria"
                   {...register('categoria')}
                   placeholder="Ex: Moradia"
                   readOnly={isFaturaCartao}
                   className={isFaturaCartao ? "bg-muted cursor-not-allowed" : ""}
+                  aria-invalid={!!errors.categoria}
+                  aria-describedby={errors.categoria ? "conta-categoria-error" : undefined}
                 />
                 {errors.categoria && (
-                  <p className="text-xs text-red-500">{errors.categoria.message}</p>
+                  <p id="conta-categoria-error" role="alert" className="text-xs text-red-500">{errors.categoria.message}</p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="conta-valor" className="text-sm font-medium text-foreground">
                   Valor (R$) <span className="text-red-500">*</span>
                 </label>
                 <Input
+                  id="conta-valor"
                   {...register('valor')}
                   type="number"
                   step="0.01"
                   placeholder="0,00"
                   readOnly={isFaturaCartao}
                   className={isFaturaCartao ? "bg-muted cursor-not-allowed" : ""}
+                  aria-invalid={!!errors.valor}
+                  aria-describedby={errors.valor ? "conta-valor-error" : undefined}
                 />
                 {errors.valor && (
-                  <p className="text-xs text-red-500">{errors.valor.message}</p>
+                  <p id="conta-valor-error" role="alert" className="text-xs text-red-500">{errors.valor.message}</p>
                 )}
               </div>
 
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="conta-vencimento" className="text-sm font-medium text-foreground">
                   Data de Vencimento <span className="text-red-500">*</span>
                 </label>
                 <Input
+                  id="conta-vencimento"
                   {...register('data_vencimento')}
                   type="date"
                   readOnly={isFaturaCartao}
                   className={isFaturaCartao ? "bg-muted cursor-not-allowed" : ""}
+                  aria-invalid={!!errors.data_vencimento}
+                  aria-describedby={errors.data_vencimento ? "conta-vencimento-error" : undefined}
                 />
                 {errors.data_vencimento && (
-                  <p className="text-xs text-red-500">{errors.data_vencimento.message}</p>
+                  <p id="conta-vencimento-error" role="alert" className="text-xs text-red-500">{errors.data_vencimento.message}</p>
                 )}
               </div>
             </div>
 
             {(createMutation.isError || updateMutation.isError) && (
-              <p className="text-sm text-red-500">Erro ao salvar conta. Tente novamente.</p>
+              <p role="alert" className="text-sm text-red-500">Erro ao salvar conta. Tente novamente.</p>
             )}
 
             {conta?.pago && (

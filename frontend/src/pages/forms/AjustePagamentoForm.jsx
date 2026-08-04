@@ -153,8 +153,9 @@ export default function AjustePagamentoForm() {
           onClick={() => navigate('/pagamentos')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -177,7 +178,7 @@ export default function AjustePagamentoForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Nome */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
+              <label htmlFor="input-nome-conta" className="text-sm font-medium text-foreground">
                 Nome <span className="text-red-500">*</span>
               </label>
               <Input
@@ -187,14 +188,16 @@ export default function AjustePagamentoForm() {
                 onChange={handleChange}
                 placeholder="Ex: Nubank, Inter, Itaú..."
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "input-nome-conta-error" : undefined}
               />
-              {error && <p className="text-xs text-red-500">{error}</p>}
+              {error && <p id="input-nome-conta-error" role="alert" className="text-xs text-red-500">{error}</p>}
             </div>
 
             {/* Bandeira + Últimos dígitos */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="select-bandeira" className="text-sm font-medium text-foreground">
                   Bandeira
                 </label>
                 <select
@@ -211,7 +214,7 @@ export default function AjustePagamentoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label htmlFor="input-ultimos-digitos" className="text-sm font-medium text-foreground">
                   Últimos 4 dígitos
                 </label>
                 <Input
@@ -228,7 +231,7 @@ export default function AjustePagamentoForm() {
             {/* Limite + Fechamento + Vencimento */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label htmlFor="input-limite" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Limite (R$)
                 </label>
                 <Input
@@ -243,7 +246,7 @@ export default function AjustePagamentoForm() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label htmlFor="input-fechamento" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Fechamento
                 </label>
                 <Input
@@ -257,7 +260,7 @@ export default function AjustePagamentoForm() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label htmlFor="input-vencimento" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Vencimento
                 </label>
                 <Input
@@ -274,24 +277,27 @@ export default function AjustePagamentoForm() {
 
             {/* Ícone */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground" id="icone-group-label">
                 Ícone
-              </label>
-              <div className="flex gap-2 flex-wrap">
+              </span>
+              <div role="radiogroup" aria-labelledby="icone-group-label" className="flex gap-2 flex-wrap">
                 {ICONES.map(({ value, label, Icon }) => (
                   <button
                     key={value}
                     type="button"
+                    role="radio"
+                    aria-checked={form.icone === value}
                     onClick={() => setForm((prev) => ({ ...prev, icone: value }))}
                     title={label}
+                    aria-label={label}
                     className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border transition-all ${
                       form.icone === value
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border bg-background text-muted-foreground hover:border-primary/50'
                     }`}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-[10px] font-medium">{label}</span>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                    <span className="text-xs font-medium">{label}</span>
                   </button>
                 ))}
               </div>
@@ -299,16 +305,19 @@ export default function AjustePagamentoForm() {
 
             {/* Cor */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground" id="cor-group-label">
                 Cor de Identificação
-              </label>
-              <div className="flex flex-wrap gap-2">
+              </span>
+              <div role="radiogroup" aria-labelledby="cor-group-label" className="flex flex-wrap gap-2">
                 {PRESET_COLORS.map(({ value, label }) => (
                   <button
                     key={value}
                     type="button"
+                    role="radio"
+                    aria-checked={form.cor === value}
                     onClick={() => setForm((prev) => ({ ...prev, cor: value }))}
                     title={label}
+                    aria-label={label}
                     className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
                       form.cor === value
                         ? 'border-slate-800 dark:border-white scale-110 shadow-md'
@@ -321,11 +330,12 @@ export default function AjustePagamentoForm() {
                 <label title="Cor personalizada" className="relative w-8 h-8 rounded-full border-2 border-dashed border-border cursor-pointer flex items-center justify-center hover:border-primary transition-colors bg-background">
                   <input
                     type="color"
+                    aria-label="Cor personalizada"
                     value={form.cor}
                     onChange={(e) => setForm((prev) => ({ ...prev, cor: e.target.value }))}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full"
                   />
-                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Plus className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                 </label>
               </div>
 

@@ -28,6 +28,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
 
 // Helpers
 const formatCurrency = (val) =>
@@ -316,13 +317,13 @@ export default function SimuladorGastos() {
     xaxis: {
       categories: chartData.map(d => d.label.split('/')[0]),
       labels: {
-        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' }
+        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }
       }
     },
     yaxis: {
       labels: {
         formatter: (val) => formatCurrency(val),
-        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '11px' }
+        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }
       }
     },
     grid: {
@@ -427,13 +428,13 @@ export default function SimuladorGastos() {
             <CardContent>
               <form onSubmit={handleAddSimulacao} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <label htmlFor="sim-descricao" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Descrição
                   </label>
-                  <Input 
-                    value={descricao} 
-                    onChange={e => setDescricao(e.target.value)} 
-                    placeholder="Ex: Assinatura Streaming, Notebook Novo" 
+                  <Input
+                    value={descricao}
+                    onChange={e => setDescricao(e.target.value)}
+                    placeholder="Ex: Assinatura Streaming, Notebook Novo"
                     required
                     id="sim-descricao"
                   />
@@ -441,11 +442,11 @@ export default function SimuladorGastos() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <label htmlFor="sim-tipo" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Tipo
                     </label>
-                    <Select 
-                      value={tipo} 
+                    <Select
+                      value={tipo}
                       onChange={e => setTipo(e.target.value)}
                       id="sim-tipo"
                     >
@@ -454,15 +455,15 @@ export default function SimuladorGastos() {
                     </Select>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <label htmlFor="sim-valor" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Valor (R$)
                     </label>
-                    <Input 
-                      value={valor} 
-                      onChange={e => setValor(e.target.value)} 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0,00" 
+                    <Input
+                      value={valor}
+                      onChange={e => setValor(e.target.value)}
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
                       required
                       id="sim-valor"
                     />
@@ -470,12 +471,12 @@ export default function SimuladorGastos() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <label htmlFor="sim-categoria" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Categoria
                   </label>
-                  <Input 
-                    value={categoria} 
-                    onChange={e => setCategoria(e.target.value)} 
+                  <Input
+                    value={categoria}
+                    onChange={e => setCategoria(e.target.value)}
                     placeholder="Ex: Casa, Lazer, Salário"
                     list="sim-categorias-sugeridas"
                     id="sim-categoria"
@@ -486,11 +487,11 @@ export default function SimuladorGastos() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <label htmlFor="sim-mes-inicio" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Mês de Início
                   </label>
-                  <Select 
-                    value={mesInicio} 
+                  <Select
+                    value={mesInicio}
                     onChange={e => setMesInicio(e.target.value)}
                     id="sim-mes-inicio"
                   >
@@ -501,11 +502,11 @@ export default function SimuladorGastos() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <label htmlFor="sim-frequencia" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Frequência
                   </label>
-                  <Select 
-                    value={frequencia} 
+                  <Select
+                    value={frequencia}
                     onChange={e => setFrequencia(e.target.value)}
                     id="sim-frequencia"
                   >
@@ -517,7 +518,7 @@ export default function SimuladorGastos() {
 
                 {frequencia === 'parcelada' && (
                   <div className="animate-in slide-in-from-top-1 duration-200">
-                    <label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <label htmlFor="sim-parcelas" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Quantidade de Parcelas (Meses)
                     </label>
                     <Select
@@ -569,7 +570,7 @@ export default function SimuladorGastos() {
                 <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mb-2 text-muted-foreground/50" />
                   <p className="text-xs">Nenhum lançamento simulado ativo.</p>
-                  <p className="text-[10px] mt-1">Use o formulário acima para planejar cenários.</p>
+                  <p className="text-xs mt-1">Use o formulário acima para planejar cenários.</p>
                 </div>
               ) : (
                 simuladas.map((item) => (
@@ -686,7 +687,7 @@ export default function SimuladorGastos() {
                                 R: {formatCurrency(data.realRevenues)}
                               </span>
                               {data.simRevenues > 0 && (
-                                <span className="text-emerald-500 font-bold block text-[10px]">
+                                <span className="text-emerald-500 font-bold block text-xs">
                                   S: +{formatCurrency(data.simRevenues)}
                                 </span>
                               )}
@@ -696,7 +697,7 @@ export default function SimuladorGastos() {
                                 R: {formatCurrency(data.realExpenses)}
                               </span>
                               {data.simExpenses > 0 && (
-                                <span className="text-red-500 font-bold block text-[10px]">
+                                <span className="text-red-500 font-bold block text-xs">
                                   S: +{formatCurrency(data.simExpenses)}
                                 </span>
                               )}
@@ -748,30 +749,25 @@ export default function SimuladorGastos() {
       </div>
 
       {selectedMonthDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-amber-500" /> Detalhes: {selectedMonthDetails.label}
-              </h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setSelectedMonthDetails(null)}
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-              >
-                ✕
-              </Button>
-            </div>
-            
+        <Modal
+          isOpen
+          title={
+            <span className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5 text-amber-500" aria-hidden="true" /> Detalhes: {selectedMonthDetails.label}
+            </span>
+          }
+          onClose={() => setSelectedMonthDetails(null)}
+          size="sm"
+        >
+          <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
               Abaixo estão os lançamentos simulados ativos que afetam a projeção deste mês específico:
             </p>
 
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
               {selectedMonthDetails.activeSimulatedItems.map((item) => (
-                <div 
-                  key={item.id} 
+                <div
+                  key={item.id}
                   className="p-3 rounded-lg border border-border bg-muted/40 flex justify-between items-center"
                 >
                   <div className="space-y-0.5">
@@ -784,7 +780,7 @@ export default function SimuladorGastos() {
                     <div className="text-xs text-muted-foreground">
                       Categoria: <span className="text-foreground/80 font-medium">{item.categoria}</span>
                     </div>
-                    <div className="text-[10px] text-amber-500/90 font-semibold uppercase">
+                    <div className="text-xs text-amber-500/90 font-semibold uppercase">
                       {item.frequencia === 'unica' && 'Único'}
                       {item.frequencia === 'recorrente' && 'Recorrente'}
                       {item.frequencia === 'parcelada' && `Parcelado (${item.parcelas}x)`}
@@ -800,8 +796,8 @@ export default function SimuladorGastos() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => setSelectedMonthDetails(null)}
                 className="px-5"
               >
@@ -809,7 +805,7 @@ export default function SimuladorGastos() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

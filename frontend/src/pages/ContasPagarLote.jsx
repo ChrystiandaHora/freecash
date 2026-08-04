@@ -182,31 +182,34 @@ export default function ContasPagarLote() {
               <table className="w-full text-xs text-left border-collapse min-w-[700px]">
                 <thead>
                   <tr className="border-b border-border/40 bg-muted/40 text-muted-foreground font-semibold">
-                    <th className="px-5 py-3 w-12 text-center">#</th>
-                    <th className="px-5 py-3">Descrição *</th>
-                    <th className="px-5 py-3 w-40">Valor (R$) *</th>
-                    <th className="px-5 py-3 w-48">Vencimento *</th>
-                    <th className="px-5 py-3 w-48">Categoria</th>
-                    <th className="px-5 py-3 w-16 text-center">Limpar</th>
+                    <th scope="col" className="px-5 py-3 w-12 text-center">#</th>
+                    <th scope="col" className="px-5 py-3">Descrição *</th>
+                    <th scope="col" className="px-5 py-3 w-40">Valor (R$) *</th>
+                    <th scope="col" className="px-5 py-3 w-48">Vencimento *</th>
+                    <th scope="col" className="px-5 py-3 w-48">Categoria</th>
+                    <th scope="col" className="px-5 py-3 w-16 text-center">Limpar</th>
                   </tr>
                 </thead>
+                {/* Cada célula editável recebe aria-label com coluna + linha: sem isso, um
+                    leitor de tela anuncia apenas "edit text" dezenas de vezes seguidas. */}
                 <tbody className="divide-y divide-border/40">
                   {rows.map((row, idx) => (
                     <tr key={idx} className="hover:bg-muted/10 transition-colors group">
-                      <td className="px-5 py-3.5 text-center font-bold text-muted-foreground/60 group-hover:text-foreground">
+                      <th scope="row" className="px-5 py-3.5 text-center font-bold text-muted-foreground/60 group-hover:text-foreground">
                         {idx + 1}
-                      </td>
+                      </th>
                       <td className="px-3 py-2">
                         <Input
                           placeholder="Ex: Conta de Luz, Internet..."
                           value={row.descricao}
                           onChange={(e) => handleRowValueChange(idx, 'descricao', e.target.value)}
                           className="h-9 text-xs rounded-lg"
+                          aria-label={`Descrição, linha ${idx + 1}`}
                         />
                       </td>
                       <td className="px-3 py-2">
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">R$</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground" aria-hidden="true">R$</span>
                           <Input
                             placeholder="0,00"
                             type="number"
@@ -214,6 +217,7 @@ export default function ContasPagarLote() {
                             value={row.valor}
                             onChange={(e) => handleRowValueChange(idx, 'valor', e.target.value)}
                             className="pl-8 h-9 text-xs rounded-lg font-bold"
+                            aria-label={`Valor em reais, linha ${idx + 1}`}
                           />
                         </div>
                       </td>
@@ -223,6 +227,7 @@ export default function ContasPagarLote() {
                           value={row.data_vencimento}
                           onChange={(e) => handleRowValueChange(idx, 'data_vencimento', e.target.value)}
                           className="h-9 text-xs rounded-lg cursor-pointer"
+                          aria-label={`Data de vencimento, linha ${idx + 1}`}
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -231,16 +236,20 @@ export default function ContasPagarLote() {
                           value={row.categoria}
                           onChange={(e) => handleRowValueChange(idx, 'categoria', e.target.value)}
                           className="h-9 text-xs rounded-lg"
+                          aria-label={`Categoria, linha ${idx + 1}`}
                         />
                       </td>
                       <td className="px-5 py-3.5 text-center">
+                        {/* group-focus-within/focus-visible: sem eles o botão ficava invisível
+                            ao receber foco por teclado (só aparecia no hover do mouse). */}
                         <button
                           type="button"
                           onClick={() => handleClearRow(idx)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                           title="Limpar Linha"
+                          aria-label={`Limpar linha ${idx + 1}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </td>
                     </tr>
@@ -253,22 +262,23 @@ export default function ContasPagarLote() {
           {/* Footer Actions Inside Card */}
           <div className="px-6 py-4 bg-muted/20 border-t border-border/40 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-              <label className="flex items-center gap-2 cursor-pointer select-none group">
-                <button
-                  type="button"
-                  onClick={() => setTodasPagas(!todasPagas)}
-                  className="p-0.5 rounded-lg text-slate-500 hover:text-primary transition-all shrink-0"
-                >
-                  {todasPagas ? (
-                    <CheckSquare className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Square className="h-5 w-5" />
-                  )}
-                </button>
+              {/* Botão de alternância com o texto DENTRO dele: antes o <span> ficava fora,
+                  e o estado (marcado/desmarcado) só existia na forma do ícone. */}
+              <button
+                type="button"
+                onClick={() => setTodasPagas(!todasPagas)}
+                aria-pressed={todasPagas}
+                className="flex items-center gap-2 cursor-pointer select-none group rounded-lg p-0.5 text-slate-500 hover:text-primary transition-all"
+              >
+                {todasPagas ? (
+                  <CheckSquare className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+                ) : (
+                  <Square className="h-5 w-5 shrink-0" aria-hidden="true" />
+                )}
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 group-hover:text-primary transition-colors">
                   Marcar todas como pagas / liquidadas
                 </span>
-              </label>
+              </button>
             </div>
 
             <div className="flex gap-3 w-full sm:w-auto">
@@ -306,7 +316,7 @@ export default function ContasPagarLote() {
         <div>
           <h4 className="text-xs font-bold text-foreground">Dica de Lançamento</h4>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            Pressione <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 text-[10px] font-mono">Tab</kbd> para navegar facilmente entre as células. Se não especificar a Categoria, usaremos a categoria padrão configurada em seus cadastros.
+            Pressione <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 text-xs font-mono">Tab</kbd> para navegar facilmente entre as células. Se não especificar a Categoria, usaremos a categoria padrão configurada em seus cadastros.
           </p>
         </div>
       </div>

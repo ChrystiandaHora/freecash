@@ -252,8 +252,9 @@ export default function ComprasCartao() {
             className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground"
             onClick={() => handleOpenEditModal(row)}
             title="Editar compra"
+            aria-label={`Editar compra ${row.descricao}`}
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button
             variant="ghost"
@@ -261,8 +262,9 @@ export default function ComprasCartao() {
             className="h-8 w-8 rounded-lg hover:bg-red-500/10 hover:text-red-500 text-muted-foreground"
             onClick={() => handleOpenDeleteModal(row.id)}
             title="Excluir compra"
+            aria-label={`Excluir compra ${row.descricao}`}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       ),
@@ -305,38 +307,43 @@ export default function ComprasCartao() {
 
       {/* Upload Fatura Card */}
       <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm">
-        <div 
-          className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/40 transition-colors"
+        {/* Botão nativo (era um div com onClick, inacessível por teclado) */}
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 p-4 text-left cursor-pointer hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           onClick={() => setIsUploadPanelOpen(!isUploadPanelOpen)}
+          aria-expanded={isUploadPanelOpen}
+          aria-controls="painel-importar-fatura"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <UploadCloud className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground text-sm">
+          <span className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <UploadCloud className="h-4 w-4 text-primary" aria-hidden="true" />
+            </span>
+            <span className="block">
+              <span className="block font-semibold text-foreground text-sm">
                 Importar Nova Fatura em PDF
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
                 Extraia compras de faturas do Santander ou Nubank diretamente para o histórico do cartão
-              </p>
-            </div>
-          </div>
+              </span>
+            </span>
+          </span>
           {isUploadPanelOpen ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
           )}
-        </div>
+        </button>
 
         {isUploadPanelOpen && (
-          <div className="p-5 border-t border-border/40 bg-card/50 space-y-4">
+          <div id="painel-importar-fatura" className="p-5 border-t border-border/40 bg-card/50 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="fatura-cartao" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Cartão de Crédito
                 </label>
                 <Select
+                  id="fatura-cartao"
                   value={selectedCard}
                   onChange={(e) => setSelectedCard(e.target.value)}
                 >
@@ -350,10 +357,11 @@ export default function ComprasCartao() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="fatura-banco" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Tipo de Fatura / Banco
                 </label>
                 <Select
+                  id="fatura-banco"
                   value={selectedBank}
                   onChange={(e) => setSelectedBank(e.target.value)}
                 >

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta } from '../services/financeiro';
+import { useToast } from '../context/ToastContext';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
@@ -170,10 +171,10 @@ const ContaCard = ({ conta, provided, snapshot, colId }) => {
       <div className="flex items-start justify-between gap-2 mb-3">
         <span
           {...provided.dragHandleProps}
-          className="mt-0.5 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing"
-          aria-label="Arrastar"
+          className="-ml-1 -mt-0.5 flex min-h-6 min-w-6 items-center justify-center rounded p-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing"
+          aria-label={`Arrastar ${conta.descricao}`}
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
         </span>
         {isPaga ? (
           <Badge variant="success">
@@ -269,6 +270,7 @@ const KanbanColumn = ({ col, contas, provided, snapshot }) => {
 
 export default function PipelineKanban() {
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
 
   const hoje = new Date()
 
@@ -277,10 +279,20 @@ export default function PipelineKanban() {
     queryFn: () => fetchContasPagar({ mes: hoje.getMonth() + 1, ano: hoje.getFullYear() }),
   })
 
+  // Feedback via toast em vez de estado local: o ToastContext já se auto-dispensa,
+  // pausa no hover/foco e tem botão de fechar — um Alert local ficaria na tela
+  // permanentemente por não ter caminho de limpeza.
   const pagarMutation = useMutation({
     mutationFn: pagarConta,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
+      addToast('Pagamento registrado com sucesso.', 'success')
+    },
+    onError: () => {
+      // O card volta à coluna de origem na próxima revalidação; sem esta mensagem,
+      // o usuário não teria como saber que o pagamento não foi registrado.
+      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
+      addToast('Não foi possível registrar o pagamento. Tente novamente.', 'error')
     },
   })
 
@@ -327,7 +339,8 @@ export default function PipelineKanban() {
           </h1>
           <p className="text-muted-foreground mt-1">Visão ágil das contas a pagar</p>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div role="status" aria-busy="true" className="flex gap-4 overflow-x-auto pb-4">
+          <span className="sr-only">Carregando contas a pagar...</span>
           {COLUMNS.map((col) => (
             <div key={col.id} className={`flex-shrink-0 w-[280px] rounded-2xl border ${col.borderColor} p-4`}>
               <div className="h-4 w-32 animate-pulse rounded bg-muted mb-4" />

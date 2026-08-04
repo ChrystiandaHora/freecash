@@ -90,8 +90,9 @@ export default function AtivosClassesForm() {
           onClick={() => navigate('/investimentos/classes')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -107,23 +108,26 @@ export default function AtivosClassesForm() {
       <Card className="border-border/60 shadow-lg">
         <CardHeader className="bg-muted/10 pb-4">
           <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Layers className="h-4 w-4 text-muted-foreground" />
+            <Layers className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             Dados da Classificação
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
+              <label htmlFor="nome-classificacao" className="text-sm font-medium text-foreground">
                 Nome da {getTypeNameLabel()} *
               </label>
               <Input
+                id="nome-classificacao"
                 placeholder={`Ex: ${type === 'classe' ? 'Renda Variável' : type === 'categoria' ? 'Ações' : 'Ações Brasil'}`}
                 value={nome}
                 onChange={(e) => { setNome(e.target.value); setError(''); }}
                 autoFocus
+                aria-invalid={!!error}
+                aria-describedby={error ? "nome-classificacao-error" : undefined}
               />
-              {error && <p className="text-xs text-red-500">{error}</p>}
+              {error && <p id="nome-classificacao-error" role="alert" className="text-xs text-red-500">{error}</p>}
             </div>
 
             {/* Actions */}

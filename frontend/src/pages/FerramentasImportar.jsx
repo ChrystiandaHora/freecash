@@ -39,12 +39,10 @@ import {
   X,
   FileSpreadsheet,
   Lock,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import api from '../services/api';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { Alert } from '../components/ui/Alert';
 
@@ -63,7 +61,6 @@ export default function FerramentasImportar() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [resultado, setResultado] = useState(null);
   const [importPassword, setImportPassword] = useState('');
-  const [showImportPassword, setShowImportPassword] = useState(false);
 
   const importMutation = useMutation({
     mutationFn: async ({ file, password }) => {
@@ -194,28 +191,20 @@ export default function FerramentasImportar() {
                 {/* Campo de Senha Dinâmico para arquivo .fcbk */}
                 {uploadedFile.name.endsWith('.fcbk') && (
                   <div className="w-full max-w-sm mt-3 space-y-1.5 text-left" onClick={(e) => e.stopPropagation()}>
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
+                    <label htmlFor="importar-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <Lock className="h-3 w-3" aria-hidden="true" />
                       Senha de Descriptografia
                     </label>
-                    <div className="relative">
-                      <Input
-                        type={showImportPassword ? 'text' : 'password'}
-                        placeholder="Digite a senha do backup..."
-                        value={importPassword}
-                        onChange={(e) => setImportPassword(e.target.value)}
-                        className="pr-10 border-primary/30 focus-visible:ring-primary"
-                        disabled={isPending}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowImportPassword(!showImportPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                        disabled={isPending}
-                      >
-                        {showImportPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                    {/* Usa o PasswordInput compartilhado, que já traz aria-label/aria-pressed dinâmicos no toggle */}
+                    <PasswordInput
+                      id="importar-senha"
+                      autoComplete="off"
+                      placeholder="Digite a senha do backup..."
+                      value={importPassword}
+                      onChange={(e) => setImportPassword(e.target.value)}
+                      className="border-primary/30 focus-visible:ring-primary"
+                      disabled={isPending}
+                    />
                   </div>
                 )}
 
@@ -261,15 +250,22 @@ export default function FerramentasImportar() {
 
           {/* Upload Progress */}
           {isPending && (
-            <div className="space-y-2">
+            <div className="space-y-2" role="status">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
                   Restauração em andamento...
                 </span>
                 <span className="font-semibold text-primary">{uploadProgress}%</span>
               </div>
-              <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                role="progressbar"
+                aria-label="Progresso da restauração"
+                aria-valuenow={uploadProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"
+              >
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}

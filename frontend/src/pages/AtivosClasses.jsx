@@ -29,10 +29,13 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
+import { Modal } from '../components/ui/Modal';
 
 /* ─────────────────────────── Delete Confirm ─────────────────────────── */
 /**
- * Componente modal para confirmação de exclusão de elements de classificação.
+ * Modal de confirmação de exclusão de elementos de classificação, construído
+ * sobre o componente Modal compartilhado (foco inicial, trap de Tab e
+ * devolução de foco já vêm de graça dele).
  *
  * @component
  * @param {Object} props - Propriedades do componente.
@@ -44,27 +47,22 @@ import { Alert } from '../components/ui/Alert';
  */
 function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-sm border border-border/40 p-6">
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-            <Trash2 className="h-6 w-6 text-destructive" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-foreground">Confirmar exclusão</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tem certeza que deseja excluir <span className="font-semibold text-foreground">"{label}"</span>? Esta ação não pode ser desfeita.
-            </p>
-          </div>
-          <div className="flex gap-3 w-full">
-            <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
-            <Button onClick={onConfirm} disabled={isPending} className="flex-1 rounded-xl h-10 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0">
-              {isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Excluir'}
-            </Button>
-          </div>
+    <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
+      <div className="flex flex-col items-center text-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+          <Trash2 className="h-6 w-6 text-destructive" aria-hidden="true" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Tem certeza que deseja excluir <span className="font-semibold text-foreground">"{label}"</span>? Esta ação não pode ser desfeita.
+        </p>
+        <div className="flex gap-3 w-full">
+          <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
+          <Button onClick={onConfirm} disabled={isPending} className="flex-1 rounded-xl h-10 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0">
+            {isPending ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> : 'Excluir'}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -183,15 +181,15 @@ export default function AtivosClasses() {
   };
 
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-      <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+    <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+      <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
       <p className="text-sm font-semibold text-muted-foreground">Carregando estrutura ANBIMA...</p>
     </div>
   );
 
   if (errC) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center">
-      <AlertCircle className="h-12 w-12 text-red-500" />
+    <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center">
+      <AlertCircle className="h-12 w-12 text-red-500" aria-hidden="true" />
       <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Erro ao carregar classes</h3>
       <Button onClick={() => refetchC()}>Tentar novamente</Button>
     </div>
@@ -218,8 +216,14 @@ export default function AtivosClasses() {
             <Plus className="h-4 w-4" />
             Nova Classe
           </Button>
-          <Button variant="outline" size="icon" onClick={() => { refetchC(); refetchCat(); refetchSub(); }} className="rounded-xl h-9 w-9 shrink-0">
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => { refetchC(); refetchCat(); refetchSub(); }}
+            className="rounded-xl h-9 w-9 shrink-0"
+            aria-label="Atualizar estrutura ANBIMA"
+          >
+            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -232,7 +236,7 @@ export default function AtivosClasses() {
       )}
 
       {/* ── Legend ── */}
-      <div className="flex items-center gap-6 text-[11px] text-muted-foreground flex-wrap">
+      <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1.5"><FolderOpen className="h-3.5 w-3.5 text-primary" /> Classe (Nível 1)</div>
         <div className="flex items-center gap-1.5"><Folder className="h-3.5 w-3.5 text-blue-500" /> Categoria (Nível 2)</div>
         <div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-amber-500" /> Subcategoria (Nível 3)</div>
@@ -272,42 +276,47 @@ export default function AtivosClasses() {
                   
                   {/* ── Classe row ── */}
                   <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/60 transition-colors">
-                    <button onClick={() => toggleClass(classe.id)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+                    <button
+                      onClick={() => toggleClass(classe.id)}
+                      aria-expanded={isExpandedC}
+                      aria-controls={`classe-panel-${classe.id}`}
+                      className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                    >
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        {isExpandedC ? <FolderOpen className="h-4 w-4 text-primary" /> : <Folder className="h-4 w-4 text-primary" />}
+                        {isExpandedC ? <FolderOpen className="h-4 w-4 text-primary" aria-hidden="true" /> : <Folder className="h-4 w-4 text-primary" aria-hidden="true" />}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-foreground truncate">{classe.nome}</p>
-                        <p className="text-[10px] text-muted-foreground">{cats.length} categoria{cats.length !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-muted-foreground">{cats.length} categoria{cats.length !== 1 ? 's' : ''}</p>
                       </div>
-                      {isExpandedC ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      {isExpandedC ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />}
                     </button>
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => openModal({ type: 'create-cat', data: { classeId: classe.id, classeNome: classe.nome } })}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Nova categoria"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Nova categoria" aria-label="Nova categoria"
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                       <button
                         onClick={() => openModal({ type: 'edit-classe', data: { id: classe.id, nome: classe.nome } })}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Editar classe"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Editar classe" aria-label="Editar classe"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                       <button
                         onClick={() => openModal({ type: 'delete-classe', data: { id: classe.id, nome: classe.nome } })}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Excluir classe"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Excluir classe" aria-label="Excluir classe"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
 
                   {/* ── Categorias (collapsed) ── */}
                   {isExpandedC && (
-                    <div className="px-4 pb-3 space-y-2 mt-2">
+                    <div id={`classe-panel-${classe.id}`} className="px-4 pb-3 space-y-2 mt-2">
                       {cats.length === 0 ? (
                         <div className="ml-10 text-xs text-muted-foreground py-2 italic">
                           Nenhuma categoria. Clique em + para adicionar.
@@ -321,54 +330,59 @@ export default function AtivosClasses() {
                             <div key={cat.id} className="ml-8 border border-border/30 rounded-xl overflow-hidden">
                               {/* ── Categoria row ── */}
                               <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors">
-                                <button onClick={() => toggleCat(cat.id)} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+                                <button
+                                  onClick={() => toggleCat(cat.id)}
+                                  aria-expanded={isExpandedCat}
+                                  aria-controls={`cat-panel-${cat.id}`}
+                                  className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+                                >
                                   <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                                    {isExpandedCat ? <FolderOpen className="h-3.5 w-3.5 text-blue-500" /> : <Folder className="h-3.5 w-3.5 text-blue-500" />}
+                                    {isExpandedCat ? <FolderOpen className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" /> : <Folder className="h-3.5 w-3.5 text-blue-500" aria-hidden="true" />}
                                   </div>
                                   <div className="min-w-0">
                                     <p className="text-xs font-bold text-foreground truncate">{cat.nome}</p>
-                                    <p className="text-[9px] text-muted-foreground">{subs.length} sub-categoria{subs.length !== 1 ? 's' : ''}</p>
+                                    <p className="text-xs text-muted-foreground">{subs.length} sub-categoria{subs.length !== 1 ? 's' : ''}</p>
                                   </div>
-                                  {isExpandedCat ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                  {isExpandedCat ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />}
                                 </button>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button onClick={() => openModal({ type: 'create-sub', data: { catId: cat.id, catNome: cat.nome } })}
-                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Nova subcategoria">
-                                    <Plus className="h-3 w-3" />
+                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Nova subcategoria" aria-label="Nova subcategoria">
+                                    <Plus className="h-3 w-3" aria-hidden="true" />
                                   </button>
                                   <button onClick={() => openModal({ type: 'edit-cat', data: { id: cat.id, nome: cat.nome } })}
-                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Editar">
-                                    <Pencil className="h-3 w-3" />
+                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Editar categoria" aria-label="Editar categoria">
+                                    <Pencil className="h-3 w-3" aria-hidden="true" />
                                   </button>
                                   <button onClick={() => openModal({ type: 'delete-cat', data: { id: cat.id, nome: cat.nome } })}
-                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Excluir">
-                                    <Trash2 className="h-3 w-3" />
+                                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" title="Excluir categoria" aria-label="Excluir categoria">
+                                    <Trash2 className="h-3 w-3" aria-hidden="true" />
                                   </button>
                                 </div>
                               </div>
 
                               {/* ── Subcategorias ── */}
                               {isExpandedCat && (
-                                <div className="px-4 pb-2 space-y-1.5 mt-1.5">
+                                <div id={`cat-panel-${cat.id}`} className="px-4 pb-2 space-y-1.5 mt-1.5">
                                   {subs.length === 0 ? (
-                                    <div className="ml-9 text-[11px] text-muted-foreground py-1.5 italic">
+                                    <div className="ml-9 text-xs text-muted-foreground py-1.5 italic">
                                       Nenhuma subcategoria. Clique em + para adicionar.
                                     </div>
                                   ) : (
                                     subs.map((sub) => (
                                       <div key={sub.id} className="ml-9 flex items-center gap-3 px-3 py-2 rounded-lg bg-muted border border-border/30">
                                         <div className="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
-                                          <Tag className="h-3 w-3 text-amber-500" />
+                                          <Tag className="h-3 w-3 text-amber-500" aria-hidden="true" />
                                         </div>
                                         <span className="flex-1 text-xs font-medium text-foreground truncate">{sub.nome}</span>
                                         <div className="flex items-center gap-1 shrink-0">
                                           <button onClick={() => openModal({ type: 'edit-sub', data: { id: sub.id, nome: sub.nome } })}
-                                            className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Editar">
-                                            <Pencil className="h-3 w-3" />
+                                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Editar subcategoria" aria-label="Editar subcategoria">
+                                            <Pencil className="h-3 w-3" aria-hidden="true" />
                                           </button>
                                           <button onClick={() => openModal({ type: 'delete-sub', data: { id: sub.id, nome: sub.nome } })}
-                                            className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Excluir">
-                                            <Trash2 className="h-3 w-3" />
+                                            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Excluir subcategoria" aria-label="Excluir subcategoria">
+                                            <Trash2 className="h-3 w-3" aria-hidden="true" />
                                           </button>
                                         </div>
                                       </div>

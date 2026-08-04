@@ -28,6 +28,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
+import { Modal } from '../components/ui/Modal';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -58,27 +59,22 @@ const TIPO_CONFIG = {
 /* ─────────────────────────── Delete Confirm ─────────────────────────── */
 function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-sm border border-border/40 p-6">
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-            <Trash2 className="h-6 w-6 text-destructive" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-foreground">Confirmar exclusão</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tem certeza que deseja excluir a ordem de <span className="font-semibold text-foreground">{label}</span>? Esta ação não pode ser desfeita.
-            </p>
-          </div>
-          <div className="flex gap-3 w-full">
-            <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
-            <Button onClick={onConfirm} disabled={isPending} className="flex-1 rounded-xl h-10 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0 font-semibold">
-              {isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Excluir'}
-            </Button>
-          </div>
+    <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
+      <div className="flex flex-col items-center text-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+          <Trash2 className="h-6 w-6 text-destructive" aria-hidden="true" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Tem certeza que deseja excluir a ordem de <span className="font-semibold text-foreground">{label}</span>? Esta ação não pode ser desfeita.
+        </p>
+        <div className="flex gap-3 w-full">
+          <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
+          <Button onClick={onConfirm} disabled={isPending} className="flex-1 rounded-xl h-10 text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground border-0 font-semibold">
+            {isPending ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> : 'Excluir'}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -88,6 +84,7 @@ export default function AtivosHistorico() {
   const navigate = useNavigate();
   const [deletingTransacao, setDeletingTransacao] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [filteredTransacoes, setFilteredTransacoes] = useState(null);
 
   const handleEdit = (transacao) => {
@@ -108,7 +105,9 @@ export default function AtivosHistorico() {
       refetchT();
     },
     onError: () => {
-      alert('Erro ao excluir ordem.');
+      setDeletingTransacao(null);
+      setErrorMsg('Erro ao excluir ordem. Tente novamente.');
+      setTimeout(() => setErrorMsg(''), 5000);
     }
   });
 
@@ -135,7 +134,7 @@ export default function AtivosHistorico() {
         return (
           <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cfg.bg}`}>
             <Icon className={`h-3 w-3 ${cfg.color}`} />
-            <span className={`text-[10px] font-bold ${cfg.color}`}>{cfg.label}</span>
+            <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
           </div>
         );
       },
@@ -157,7 +156,7 @@ export default function AtivosHistorico() {
       render: (_, row) => (
         <>
           <p className="font-bold text-foreground">{row.ativo_detalhe?.ticker ?? '—'}</p>
-          <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">{row.ativo_detalhe?.nome}</p>
+          <p className="text-xs text-muted-foreground truncate max-w-[140px]">{row.ativo_detalhe?.nome}</p>
         </>
       ),
     },
@@ -210,8 +209,9 @@ export default function AtivosHistorico() {
             onClick={() => handleEdit(row)}
             className="h-8 w-8 rounded-lg"
             title="Editar"
+            aria-label="Editar ordem"
           >
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" aria-hidden="true" />
           </Button>
           <Button
             variant="outline"
@@ -219,8 +219,9 @@ export default function AtivosHistorico() {
             onClick={() => setDeletingTransacao(row)}
             className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:border-destructive/30 group"
             title="Excluir"
+            aria-label="Excluir ordem"
           >
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" aria-hidden="true" />
           </Button>
         </div>
       ),
@@ -243,15 +244,15 @@ export default function AtivosHistorico() {
   const isLoading = isLoadingT;
 
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-      <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+    <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
+      <RefreshCw className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
       <p className="text-sm font-semibold text-muted-foreground">Carregando histórico...</p>
     </div>
   );
 
   if (isErrorT) return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center">
-      <AlertCircle className="h-12 w-12 text-red-500" />
+    <div role="alert" className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center">
+      <AlertCircle className="h-12 w-12 text-red-500" aria-hidden="true" />
       <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">Erro ao carregar histórico</h3>
       <Button onClick={() => refetchT()}>Tentar novamente</Button>
     </div>
@@ -278,16 +279,21 @@ export default function AtivosHistorico() {
             <Plus className="h-4 w-4" />
             Nova Ordem
           </Button>
-          <Button variant="outline" size="icon" onClick={() => refetchT()} className="rounded-xl h-9 w-9 shrink-0">
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          <Button variant="outline" size="icon" onClick={() => refetchT()} className="rounded-xl h-9 w-9 shrink-0" aria-label="Atualizar histórico">
+            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
-      {/* ── Success ── */}
+      {/* ── Feedback ── */}
       {successMsg && (
         <Alert variant="success" icon={CheckCircle2} className="text-xs">
           <span className="font-semibold">{successMsg}</span>
+        </Alert>
+      )}
+      {errorMsg && (
+        <Alert variant="error" icon={AlertCircle} className="text-xs">
+          <span className="font-semibold">{errorMsg}</span>
         </Alert>
       )}
 
@@ -307,9 +313,9 @@ export default function AtivosHistorico() {
                     <Icon className={`h-4 w-4 ${cfg.color}`} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{cfg.label}s</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{cfg.label}s</p>
                     <p className="text-lg font-bold text-foreground">{count}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatCurrency(total)}</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(total)}</p>
                   </div>
                 </div>
               </CardContent>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useId } from 'react';
 import { ArrowLeft, Loader2, Save, Calendar, TrendingUp, RefreshCw, Archive } from 'lucide-react';
 
 import { fetchAtivo, createAtivo, updateAtivo, fetchSubcategoriasAtivos } from '../../services/investimentos';
@@ -35,6 +36,7 @@ export default function AtivoForm() {
   const [formData, setFormData] = useState(initialFormState);
   const [showPosicaoInicial, setShowPosicaoInicial] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const posicaoInicialId = useId();
 
   // Fetch subcategories
   const { data: subcategorias = [] } = useQuery({
@@ -162,8 +164,9 @@ export default function AtivoForm() {
           onClick={() => navigate('/investimentos/ativos')}
           className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Voltar"
+          aria-label="Voltar"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -186,14 +189,15 @@ export default function AtivoForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {errorMessage && (
-              <p className="text-sm text-red-500">{errorMessage}</p>
+              <p role="alert" className="text-sm text-red-500">{errorMessage}</p>
             )}
 
             {/* Dados Principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Ticker *</label>
+                <label htmlFor="ativo-ticker" className="text-sm font-medium text-foreground">Ticker *</label>
                 <Input
+                  id="ativo-ticker"
                   placeholder="Ex: PETR4, IVVB11, CDB..."
                   value={formData.ticker}
                   onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
@@ -203,8 +207,9 @@ export default function AtivoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Nome Comercial</label>
+                <label htmlFor="ativo-nome" className="text-sm font-medium text-foreground">Nome Comercial</label>
                 <Input
+                  id="ativo-nome"
                   placeholder="Ex: Petrobras PN, S&P 500 ETF..."
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
@@ -212,8 +217,9 @@ export default function AtivoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">CNPJ do Fundo (Opcional)</label>
+                <label htmlFor="ativo-cnpj" className="text-sm font-medium text-foreground">CNPJ do Fundo (Opcional)</label>
                 <Input
+                  id="ativo-cnpj"
                   placeholder="Apenas números (Ex: 12987743000186)"
                   value={formData.cnpj || ''}
                   onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
@@ -222,9 +228,10 @@ export default function AtivoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Subclasse de Ativo *</label>
+                <label htmlFor="ativo-subcategoria" className="text-sm font-medium text-foreground">Subclasse de Ativo *</label>
                 {subcategorias.length > 0 ? (
                   <Select
+                    id="ativo-subcategoria"
                     value={formData.subcategoria}
                     onChange={(e) => setFormData({ ...formData, subcategoria: e.target.value })}
                     required
@@ -247,8 +254,9 @@ export default function AtivoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Taxa / Taxa de Adm. (%)</label>
+                <label htmlFor="ativo-taxa" className="text-sm font-medium text-foreground">Taxa / Taxa de Adm. (%)</label>
                 <Input
+                  id="ativo-taxa"
                   type="number"
                   step="0.0001"
                   placeholder="Ex: 6.5, 110 ou 0.5 (opcional)"
@@ -259,8 +267,9 @@ export default function AtivoForm() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Meta de Alocação (%)</label>
+                <label htmlFor="ativo-meta" className="text-sm font-medium text-foreground">Meta de Alocação (%)</label>
                 <Input
+                  id="ativo-meta"
                   type="number"
                   step="0.1"
                   min="0"
@@ -277,14 +286,15 @@ export default function AtivoForm() {
             {isRendaFixaOuAlternativo && (
               <div className="border-t border-border/40 pt-6 animate-fade-in space-y-4">
                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   Detalhes Adicionais (Renda Fixa/Alternativos)
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Emissor</label>
+                    <label htmlFor="ativo-emissor" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Emissor</label>
                     <Input
+                      id="ativo-emissor"
                       placeholder="Ex: Banco Itaú, Tesouro Nacional"
                       value={formData.emissor}
                       onChange={(e) => setFormData({ ...formData, emissor: e.target.value })}
@@ -292,8 +302,9 @@ export default function AtivoForm() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
+                    <label htmlFor="ativo-data-vencimento" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data de Vencimento</label>
                     <Input
+                      id="ativo-data-vencimento"
                       type="date"
                       value={formData.data_vencimento}
                       onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
@@ -301,8 +312,9 @@ export default function AtivoForm() {
                   </div>
 
                   <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Indexador</label>
+                    <label htmlFor="ativo-indexador" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Indexador</label>
                     <Input
+                      id="ativo-indexador"
                       placeholder="Ex: IPCA, CDI, SELIC"
                       value={formData.indexador}
                       onChange={(e) => setFormData({ ...formData, indexador: e.target.value })}
@@ -318,24 +330,27 @@ export default function AtivoForm() {
                 <button
                   type="button"
                   onClick={() => setShowPosicaoInicial(!showPosicaoInicial)}
+                  aria-expanded={showPosicaoInicial}
+                  aria-controls={posicaoInicialId}
                   className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/30 transition-colors text-xs font-bold uppercase tracking-wider text-muted-foreground"
                 >
                   <span className="flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                     Estabelecer Posição Inicial (Opcional)
                   </span>
                   <span>{showPosicaoInicial ? 'Recolher [-]' : 'Expandir [+]'}</span>
                 </button>
 
                 {showPosicaoInicial && (
-                  <div className="p-4 space-y-4 border-t border-border/60 bg-card">
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <div id={posicaoInicialId} className="p-4 space-y-4 border-t border-border/60 bg-card">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       Informe suas cotas iniciais para preencher o saldo inicial. Isso registrará automaticamente uma transação de compra inicial no histórico.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Quantidade</label>
+                        <label htmlFor="ativo-quantidade-inicial" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantidade</label>
                         <Input
+                          id="ativo-quantidade-inicial"
                           type="number"
                           step="any"
                           min="0.0001"
@@ -346,8 +361,9 @@ export default function AtivoForm() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">P. Unitário (R$)</label>
+                        <label htmlFor="ativo-preco-inicial" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">P. Unitário (R$)</label>
                         <Input
+                          id="ativo-preco-inicial"
                           type="number"
                           step="any"
                           min="0.01"
@@ -359,8 +375,9 @@ export default function AtivoForm() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Data de Aquisição</label>
+                        <label htmlFor="ativo-data-compra" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Data de Aquisição</label>
                         <Input
+                          id="ativo-data-compra"
                           type="date"
                           value={formData.data_compra}
                           onChange={(e) => setFormData({ ...formData, data_compra: e.target.value })}
@@ -376,19 +393,21 @@ export default function AtivoForm() {
             {isEdit && (
               <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-muted/10">
                 <div>
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Archive className="h-4 w-4 text-muted-foreground" />
+                  <span id="arquivar-ativo-label" className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Archive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     Arquivar Ativo
                   </span>
-                  <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  <span id="arquivar-ativo-desc" className="text-xs text-muted-foreground mt-0.5 block">
                     Mantenha ativos liquidados salvos ativando esta caixa para não distorcer o balanceamento ativo.
                   </span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={!formData.ativo}
                     onChange={(e) => setFormData({ ...formData, ativo: !e.target.checked })}
+                    aria-labelledby="arquivar-ativo-label"
+                    aria-describedby="arquivar-ativo-desc"
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
