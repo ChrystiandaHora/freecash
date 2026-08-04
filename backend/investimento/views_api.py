@@ -405,6 +405,7 @@ class DashboardInvestimentoAPIView(APIView):
             "proximos_vencimentos": upcoming_serialized,
             "performance_monthly": dados["performance_monthly"],
             "performance_yearly": dados["performance_yearly"],
+            "rentabilidade_mensal": dados["rentabilidade_mensal"],
         }
         
         return Response(payload, status=status.HTTP_200_OK)

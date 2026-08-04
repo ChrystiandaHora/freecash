@@ -103,6 +103,7 @@ export default function Investimentos() {
     total_rentabilidade_percentual = 0,
     total_dividendos = 0,
     alocacao_categorias = { labels: [], valores: [] },
+    rentabilidade_mensal = {},
   } = dashboardData;
 
   const isDarkTheme = document.documentElement.classList.contains('dark');
@@ -572,6 +573,88 @@ export default function Investimentos() {
           </Card>
 
         </div>
+
+        {/* Rentabilidade Mensal por Ano */}
+        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl">
+          <CardHeader className="p-0 mb-6">
+            <CardTitle className="text-base font-bold text-foreground">
+              Rentabilidade Mensal
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Retornos percentuais apurados mês a mês ao longo dos anos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[700px] border-collapse text-xs font-semibold text-center">
+                <thead>
+                  <tr className="border-b border-border/40 text-muted-foreground font-bold uppercase tracking-wider">
+                    <th className="py-3 px-4 text-left font-bold w-20">Ano</th>
+                    <th className="py-3 px-2">Jan</th>
+                    <th className="py-3 px-2">Fev</th>
+                    <th className="py-3 px-2">Mar</th>
+                    <th className="py-3 px-2">Abr</th>
+                    <th className="py-3 px-2">Mai</th>
+                    <th className="py-3 px-2">Jun</th>
+                    <th className="py-3 px-2">Jul</th>
+                    <th className="py-3 px-2">Ago</th>
+                    <th className="py-3 px-2">Set</th>
+                    <th className="py-3 px-2">Out</th>
+                    <th className="py-3 px-2">Nov</th>
+                    <th className="py-3 px-2">Dez</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {Object.keys(rentabilidade_mensal || {})
+                    .sort((a, b) => b - a)
+                    .map((year) => {
+                      const monthsData = rentabilidade_mensal[year] || {};
+                      return (
+                        <tr key={year} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3.5 px-4 text-left font-bold text-foreground text-sm border-r border-border/20">
+                            {year}
+                          </td>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => {
+                            const val = monthsData[month];
+                            const hasVal = val !== undefined && val !== null;
+                            let cellClass = "text-muted-foreground/60";
+                            let displayVal = "-";
+
+                            if (hasVal) {
+                              const sign = val > 0 ? "+" : "";
+                              displayVal = `${sign}${val.toFixed(2).replace('.', ',')}%`;
+                              if (val > 0) {
+                                cellClass = "text-emerald-500 bg-emerald-500/10 font-bold dark:text-emerald-400 dark:bg-emerald-500/5 rounded-lg";
+                              } else if (val < 0) {
+                                cellClass = "text-rose-500 bg-rose-500/10 font-bold dark:text-rose-400 dark:bg-rose-500/5 rounded-lg";
+                              } else {
+                                cellClass = "text-slate-500 bg-slate-500/10 dark:text-slate-400 dark:bg-slate-500/5 rounded-lg";
+                              }
+                            }
+
+                            return (
+                              <td key={month} className="py-2.5 px-1.5 align-middle">
+                                <div className={`py-1.5 px-2 transition-all duration-200 ${cellClass}`}>
+                                  {displayVal}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  {Object.keys(rentabilidade_mensal || {}).length === 0 && (
+                    <tr>
+                      <td colSpan={13} className="py-8 text-center text-muted-foreground font-semibold">
+                        Nenhum dado histórico de rentabilidade encontrado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Efeito Bola de Neve */}
         {snowballSeriesData.length > 0 && (

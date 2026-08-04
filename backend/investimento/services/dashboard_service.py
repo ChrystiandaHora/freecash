@@ -183,6 +183,7 @@ class DashboardInvestimentoService:
         historico_service.atualizar()
         performance_monthly = historico_service.series_mensal(meses=36)
         performance_yearly = historico_service.series_anual(anos=10)
+        rentabilidade_mensal = historico_service.obter_rentabilidade_mensal_por_ano()
 
         return {
             "ativos": ativos,
@@ -204,5 +205,6 @@ class DashboardInvestimentoService:
             "proximos_vencimentos": proximos_vencimentos,
             "performance_monthly": performance_monthly,
             "performance_yearly": performance_yearly,
+            "rentabilidade_mensal": rentabilidade_mensal,
         }
 

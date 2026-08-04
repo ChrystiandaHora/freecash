@@ -274,6 +274,70 @@ class CarteiraHistoricoService:
             })
         return results
 
+    def obter_rentabilidade_mensal_por_ano(self) -> dict[int, dict[int, float]]:
+        """Gera um dicionário mapeando ano -> {mes: rentabilidade_mensal_percentual}.
+
+        Calculado com base na variação de rentabilidade absoluta em relação à base de capital
+        do início do mês ajustado pelas contribuições líquidas do próprio mês.
+        """
+        qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
+            "data", "patrimonio", "total_compras", "total_vendas", "rentabilidade", "rentabilidade_percentual"
+        )
+
+        # Agrupar por (ano, mês) e pegar o último registro de cada mês (fim do mês)
+        groups = {}
+        for row in qs:
+            d = row["data"]
+            groups[(d.year, d.month)] = row
+
+        sorted_keys = sorted(groups.keys())
+        matrix = {}
+
+        for i, (year, month) in enumerate(sorted_keys):
+            row_current = groups[(year, month)]
+            
+            # Obter snapshot do fim do mês anterior
+            row_prev = None
+            if i > 0:
+                row_prev = groups[sorted_keys[i-1]]
+
+            # Calcular variação de rentabilidade absoluta
+            rent_current = row_current["rentabilidade"] or Decimal(0)
+            rent_prev = row_prev["rentabilidade"] or Decimal(0) if row_prev else Decimal(0)
+            delta_rentabilidade = rent_current - rent_prev
+
+            # Calcular a base de capital do período:
+            # Patrimônio no fim do mês anterior + aportes líquidos do mês
+            patrimonio_prev = row_prev["patrimonio"] or Decimal(0) if row_prev else Decimal(0)
+            
+            compras_current = row_current["total_compras"] or Decimal(0)
+            compras_prev = row_prev["total_compras"] or Decimal(0) if row_prev else Decimal(0)
+            delta_compras = compras_current - compras_prev
+
+            vendas_current = row_current["total_vendas"] or Decimal(0)
+            vendas_prev = row_prev["total_vendas"] or Decimal(0) if row_prev else Decimal(0)
+            delta_vendas = vendas_current - vendas_prev
+
+            aportes_liquidos = delta_compras - delta_vendas
+            if aportes_liquidos < 0:
+                aportes_liquidos = Decimal(0)
+
+            base_capital = patrimonio_prev + aportes_liquidos
+
+            if base_capital > 0:
+                retorno_mensal = (delta_rentabilidade / base_capital) * Decimal(100)
+            else:
+                retorno_mensal = Decimal(0)
+
+            # Garantir formato de float com 4 casas decimais para manter leveza e precisão
+            retorno_float = float(round(retorno_mensal, 4))
+
+            if year not in matrix:
+                matrix[year] = {}
+            matrix[year][month] = retorno_float
+
+        return matrix
+
 
 def atualizar_historico_para_todos(*, ate_data: date | None = None) -> dict:
     """Sincroniza atomaticamente os snapshots históricos de todos os usuários do sistema.
