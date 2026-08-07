@@ -8,7 +8,16 @@ e formatação de datas de vencimento.
 
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Categoria, Conta, CartaoCredito, ExtratoImportado, LinhaExtrato
+from .models import (
+    AporteMeta,
+    Categoria,
+    Conta,
+    CartaoCredito,
+    ExtratoImportado,
+    LinhaExtrato,
+    MetaFinanceira,
+    PlanoMetas,
+)
 
 class CategoriaSerializer(serializers.ModelSerializer):
     """Serializador do modelo Categoria do Django REST Framework.
@@ -387,6 +396,277 @@ class ComprasCartaoAPISerializer(serializers.ModelSerializer):
             'nome': obj.categoria.nome,
             'tipo': obj.categoria.tipo,
         }
+
+
+class PlanoMetasSerializer(serializers.ModelSerializer):
+    """Serializador da base de cálculo do planejamento de metas.
+
+    Expõe a renda mensal e o custo de vida de referência que alimentam os
+    múltiplos das metas padrão, além da preferência por valores automáticos.
+    """
+
+    class Meta:
+        model = PlanoMetas
+        fields = [
+            'id', 'uuid', 'renda_mensal', 'custo_vida_mensal',
+            'usar_valores_automaticos', 'meses_referencia',
+            'criada_em', 'atualizada_em'
+        ]
+        read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
+
+    def validate_renda_mensal(self, value):
+        """Rejeita renda negativa.
+
+        Args:
+            value (Decimal | None): Valor informado para a renda mensal.
+
+        Returns:
+            Decimal | None: O próprio valor, quando válido.
+
+        Raises:
+            serializers.ValidationError: Se o valor for negativo.
+        """
+        if value is not None and value < 0:
+            raise serializers.ValidationError("A renda mensal não pode ser negativa.")
+        return value
+
+    def validate_custo_vida_mensal(self, value):
+        """Rejeita custo de vida negativo.
+
+        Args:
+            value (Decimal | None): Valor informado para o custo de vida mensal.
+
+        Returns:
+            Decimal | None: O próprio valor, quando válido.
+
+        Raises:
+            serializers.ValidationError: Se o valor for negativo.
+        """
+        if value is not None and value < 0:
+            raise serializers.ValidationError("O custo de vida não pode ser negativo.")
+        return value
+
+    def validate_meses_referencia(self, value):
+        """Mantém a janela da média entre 1 e 24 competências.
+
+        Args:
+            value (int): Quantidade de meses informada.
+
+        Returns:
+            int: O próprio valor, quando dentro do intervalo aceito.
+
+        Raises:
+            serializers.ValidationError: Se estiver fora do intervalo de 1 a 24.
+        """
+        if value is not None and not (1 <= value <= 24):
+            raise serializers.ValidationError("Informe entre 1 e 24 meses de referência.")
+        return value
+
+
+class AporteMetaSerializer(serializers.ModelSerializer):
+    """Serializador do histórico de aportes de uma meta.
+
+    A vinculação com a meta é feita pela view (a partir da URL), portanto o
+    campo `meta` não trafega no payload de escrita.
+    """
+
+    class Meta:
+        model = AporteMeta
+        fields = ['id', 'uuid', 'data', 'valor', 'observacao', 'criada_em', 'atualizada_em']
+        read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
+
+    def validate_valor(self, value):
+        """Garante que o aporte tenha valor positivo.
+
+        Args:
+            value (Decimal): Valor informado para o aporte.
+
+        Returns:
+            Decimal: O próprio valor, quando válido.
+
+        Raises:
+            serializers.ValidationError: Se o valor não for maior que zero.
+        """
+        if value is None or value <= 0:
+            raise serializers.ValidationError("O valor do aporte deve ser maior que zero.")
+        return value
+
+
+class MetaFinanceiraSerializer(serializers.ModelSerializer):
+    """Serializador de metas financeiras de acúmulo e de teto mensal.
+
+    Além dos campos persistidos, entrega o progresso já calculado e o histórico
+    de aportes aninhado, evitando uma segunda requisição na tela de Metas.
+    """
+
+    progresso_percentual = serializers.SerializerMethodField()
+    valor_restante = serializers.SerializerMethodField()
+    valor_acumulado_efetivo = serializers.SerializerMethodField()
+    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
+    natureza_display = serializers.CharField(source='get_natureza_display', read_only=True)
+    base_calculo_display = serializers.CharField(source='get_base_calculo_display', read_only=True)
+    origem_acumulado_display = serializers.CharField(
+        source='get_origem_acumulado_display', read_only=True
+    )
+    aportes = AporteMetaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MetaFinanceira
+        fields = [
+            'id', 'uuid', 'nome', 'tipo', 'tipo_display', 'natureza', 'natureza_display',
+            'base_calculo', 'base_calculo_display', 'multiplicador', 'valor_alvo',
+            'valor_acumulado', 'origem_acumulado', 'origem_acumulado_display',
+            'valor_acumulado_efetivo', 'progresso_percentual', 'valor_restante', 'prazo',
+            'concluida', 'ordem', 'observacao', 'aportes', 'criada_em', 'atualizada_em'
+        ]
+        read_only_fields = [
+            'id', 'uuid', 'tipo_display', 'natureza_display', 'base_calculo_display',
+            'origem_acumulado_display', 'valor_acumulado_efetivo', 'progresso_percentual',
+            'valor_restante', 'aportes', 'criada_em', 'atualizada_em'
+        ]
+
+    @property
+    def _valores_externos(self):
+        """Origens automáticas de progresso, resolvidas uma vez por requisição.
+
+        Returns:
+            dict: Mapa origem -> valor vindo do contexto da view. Vazio quando o
+            serializador roda fora dela (ex.: testes de unidade), caso em que
+            toda meta cai no acumulado manual.
+        """
+        return self.context.get('valores_externos') or {}
+
+    def get_valor_acumulado_efetivo(self, obj) -> float:
+        """Acúmulo considerado no progresso, já resolvida a origem.
+
+        Args:
+            obj (MetaFinanceira): Instância serializada.
+
+        Returns:
+            float: Valor de mercado da carteira ou total aportado no mês,
+            conforme a origem; caso contrário, o acumulado informado manualmente.
+        """
+        return round(obj.acumulado_efetivo(self._valores_externos), 2)
+
+    def get_progresso_percentual(self, obj) -> float:
+        """Percentual do alvo já atingido.
+
+        Args:
+            obj (MetaFinanceira): Instância serializada.
+
+        Returns:
+            float: Percentual atingido, arredondado em duas casas. Pode passar
+            de 100 quando uma meta de teto é estourada.
+        """
+        return round(obj.progresso_percentual(self._valores_externos), 2)
+
+    def get_valor_restante(self, obj) -> float:
+        """Quanto ainda falta para atingir o alvo.
+
+        Args:
+            obj (MetaFinanceira): Instância serializada.
+
+        Returns:
+            float: Diferença entre alvo e acumulado, com piso em zero.
+        """
+        return round(obj.valor_restante(self._valores_externos), 2)
+
+    def validate_valor_alvo(self, value):
+        """Garante um alvo positivo.
+
+        Args:
+            value (Decimal): Valor-alvo informado.
+
+        Returns:
+            Decimal: O próprio valor, quando válido.
+
+        Raises:
+            serializers.ValidationError: Se o alvo não for maior que zero.
+        """
+        if value is None or value <= 0:
+            raise serializers.ValidationError("O valor-alvo deve ser maior que zero.")
+        return value
+
+    def validate_valor_acumulado(self, value):
+        """Rejeita valor acumulado negativo.
+
+        Args:
+            value (Decimal): Valor acumulado informado.
+
+        Returns:
+            Decimal: O próprio valor, quando válido.
+
+        Raises:
+            serializers.ValidationError: Se o valor for negativo.
+        """
+        if value is not None and value < 0:
+            raise serializers.ValidationError("O valor acumulado não pode ser negativo.")
+        return value
+
+    def validate(self, attrs):
+        """Exige multiplicador coerente quando o alvo é derivado de uma base.
+
+        Metas com base `renda` ou `custo_vida` calculam o alvo a partir de um
+        múltiplo; sem o multiplicador o recálculo silenciosamente zeraria o alvo.
+
+        Args:
+            attrs (dict): Campos já validados individualmente.
+
+        Returns:
+            dict: Os mesmos campos, quando o conjunto é coerente.
+
+        Raises:
+            serializers.ValidationError: Se faltar multiplicador ou ele não for positivo.
+        """
+        base = attrs.get('base_calculo', getattr(self.instance, 'base_calculo', None))
+        multiplicador = attrs.get('multiplicador', getattr(self.instance, 'multiplicador', None))
+
+        if base in (MetaFinanceira.BASE_RENDA, MetaFinanceira.BASE_CUSTO_VIDA):
+            if multiplicador is None:
+                raise serializers.ValidationError({
+                    'multiplicador': 'Informe o multiplicador quando a meta é derivada de uma base.'
+                })
+            if multiplicador <= 0:
+                raise serializers.ValidationError({
+                    'multiplicador': 'O multiplicador deve ser maior que zero.'
+                })
+
+            # O alvo de uma meta derivada é sempre base x multiplicador. Recalcular
+            # aqui mantém o servidor como fonte da verdade: alterar o multiplicador
+            # já reajusta o alvo, sem o cliente precisar refazer a conta.
+            calculado = self._alvo_derivado(base, multiplicador)
+            if calculado:
+                attrs['valor_alvo'] = calculado
+
+        return attrs
+
+    def _alvo_derivado(self, base, multiplicador):
+        """Calcula o valor-alvo a partir da base de cálculo do usuário.
+
+        Args:
+            base (str): Base escolhida ('renda' ou 'custo_vida').
+            multiplicador (Decimal): Fator aplicado sobre a base.
+
+        Returns:
+            Decimal | None: Alvo calculado, ou None quando não há plano com a
+            base preenchida — nesse caso o valor enviado é preservado.
+        """
+        from core.services.metas_service import calcular_valor_alvo
+
+        request = self.context.get('request')
+        if request is None:
+            return None
+
+        plano = PlanoMetas.objects.filter(usuario=request.user).first()
+        if plano is None:
+            return None
+
+        calculado = calcular_valor_alvo(
+            {'base_calculo': base, 'multiplicador': multiplicador},
+            plano.renda_mensal,
+            plano.custo_vida_mensal,
+        )
+        return calculado if calculado > 0 else None
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

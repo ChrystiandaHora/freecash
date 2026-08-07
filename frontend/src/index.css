@@ -62,6 +62,26 @@
   --ring: 204 100% 40%;
 
   --radius: 0.5rem; /* Menor radius para look mais flat/limpo */
+
+  /* ── Escala divergente do heatmap de calendário (Simulador de Gastos) ──────
+     Azul = saldo positivo, vermelho = saldo negativo, cinza neutro no zero.
+     Três degraus por braço; validados como rampa ordinal (L monótono,
+     ΔL >= 0.06, ponta clara >= 2:1 sobre o card branco) e cada par
+     fundo/tinta acima de 4.5:1 para o número do dia. */
+  --heat-zero: #f0efec;
+  --heat-zero-ink: #52514e;
+  --heat-pos-1: #86b6ef;
+  --heat-pos-1-ink: #0b0b0b;
+  --heat-pos-2: #256abf;
+  --heat-pos-2-ink: #ffffff;
+  --heat-pos-3: #0d366b;
+  --heat-pos-3-ink: #ffffff;
+  --heat-neg-1: #ea8c8b;
+  --heat-neg-1-ink: #0b0b0b;
+  --heat-neg-2: #d03b3b;
+  --heat-neg-2-ink: #ffffff;
+  --heat-neg-3: #8f2a2a;
+  --heat-neg-3-ink: #ffffff;
 }
 
 .dark {
@@ -93,6 +113,23 @@
   --border: 0 0% 18%;
   --input: 0 0% 18%;
   --ring: 204 100% 40%;
+
+  /* Heatmap no escuro: os mesmos dois matizes, redegrauados para o card #171717.
+     A âncora inverte — quanto maior a magnitude, mais claro o degrau. */
+  --heat-zero: #383835;
+  --heat-zero-ink: #c3c2b7;
+  --heat-pos-1: #184f95;
+  --heat-pos-1-ink: #ffffff;
+  --heat-pos-2: #3987e5;
+  --heat-pos-2-ink: #0b0b0b;
+  --heat-pos-3: #9ec5f4;
+  --heat-pos-3-ink: #0b0b0b;
+  --heat-neg-1: #8f2a2a;
+  --heat-neg-1-ink: #ffffff;
+  --heat-neg-2: #e34948;
+  --heat-neg-2-ink: #0b0b0b;
+  --heat-neg-3: #f0a3a2;
+  --heat-neg-3-ink: #0b0b0b;
 }
 
 * {
@@ -194,6 +231,64 @@ body {
 }
 
 
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Células do heatmap de calendário.
+ *
+ * O nível (-3..+3) escolhe o par fundo/tinta; o SINAL escolhe a textura.
+ * A hachura a 45° nos dias negativos é o canal redundante exigido pelo
+ * A11Y.md (SC 1.4.1 — estado nunca por cor sozinha): o vermelho é hachurado,
+ * o azul e o neutro ficam lisos, então "no vermelho" continua legível em
+ * escala de cinza, sob daltonismo e impresso.
+ * ────────────────────────────────────────────────────────────────────────── */
+.heat-cell {
+  background-color: var(--heat-bg, var(--heat-zero));
+  color: var(--heat-ink, var(--heat-zero-ink));
+}
+
+.heat-cell[data-level="0"]  { --heat-bg: var(--heat-zero);  --heat-ink: var(--heat-zero-ink); }
+.heat-cell[data-level="1"]  { --heat-bg: var(--heat-pos-1); --heat-ink: var(--heat-pos-1-ink); }
+.heat-cell[data-level="2"]  { --heat-bg: var(--heat-pos-2); --heat-ink: var(--heat-pos-2-ink); }
+.heat-cell[data-level="3"]  { --heat-bg: var(--heat-pos-3); --heat-ink: var(--heat-pos-3-ink); }
+.heat-cell[data-level="-1"] { --heat-bg: var(--heat-neg-1); --heat-ink: var(--heat-neg-1-ink); }
+.heat-cell[data-level="-2"] { --heat-bg: var(--heat-neg-2); --heat-ink: var(--heat-neg-2-ink); }
+.heat-cell[data-level="-3"] { --heat-bg: var(--heat-neg-3); --heat-ink: var(--heat-neg-3-ink); }
+
+/* Hachura tom-sobre-tom, só no braço negativo.
+   A tinta da hachura é a mesma do número do dia, diluída: como cada par
+   fundo/tinta já foi escolhido acima de 4.5:1, a hachura enxerga contraste em
+   qualquer degrau — inclusive nos extremos, onde um preto ou branco fixo
+   sumiria (vinho escuro no claro, rosa claro no escuro). */
+.heat-cell[data-sign="neg"] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--heat-ink) 30%, transparent) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+/* Dias fora da janela de projeção: sem dado, sem cor. */
+.heat-cell[data-empty="true"] {
+  background-color: transparent;
+  background-image: none;
+  color: var(--color-muted-foreground);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+/* Alto contraste forçado: o SO remove fundos e imagens de fundo, então o
+   sinal volta como contorno — a visão em tabela segue como equivalente pleno. */
+@media (forced-colors: active) {
+  .heat-cell {
+    forced-color-adjust: none;
+    background-color: Canvas;
+    color: CanvasText;
+    box-shadow: inset 0 0 0 1px CanvasText;
+  }
+  .heat-cell[data-sign="neg"] {
+    background-color: Canvas;
+    box-shadow: inset 0 0 0 3px Highlight;
+  }
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Respeito à preferência de movimento reduzido do sistema (WCAG 2.3.3).

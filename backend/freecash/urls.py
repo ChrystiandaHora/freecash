@@ -27,7 +27,8 @@ from core.views.api import (
     CookieTokenObtainPairView, CookieTokenRefreshView, CookieTokenClearView,
     CartaoCreditoAPIViewSet, ContasPagarViewSet, ReceitasViewSet,
     TransacoesViewSet, RelatoriosDREAPIView, RegistrationAPIView,
-    ExecutiveBIDashboardAPIView, ComprasCartaoViewSet
+    ExecutiveBIDashboardAPIView, ComprasCartaoViewSet,
+    MetaFinanceiraViewSet, PlanoMetasAPIView
 )
 from investimento.views_api import (
     ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet, 
@@ -54,6 +55,7 @@ router.register(r'financeiro/contas-pagar', ContasPagarViewSet, basename='api-fi
 router.register(r'financeiro/receitas', ReceitasViewSet, basename='api-financeiro-receitas')
 router.register(r'financeiro/transacoes', TransacoesViewSet, basename='api-financeiro-transacoes')
 router.register(r'financeiro/compras-cartao', ComprasCartaoViewSet, basename='api-financeiro-compras-cartao')
+router.register(r'financeiro/metas', MetaFinanceiraViewSet, basename='api-financeiro-metas')
 
 router.register(r'investimentos/classes', ClasseAtivoViewSet, basename='api-classe')
 router.register(r'investimentos/categorias', CategoriaAtivoViewSet, basename='api-categoria-ativo')
@@ -74,6 +76,8 @@ urlpatterns += [
     path('api/investimentos/dashboard/', DashboardInvestimentoAPIView.as_view(), name='api-investimentos-dashboard'),
     path('api/investimentos/balanceamento/', BalanceamentoAPIView.as_view(), name='api-investimentos-balanceamento'),
     path('api/relatorios/dre/', RelatoriosDREAPIView.as_view(), name='api-relatorios-dre'),
+    # Irmão de `financeiro/metas/` no router: um sub-path colidiria com o detail `metas/<pk>/`.
+    path('api/financeiro/metas-plano/', PlanoMetasAPIView.as_view(), name='api-financeiro-metas-plano'),
     # Ferramentas
     path('api/ferramentas/importar/', FerramentasImportarAPIView.as_view(), name='api-ferramentas-importar'),
     path('api/ferramentas/importar-extrato/', FerramentasImportarExtratoAPIView.as_view(), name='api-ferramentas-importar-extrato'),

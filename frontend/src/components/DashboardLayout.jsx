@@ -38,6 +38,7 @@ import {
   Settings,
   ChevronDown,
   Clock,
+  Target,
   HelpCircle
 } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -58,6 +59,7 @@ const routeTitles = [
   { match: (p) => p.startsWith('/receitas'), title: 'Receitas' },
   { match: (p) => p.startsWith('/transacoes'), title: 'Transações' },
   { match: (p) => p.startsWith('/simulador'), title: 'Simulador de Gastos' },
+  { match: (p) => p.startsWith('/metas'), title: 'Metas' },
   { match: (p) => p.startsWith('/relatorios'), title: 'Relatórios' },
   { match: (p) => p.startsWith('/importar'), title: 'Importar' },
   { match: (p) => p.startsWith('/compras-cartao'), title: 'Compras no Cartão' },
@@ -180,7 +182,7 @@ export default function DashboardLayout() {
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('investimentos')) setOpenGroup('investimentos');
-    else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes') || path.includes('simulador')) setOpenGroup('financeiro');
+    else if (path.includes('contas') || path.includes('cartoes') || path.includes('receitas') || path.includes('transacoes') || path.includes('simulador') || path.includes('metas')) setOpenGroup('financeiro');
     else if (path.includes('importar') || path.includes('compras-cartao') || path.includes('backup')) setOpenGroup('ferramentas');
     else if (path.includes('pagamentos')) setOpenGroup('ajustes');
     else setOpenGroup('geral');
@@ -291,6 +293,7 @@ export default function DashboardLayout() {
         { name: 'Receitas', path: '/receitas', icon: Coins },
         { name: 'Transações', path: '/transacoes', icon: List },
         { name: 'Simulador de Gastos', path: '/simulador', icon: Clock },
+        { name: 'Metas', path: '/metas', icon: Target },
       ]
     },
     {

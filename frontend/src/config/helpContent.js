@@ -248,6 +248,36 @@ export const helpContent = {
     }
   },
 
+  "/metas": {
+    title: "Metas",
+    overview: "Transforma dois números — sua renda mensal e seu custo de vida — em quatro alvos financeiros de referência, com acompanhamento de progresso e histórico de aportes.",
+    features: [
+      "Base de cálculo com sugestão automática pela média dos últimos meses de lançamentos.",
+      "Quatro metas padrão geradas a partir de múltiplos da renda e do custo de vida.",
+      "Barras de progresso por meta, com alerta quando o limite de gastos essenciais é estourado.",
+      "Metas de investimento acompanham sozinhas o valor de mercado da sua carteira.",
+      "Metas personalizadas com valor-alvo próprio, prazo e histórico de aportes."
+    ],
+    concepts: {
+      "Patrimônio para viver de renda": "Renda mensal × 200. Quanto acumular para viver dos rendimentos dos seus investimentos.",
+      "Meta mensal investimento": "Renda mensal × 0,1. Quanto aportar por mês na carteira. O alvo se renova a cada mês, e o progresso soma suas ordens de compra da competência atual.",
+      "Multiplicadores": "Os fatores 200, 0,1, 6 e 0,6 são apenas a referência inicial. Você pode ajustá-los no bloco 'Como os alvos são calculados' — o valor que você definir é preservado quando as metas são recalculadas.",
+      "Reserva de emergência": "Custo de vida mensal × 6. Dinheiro aplicado com segurança e resgate fácil para imprevistos.",
+      "Limite de gastos essenciais": "Renda mensal × 0,6. Teto mensal para moradia, alimentação, transporte e demais custos fixos.",
+      "Acúmulo x Teto": "Metas de acúmulo progridem até o alvo (quanto mais, melhor). Metas de teto sinalizam alerta ao ultrapassar o limite.",
+      "Origem do progresso": "Manual (você informa e registra aportes), Valor de mercado da carteira (patrimônio total, pela cotação mais recente de cada ativo) ou Aportes do mês (soma das suas ordens de compra na competência atual). O patrimônio para viver de renda nasce lendo o valor de mercado; a meta mensal, os aportes do mês."
+    },
+    actions: {
+      "Usar esse valor": "Copia a média calculada pelos seus lançamentos para o campo de renda ou custo de vida.",
+      "Salvar base": "Persiste a renda e o custo de vida usados nos cálculos.",
+      "Gerar / recalcular metas padrão": "Cria as quatro metas de referência ou atualiza os valores-alvo pela base atual. Nome, multiplicador, origem, progresso e prazo que você tenha ajustado são preservados.",
+      "Salvar multiplicadores": "Grava os fatores editados e recalcula os quatro valores-alvo de uma vez.",
+      "Restaurar padrões": "Devolve os fatores de referência (200, 0,1, 6 e 0,6) aos campos. Nada é gravado até você clicar em salvar.",
+      "Registrar aporte": "Soma um valor ao acumulado da meta e grava no histórico.",
+      "Guardar um valor": "Atalho no cartão da meta para registrar um aporte sem sair da tela."
+    }
+  },
+
   "/receitas/novo": {
     title: "Formulário de Receita",
     overview: "Insira os dados da sua entrada de receita única ou recorrente.",

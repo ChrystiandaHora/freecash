@@ -114,6 +114,7 @@ def get_backupable_models():
 
     priority = {
         "ConfigUsuario": 1,
+        "PlanoMetas": 1.5,
         "Categoria": 2,
         "CartaoCredito": 3,
         "ClasseAtivo": 4,
@@ -124,6 +125,9 @@ def get_backupable_models():
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
+        # MetaFinanceira não referencia outros modelos; os aportes dependem dela
+        # e são restaurados à parte, por não terem FK direta para o usuário.
+        "MetaFinanceira": 11,
     }
 
     def get_priority(m):
@@ -344,6 +348,46 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         # Rastrear ativos restaurados para recálculo posterior
                         if model_name == "Ativo":
                             ativos_restaurados.append(obj)
+
+            # 2b. Restaurar o histórico de aportes das metas
+            # Não passa pelo laço genérico porque `AporteMeta` não tem FK para o
+            # usuário. Os registros antigos já sumiram junto com as metas, via
+            # CASCADE, no passo de DELETE.
+            aporte_records = data_dict.get("data", {}).get("core", {}).get("AporteMeta", [])
+            if aporte_records:
+                logger.debug("Restaurando %d registros de AporteMeta", len(aporte_records))
+                from core.models import AporteMeta
+                from django.utils.dateparse import parse_date
+                from decimal import Decimal as DecimalAporte
+
+                for row in aporte_records:
+                    meta_uuid = row.get("meta_uuid")
+                    meta_id = uuid_to_id.get("core.MetaFinanceira", {}).get(meta_uuid)
+                    if not meta_id:
+                        meta_id = uuid_to_id.get("MetaFinanceira", {}).get(meta_uuid)
+
+                    if not meta_id:
+                        total_ignorados += 1
+                        continue
+
+                    try:
+                        data_aporte = parse_date(row["data"]) if row.get("data") else None
+                        # `valor_acumulado` da meta já veio pronto do backup: os
+                        # aportes são apenas o histórico e não devem ser somados
+                        # de novo (a soma acontece só na action da API).
+                        AporteMeta.objects.update_or_create(
+                            uuid=row.get("uuid") or uuid.uuid4(),
+                            defaults={
+                                "meta_id": meta_id,
+                                "data": data_aporte or timezone.localdate(),
+                                "valor": DecimalAporte(str(row.get("valor") or 0)),
+                                "observacao": row.get("observacao") or "",
+                            },
+                        )
+                        total_restored += 1
+                    except Exception as e:
+                        logger.warning("Falha ao restaurar aporte de meta: %s", e)
+                        total_ignorados += 1
 
             # 3. Restaurar cotações históricas se fornecidas no backup
             cotacao_records = data_dict.get("data", {}).get("investimento", {}).get("Cotacao", [])

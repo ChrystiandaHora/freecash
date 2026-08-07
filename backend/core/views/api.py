@@ -8,17 +8,32 @@ serviços de apoio para cadastros em lote, liquidação e consolidação de grá
 
 import calendar
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from dateutil.relativedelta import relativedelta
 
-from django.db.models import Sum, Q
-from django.db.models.functions import Coalesce
+from django.db import transaction
+from django.db.models import Sum, Q, F, Value
+from django.db.models.functions import Coalesce, Greatest
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from core.models import Categoria, Conta, CartaoCredito
-from core.serializers import CategoriaSerializer, ContaSerializer, CartaoCreditoSerializer, CustomTokenObtainPairSerializer
+from core.models import (
+    AporteMeta, Categoria, Conta, CartaoCredito, MetaFinanceira, PlanoMetas
+)
+from core.serializers import (
+    CategoriaSerializer,
+    ContaSerializer,
+    CartaoCreditoSerializer,
+    CustomTokenObtainPairSerializer,
+    AporteMetaSerializer,
+    MetaFinanceiraSerializer,
+    PlanoMetasSerializer,
+)
+from core.services import metas_service
 from core.services.dashboard_helper import (
     totals_for_range_competencia,
     pct_change,
@@ -1598,3 +1613,242 @@ class ExecutiveBIDashboardAPIView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+
+class MetaFinanceiraViewSet(viewsets.ModelViewSet):
+    """ViewSet REST das metas financeiras do usuário autenticado.
+
+    Cobre o CRUD das metas (padrão e personalizadas) e expõe duas ações extras:
+    a geração/recálculo das metas padrão a partir do plano e o registro de
+    aportes no histórico.
+    """
+    serializer_class = MetaFinanceiraSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Retorna as metas do usuário autenticado com os aportes pré-carregados.
+
+        Returns:
+            QuerySet: Metas do usuário, ordenadas conforme o modelo.
+        """
+        return MetaFinanceira.objects.filter(
+            usuario=self.request.user
+        ).prefetch_related('aportes')
+
+    def get_serializer_context(self):
+        """Injeta as origens automáticas de progresso no contexto do serializador.
+
+        Resolvidas uma vez por requisição: metas com `origem_acumulado` igual a
+        'carteira' ou 'aportes_mes' leem o progresso daqui, e calcular isso por
+        instância geraria uma consulta por meta.
+
+        Returns:
+            dict: Contexto padrão acrescido de `valores_externos`.
+        """
+        context = super().get_serializer_context()
+        context['valores_externos'] = metas_service.valores_externos(self.request.user)
+        return context
+
+    def perform_create(self, serializer):
+        """Salva a nova meta atribuindo o usuário autenticado.
+
+        Args:
+            serializer (Serializer): Serializador da meta com dados validados.
+        """
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=False, methods=['post'], url_path='gerar-padrao')
+    def gerar_padrao(self, request) -> Response:
+        """Cria ou recalcula as quatro metas padrão derivadas do plano do usuário.
+
+        A operação é idempotente e preserva o valor já acumulado em cada meta,
+        de modo que ajustar a renda não apaga o progresso registrado.
+
+        Args:
+            request (Request): Requisição autenticada, sem corpo obrigatório.
+
+        Returns:
+            Response: Lista das metas padrão atualizadas, ou 400 se o plano
+            ainda não tiver renda e custo de vida preenchidos.
+        """
+        plano, _ = PlanoMetas.objects.get_or_create(usuario=request.user)
+
+        if plano.renda_mensal is None or plano.custo_vida_mensal is None:
+            return Response(
+                {'detail': 'Informe a renda mensal e o custo de vida antes de gerar as metas.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        metas = metas_service.gerar_metas_padrao(request.user, plano)
+        serializer = self.get_serializer(metas, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['put'], url_path='multiplicadores')
+    def multiplicadores(self, request) -> Response:
+        """Ajusta de uma vez os multiplicadores das metas derivadas de uma base.
+
+        Recebe um mapa de tipo da meta para o novo fator, por exemplo
+        `{"patrimonio_renda": "150", "reserva_emergencia": "12"}`, e recalcula
+        os valores-alvo correspondentes. Aplicado em transação para que uma
+        entrada inválida não deixe metade dos multiplicadores atualizados.
+
+        Args:
+            request (Request): Requisição com o mapa de multiplicadores.
+
+        Returns:
+            Response: Todas as metas do usuário já atualizadas, ou 400 com os
+            erros por tipo de meta.
+        """
+        entradas = request.data or {}
+        if not isinstance(entradas, dict) or not entradas:
+            return Response(
+                {'detail': 'Envie um mapa de tipo da meta para o multiplicador.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        metas = {m.tipo: m for m in self.get_queryset()}
+        erros = {}
+        pendentes = []
+
+        for tipo, valor in entradas.items():
+            meta = metas.get(tipo)
+            if meta is None:
+                erros[tipo] = 'Meta não encontrada.'
+                continue
+            if meta.base_calculo == MetaFinanceira.BASE_MANUAL:
+                erros[tipo] = 'Esta meta usa valor manual e não tem multiplicador.'
+                continue
+            try:
+                multiplicador = Decimal(str(valor))
+            except (InvalidOperation, TypeError):
+                erros[tipo] = 'Informe um número válido.'
+                continue
+            if multiplicador <= 0:
+                erros[tipo] = 'O multiplicador deve ser maior que zero.'
+                continue
+            pendentes.append((meta, multiplicador))
+
+        if erros:
+            return Response(erros, status=status.HTTP_400_BAD_REQUEST)
+
+        plano, _ = PlanoMetas.objects.get_or_create(usuario=request.user)
+        with transaction.atomic():
+            for meta, multiplicador in pendentes:
+                meta.multiplicador = multiplicador
+                meta.valor_alvo = metas_service.calcular_valor_alvo(
+                    {'base_calculo': meta.base_calculo, 'multiplicador': multiplicador},
+                    plano.renda_mensal,
+                    plano.custo_vida_mensal,
+                )
+                meta.save(update_fields=['multiplicador', 'valor_alvo', 'atualizada_em'])
+
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='aportes')
+    def aportes(self, request, pk=None) -> Response:
+        """Registra um aporte na meta e soma o valor no acumulado.
+
+        Args:
+            request (Request): Requisição com `valor` e, opcionalmente, `data` e `observacao`.
+            pk (str): Chave primária da meta.
+
+        Returns:
+            Response: A meta atualizada, já com o novo aporte no histórico.
+        """
+        meta = self.get_object()
+        serializer = AporteMetaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            serializer.save(meta=meta)
+            # F() evita perder aportes concorrentes que outra requisição tenha somado.
+            MetaFinanceira.objects.filter(pk=meta.pk).update(
+                valor_acumulado=F('valor_acumulado') + serializer.validated_data['valor']
+            )
+
+        # Relê pelo queryset em vez de `refresh_from_db` para que o `prefetch`
+        # dos aportes já inclua o registro recém-criado.
+        meta = self.get_queryset().get(pk=meta.pk)
+        return Response(self.get_serializer(meta).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path=r'aportes/(?P<aporte_id>[^/.]+)')
+    def remover_aporte(self, request, pk=None, aporte_id=None) -> Response:
+        """Exclui um aporte e desconta o valor do acumulado da meta.
+
+        Necessário para corrigir um lançamento errado: sem isso, um aporte
+        digitado com o valor trocado ficaria somado para sempre.
+
+        Args:
+            request (Request): Requisição autenticada.
+            pk (str): Chave primária da meta.
+            aporte_id (str): Chave primária do aporte a excluir.
+
+        Returns:
+            Response: A meta atualizada, ou 404 se o aporte não pertencer a ela.
+        """
+        meta = self.get_object()
+        aporte = get_object_or_404(AporteMeta, pk=aporte_id, meta=meta)
+        valor = aporte.valor
+
+        with transaction.atomic():
+            aporte.delete()
+            # `Greatest` evita acumulado negativo caso o valor tenha sido
+            # ajustado manualmente para baixo depois do aporte.
+            MetaFinanceira.objects.filter(pk=meta.pk).update(
+                valor_acumulado=Greatest(
+                    F('valor_acumulado') - valor, Value(Decimal('0.00'))
+                )
+            )
+
+        meta = self.get_queryset().get(pk=meta.pk)
+        return Response(self.get_serializer(meta).data, status=status.HTTP_200_OK)
+
+
+class PlanoMetasAPIView(APIView):
+    """Endpoint da base de cálculo do planejamento de metas.
+
+    Entrega os valores salvos pelo usuário junto das médias sugeridas pelos
+    lançamentos já cadastrados, para que a tela possa oferecer o preenchimento
+    automático sem sobrescrever o que foi digitado manualmente.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request) -> Response:
+        """Retorna o plano salvo, as médias sugeridas e o gasto do mês corrente.
+
+        Args:
+            request (Request): Requisição autenticada.
+
+        Returns:
+            Response: Payload com `plano`, `sugestoes` e `gasto_essencial_mes`.
+        """
+        plano, _ = PlanoMetas.objects.get_or_create(usuario=request.user)
+        renda_media, custo_medio = metas_service.medias_mensais(
+            request.user, plano.meses_referencia
+        )
+
+        return Response({
+            'plano': PlanoMetasSerializer(plano).data,
+            'sugestoes': {
+                'renda_mensal': renda_media,
+                'custo_vida_mensal': custo_medio,
+                'meses': plano.meses_referencia,
+            },
+            'gasto_essencial_mes': metas_service.gasto_essencial_do_mes(request.user),
+            'multiplicadores_padrao': metas_service.multiplicadores_padrao(),
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request) -> Response:
+        """Atualiza a base de cálculo do usuário.
+
+        Args:
+            request (Request): Requisição com os campos do plano a atualizar.
+
+        Returns:
+            Response: O plano atualizado, ou 400 com os erros de validação.
+        """
+        plano, _ = PlanoMetas.objects.get_or_create(usuario=request.user)
+        serializer = PlanoMetasSerializer(plano, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)

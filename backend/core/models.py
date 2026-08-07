@@ -534,3 +534,231 @@ class LinhaExtrato(AuditoriaModel):
             str: Resumo amigável da linha de extrato.
         """
         return f"{self.data} - {self.descricao[:30]} - R$ {self.valor}"
+
+
+class PlanoMetas(AuditoriaModel):
+    """Base de cálculo do planejamento de metas financeiras de um usuário.
+
+    Guarda os dois números que alimentam os múltiplos das metas padrão
+    (renda mensal e custo de vida mensal). Ambos podem ser preenchidos
+    automaticamente pela média dos últimos meses de lançamentos ou
+    sobrescritos manualmente pelo usuário.
+
+    Atributos:
+        usuario (User): Proprietário do plano (um por usuário).
+        renda_mensal (Decimal): Renda mensal de referência.
+        custo_vida_mensal (Decimal): Custo de vida mensal de referência.
+        usar_valores_automaticos (bool): Se True, a tela sugere usar a média calculada.
+        meses_referencia (int): Tamanho da janela usada no cálculo da média.
+    """
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="plano_metas",
+    )
+    renda_mensal = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    custo_vida_mensal = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    usar_valores_automaticos = models.BooleanField(default=True)
+    meses_referencia = models.PositiveSmallIntegerField(default=3)
+
+    class Meta:
+        verbose_name = "Plano de Metas"
+        verbose_name_plural = "Planos de Metas"
+
+    def __str__(self):
+        """Retorna a identificação do plano pelo usuário proprietário.
+
+        Returns:
+            str: Identificação legível do plano.
+        """
+        return f"Plano de metas de {self.usuario.username}"
+
+
+class MetaFinanceira(AuditoriaModel):
+    """Meta financeira de acúmulo ou teto de gastos.
+
+    As quatro metas padrão são derivadas de múltiplos da renda mensal ou do
+    custo de vida (definidos em `core.services.metas_service.METAS_PADRAO`),
+    mas o usuário também pode cadastrar metas personalizadas com valor-alvo
+    digitado diretamente.
+
+    O campo `natureza` distingue os dois comportamentos: metas de acúmulo
+    progridem em direção ao alvo (quanto mais, melhor), enquanto metas de teto
+    representam um limite mensal que não deve ser ultrapassado.
+
+    Atributos:
+        usuario (User): Proprietário da meta.
+        nome (str): Nome descritivo e único por usuário.
+        tipo (str): Identificador da meta padrão ou 'personalizada'.
+        natureza (str): 'acumulo' (progride até o alvo) ou 'teto' (limite mensal).
+        base_calculo (str): Origem do valor-alvo ('renda', 'custo_vida' ou 'manual').
+        multiplicador (Decimal): Fator aplicado sobre a base quando derivada.
+        valor_alvo (Decimal): Valor-alvo persistido, mesmo quando derivado.
+        valor_acumulado (Decimal): Acúmulo informado manualmente; ignorado na
+            exibição quando `origem_acumulado` é 'carteira'.
+        origem_acumulado (str): De onde vem o progresso — 'manual' (o campo
+            acima), 'carteira' (valor de mercado dos investimentos) ou
+            'aportes_mes' (quanto foi comprado na carteira no mês corrente).
+            As duas últimas são recalculadas a cada leitura por `metas_service`.
+        prazo (date): Data limite opcional para atingir a meta.
+        concluida (bool): Marcação manual de meta encerrada.
+        ordem (int): Posição de exibição; as metas padrão ocupam as primeiras.
+        observacao (str): Anotações livres do usuário.
+    """
+
+    TIPO_PATRIMONIO_RENDA = "patrimonio_renda"
+    TIPO_APORTE_MENSAL = "aporte_mensal"
+    TIPO_RESERVA_EMERGENCIA = "reserva_emergencia"
+    TIPO_GASTO_ESSENCIAL = "gasto_essencial"
+    TIPO_PERSONALIZADA = "personalizada"
+
+    TIPO_CHOICES = (
+        (TIPO_PATRIMONIO_RENDA, "Patrimônio para viver de renda"),
+        (TIPO_APORTE_MENSAL, "Meta mensal investimento"),
+        (TIPO_RESERVA_EMERGENCIA, "Reserva de emergência"),
+        (TIPO_GASTO_ESSENCIAL, "Limite de gastos essenciais"),
+        (TIPO_PERSONALIZADA, "Personalizada"),
+    )
+
+    NATUREZA_ACUMULO = "acumulo"
+    NATUREZA_TETO = "teto"
+    NATUREZA_CHOICES = (
+        (NATUREZA_ACUMULO, "Acúmulo"),
+        (NATUREZA_TETO, "Teto mensal"),
+    )
+
+    BASE_RENDA = "renda"
+    BASE_CUSTO_VIDA = "custo_vida"
+    BASE_MANUAL = "manual"
+    BASE_CHOICES = (
+        (BASE_RENDA, "Renda mensal"),
+        (BASE_CUSTO_VIDA, "Custo de vida mensal"),
+        (BASE_MANUAL, "Valor manual"),
+    )
+
+    ORIGEM_MANUAL = "manual"
+    ORIGEM_CARTEIRA = "carteira"
+    ORIGEM_APORTES_MES = "aportes_mes"
+    ORIGEM_CHOICES = (
+        (ORIGEM_MANUAL, "Informado manualmente"),
+        (ORIGEM_CARTEIRA, "Valor de mercado da carteira"),
+        (ORIGEM_APORTES_MES, "Aportes do mês na carteira"),
+    )
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="metas",
+    )
+    nome = models.CharField(max_length=120)
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, default=TIPO_PERSONALIZADA)
+    natureza = models.CharField(max_length=10, choices=NATUREZA_CHOICES, default=NATUREZA_ACUMULO)
+    base_calculo = models.CharField(max_length=15, choices=BASE_CHOICES, default=BASE_MANUAL)
+    multiplicador = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
+    valor_alvo = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    valor_acumulado = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    origem_acumulado = models.CharField(
+        max_length=15, choices=ORIGEM_CHOICES, default=ORIGEM_MANUAL
+    )
+    prazo = models.DateField(null=True, blank=True)
+    concluida = models.BooleanField(default=False)
+    ordem = models.PositiveSmallIntegerField(default=99)
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ("usuario", "nome")
+        ordering = ["ordem", "id"]
+        verbose_name = "Meta Financeira"
+        verbose_name_plural = "Metas Financeiras"
+
+    def acumulado_efetivo(self, valores_externos=None):
+        """Acúmulo que vale para esta meta, respeitando a origem escolhida.
+
+        Args:
+            valores_externos (dict | None): Mapa de origem automática para o
+                valor já calculado (ex.: `{'carteira': Decimal('11891.15')}`),
+                resolvido uma vez por requisição. Quando a origem desta meta não
+                está no mapa, cai no valor manual — assim o modelo nunca dispara
+                consultas de dentro de um laço de serialização.
+
+        Returns:
+            float: Valor acumulado a considerar no progresso.
+        """
+        externo = (valores_externos or {}).get(self.origem_acumulado)
+        if externo is not None:
+            return float(externo)
+        return float(self.valor_acumulado or 0)
+
+    def progresso_percentual(self, valores_externos=None):
+        """Percentual do alvo já atingido.
+
+        Não é limitado a 100: uma meta de teto ultrapassada precisa reportar
+        o excedente para que a interface possa sinalizar o estouro.
+
+        Args:
+            valores_externos (dict | None): Valores das origens automáticas.
+
+        Returns:
+            float: Percentual atingido, ou 0.0 quando o alvo não é positivo.
+        """
+        if not self.valor_alvo or self.valor_alvo <= 0:
+            return 0.0
+        return self.acumulado_efetivo(valores_externos) / float(self.valor_alvo) * 100
+
+    def valor_restante(self, valores_externos=None):
+        """Quanto falta para atingir o alvo (nunca negativo).
+
+        Args:
+            valores_externos (dict | None): Valores das origens automáticas.
+
+        Returns:
+            float: Diferença entre alvo e acumulado, com piso em zero.
+        """
+        restante = float(self.valor_alvo or 0) - self.acumulado_efetivo(valores_externos)
+        return max(restante, 0.0)
+
+    def __str__(self):
+        """Retorna o nome da meta com seu valor-alvo.
+
+        Returns:
+            str: Resumo legível da meta.
+        """
+        return f"{self.nome} (R$ {self.valor_alvo})"
+
+
+class AporteMeta(AuditoriaModel):
+    """Registro histórico de um aporte feito em direção a uma meta.
+
+    Cada aporte soma no `valor_acumulado` da meta no momento da criação —
+    o campo da meta continua sendo a fonte da verdade do progresso, e este
+    modelo serve como log auditável das contribuições.
+
+    Atributos:
+        meta (MetaFinanceira): Meta que recebeu o aporte.
+        data (date): Data do aporte.
+        valor (Decimal): Valor aportado.
+        observacao (str): Anotação curta e opcional sobre o aporte.
+    """
+
+    meta = models.ForeignKey(
+        MetaFinanceira,
+        on_delete=models.CASCADE,
+        related_name="aportes",
+    )
+    data = models.DateField(default=timezone.localdate)
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    observacao = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-data", "-id"]
+        verbose_name = "Aporte de Meta"
+        verbose_name_plural = "Aportes de Metas"
+
+    def __str__(self):
+        """Retorna data e valor do aporte.
+
+        Returns:
+            str: Resumo legível do aporte.
+        """
+        return f"{self.data} - R$ {self.valor}"

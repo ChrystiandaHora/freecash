@@ -69,6 +69,7 @@ def get_backupable_models():
 
     priority = {
         "ConfigUsuario": 1,
+        "PlanoMetas": 1.5,
         "Categoria": 2,
         "CartaoCredito": 3,
         "ClasseAtivo": 4,
@@ -79,6 +80,9 @@ def get_backupable_models():
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
+        # MetaFinanceira não referencia outros modelos; os aportes dependem dela
+        # e são exportados à parte, por não terem FK direta para o usuário.
+        "MetaFinanceira": 11,
     }
 
     def get_priority(m):
@@ -198,6 +202,25 @@ def export_user_data(user, password):
             records.append(row)
 
         data["data"][app_label][model_name] = records
+
+    # Exportar AporteMeta manualmente: o histórico pertence à meta, não ao usuário,
+    # então o modelo não é descoberto por `get_backupable_models`.
+    from core.models import AporteMeta, MetaFinanceira
+
+    metas_usuario_ids = MetaFinanceira.objects.filter(usuario=user).values_list("id", flat=True)
+    aportes_qs = AporteMeta.objects.filter(meta_id__in=metas_usuario_ids).select_related("meta")
+
+    aportes_records = []
+    for obj in aportes_qs.iterator(chunk_size=1000):
+        aportes_records.append({
+            "uuid": str(obj.uuid),
+            "meta_uuid": str(obj.meta.uuid),
+            "data": obj.data.isoformat() if obj.data else None,
+            "valor": float(obj.valor),
+            "observacao": obj.observacao,
+        })
+
+    data["data"].setdefault("core", {})["AporteMeta"] = aportes_records
 
     # Exportar Cotacao e DetalheRendaFixa manualmente, pois não possuem usuario diretamente
     from investimento.models import Ativo, Cotacao, DetalheRendaFixa

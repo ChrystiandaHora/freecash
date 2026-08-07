@@ -16,6 +16,9 @@
  *   `pagarConta` que registra o pagamento via API (`POST /api/contas-pagar/{id}/pagar/`).
  * - Movimentação entre outras colunas é visual apenas (sem persistência de data).
  *
+ * Edição: cada card tem um botão de lápis que abre `ContaPagarEditModal`, permitindo
+ * alterar descrição, categoria, valor e vencimento sem sair do quadro.
+ *
  * KPIs exibidos: Total Pendente, Total Atrasado, Contas Pagas, Total de Contas.
  *
  * @module PipelineKanban
@@ -26,12 +29,12 @@
  * // Rota configurada em App.jsx:
  * <Route path="contas-kanban" element={<PipelineKanban />} />
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   AlertCircle, Clock, CalendarDays, CheckCircle2,
-  RefreshCw, GripVertical, DollarSign
+  RefreshCw, GripVertical, DollarSign, Pencil
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta } from '../services/financeiro';
@@ -40,6 +43,7 @@ import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import ContaPagarEditModal from '../components/ContaPagarEditModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -154,7 +158,7 @@ const getColumnId = (conta) => {
 
 // ─── Card de Conta (Kanban item) ──────────────────────────────────────────────
 
-const ContaCard = ({ conta, provided, snapshot, colId }) => {
+const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
   const isAtrasada = colId === 'atrasadas'
   const isPaga = colId === 'pagas'
 
@@ -176,17 +180,28 @@ const ContaCard = ({ conta, provided, snapshot, colId }) => {
         >
           <GripVertical className="h-4 w-4" aria-hidden="true" />
         </span>
-        {isPaga ? (
-          <Badge variant="success">
-            <CheckCircle2 className="h-3 w-3" />
-            Paga
-          </Badge>
-        ) : isAtrasada ? (
-          <Badge variant="destructive">
-            <AlertCircle className="h-3 w-3" />
-            Atrasada
-          </Badge>
-        ) : null}
+        <div className="flex items-center gap-1.5">
+          {isPaga ? (
+            <Badge variant="success">
+              <CheckCircle2 className="h-3 w-3" />
+              Paga
+            </Badge>
+          ) : isAtrasada ? (
+            <Badge variant="destructive">
+              <AlertCircle className="h-3 w-3" />
+              Atrasada
+            </Badge>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onEdit(conta)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            title="Editar"
+            aria-label={`Editar ${conta.descricao}`}
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Conteúdo */}
@@ -213,7 +228,7 @@ const ContaCard = ({ conta, provided, snapshot, colId }) => {
 
 // ─── Coluna Kanban ────────────────────────────────────────────────────────────
 
-const KanbanColumn = ({ col, contas, provided, snapshot }) => {
+const KanbanColumn = ({ col, contas, provided, snapshot, onEdit }) => {
   const Icon = col.icon
   const total = contas.reduce((a, c) => a + Number(c.valor ?? 0), 0)
 
@@ -256,6 +271,7 @@ const KanbanColumn = ({ col, contas, provided, snapshot }) => {
                 provided={provided}
                 snapshot={snapshot}
                 colId={col.id}
+                onEdit={onEdit}
               />
             )}
           </Draggable>
@@ -271,6 +287,7 @@ const KanbanColumn = ({ col, contas, provided, snapshot }) => {
 export default function PipelineKanban() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const [editingConta, setEditingConta] = useState(null)
 
   const hoje = new Date()
 
@@ -439,12 +456,21 @@ export default function PipelineKanban() {
                   contas={columnData[col.id] ?? []}
                   provided={provided}
                   snapshot={snapshot}
+                  onEdit={setEditingConta}
                 />
               )}
             </Droppable>
           ))}
         </div>
       </DragDropContext>
+
+      {/* ─── Modal: Edição rápida do card ─────────────────────────────────── */}
+      <ContaPagarEditModal
+        conta={editingConta}
+        onClose={() => setEditingConta(null)}
+        onSaved={() => addToast('Conta atualizada com sucesso.', 'success')}
+        onError={() => addToast('Não foi possível salvar a conta. Tente novamente.', 'error')}
+      />
     </div>
   )
 }
