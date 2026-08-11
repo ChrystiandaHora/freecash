@@ -16,6 +16,7 @@ from django.db.models import Sum, Q, F, Value
 from django.db.models.functions import Coalesce, Greatest
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -43,7 +44,8 @@ from core.services.dashboard_helper import (
     resumo_ultimos_3_meses_competencia,
     clamp_int,
     make_periodo,
-    make_periodo_custom
+    make_periodo_custom,
+    saldo_liquidez_ate
 )
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -142,6 +144,44 @@ class ContaViewSet(viewsets.ModelViewSet):
             serializer (Serializer): Serializador da conta contendo dados validados.
         """
         serializer.save(usuario=self.request.user)
+
+
+class SaldoAtualAPIView(APIView):
+    """Endpoint que devolve o dinheiro em caixa hoje (liquidez realizada).
+
+    Serve de âncora para a projeção do simulador: sem ele a curva diária partiria
+    de zero e o "saldo" exibido seria apenas o fluxo líquido acumulado a partir de
+    hoje, e não o saldo real da conta.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Processa a requisição GET retornando a liquidez acumulada até uma data.
+
+        O parâmetro `ate` existe porque quem projeta precisa ancorar na véspera do
+        início da janela, e não em hoje: os lançamentos já realizados entre o começo
+        da janela e hoje seriam contados duas vezes — uma no saldo, outra na curva.
+
+        Args:
+            request (Request): Requisição HTTP autenticada, com `ate` (YYYY-MM-DD)
+                opcional na query string. Datas inválidas caem em hoje.
+
+        Returns:
+            Response: Dicionário com a data de referência e o saldo em caixa.
+        """
+        hoje = timezone.localdate()
+
+        ate = hoje
+        ate_raw = request.GET.get("ate")
+        if ate_raw:
+            parsed = parse_date(ate_raw)
+            if parsed is not None:
+                ate = parsed
+
+        return Response({
+            "data_referencia": ate.isoformat(),
+            "saldo": saldo_liquidez_ate(request.user, ate),
+        })
 
 
 class DashboardAPIView(APIView):
@@ -1495,17 +1535,7 @@ class ExecutiveBIDashboardAPIView(APIView):
             custodia_values.append(custodia)
             
             # Liquidez Física (Acumulado de caixa até este mês)
-            contas_filtro = Conta.objects.filter(
-                usuario=usuario,
-                transacao_realizada=True,
-                data_realizacao__lte=dt
-            ).filter(
-                Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
-            )
-            
-            receitas = float(contas_filtro.filter(tipo=Conta.TIPO_RECEITA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
-            despesas = float(contas_filtro.filter(tipo=Conta.TIPO_DESPESA).aggregate(s=Coalesce(Sum('valor'), Decimal('0.0'))).get('s') or 0.0)
-            liquidez = receitas - despesas
+            liquidez = saldo_liquidez_ate(usuario, dt)
             liquidez_values.append(liquidez)
             
             # Patrimônio Líquido Real = Liquidez Física + Custódia

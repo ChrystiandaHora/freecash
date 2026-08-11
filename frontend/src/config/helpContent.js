@@ -237,12 +237,19 @@ export const helpContent = {
 
   "/simulador": {
     title: "Simulador de Gastos",
-    overview: "Ambiente sandbox em memória para testar o impacto de gastos futuros no seu fluxo de caixa.",
+    overview: "Ambiente sandbox em memória para testar o impacto de gastos futuros no seu fluxo de caixa. A projeção avança dia a dia de hoje até o fim dos próximos 12 meses.",
     features: [
+      "Ponto de virada: o dia em que suas saídas passam as entradas e de quanto de reserva o horizonte inteiro precisa, até quando.",
       "KPIs interativos do fluxo líquido do mês atual (Real vs. Simulado) lado a lado.",
-      "Gráfico de barras de Fluxo Projetado para 6 meses.",
+      "Gráfico de barras de Fluxo do Mês para 6 meses.",
       "Tabela detalhada de projeção anual (12 meses) com modal detalhado de simulações."
     ],
+    concepts: {
+      "Ponto de virada": "Injetar dinheiro no dia D desloca para cima toda a curva a partir de D, e não muda nada antes. Por isso basta cobrir o pior vale do período, desde que a entrada aconteça antes do primeiro dia negativo — é a menor quantia que resolve o horizonte inteiro.",
+      "Fluxo acumulado": "Entradas menos saídas somadas de hoje em diante, partindo de zero. Não inclui o seu saldo em caixa: é isso que faz um mês estruturalmente no vermelho aparecer no diagnóstico mesmo quando ainda sobra reserva para cobri-lo.",
+      "Margem necessária": "O módulo do pior fluxo acumulado — a reserva mínima para atravessar o horizonte sem ficar devendo. É sempre o mínimo dentro da janela exibida: horizontes maiores podem revelar vales maiores, por isso a data-fim aparece junto do valor.",
+      "Saldo acumulado (tabela mensal)": "Único lugar da tela que soma o caixa de hoje ao fluxo projetado. É o saldo que você deve ver na conta ao fim de cada mês, enquanto o ponto de virada e o mapa de calor medem só o fluxo."
+    },
     actions: {
       "Cadastrar Simulação": "Defina despesas temporárias únicas, recorrentes ou parceladas em memória."
     }

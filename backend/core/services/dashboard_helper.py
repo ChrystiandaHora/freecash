@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
+from decimal import Decimal
+
 from django.db.models import Sum, Q
 from django.db.models.functions import TruncDay, TruncMonth
 
@@ -419,6 +421,42 @@ def totals_for_range_realizadas(usuario, inicio: date, fim: date) -> tuple[float
         qs.filter(tipo=Conta.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"] or 0
     )
     return float(receitas), float(despesas)
+
+
+def saldo_liquidez_ate(usuario, ate: date) -> float:
+    """
+    Calcula a liquidez acumulada — o dinheiro efetivamente em caixa — até uma data.
+
+    Diferente de `totals_for_range_realizadas`, que olha uma janela, aqui a soma é
+    aberta no início: percorre todo o histórico realizado até `ate`. É o saldo que
+    ancora a projeção do simulador — sem ele a curva partiria de zero e mediria
+    apenas o fluxo líquido futuro, não o saldo real da conta.
+
+    O filtro de cartão é obrigatório: sem ele a compra individual somaria junto da
+    fatura consolidada e o caixa apareceria menor do que é.
+
+    Args:
+        usuario (User): Instância do usuário autenticado.
+        ate (date): Data limite da realização (inclusive).
+
+    Returns:
+        float: Receitas realizadas menos despesas realizadas até `ate`, em centavos
+            exatos — a subtração é feita em Decimal para o valor não chegar à tela
+            com ruído de ponto flutuante.
+    """
+    qs = Conta.objects.filter(
+        usuario=usuario,
+        transacao_realizada=True,
+        data_realizacao__lte=ate,
+    ).filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
+
+    receitas = (
+        qs.filter(tipo=Conta.TIPO_RECEITA).aggregate(total=Sum("valor"))["total"] or 0
+    )
+    despesas = (
+        qs.filter(tipo=Conta.TIPO_DESPESA).aggregate(total=Sum("valor"))["total"] or 0
+    )
+    return round(float(Decimal(receitas) - Decimal(despesas)), 2)
 
 
 def serie_por_dia_realizadas(usuario, tipo: str, inicio: date, fim: date, ultimo_dia: int) -> tuple[list[str], list[float]]:

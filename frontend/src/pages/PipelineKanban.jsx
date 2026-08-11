@@ -16,8 +16,9 @@
  *   `pagarConta` que registra o pagamento via API (`POST /api/contas-pagar/{id}/pagar/`).
  * - Movimentação entre outras colunas é visual apenas (sem persistência de data).
  *
- * Edição: cada card tem um botão de lápis que abre `ContaPagarEditModal`, permitindo
- * alterar descrição, categoria, valor e vencimento sem sair do quadro.
+ * Edição: clicar no corpo do card abre `ContaPagarEditModal`, permitindo alterar
+ * descrição, categoria, valor e vencimento — ou quitar a conta pelo botão
+ * "Marcar como paga" do próprio diálogo — sem sair do quadro.
  *
  * KPIs exibidos: Total Pendente, Total Atrasado, Contas Pagas, Total de Contas.
  *
@@ -34,7 +35,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   AlertCircle, Clock, CalendarDays, CheckCircle2,
-  RefreshCw, GripVertical, DollarSign, Pencil
+  RefreshCw, GripVertical, DollarSign
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta } from '../services/financeiro';
@@ -192,36 +193,37 @@ const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
               Atrasada
             </Badge>
           ) : null}
-          <button
-            type="button"
-            onClick={() => onEdit(conta)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-            title="Editar"
-            aria-label={`Editar ${conta.descricao}`}
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
         </div>
       </div>
 
-      {/* Conteúdo */}
-      <p className="font-semibold text-sm text-foreground leading-snug line-clamp-2 mb-1">
-        {conta.descricao}
-      </p>
-      {conta.categoria && (
-        <p className="text-xs text-muted-foreground mb-3">{conta.categoria}</p>
-      )}
+      {/* Corpo clicável: abre a edição. É um <button> nativo (e não o card
+          inteiro com role="button") para não englobar a alça de arrastar,
+          mantendo os dois controles operáveis por teclado de forma separada. */}
+      <button
+        type="button"
+        onClick={() => onEdit(conta)}
+        className="block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+        aria-label={`Editar ${conta.descricao}`}
+      >
+        {/* Conteúdo */}
+        <p className="font-semibold text-sm text-foreground leading-snug line-clamp-2 mb-1">
+          {conta.descricao}
+        </p>
+        {conta.categoria && (
+          <p className="text-xs text-muted-foreground mb-3">{conta.categoria}</p>
+        )}
 
-      {/* Rodapé */}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
-          <CalendarDays className="h-3 w-3" />
-          {formatDueDate(conta.data_vencimento)}
-        </span>
-        <span className={`text-sm font-bold ${isAtrasada ? 'text-red-500' : 'text-foreground'}`}>
-          {formatCurrency(conta.valor)}
-        </span>
-      </div>
+        {/* Rodapé */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <CalendarDays className="h-3 w-3" aria-hidden="true" />
+            {formatDueDate(conta.data_vencimento)}
+          </span>
+          <span className={`text-sm font-bold ${isAtrasada ? 'text-red-500' : 'text-foreground'}`}>
+            {formatCurrency(conta.valor)}
+          </span>
+        </div>
+      </button>
     </div>
   )
 }
@@ -382,7 +384,7 @@ export default function PipelineKanban() {
             Pipeline Kanban
           </h1>
           <p className="text-muted-foreground mt-1">
-            Arraste contas para a coluna "Pagas" para quitá-las
+            Clique em um card para editar ou arraste para a coluna "Pagas" para quitá-lo
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -441,7 +443,8 @@ export default function PipelineKanban() {
       <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
         <DollarSign className="h-4 w-4 shrink-0" />
         <p>
-          Arraste um card para a coluna <strong>"Pagas"</strong> para registrar o pagamento automaticamente no backend.
+          Arraste um card para a coluna <strong>"Pagas"</strong> para registrar o pagamento, ou
+          clique no card para editá-lo e usar o botão <strong>"Marcar como paga"</strong>.
         </p>
       </div>
 
@@ -470,6 +473,8 @@ export default function PipelineKanban() {
         onClose={() => setEditingConta(null)}
         onSaved={() => addToast('Conta atualizada com sucesso.', 'success')}
         onError={() => addToast('Não foi possível salvar a conta. Tente novamente.', 'error')}
+        onPaid={() => addToast('Pagamento registrado com sucesso.', 'success')}
+        onPayError={() => addToast('Não foi possível registrar o pagamento. Tente novamente.', 'error')}
       />
     </div>
   )

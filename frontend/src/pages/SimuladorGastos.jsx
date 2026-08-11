@@ -5,7 +5,7 @@
  * cruzando lançamentos temporários com despesas/receitas reais do banco de dados
  * para os próximos 12 meses.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Plus,
@@ -20,11 +20,12 @@ import {
   CalendarDays,
   TrendingDown,
   Table2,
-  LayoutGrid
+  LayoutGrid,
+  ShieldCheck
 } from 'lucide-react';
 import Chart from 'react-apexcharts';
 import { useToast } from '../context/ToastContext';
-import { fetchContas } from '../services/financeiro';
+import { fetchContas, fetchSaldoAtual } from '../services/financeiro';
 import CalendarHeatmap from '../components/CalendarHeatmap';
 
 // UI components
@@ -39,6 +40,13 @@ import { Modal } from '../components/ui/Modal';
 const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0);
 
+// Data por extenso: leitor de tela lê "26 de agosto de 2026" em vez de "26/08".
+const formatDateLong = (date) =>
+  date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Meio centavo: abaixo disso o dia conta como zerado, não como negativo.
+const EPS = 0.005;
+
 export default function SimuladorGastos() {
   const { addToast } = useToast();
   
@@ -51,6 +59,15 @@ export default function SimuladorGastos() {
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
+  }, []);
+
+  // Hoje à meia-noite: fronteira entre o que já aconteceu e o que ainda dá para
+  // influenciar. A janela de projeção começa no dia 1º do mês corrente (o mês é a
+  // unidade da tabela mensal), então os primeiros dias da série diária estão no
+  // passado — e nenhum conselho pode apontar para eles.
+  const hoje = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }, []);
 
   // 12 meses de projeção a partir de hoje
@@ -91,6 +108,53 @@ export default function SimuladorGastos() {
     queryFn: () => fetchContas({ data_inicio: dateRange.inicio, data_fim: dateRange.fim }),
     enabled: !!dateRange.inicio && !!dateRange.fim,
   });
+
+  // Véspera da janela. A âncora precisa ser o caixa do dia ANTERIOR ao primeiro dia
+  // projetado: ancorar em hoje contaria duas vezes tudo que já foi realizado entre
+  // o dia 1º e hoje — uma vez no saldo, outra na curva.
+  const dataAncora = useMemo(() => {
+    if (!dateRange.inicio) return '';
+    const [y, m, d] = dateRange.inicio.split('-').map(Number);
+    const vespera = new Date(y, m - 1, d - 1);
+    return `${vespera.getFullYear()}-${String(vespera.getMonth() + 1).padStart(2, '0')}-${String(vespera.getDate()).padStart(2, '0')}`;
+  }, [dateRange.inicio]);
+
+  // Saldo em caixa na véspera: a projeção parte dele, não de zero. Sem essa âncora
+  // o "saldo" da curva seria só o fluxo líquido acumulado, e o dia em que ela cruza
+  // o zero sairia sistematicamente adiantado.
+  const {
+    data: saldoAtual,
+    isLoading: isLoadingSaldo,
+    isError: isErrorSaldo,
+  } = useQuery({
+    queryKey: ['saldo-atual', dataAncora],
+    queryFn: () => fetchSaldoAtual({ ate: dataAncora }),
+    enabled: !!dataAncora,
+  });
+
+  const saldoAncorado = !isLoadingSaldo && !isErrorSaldo && saldoAtual != null;
+  const saldoInicial = saldoAncorado ? parseFloat(saldoAtual.saldo) || 0 : 0;
+
+  // Lançamento com competência dentro da janela mas cujo caixa já se moveu antes
+  // dela abrir — a conta paga adiantado. Não é fluxo por vir, sob nenhuma métrica.
+  const jaMovimentouAntesDaJanela = useCallback(
+    (c) =>
+      Boolean(
+        c.transacao_realizada &&
+          c.data_realizacao &&
+          dataAncora &&
+          String(c.data_realizacao).slice(0, 10) <= dataAncora,
+      ),
+    [dataAncora],
+  );
+
+  // O mesmo lançamento, visto pela tabela mensal: lá a curva parte do saldo em
+  // caixa, que já o embute — somá-lo de novo o contaria duas vezes. Só vale
+  // quando existe âncora; sem ela não há saldo embutindo nada.
+  const jaNoSaldoInicial = useCallback(
+    (c) => saldoAncorado && jaMovimentouAntesDaJanela(c),
+    [saldoAncorado, jaMovimentouAntesDaJanela],
+  );
 
   // Carregar contas simuladas salvas no localStorage
   const [simuladas, setSimuladas] = useState(() => {
@@ -210,12 +274,18 @@ export default function SimuladorGastos() {
 
   // Processar dados consolidados mês a mês
   const monthlyData = useMemo(() => {
-    let accumulatedReal = 0;
-    let accumulatedSim = 0;
+    // A coluna "Saldo acumulado" desta tabela é saldo de verdade: parte do caixa
+    // em mãos. É o único lugar da tela que ainda usa a âncora — a série diária e o
+    // ponto de virada medem fluxo puro, deliberadamente (ver `dailyData` abaixo).
+    // Semear só um dos lados quebraria o casamento entre eles.
+    let accumulatedReal = saldoInicial;
+    let accumulatedSim = saldoInicial;
 
     return projectionMonths.map((m) => {
       // Filtrar contas reais do mês correspondente
-      const realItemsForMonth = realContas.filter(c => parseMonthYear(c.data_prevista) === m.key);
+      const realItemsForMonth = realContas.filter(
+        c => parseMonthYear(c.data_prevista) === m.key && !jaNoSaldoInicial(c),
+      );
 
       const realRevenues = realItemsForMonth
         .filter(c => c.tipo === 'R')
@@ -262,13 +332,19 @@ export default function SimuladorGastos() {
         activeSimulatedItems,
       };
     });
-  }, [projectionMonths, realContas, simuladas]);
+  }, [projectionMonths, realContas, simuladas, saldoInicial, jaNoSaldoInicial]);
 
   // ── Projeção diária ─────────────────────────────────────────────────────────
   // Mesmos insumos do monthlyData (reais + simulados, ignorando tipo 'I'), só
   // que posicionados no dia exato: as contas reais pela `data_prevista` e as
-  // simuladas pelo dia do mês escolhido no formulário. Por construção, o saldo
-  // do último dia de cada mês bate com o `accumulatedSim` daquele mês.
+  // simuladas pelo dia do mês escolhido no formulário.
+  //
+  // A métrica aqui é FLUXO ACUMULADO, não saldo: parte de zero, não do caixa em
+  // mãos. É o que a tela precisa para responder "as entradas cobrem as saídas?"
+  // sem que um colchão gordo esconda um mês estruturalmente no vermelho — com a
+  // âncora, qualquer horizonte fechava em verde enquanto sobrasse caixa.
+  // Por construção, o acumulado do último dia de cada mês bate com o
+  // `accumulatedSim` daquele mês menos o saldo inicial.
   const dailyData = useMemo(() => {
     const days = [];
     const byKey = new Map();
@@ -291,6 +367,7 @@ export default function SimuladorGastos() {
     realContas.forEach((c) => {
       const entry = byKey.get(String(c.data_prevista || '').slice(0, 10));
       if (!entry || (c.tipo !== 'R' && c.tipo !== 'D')) return;
+      if (jaMovimentouAntesDaJanela(c)) return;
 
       const valorItem = parseFloat(c.valor) || 0;
       if (c.tipo === 'R') entry.receitas += valorItem;
@@ -329,27 +406,99 @@ export default function SimuladorGastos() {
       });
     });
 
-    let saldoCorrente = 0;
+    let corrente = 0;
     days.forEach((entry) => {
       entry.fluxo = entry.receitas - entry.despesas;
-      saldoCorrente += entry.fluxo;
-      entry.saldo = saldoCorrente;
+      corrente += entry.fluxo;
+      entry.acumulado = corrente;
     });
 
     return days;
-  }, [projectionMonths, realContas, simuladas]);
+  }, [projectionMonths, realContas, simuladas, jaMovimentouAntesDaJanela]);
+
+  // Trecho ainda por vir da série diária: o recorte que o mapa de calor pinta e o
+  // ponto de virada analisa. Só daqui para frente existe decisão a tomar.
+  //
+  // O acumulado é rebaseado em zero em hoje. Sem rebase, a primeira célula já
+  // apareceria com o fluxo dos dias vividos do mês corrente embutido — um número
+  // sem origem visível na tela. Com rebase, todo valor lê como "desde hoje".
+  const projecaoFutura = useMemo(() => {
+    const inicio = dailyData.findIndex((d) => d.date >= hoje);
+    if (inicio < 0) return [];
+
+    const base = inicio > 0 ? dailyData[inicio - 1].acumulado : 0;
+    return dailyData
+      .slice(inicio)
+      .map((d) => ({ ...d, acumulado: d.acumulado - base }));
+  }, [dailyData, hoje]);
+
+  // ── Ponto de virada ─────────────────────────────────────────────────────────
+  // A conclusão da tela, medida em FLUXO acumulado desde hoje — o saldo em caixa
+  // não entra na conta. A pergunta que o card responde deixou de ser "vou ficar
+  // sem dinheiro?" e passou a ser "as entradas cobrem as saídas, e de quanto de
+  // colchão este horizonte precisa?". Um caixa gordo não pode mais pintar de verde
+  // um horizonte que só fecha porque está queimando reserva.
+  //
+  // Sendo F(t) o fluxo acumulado e A uma injeção feita no dia d, temos
+  // F'(t) = F(t) + A para t >= d, e nada muda antes de d. Logo o horizonte inteiro
+  // fica não-negativo se e somente se d <= primeiro dia vermelho E A >= |pior
+  // acumulado|. Como o pior vale sempre cai em ou depois do primeiro dia vermelho,
+  // a solução mínima é única: injetar |pior acumulado| na véspera do primeiro
+  // vermelho. Antecipar não barateia; adiar não resolve.
+  //
+  // Roda sobre `projecaoFutura`, não sobre a série inteira: varrer os dias já
+  // vividos do mês corrente faria o card diagnosticar o passado — apontar como
+  // "menor folga" o fluxo com que o mês abriu, ou dar um prazo já vencido.
+  //
+  // Vive fora do `heatmap` de propósito: não depende da métrica pintada, e o card
+  // do topo não deve recalcular quando o usuário alterna acumulado/diário.
+  const pontoDeVirada = useMemo(() => {
+    if (projecaoFutura.length === 0) return null;
+
+    const primeiroVermelho = projecaoFutura.find((d) => d.acumulado < -EPS) || null;
+    const pior = projecaoFutura.reduce(
+      (worst, d) => (worst === null || d.acumulado < worst.acumulado ? d : worst),
+      null,
+    );
+
+    const inicioHorizonte = projecaoFutura[0].date;
+    const vespera = primeiroVermelho
+      ? new Date(
+          primeiroVermelho.date.getFullYear(),
+          primeiroVermelho.date.getMonth(),
+          primeiroVermelho.date.getDate() - 1,
+        )
+      : null;
+
+    // Se o vermelho começa hoje, não sobrou véspera acionável — o prazo para agir
+    // já passou.
+    const prazoEsgotado = Boolean(vespera && vespera < inicioHorizonte);
+
+    return {
+      primeiroVermelho,
+      pior,
+      diasNoVermelho: projecaoFutura.filter((d) => d.acumulado < -EPS).length,
+      // Colchão mínimo que cobre o vale inteiro. Só existe quando há vale.
+      margemNecessaria: primeiroVermelho ? Math.abs(pior.acumulado) : 0,
+      dataLimite: prazoEsgotado ? null : vespera,
+      prazoEsgotado,
+      // Espelho do caso positivo: o dia mais apertado de um horizonte que fecha.
+      folgaMinima: primeiroVermelho ? null : pior,
+      inicioHorizonte,
+      fimHorizonte: projecaoFutura[projecaoFutura.length - 1].date,
+    };
+  }, [projecaoFutura]);
 
   // Métrica pintada no mapa de calor e alternância para a visão em tabela.
-  const [heatmapMetric, setHeatmapMetric] = useState('saldo'); // 'saldo' | 'fluxo'
+  const [heatmapMetric, setHeatmapMetric] = useState('acumulado'); // 'acumulado' | 'fluxo'
   const [showHeatmapTable, setShowHeatmapTable] = useState(false);
 
   // Discretiza a série diária em 7 classes: neutro + 3 degraus por braço.
   // Os cortes são os tercis de cada braço, então a escala se adapta à ordem de
   // grandeza da carteira em vez de usar limites fixos arbitrários.
   const heatmap = useMemo(() => {
-    const EPS = 0.005; // meio centavo: abaixo disso o dia é "zerado"
-    const valueOf = (d) => (heatmapMetric === 'saldo' ? d.saldo : d.fluxo);
-    const values = dailyData.map(valueOf);
+    const valueOf = (d) => (heatmapMetric === 'acumulado' ? d.acumulado : d.fluxo);
+    const values = projecaoFutura.map(valueOf);
 
     const asc = (a, b) => a - b;
     const positives = values.filter((v) => v > EPS).sort(asc);
@@ -369,17 +518,14 @@ export default function SimuladorGastos() {
       return 0;
     };
 
-    const metricNome = heatmapMetric === 'saldo' ? 'Saldo acumulado' : 'Fluxo do dia';
+    const metricNome =
+      heatmapMetric === 'acumulado' ? 'Fluxo acumulado desde hoje' : 'Fluxo do dia';
     const daysByKey = new Map();
 
-    dailyData.forEach((d) => {
+    projecaoFutura.forEach((d) => {
       const value = valueOf(d);
       const level = levelOf(value);
-      const dateLabel = d.date.toLocaleDateString('pt-BR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
+      const dateLabel = formatDateLong(d.date);
       const sinal = level > 0 ? 'positivo' : level < 0 ? 'negativo' : 'zerado';
 
       daysByKey.set(d.key, {
@@ -405,30 +551,21 @@ export default function SimuladorGastos() {
       { level: 3, label: `Acima de ${formatCurrency(posCuts[1])}` },
     ];
 
-    // O resumo responde direto à pergunta "quando eu fico no vermelho?" e por
-    // isso olha sempre o saldo acumulado, independente da métrica pintada.
-    const noVermelho = dailyData.filter((d) => d.saldo < -EPS);
-    const pior = dailyData.reduce(
-      (worst, d) => (worst === null || d.saldo < worst.saldo ? d : worst),
-      null,
-    );
-
+    // O resumo de dias no vermelho vem do `pontoDeVirada`: ele olha sempre o saldo
+    // acumulado, independente da métrica pintada aqui.
     return {
       daysByKey,
       legend,
-      diasNoVermelho: noVermelho.length,
-      primeiroVermelho: noVermelho[0] || null,
-      pior,
-      firstDate: dailyData[0]?.date || null,
-      lastDate: dailyData[dailyData.length - 1]?.date || null,
+      firstDate: projecaoFutura[0]?.date || null,
+      lastDate: projecaoFutura[projecaoFutura.length - 1]?.date || null,
     };
-  }, [dailyData, heatmapMetric]);
+  }, [projecaoFutura, heatmapMetric]);
 
   // Dias com algum lançamento — a visão em tabela do mapa de calor. Dias sem
   // movimento repetem o saldo do dia anterior, então nada se perde ao omiti-los.
   const heatmapTableRows = useMemo(
-    () => dailyData.filter((d) => d.itens.length > 0),
-    [dailyData],
+    () => projecaoFutura.filter((d) => d.itens.length > 0),
+    [projecaoFutura],
   );
 
   // Cálculo dos KPIs focados no mês atual e na projeção de 6 meses
@@ -464,6 +601,10 @@ export default function SimuladorGastos() {
     };
   }, [monthlyData]);
 
+  // O diagnóstico só é confiável com as duas pontas carregadas: os lançamentos e
+  // a âncora de caixa.
+  const projecaoCarregando = isLoading || isLoadingSaldo;
+
   // Filtrar apenas os primeiros 6 meses para o gráfico
   const chartData = useMemo(() => {
     return monthlyData.slice(0, 6);
@@ -486,7 +627,7 @@ export default function SimuladorGastos() {
         borderRadius: 4,
       },
     },
-    colors: ['#3b82f6', '#10b981', '#f43f5e'], // Azul para Saldo Projetado, Verde para Receitas, Vermelho para Despesas
+    colors: ['#3b82f6', '#10b981', '#f43f5e'], // Azul para Fluxo do Mês, Verde para Receitas, Vermelho para Despesas
     dataLabels: { enabled: false },
     xaxis: {
       categories: chartData.map(d => d.label.split('/')[0]),
@@ -523,7 +664,7 @@ export default function SimuladorGastos() {
   };
 
   const chartSeries = [
-    { name: 'Saldo Projetado', data: chartData.map(d => d.simNet) },
+    { name: 'Fluxo do Mês', data: chartData.map(d => d.simNet) },
     { name: 'Receitas', data: chartData.map(d => d.realRevenues + d.simRevenues) },
     { name: 'Despesas', data: chartData.map(d => d.realExpenses + d.simExpenses) },
   ];
@@ -604,6 +745,133 @@ export default function SimuladorGastos() {
           Atualizar Dados Reais
         </Button>
       </div>
+
+      {/* Ponto de virada: a conclusão da tela. Responde "quanto" e "até quando"
+          em texto, para não obrigar a ler o mapa de calor e deduzir. */}
+      <Card
+        className={
+          pontoDeVirada?.primeiroVermelho
+            ? 'border-red-600/40 bg-red-500/5 dark:border-red-400/40'
+            : 'border-emerald-600/40 bg-emerald-500/5 dark:border-emerald-400/40'
+        }
+      >
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            {pontoDeVirada?.primeiroVermelho ? (
+              <AlertCircle
+                className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
+                aria-hidden="true"
+              />
+            ) : (
+              <ShieldCheck
+                className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                aria-hidden="true"
+              />
+            )}
+            <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">
+              Ponto de virada
+            </h2>
+          </div>
+        </CardHeader>
+
+        {/* Região viva estável: o conteúdo troca conforme o usuário mexe nas
+            simulações, e o leitor de tela anuncia o novo diagnóstico. */}
+        <CardContent>
+          <div aria-live="polite" className="space-y-3 text-sm">
+            {projecaoCarregando ? (
+              <p className="text-muted-foreground">Calculando o ponto de virada...</p>
+            ) : !pontoDeVirada ? (
+              <p className="text-muted-foreground">
+                Sem lançamentos suficientes para projetar o horizonte.
+              </p>
+            ) : pontoDeVirada.primeiroVermelho ? (
+              <>
+                <p className="text-base text-foreground">
+                  Suas saídas passam as entradas em{' '}
+                  <strong className="font-semibold text-red-600 dark:text-red-400">
+                    {formatDateLong(pontoDeVirada.primeiroVermelho.date)}
+                  </strong>
+                  .
+                </p>
+
+                {pontoDeVirada.dataLimite ? (
+                  <p className="text-base text-foreground">
+                    Para atravessar o horizonte até{' '}
+                    <strong className="font-semibold">
+                      {formatDateLong(pontoDeVirada.fimHorizonte)}
+                    </strong>{' '}
+                    sem recorrer a reserva, você precisa de{' '}
+                    <strong className="font-semibold">
+                      {formatCurrency(pontoDeVirada.margemNecessaria)}
+                    </strong>{' '}
+                    até{' '}
+                    <strong className="font-semibold">
+                      {formatDateLong(pontoDeVirada.dataLimite)}
+                    </strong>
+                    .
+                  </p>
+                ) : (
+                  <p className="text-base text-foreground">
+                    O fluxo já entra negativo hoje: não sobrou prazo para agir antes.
+                    Atravessar o horizonte até{' '}
+                    <strong className="font-semibold">
+                      {formatDateLong(pontoDeVirada.fimHorizonte)}
+                    </strong>{' '}
+                    exige{' '}
+                    <strong className="font-semibold">
+                      {formatCurrency(pontoDeVirada.margemNecessaria)}
+                    </strong>{' '}
+                    agora.
+                  </p>
+                )}
+
+                <p className="text-muted-foreground">
+                  O pior momento é{' '}
+                  <strong className="font-semibold text-red-600 dark:text-red-400">
+                    {formatCurrency(pontoDeVirada.pior.acumulado)}
+                  </strong>{' '}
+                  em {formatDateLong(pontoDeVirada.pior.date)} — são{' '}
+                  {pontoDeVirada.diasNoVermelho}{' '}
+                  {pontoDeVirada.diasNoVermelho === 1 ? 'dia' : 'dias'} no vermelho.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base text-foreground">
+                  Suas entradas cobrem as saídas todos os dias até{' '}
+                  <strong className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatDateLong(pontoDeVirada.fimHorizonte)}
+                  </strong>
+                  .
+                </p>
+                {pontoDeVirada.folgaMinima && (
+                  <p className="text-muted-foreground">
+                    No dia mais apertado o acumulado ainda é de{' '}
+                    <strong className="font-semibold text-foreground">
+                      {formatCurrency(pontoDeVirada.folgaMinima.acumulado)}
+                    </strong>{' '}
+                    ({formatDateLong(pontoDeVirada.folgaMinima.date)}).
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Nota permanente, não um aviso de falha: por decisão de produto o card
+              mede fluxo, e ignorar o caixa é o ponto — é assim que um mês
+              estruturalmente no vermelho aparece mesmo com reserva sobrando. Sem
+              esta linha o leitor confunde o número com o saldo da conta.
+              O valor é o mínimo DENTRO da janela: esticar o horizonte pode
+              aumentá-lo. Por isso a data-fim aparece sempre na frase acima. */}
+          {!projecaoCarregando && pontoDeVirada && (
+            <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+              Este diagnóstico ignora o seu saldo em caixa: mede só o fluxo acumulado de hoje
+              em diante. O saldo projetado com o caixa incluído está na tabela de projeção
+              mensal.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="relative overflow-hidden border-border bg-card/65 backdrop-blur-md transition-all hover:scale-[1.01]">
@@ -997,16 +1265,17 @@ export default function SimuladorGastos() {
               Mapa de Calor Diário
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Cada quadradinho é um dia dos próximos 12 meses. Azul indica sobra, vermelho
-              (hachurado) indica que você fica no negativo. Passe o mouse — ou navegue com
-              as setas — para ver o dia.
+              Cada quadradinho é um dia, de hoje até o fim da janela de 12 meses. Azul
+              indica que as entradas ainda cobrem as saídas; vermelho (hachurado) indica
+              que as saídas passaram. Não considera o saldo em caixa. Passe o mouse — ou
+              navegue com as setas — para ver o dia.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-lg border border-border p-0.5" role="group" aria-label="Métrica do mapa de calor">
               {[
-                { id: 'saldo', label: 'Saldo acumulado' },
+                { id: 'acumulado', label: 'Fluxo acumulado' },
                 { id: 'fluxo', label: 'Fluxo do dia' },
               ].map((opt) => (
                 <button
@@ -1046,33 +1315,33 @@ export default function SimuladorGastos() {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
             <span className="flex items-center gap-2">
               <TrendingDown
-                className={`h-4 w-4 ${heatmap.diasNoVermelho > 0 ? 'text-red-500' : 'text-emerald-500'}`}
+                className={`h-4 w-4 ${pontoDeVirada?.diasNoVermelho > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}
                 aria-hidden="true"
               />
               <strong className="font-semibold text-foreground">
-                {heatmap.diasNoVermelho}
+                {pontoDeVirada?.diasNoVermelho ?? 0}
               </strong>
               <span className="text-muted-foreground">
-                {heatmap.diasNoVermelho === 1 ? 'dia no vermelho' : 'dias no vermelho'}
+                {pontoDeVirada?.diasNoVermelho === 1 ? 'dia no vermelho' : 'dias no vermelho'}
               </span>
             </span>
-            {heatmap.primeiroVermelho && (
+            {pontoDeVirada?.primeiroVermelho && (
               <span className="text-muted-foreground">
                 Primeiro em{' '}
                 <strong className="font-semibold text-foreground">
-                  {heatmap.primeiroVermelho.date.toLocaleDateString('pt-BR')}
+                  {formatDateLong(pontoDeVirada.primeiroVermelho.date)}
                 </strong>
               </span>
             )}
-            {heatmap.pior && heatmap.pior.saldo < 0 && (
+            {pontoDeVirada?.pior && pontoDeVirada.pior.acumulado < 0 && (
               <span className="text-muted-foreground">
-                Pior saldo{' '}
-                <strong className="font-semibold text-red-500">
-                  {formatCurrency(heatmap.pior.saldo)}
+                Pior acumulado{' '}
+                <strong className="font-semibold text-red-600 dark:text-red-400">
+                  {formatCurrency(pontoDeVirada.pior.acumulado)}
                 </strong>{' '}
                 em{' '}
                 <strong className="font-semibold text-foreground">
-                  {heatmap.pior.date.toLocaleDateString('pt-BR')}
+                  {formatDateLong(pontoDeVirada.pior.date)}
                 </strong>
               </span>
             )}
@@ -1091,7 +1360,8 @@ export default function SimuladorGastos() {
                 <table className="w-full border-collapse text-left text-sm">
                   <caption className="pb-3 text-left text-xs text-muted-foreground">
                     Dias com algum lançamento previsto ou simulado. Dias omitidos não têm
-                    movimento e mantêm o saldo acumulado do dia anterior.
+                    movimento e mantêm o acumulado do dia anterior. O acumulado parte de
+                    zero hoje e não inclui o saldo em caixa.
                   </caption>
                   <thead className="sticky top-0 bg-card">
                     <tr className="border-b border-border/80 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1099,7 +1369,7 @@ export default function SimuladorGastos() {
                       <th scope="col" className="py-2.5 px-3 text-right">Entradas</th>
                       <th scope="col" className="py-2.5 px-3 text-right">Saídas</th>
                       <th scope="col" className="py-2.5 px-3 text-right">Fluxo do dia</th>
-                      <th scope="col" className="py-2.5 px-3 text-right">Saldo acumulado</th>
+                      <th scope="col" className="py-2.5 px-3 text-right">Fluxo acumulado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
@@ -1124,8 +1394,8 @@ export default function SimuladorGastos() {
                           <td className={`py-2.5 px-3 text-right font-medium tabular-nums ${d.fluxo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                             {formatCurrency(d.fluxo)}
                           </td>
-                          <td className={`py-2.5 px-3 text-right font-bold tabular-nums ${d.saldo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {formatCurrency(d.saldo)}
+                          <td className={`py-2.5 px-3 text-right font-bold tabular-nums ${d.acumulado >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {formatCurrency(d.acumulado)}
                           </td>
                         </tr>
                       ))
@@ -1145,7 +1415,7 @@ export default function SimuladorGastos() {
 
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Escala — {heatmapMetric === 'saldo' ? 'saldo acumulado projetado' : 'fluxo do dia'}
+              Escala — {heatmapMetric === 'acumulado' ? 'fluxo acumulado desde hoje' : 'fluxo do dia'}
             </h3>
             <ul className="flex flex-wrap gap-x-4 gap-y-2">
               {heatmap.legend.map((item) => (
@@ -1162,7 +1432,7 @@ export default function SimuladorGastos() {
             </ul>
             <p className="mt-2 text-xs text-muted-foreground">
               Os cortes são os tercis da própria projeção, então a escala acompanha a ordem de
-              grandeza da sua carteira. A hachura diagonal marca os dias negativos sem depender
+              grandeza do seu fluxo. A hachura diagonal marca os dias negativos sem depender
               da cor, e a visão em tabela traz os mesmos números por extenso.
             </p>
           </div>

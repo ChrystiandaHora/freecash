@@ -101,3 +101,10 @@ export const fetchContas = async (params = {}) => {
   const { data } = await api.get('/api/contas/', { params })
   return data
 }
+
+// Liquidez realizada — âncora da projeção diária do simulador. Aceita `ate` para
+// ancorar na véspera da janela projetada, e não em hoje.
+export const fetchSaldoAtual = async (params = {}) => {
+  const { data } = await api.get('/api/saldo-atual/', { params })
+  return data
+}
