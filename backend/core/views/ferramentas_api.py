@@ -10,8 +10,7 @@ Endpoints expostos:
   CRUD   /api/configuracoes/contas-bancarias/        — gestão de cartões/contas (CartaoCredito)
 """
 
-import csv
-import io
+import re
 import tempfile
 import os
 
@@ -374,8 +373,13 @@ class FerramentasExportarAPIView(APIView):
         """
         formato = request.query_params.get('formato', 'excel')
         escopo = request.query_params.get('escopo', 'completo')
+        if escopo not in ('geral', 'investimentos', 'completo'):
+            escopo = 'completo'
         usuario = request.user
-        agora = timezone.localtime().strftime('%Y%m%d_%H%M%S')
+        # Nome de arquivo legível para quem consome a API direto (curl, Postman):
+        # sem timestamp epoch e sem caracteres inválidos vindos do username.
+        apelido = re.sub(r'[^A-Za-z0-9._-]+', '-', usuario.username or 'usuario').strip('-')
+        emitido = timezone.localtime().strftime('%Y-%m-%d_%H%M')
 
         # Parse de datas
         from datetime import datetime, date
@@ -407,7 +411,7 @@ class FerramentasExportarAPIView(APIView):
                 )
             from core.services.export_service import export_user_data
             payload = export_user_data(usuario, senha)
-            filename = f'backup_freecash_{usuario.username}_{agora}.fcbk'
+            filename = f'backup_freecash_{apelido}_{emitido}.fcbk'
             response = HttpResponse(payload, content_type='application/octet-stream')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
@@ -419,7 +423,7 @@ class FerramentasExportarAPIView(APIView):
         elif formato == 'excel':
             from core.services.export_report_service import gerar_excel
             payload = gerar_excel(usuario, data_inicio, data_fim, escopo)
-            filename = f'relatorio_financeiro_{usuario.username}_{agora}.xlsx'
+            filename = f'relatorio_financeiro_{apelido}_{emitido}.xlsx'
             response = HttpResponse(payload, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
@@ -427,55 +431,16 @@ class FerramentasExportarAPIView(APIView):
         elif formato == 'pdf':
             from core.services.export_report_service import gerar_pdf
             payload = gerar_pdf(usuario, data_inicio, data_fim, escopo)
-            filename = f'relatorio_financeiro_{usuario.username}_{agora}.pdf'
+            filename = f'relatorio_financeiro_{apelido}_{emitido}.pdf'
             response = HttpResponse(payload, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
 
         elif formato == 'csv':
-            from core.services.export_report_service import get_movimentacoes, get_investimentos
-            output = io.StringIO()
-            writer = csv.writer(output)
-
-            if escopo in ('geral', 'completo'):
-                if escopo == 'completo':
-                    writer.writerow(['--- MOVIMENTACOES GERAIS ---'])
-                writer.writerow(['Data', 'Tipo', 'Descricao', 'Categoria', 'Valor (R$)', 'Status'])
-                contas = get_movimentacoes(usuario, data_inicio, data_fim)
-                for c in contas:
-                    writer.writerow([
-                        c.data_prevista.strftime('%d/%m/%Y'),
-                        c.get_tipo_display(),
-                        c.descricao,
-                        c.categoria.nome if c.categoria else 'Sem cat.',
-                        str(c.valor),
-                        'Realizada' if c.transacao_realizada else 'Pendente',
-                    ])
-
-            if escopo == 'completo':
-                writer.writerow([])
-                writer.writerow([])
-
-            if escopo in ('investimentos', 'completo'):
-                if escopo == 'completo':
-                    writer.writerow(['--- CARTEIRA DE INVESTIMENTOS ---'])
-                writer.writerow(['Ticker', 'Nome', 'Classe', 'Categoria', 'Quantidade', 'Preco Medio', 'Valor Investido', 'Valor Atual', 'Lucro/Prejuizo'])
-                ativos = get_investimentos(usuario, data_inicio, data_fim)
-                for a in ativos:
-                    writer.writerow([
-                        a.ticker,
-                        a.nome or '',
-                        a.subcategoria.categoria.classe.nome if a.subcategoria else '',
-                        a.subcategoria.categoria.nome if a.subcategoria else '',
-                        str(a.quantidade),
-                        str(a.preco_medio),
-                        str(a.valor_investido),
-                        str(a.valor_total_atual),
-                        str(a.valor_total_atual - a.valor_investido),
-                    ])
-
-            filename = f'relatorio_financeiro_{usuario.username}_{agora}.csv'
-            response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
+            from core.services.export_report_service import gerar_csv
+            payload = gerar_csv(usuario, data_inicio, data_fim, escopo)
+            filename = f'relatorio_financeiro_{apelido}_{emitido}.csv'
+            response = HttpResponse(payload, content_type='text/csv; charset=utf-8')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
 

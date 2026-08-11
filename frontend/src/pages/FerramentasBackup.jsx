@@ -41,7 +41,29 @@ function downloadBlob(data, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-const timestamp = () => Date.now();
+const EXTENSOES = { excel: 'xlsx', pdf: 'pdf', csv: 'csv', fcbk: 'fcbk' };
+
+/** Estampa de data/hora local no formato AAAA-MM-DD_HHMM, para nomes de arquivo. */
+function estampaLocal() {
+  const agora = new Date();
+  const pad = (valor) => String(valor).padStart(2, '0');
+  return (
+    `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())}` +
+    `_${pad(agora.getHours())}${pad(agora.getMinutes())}`
+  );
+}
+
+/**
+ * Monta o nome do arquivo baixado.
+ * Relatórios são identificados pelo período exportado; o backup completo não tem
+ * período (abrange a conta inteira), então recebe a data/hora da geração.
+ */
+function nomeDoArquivo(formato, dataInicio, dataFim) {
+  if (formato === 'fcbk') {
+    return `backup_freecash_${estampaLocal()}.fcbk`;
+  }
+  return `relatorio_financeiro_${dataInicio}_a_${dataFim}.${EXTENSOES[formato]}`;
+}
 
 export default function FerramentasBackup() {
   const [formato, setFormato] = useState('excel');
@@ -92,7 +114,7 @@ export default function FerramentasBackup() {
         responseType: 'blob',
       });
 
-      let filename = `relatorio_financeiro_${timestamp()}.${formato === 'excel' ? 'xlsx' : formato === 'pdf' ? 'pdf' : formato === 'csv' ? 'csv' : 'fcbk'}`;
+      const filename = nomeDoArquivo(formato, dataInicio, dataFim);
       let mimeType = 'application/octet-stream';
       
       if (formato === 'excel') {
@@ -118,7 +140,9 @@ export default function FerramentasBackup() {
           const text = await err.response.data.text();
           const parsed = JSON.parse(text);
           errorMsg = parsed.erro || errorMsg;
-        } catch {}
+        } catch {
+          // Corpo não é JSON: mantém a mensagem padrão de erro
+        }
       } else {
         errorMsg = err?.response?.data?.erro || errorMsg;
       }
@@ -179,7 +203,7 @@ export default function FerramentasBackup() {
               >
                 <option value="excel">Planilha Excel (.xlsx) - Com abas detalhadas</option>
                 <option value="csv">Planilha CSV (.csv)</option>
-                <option value="pdf">Relatório PDF (.pdf) - Com gráficos</option>
+                <option value="pdf">Relatório PDF (.pdf) - Resumo executivo + gráficos</option>
                 <option value="fcbk">Backup Seguro Criptografado (.fcbk)</option>
               </select>
             </div>
