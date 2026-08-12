@@ -93,3 +93,33 @@ class ComprasCartaoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["data_vencimento"], "2026-09-05")
         self.assertEqual(response.data["categoria"], self.categoria.id)
+
+    def test_excluir_compra_cartao(self):
+        """Compras de cartão são excluídas pelo endpoint de compras-cartao.
+
+        O endpoint de contas-pagar não enxerga compras individuais (filtra por
+        `cartao__isnull=True | eh_fatura_cartao=True`), então excluir por lá
+        resulta em 404 — era essa a origem do erro na tela de Compras Cartão.
+        """
+        compra = Conta.objects.create(
+            usuario=self.user,
+            tipo=Conta.TIPO_DESPESA,
+            descricao="Compra a Excluir",
+            valor=100.00,
+            data_compra=datetime.date(2026, 7, 5),
+            data_prevista=datetime.date(2026, 8, 5),
+            cartao=self.cartao,
+            categoria=self.categoria,
+        )
+
+        # Endpoint errado (contas-pagar) não alcança a compra individual
+        response_errado = self.client.delete(
+            f"/api/financeiro/contas-pagar/{compra.id}/"
+        )
+        self.assertEqual(response_errado.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Conta.objects.filter(id=compra.id).exists())
+
+        # Endpoint correto exclui e o signal reconsolida a fatura
+        response = self.client.delete(f"/api/financeiro/compras-cartao/{compra.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Conta.objects.filter(id=compra.id).exists())

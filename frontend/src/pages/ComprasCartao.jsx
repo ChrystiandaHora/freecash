@@ -78,6 +78,7 @@ export default function ComprasCartao() {
   // Delete Modal states
   const [deletingId, setDeletingId] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Queries
   const { data: cartoesData } = useQuery({
@@ -129,7 +130,7 @@ export default function ComprasCartao() {
 
   const deletePurchaseMutation = useMutation({
     mutationFn: async (id) => {
-      await api.delete(`/api/financeiro/contas-pagar/${id}/`);
+      await api.delete(`/api/financeiro/compras-cartao/${id}/`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras-cartao'] });
@@ -137,9 +138,12 @@ export default function ComprasCartao() {
       queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
       setIsDeleteModalOpen(false);
       setDeletingId(null);
+      setDeleteError(null);
     },
-    onError: () => {
-      alert('Erro ao excluir compra de cartão.');
+    onError: (error) => {
+      setDeleteError(
+        error?.response?.data?.detail || 'Erro ao excluir compra de cartão.'
+      );
     }
   });
 
@@ -166,6 +170,7 @@ export default function ComprasCartao() {
 
   const handleOpenDeleteModal = (id) => {
     setDeletingId(id);
+    setDeleteError(null);
     setIsDeleteModalOpen(true);
   };
 
@@ -482,17 +487,24 @@ export default function ComprasCartao() {
         onClose={() => {
           setIsDeleteModalOpen(false);
           setDeletingId(null);
+          setDeleteError(null);
         }}
         title="Confirmar Exclusão"
         description="Tem certeza que deseja excluir esta compra permanentemente? Essa ação não pode ser desfeita."
         size="sm"
       >
+        {deleteError && (
+          <Alert variant="error" icon={AlertCircle} className="mt-4">
+            {deleteError}
+          </Alert>
+        )}
         <div className="flex justify-end gap-3 mt-4">
           <Button
             variant="outline"
             onClick={() => {
               setIsDeleteModalOpen(false);
               setDeletingId(null);
+              setDeleteError(null);
             }}
             disabled={deletePurchaseMutation.isPending}
           >
