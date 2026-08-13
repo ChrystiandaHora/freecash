@@ -60,8 +60,6 @@ class CarteiraHistoricoService:
         Returns:
             HistoricoUpdateResult: Estatísticas contendo criados, atualizados e limites temporais.
         """
-        end_date = ate_data or date.today()
-
         transacoes = list(
             Transacao.objects.filter(usuario=self.user)
             .select_related("ativo")
@@ -71,6 +69,8 @@ class CarteiraHistoricoService:
             return HistoricoUpdateResult(0, 0, None, None)
 
         start_date = transacoes[0].data
+        max_transacao_date = max(t.data for t in transacoes)
+        end_date = ate_data or max(date.today(), max_transacao_date)
 
         ativos = list(Ativo.objects.filter(usuario=self.user))
         preco_medio_by_ativo = {a.id: (a.preco_medio or Decimal(0)) for a in ativos}
@@ -191,7 +191,7 @@ class CarteiraHistoricoService:
             meses (int, optional): Número limite de meses a retornar. Defaults to 36.
 
         Returns:
-            list[dict]: Lista de dicionários com 'data', 'ohlc' (lista de floats) e 'investido'.
+            list[dict]: Lista de dicionários contendo patrimônio, custo investido, dividendos acumulados e dividendos mensais.
         """
         qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
             "data", "patrimonio", "total_compras", "total_vendas", "total_dividendos"
@@ -206,12 +206,13 @@ class CarteiraHistoricoService:
                 groups[key] = []
             groups[key].append(row)
 
-        sorted_keys = sorted(groups.keys())
-        if meses and len(sorted_keys) > meses:
-            sorted_keys = sorted_keys[-meses:]
+        all_sorted_keys = sorted(groups.keys())
 
-        results = []
-        for key in sorted_keys:
+        # Pre-calcular dividendos mensais para todos os meses em ordem cronológica
+        all_results = []
+        prev_dividendos_acum = Decimal(0)
+
+        for key in all_sorted_keys:
             rows = groups[key]
             # OHLC do Patrimônio
             o = float(rows[0]["patrimonio"] or 0)
@@ -221,16 +222,30 @@ class CarteiraHistoricoService:
             
             # Investimento Líquido (Custo) no final do mês
             investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
-            dividendos_acumulados = float(rows[-1]["total_dividendos"] or 0)
+            dividendos_acum_dec = rows[-1]["total_dividendos"] or Decimal(0)
+            dividendos_acumulados = float(dividendos_acum_dec)
 
-            results.append({
+            # Proventos recebidos especificamente neste mês
+            dividendos_mes_dec = dividendos_acum_dec - prev_dividendos_acum
+            if dividendos_mes_dec < Decimal(0):
+                dividendos_mes_dec = Decimal(0)
+            dividendos_mes = float(dividendos_mes_dec)
+
+            prev_dividendos_acum = dividendos_acum_dec
+
+            all_results.append({
                 "data": rows[-1]["data"].isoformat(),
                 "ohlc": [o, h, l, c],
                 "investido": investido,
                 "patrimonio": c,
                 "total_dividendos": dividendos_acumulados,
+                "total_dividendos_mes": dividendos_mes,
             })
-        return results
+
+        if meses and len(all_results) > meses:
+            all_results = all_results[-meses:]
+
+        return all_results
 
     def series_anual(self, *, anos: int | None = 10) -> list[dict]:
         """Gera a série anual consolidada em formato OHLC de patrimônio e investimentos.

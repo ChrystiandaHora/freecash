@@ -98,3 +98,54 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         # capital_base = patrimonio_prev(1600) + delta_compras(0) = 1600
         # retorno = -50 / 1600 * 100 = -3.125% -> -3.13%
         self.assertAlmostEqual(matrix[2026][3], -3.125, places=2)
+
+    def test_series_mensal_calcula_total_dividendos_mes(self):
+        # Mês 1: total_dividendos acumulado = 100
+        # Mês 2: total_dividendos acumulado = 250 (150 no mês)
+        # Mês 3: total_dividendos acumulado = 250 (0 no mês)
+        CarteiraHistorico.objects.create(
+            usuario=self.user,
+            data=date(2026, 1, 31),
+            patrimonio=Decimal("1000.00"),
+            total_compras=Decimal("1000.00"),
+            total_vendas=Decimal("0.00"),
+            total_dividendos=Decimal("100.00"),
+            rentabilidade=Decimal("100.00"),
+            rentabilidade_percentual=Decimal("10.00"),
+        )
+        CarteiraHistorico.objects.create(
+            usuario=self.user,
+            data=date(2026, 2, 28),
+            patrimonio=Decimal("1200.00"),
+            total_compras=Decimal("1000.00"),
+            total_vendas=Decimal("0.00"),
+            total_dividendos=Decimal("250.00"),
+            rentabilidade=Decimal("250.00"),
+            rentabilidade_percentual=Decimal("25.00"),
+        )
+        CarteiraHistorico.objects.create(
+            usuario=self.user,
+            data=date(2026, 3, 31),
+            patrimonio=Decimal("1200.00"),
+            total_compras=Decimal("1000.00"),
+            total_vendas=Decimal("0.00"),
+            total_dividendos=Decimal("250.00"),
+            rentabilidade=Decimal("250.00"),
+            rentabilidade_percentual=Decimal("25.00"),
+        )
+
+        series = self.service.series_mensal()
+        self.assertEqual(len(series), 3)
+
+        # Mês 1
+        self.assertEqual(series[0]["total_dividendos"], 100.0)
+        self.assertEqual(series[0]["total_dividendos_mes"], 100.0)
+
+        # Mês 2
+        self.assertEqual(series[1]["total_dividendos"], 250.0)
+        self.assertEqual(series[1]["total_dividendos_mes"], 150.0)
+
+        # Mês 3
+        self.assertEqual(series[2]["total_dividendos"], 250.0)
+        self.assertEqual(series[2]["total_dividendos_mes"], 0.0)
+

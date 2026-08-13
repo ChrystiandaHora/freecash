@@ -184,11 +184,11 @@ export default function Investimentos() {
     return `${monthsPt[monthIndex]}/${year}`;
   });
 
-  const snowballSeriesData = snowballMonthlyData.map(item => parseFloat(item.total_dividendos) || 0);
+  const snowballSeriesData = snowballMonthlyData.map(item => parseFloat(item.total_dividendos_mes ?? item.total_dividendos) || 0);
 
   const snowballChartOptions = {
     chart: {
-      type: 'area',
+      type: 'bar',
       height: 320,
       toolbar: { show: false },
       fontFamily: 'Outfit, Inter, sans-serif',
@@ -196,17 +196,14 @@ export default function Investimentos() {
       background: 'transparent',
     },
     colors: ['#a855f7'],
-    dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 3 },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.45,
-        opacityTo: 0.05,
-        stops: [0, 90, 100],
+    plotOptions: {
+      bar: {
+        borderRadius: 6,
+        borderRadiusApplication: 'end',
+        columnWidth: '50%',
       },
     },
+    dataLabels: { enabled: false },
     xaxis: {
       categories: snowballCategories,
       labels: {
@@ -237,7 +234,7 @@ export default function Investimentos() {
   };
 
   const snowballChartSeries = [
-    { name: 'Renda Passiva Acumulada', data: snowballSeriesData }
+    { name: 'Proventos Mensais', data: snowballSeriesData }
   ];
 
   // Evolução do Patrimônio: patrimônio a mercado vs. custo investido com base no filtro
@@ -661,10 +658,10 @@ export default function Investimentos() {
           <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl">
             <CardHeader className="p-0 mb-6">
               <CardTitle className="text-base font-bold text-foreground">
-                Efeito Bola de Neve (Renda Passiva Acumulada)
+                Efeito Bola de Neve (Proventos Mensais)
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Crescimento real e exponencial dos proventos e dividendos acumulados da sua carteira de investimentos
+                Evolução dos proventos e dividendos recebidos mês a mês na sua carteira de investimentos
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -673,7 +670,7 @@ export default function Investimentos() {
                   key={`snowball-${isDarkTheme}`}
                   options={snowballChartOptions}
                   series={snowballChartSeries}
-                  type="area"
+                  type="bar"
                   height="100%"
                   width="100%"
                 />
