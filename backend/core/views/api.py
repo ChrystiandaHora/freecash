@@ -1159,14 +1159,22 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Salva a compra associando ao usuário autenticado.
 
+        Compras enviadas sem categoria nascem caracterizadas como gasto de cartão,
+        para não aparecerem como "Sem categoria" nos painéis.
+
         Args:
             serializer (Serializer): Serializador validado.
         """
-        serializer.save(
-            usuario=self.request.user,
-            tipo=Conta.TIPO_DESPESA,
-            eh_fatura_cartao=False,
-        )
+        extras = {
+            'usuario': self.request.user,
+            'tipo': Conta.TIPO_DESPESA,
+            'eh_fatura_cartao': False,
+        }
+        if not serializer.validated_data.get('categoria'):
+            from core.services.fatura_service import obter_categoria_cartao
+            extras['categoria'] = obter_categoria_cartao(self.request.user)
+
+        serializer.save(**extras)
 
     def create(self, request, *args, **kwargs) -> Response:
         """Cria uma nova compra individual de cartão.

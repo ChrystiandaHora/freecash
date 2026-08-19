@@ -33,7 +33,11 @@ def _consolidar_fatura(conta: Conta) -> None:
     Args:
         conta: A compra individual de cartão que disparou a consolidação.
     """
-    from core.services.fatura_service import obter_ou_criar_fatura, atualizar_valor_fatura
+    from core.services.fatura_service import (
+        atualizar_valor_fatura,
+        garantir_categoria_cartao,
+        obter_ou_criar_fatura,
+    )
 
     # Só age em compras individuais de cartão (não nas próprias faturas consolidadas)
     if not conta.cartao or conta.eh_fatura_cartao:
@@ -47,9 +51,10 @@ def _consolidar_fatura(conta: Conta) -> None:
         cartao=conta.cartao,
         data_vencimento=conta.data_prevista,
     )
-    if not fatura.categoria_id and conta.categoria_id:
-        fatura.categoria = conta.categoria
-        fatura.save(update_fields=["categoria", "atualizada_em"])
+    # A fatura carrega sempre a categoria "Cartão de Crédito": ela representa o
+    # pagamento consolidado, não um gasto de uma categoria específica. O detalhamento
+    # por categoria é feito a partir das compras individuais (ver dashboard_helper).
+    garantir_categoria_cartao(fatura)
     atualizar_valor_fatura(fatura)
 
 

@@ -218,7 +218,7 @@ export default function ComprasCartao() {
       filterAccessor: (row) => row.categoria_detalhe?.nome,
       render: (_, row) => (
         <span className="inline-block text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-          {row.categoria_detalhe?.nome || 'default'}
+          {row.categoria_detalhe?.nome || 'Sem categoria'}
         </span>
       ),
     },

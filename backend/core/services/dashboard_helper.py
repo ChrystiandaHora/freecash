@@ -6,6 +6,7 @@ de caixa mensal para manter as views de API limpas e focadas em contratos REST.
 """
 
 import calendar
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -194,6 +195,111 @@ def serie_fluxo_projetado_competencia(usuario, tipo: str, inicio_ref: date) -> t
     return labels, values
 
 
+SEM_CATEGORIA = "Sem categoria"
+
+
+def _explodir_fatura_por_categoria(fatura: Conta) -> dict[str, Decimal]:
+    """Distribui o valor de uma fatura de cartão entre as categorias de suas compras.
+
+    A fatura consolidada é apenas o pagamento agregado do cartão — o gasto real
+    está nas compras individuais vinculadas a ela (mesmo usuário, cartão e
+    `data_prevista`). Compras ainda não classificadas pelo usuário são
+    caracterizadas como "Cartão de Crédito", e não como "Sem categoria".
+
+    Quando o valor da fatura divergir da soma das compras (caso de fatura já
+    liquidada, cujo valor é congelado, ou ajustada manualmente), a diferença é
+    rateada proporcionalmente para que o detalhamento continue somando o mesmo
+    total exibido no painel.
+
+    Args:
+        fatura (Conta): Fatura consolidada de cartão (`eh_fatura_cartao=True`).
+
+    Returns:
+        dict[str, Decimal]: Valor da fatura por nome de categoria.
+    """
+    from core.services.fatura_service import CATEGORIA_CARTAO_NOME
+
+    parcelas: dict[str, Decimal] = defaultdict(Decimal)
+    compras = (
+        Conta.objects.filter(
+            usuario_id=fatura.usuario_id,
+            cartao_id=fatura.cartao_id,
+            eh_fatura_cartao=False,
+            data_prevista=fatura.data_prevista,
+        )
+        .values("categoria__nome")
+        .annotate(total=Sum("valor"))
+    )
+    for row in compras:
+        nome = row["categoria__nome"] or CATEGORIA_CARTAO_NOME
+        parcelas[nome] += row["total"] or Decimal("0")
+
+    valor_fatura = fatura.valor or Decimal("0")
+    soma_compras = sum(parcelas.values(), Decimal("0"))
+
+    # Fatura sem compras vinculadas (lançada à mão): fica com a própria categoria
+    if soma_compras <= 0:
+        nome = fatura.categoria.nome if fatura.categoria else CATEGORIA_CARTAO_NOME
+        return {nome: valor_fatura}
+
+    if soma_compras == valor_fatura:
+        return dict(parcelas)
+
+    fator = valor_fatura / soma_compras
+    return {nome: valor * fator for nome, valor in parcelas.items()}
+
+
+def despesas_por_categoria(usuario, inicio: date, fim: date, campo_data: str, **extra_filtros) -> list[dict]:
+    """Agrupa as despesas de um período por categoria, detalhando os gastos de cartão.
+
+    Despesas comuns entram com a própria categoria. Faturas de cartão, que nos
+    totais do painel representam todo o gasto do cartão no período, são abertas
+    nas categorias das compras que as compõem — assim a classificação que o
+    usuário faz em cada compra chega até o gráfico de "Maiores Gastos".
+
+    Args:
+        usuario (User): Instância do usuário autenticado.
+        inicio (date): Início do período (inclusive).
+        fim (date): Fim do período (exclusive).
+        campo_data (str): Campo de data usado no recorte ("data_prevista" para
+            competência, "data_realizacao" para caixa).
+        **extra_filtros: Filtros adicionais aplicados ao queryset (ex:
+            `transacao_realizada=True`).
+
+    Returns:
+        list[dict]: Itens `{"nome", "valor"}` ordenados do maior para o menor valor.
+    """
+    filtros = {
+        "usuario": usuario,
+        "tipo": Conta.TIPO_DESPESA,
+        f"{campo_data}__gte": inicio,
+        f"{campo_data}__lt": fim,
+        **extra_filtros,
+    }
+
+    totais: dict[str, Decimal] = defaultdict(Decimal)
+
+    despesas_comuns = (
+        Conta.objects.filter(cartao__isnull=True, **filtros)
+        .values("categoria__nome")
+        .annotate(total=Sum("valor"))
+    )
+    for row in despesas_comuns:
+        nome = row["categoria__nome"] or SEM_CATEGORIA
+        totais[nome] += row["total"] or Decimal("0")
+
+    faturas = Conta.objects.filter(
+        eh_fatura_cartao=True, cartao__isnull=False, **filtros
+    ).select_related("categoria")
+    for fatura in faturas:
+        for nome, valor in _explodir_fatura_por_categoria(fatura).items():
+            totais[nome] += valor
+
+    itens = [{"nome": nome, "valor": float(valor)} for nome, valor in totais.items()]
+    itens.sort(key=lambda item: item["valor"], reverse=True)
+    return itens
+
+
 def breakdown_despesas_competencia(usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4) -> tuple[list[dict], dict]:
     """
     Realiza o detalhamento de gastos agrupados por categoria dentro de um período,
@@ -209,26 +315,7 @@ def breakdown_despesas_competencia(usuario, inicio: date, fim: date, total_despe
     Returns:
         tuple[list[dict], dict]: Lista de despesas formatadas com porcentagens e dicionário da maior categoria.
     """
-    qs = (
-        Conta.objects.filter(
-            usuario=usuario,
-            tipo=Conta.TIPO_DESPESA,
-            data_prevista__gte=inicio,
-            data_prevista__lt=fim,
-        )
-        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-        .values("categoria__nome")
-        .annotate(total=Sum("valor"))
-        .order_by("-total")
-    )
-
-    itens = [
-        {
-            "nome": (row["categoria__nome"] or "Sem categoria"),
-            "valor": float(row["total"] or 0),
-        }
-        for row in qs
-    ]
+    itens = despesas_por_categoria(usuario, inicio, fim, "data_prevista")
 
     if not itens or total_despesas <= 0:
         return [], {"nome": "Sem dados", "valor": 0.0, "pct": 0.0}
@@ -552,27 +639,9 @@ def breakdown_despesas_realizadas(usuario, inicio: date, fim: date, total_despes
     Returns:
         tuple[list[dict], dict]: Breakdown detalhado e maior categoria encontrada.
     """
-    qs = (
-        Conta.objects.filter(
-            usuario=usuario,
-            tipo=Conta.TIPO_DESPESA,
-            transacao_realizada=True,
-            data_realizacao__gte=inicio,
-            data_realizacao__lt=fim,
-        )
-        .filter(Q(cartao__isnull=True) | Q(eh_fatura_cartao=True))
-        .values("categoria__nome")
-        .annotate(total=Sum("valor"))
-        .order_by("-total")
+    itens = despesas_por_categoria(
+        usuario, inicio, fim, "data_realizacao", transacao_realizada=True
     )
-
-    itens = [
-        {
-            "nome": (row["categoria__nome"] or "Sem categoria"),
-            "valor": float(row["total"] or 0),
-        }
-        for row in qs
-    ]
 
     if not itens or total_despesas <= 0:
         return [], {"nome": "Sem dados", "valor": 0.0, "pct": 0.0}

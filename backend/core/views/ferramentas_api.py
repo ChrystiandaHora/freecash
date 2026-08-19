@@ -141,17 +141,24 @@ class FerramentasImportarExtratoAPIView(APIView):
             # Detectar data de vencimento da fatura
             data_vencimento_fatura = detectar_vencimento_fatura(linhas_extraidas, cartao_obj)
 
+            from core.services.fatura_service import obter_categoria_cartao
+            # Caracteriza automaticamente as compras importadas como gasto de cartão;
+            # o usuário pode reclassificar cada compra depois em Compras Cartão.
+            categoria_cartao = obter_categoria_cartao(request.user)
+
             count = 0
             for line in linhas_extraidas:
                 tipo_conta = 'R' if line.get('tipo', 'D') == 'C' else 'D'
                 transacao_realizada = True
                 data_prevista = line['data']
                 data_compra = None
+                categoria = None
 
                 if cartao_obj and tipo_conta == 'D':
                     from core.services.fatura_service import calcular_vencimento_fatura
                     transacao_realizada = False
                     data_compra = line['data']
+                    categoria = categoria_cartao
                     data_prevista = calcular_vencimento_fatura(
                         data_compra,
                         cartao_obj.dia_fechamento,
@@ -183,6 +190,7 @@ class FerramentasImportarExtratoAPIView(APIView):
                         data_realizacao=line['data'] if transacao_realizada else None,
                         cartao=cartao_obj,
                         data_compra=data_compra,
+                        categoria=categoria,
                     )
                     count += 1
 
@@ -294,11 +302,17 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                     transacao_realizada = True
                     data_prevista = linha.data
                     data_compra = None
+                    categoria = None
 
                     if extrato.cartao and tipo_conta == 'D':
-                        from core.services.fatura_service import calcular_vencimento_fatura
+                        from core.services.fatura_service import (
+                            calcular_vencimento_fatura,
+                            obter_categoria_cartao,
+                        )
                         transacao_realizada = False
                         data_compra = linha.data
+                        # Gasto de cartão nasce caracterizado como tal
+                        categoria = obter_categoria_cartao(request.user)
                         data_prevista = calcular_vencimento_fatura(
                             data_compra,
                             extrato.cartao.dia_fechamento,
@@ -318,6 +332,7 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                         data_realizacao=linha.data if transacao_realizada else None,
                         cartao=extrato.cartao,
                         data_compra=data_compra,
+                        categoria=categoria,
                     )
                     linha.status = 'importado'
                     linha.conta_vinculada = conta

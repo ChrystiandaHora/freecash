@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 from core.models import Categoria, Conta, CartaoCredito
+from core.services.fatura_service import CATEGORIA_CARTAO_NOME
 import datetime
 
 class ComprasCartaoAPITestCase(APITestCase):
@@ -46,14 +47,15 @@ class ComprasCartaoAPITestCase(APITestCase):
         self.assertIsNotNone(response.data["categoria_detalhe"])
         self.assertEqual(response.data["categoria_detalhe"]["id"], self.categoria.id)
 
-        # Check if the consolidated invoice inherited the category
+        # A fatura consolidada é caracterizada como gasto de cartão — ela é o
+        # pagamento agregado, não um gasto da categoria de uma compra específica.
         fatura = Conta.objects.get(
             usuario=self.user,
             cartao=self.cartao,
             eh_fatura_cartao=True,
             data_prevista="2026-08-05"
         )
-        self.assertEqual(fatura.categoria_id, self.categoria.id)
+        self.assertEqual(fatura.categoria.nome, CATEGORIA_CARTAO_NOME)
 
         # 2. Compra após o fechamento (dia 26 > dia 25)
         # Deve vencer na fatura subsequente (05/09/2026)

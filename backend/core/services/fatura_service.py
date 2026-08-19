@@ -13,9 +13,55 @@ import logging
 from django.db import transaction
 from django.db.models import Sum
 
-from core.models import Conta
+from core.models import Categoria, Conta
 
 logger = logging.getLogger(__name__)
+
+
+# Nome da categoria usada para caracterizar automaticamente gastos de cartão
+# que o usuário ainda não classificou manualmente.
+CATEGORIA_CARTAO_NOME = "Cartão de Crédito"
+
+
+def obter_categoria_cartao(usuario) -> Categoria:
+    """Obtém (ou cria) a categoria de despesa que caracteriza gastos de cartão.
+
+    Serve como classificação automática de fallback: toda fatura consolidada e
+    toda compra individual importada sem classificação manual recebe esta
+    categoria, evitando que o gasto apareça como "Sem categoria" nos painéis.
+
+    Args:
+        usuario (User): Instância do usuário proprietário.
+
+    Returns:
+        Categoria: A categoria "Cartão de Crédito" do usuário.
+    """
+    categoria, _ = Categoria.objects.get_or_create(
+        usuario=usuario,
+        nome=CATEGORIA_CARTAO_NOME,
+        defaults={"tipo": Categoria.TIPO_DESPESA},
+    )
+    return categoria
+
+
+def garantir_categoria_cartao(conta: Conta) -> bool:
+    """Garante que um lançamento de cartão tenha alguma categoria atribuída.
+
+    Não sobrescreve uma classificação existente — apenas preenche o vazio com a
+    categoria "Cartão de Crédito".
+
+    Args:
+        conta (Conta): Fatura consolidada ou compra individual de cartão.
+
+    Returns:
+        bool: True se a categoria foi preenchida agora, False se já existia.
+    """
+    if conta.categoria_id:
+        return False
+
+    conta.categoria = obter_categoria_cartao(conta.usuario)
+    conta.save(update_fields=["categoria", "atualizada_em"])
+    return True
 
 
 def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
@@ -73,6 +119,7 @@ def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
         data_prevista=data_vencimento,
         cartao=cartao,
         eh_fatura_cartao=True,
+        categoria=obter_categoria_cartao(usuario),
     )
 
     return fatura
