@@ -24,6 +24,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthProvider';
+import { ThemeProvider } from './context/ThemeProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
 
@@ -112,7 +113,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <AuthProvider>
-          <Router>
+          <ThemeProvider>
+            <Router>
             <Routes>
               {/* Public Auth Routes */}
               <Route 
@@ -178,7 +180,8 @@ function App() {
               {/* Fallback Redirect */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
-          </Router>
+            </Router>
+          </ThemeProvider>
         </AuthProvider>
       </ToastProvider>
     </QueryClientProvider>

@@ -25,7 +25,7 @@
  * // Rota pública configurada em App.jsx:
  * <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { Input } from '../components/ui/Input';
@@ -34,7 +34,8 @@ import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
 import { cn } from '../lib/utils';
-import { Wallet, Loader2, AlertCircle, ShieldCheck, Sun, Moon, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
+import { Wallet, Loader2, AlertCircle, ShieldCheck, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
+import { ThemeToggle } from '../components/nav/ThemeToggle';
 
 const HIGHLIGHTS = [
   { icon: TrendingUp, title: 'Métricas em tempo real', desc: 'Acompanhe seu patrimônio a cada atualização' },
@@ -85,27 +86,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Theme Management
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, [theme]);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('theme', nextTheme);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,21 +132,14 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex bg-background text-foreground font-sans">
 
-      {/* Dynamic Theme Switcher Toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="fixed top-5 right-5 sm:top-6 sm:right-6 z-40 rounded-xl hover:bg-muted/50 text-muted-foreground h-9 w-9"
-        title="Alternar Tema"
-        aria-label={theme === 'dark' ? 'Alternar para tema claro' : 'Alternar para tema escuro'}
-      >
-        {theme === 'dark' ? (
-          <Sun className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
-        ) : (
-          <Moon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
-        )}
-      </Button>
+      {/* Usa o ThemeToggle compartilhado. Antes esta tela tinha um motor de tema
+          proprio, de dois estados, que lia a mesma chave localStorage['theme']:
+          quem estivesse em 'auto' era jogado para o claro (a string 'auto' nao
+          era 'dark'), e o toggle daqui gravava 'light'/'dark', DESTRUINDO a
+          preferencia. Agora ha um unico motor, no ThemeProvider. */}
+      <div className="fixed right-5 top-5 z-40 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
 
       {/* Brand Panel (desktop only) */}
       <aside

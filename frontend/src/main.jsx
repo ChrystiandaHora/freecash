@@ -17,6 +17,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
+// Limpeza de artefato morto: a sidebar colapsavel foi substituida pela navbar
+// superior, entao esta chave nao tem mais leitor. Sem isto ela sobreviveria para
+// sempre no navegador de todo usuario atual. Remover depois de 2027-02.
+localStorage.removeItem('sidebar-collapsed')
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

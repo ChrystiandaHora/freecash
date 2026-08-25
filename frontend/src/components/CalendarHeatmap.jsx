@@ -246,7 +246,7 @@ export default function CalendarHeatmap({ daysByKey, firstDate, lastDate, render
       {tooltip && (
         <div
           role="presentation"
-          className={`pointer-events-none absolute z-30 w-60 -translate-x-1/2 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-xl ${
+          className={`pointer-events-none absolute z-20 w-60 -translate-x-1/2 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-xl ${
             tooltip.below ? '' : '-translate-y-full'
           }`}
           style={{ left: tooltip.x, top: tooltip.y }}

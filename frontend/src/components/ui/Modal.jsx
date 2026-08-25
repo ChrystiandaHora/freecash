@@ -21,8 +21,25 @@
  * focável do diálogo e fica trapeado dentro dele (Tab/Shift+Tab cicla só entre
  * os elementos internos); ao fechar, o foco retorna ao elemento que abriu a
  * modal (WCAG 2.4.3).
+ *
+ * Nota de arquitetura: o diálogo é renderizado por portal no `document.body`, e
+ * não no lugar onde foi declarado. Isso não é preferência de estilo — é
+ * necessário para a correção. `backdrop-filter`, `filter`, `transform`,
+ * `perspective`, `will-change` e `contain` fazem o elemento se tornar o
+ * *containing block* de descendentes `position: fixed`. Sem o portal, uma modal
+ * declarada dentro de um ancestral com qualquer uma dessas propriedades tem seu
+ * `fixed inset-0` resolvido contra aquela caixa em vez da viewport: foi
+ * exatamente o que aconteceu com o botão de ajuda dentro da barra de navegação
+ * (`backdrop-blur-md`), onde o overlay virou 1440x63 e o diálogo foi centralizado
+ * na altura do header, ficando cortado acima da tela.
+ *
+ * O portal também tira o diálogo do contexto de empilhamento do ancestral, então
+ * o `z-50` passa a valer contra a raiz — é o que garante que ele cubra o header
+ * `z-40`. O trap de foco, o Escape e a trava de scroll continuam funcionando por
+ * refs e listeners no document, portanto são indiferentes ao portal.
  */
 import { useEffect, useId, useRef } from "react"
+import { createPortal } from "react-dom"
 import { cn } from "../../lib/utils"
 import { X } from "lucide-react"
 
@@ -114,7 +131,7 @@ const Modal = ({ isOpen, onClose, title, description, children, className, size 
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -164,7 +181,8 @@ const Modal = ({ isOpen, onClose, title, description, children, className, size 
         {/* Body */}
         <div className="p-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -132,6 +132,67 @@
   --heat-neg-3-ink: #0b0b0b;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Navbar: altura do header, offset de rolagem e escala de z-index.
+ * ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Mantenha em sincronia com o `h-16` da barra no TopNav.jsx. */
+  --header-h: 4rem;
+}
+
+/* SC 2.4.11 (Focus Not Obscured): com um header sticky, um elemento focado por
+   navegacao de fragmento, busca-na-pagina ou scrollIntoView pode parar atras da
+   barra. `scroll-padding-top` no scroller cobre os tres casos de uma vez;
+   `scroll-margin-top` e o cinto e suspensorio para foco programatico.
+   4rem + 1rem = 64px de header + 2px de anel + 2px de offset + folga. */
+html {
+  scroll-padding-top: calc(var(--header-h) + 1rem);
+}
+* {
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+/* Escala de z-index da aplicacao. Manter as camadas nesta ordem:
+     z-10 / z-20  popover e tooltip DENTRO do conteudo da pagina
+     z-30         scrim da navbar
+     z-40         header + mega painel + painel mobile
+     z-50         modais (ui/Modal.jsx)
+     z-[60]       skip link
+   O scrim comeca em `top-16` para os controles do header seguirem clicaveis. */
+
+/* Alto contraste forcado: o SO descarta as cores de fundo do autor, entao um
+   painel que depende de `bg-popover` + `backdrop-blur` PERDE o fundo inteiro e
+   seus links renderizam sobre o texto da pagina embaixo. O A11Y.md e silencioso
+   sobre forced-colors; esta e uma regra da casa, com o mesmo precedente do
+   heatmap mais abaixo neste arquivo. */
+@media (forced-colors: active) {
+  /* Translucidez nao significa nada aqui. */
+  .nav-scrim {
+    display: none;
+  }
+
+  .nav-panel {
+    background-color: Canvas;
+    color: CanvasText;
+    backdrop-filter: none;
+    border: 1px solid CanvasText;
+  }
+
+  /* A barra do gatilho ativo precisa de uma cor de sistema explicita. */
+  .nav-trigger[data-active='true']::after {
+    background-color: Highlight;
+  }
+
+  /* O peso da fonte sobrevive, a cor nao — o sublinhado e o sinal que sustenta.
+     Sem `forced-color-adjust: none` no cromo de navegacao: isso descartaria a
+     paleta escolhida pelo usuario. O heatmap precisa dele porque codifica DADOS
+     em cor; navegacao nao. */
+  a[aria-current='page'] {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+  }
+}
+
 * {
   border-color: var(--color-border);
 }

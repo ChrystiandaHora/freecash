@@ -383,13 +383,13 @@ export default function Dashboard() {
             <>
               <div
                 aria-hidden="true"
-                className="fixed inset-0 z-40 bg-transparent"
+                className="fixed inset-0 z-10 bg-transparent"
                 onClick={() => setShowDatePicker(false)}
               />
               <div
                 role="dialog"
                 aria-label="Selecione o período"
-                className="absolute right-0 sm:right-12 top-full mt-2 z-50 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150"
+                className="absolute right-0 sm:right-12 top-full mt-2 z-20 w-72 bg-card border border-border shadow-xl rounded-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-150"
               >
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between pb-2 border-b border-border/40">
