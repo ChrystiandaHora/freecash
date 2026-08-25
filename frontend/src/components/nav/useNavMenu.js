@@ -43,11 +43,12 @@ export function useNavMenu({
   pathname,
   mainRef,
   initialSectionId,
-  refs: { containerRef, triggerRefs, panelRefs, mobileTriggerRef },
+  refs: { containerRef, triggerRefs, panelRefs, mobileTriggerRef, accountTriggerRef },
 }) {
   const [openId, setOpenId] = useState(null);
   const [isMobileOpen, setMobileOpen] = useState(false);
   const [openSectionId, setOpenSectionId] = useState(initialSectionId ?? null);
+  const [isAccountOpen, setAccountOpen] = useState(false);
 
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
@@ -88,6 +89,10 @@ export function useNavMenu({
     (id) => {
       clearTimers();
       setOpenId(id);
+      // Exclusividade mútua: painel de navegação e menu de conta nunca coexistem.
+      // Eles se sobreporiam visualmente, e ter dois popups abertos deixa ambíguo
+      // o que o Escape deve fechar.
+      setAccountOpen(false);
     },
     [clearTimers]
   );
@@ -185,11 +190,32 @@ export function useNavMenu({
     });
   }, []);
 
+  const toggleAccount = useCallback(() => {
+    setAccountOpen((open) => {
+      if (!open) {
+        clearTimers();
+        setOpenId(null); // ver nota de exclusividade em `openPanel`
+      }
+      return !open;
+    });
+  }, [clearTimers]);
+
+  const closeAccount = useCallback(({ restoreFocus = false } = {}) => {
+    setAccountOpen(false);
+    if (restoreFocus) {
+      suppressFocusOpen.current = true;
+      accountTriggerRef.current?.focus();
+      requestAnimationFrame(() => {
+        suppressFocusOpen.current = false;
+      });
+    }
+  }, [accountTriggerRef]);
+
   // Escape — três ramos. O APG manda mover o foco ao gatilho; a SC 1.4.13 manda
   // descartar "without moving focus". Não se contradizem: falam de locais de foco
   // diferentes.
   useEffect(() => {
-    if (!openId && !isMobileOpen) return;
+    if (!openId && !isMobileOpen && !isAccountOpen) return;
 
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
@@ -201,6 +227,16 @@ export function useNavMenu({
         event.stopPropagation();
         setMobileOpen(false);
         mobileTriggerRef.current?.focus();
+        return;
+      }
+
+      // Menu de conta: é um popup de AÇÃO, não de navegação. Aqui o foco sempre
+      // volta ao gatilho — ao contrário dos painéis de navegação, ele nunca é
+      // aberto por hover, então nunca existe o caso "aberto sem o usuário pedir"
+      // que obrigaria a descartar sem mover o foco (SC 1.4.13).
+      if (isAccountOpen) {
+        event.stopPropagation();
+        closeAccount({ restoreFocus: true });
         return;
       }
 
@@ -226,20 +262,21 @@ export function useNavMenu({
 
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [openId, isMobileOpen, closeAll, panelRefs, triggerRefs, mobileTriggerRef]);
+  }, [openId, isMobileOpen, isAccountOpen, closeAll, closeAccount, panelRefs, triggerRefs, mobileTriggerRef]);
 
   // Clique fora. `pointerdown` e não `click`, para fechar ANTES que o elemento
   // sob o scrim receba qualquer coisa.
   useEffect(() => {
-    if (!openId && !isMobileOpen) return;
+    if (!openId && !isMobileOpen && !isAccountOpen) return;
     const onPointerDown = (event) => {
       if (containerRef.current?.contains(event.target)) return;
       closeAll();
       setMobileOpen(false);
+      setAccountOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [openId, isMobileOpen, closeAll, containerRef]);
+  }, [openId, isMobileOpen, isAccountOpen, closeAll, containerRef]);
 
   // Fecha tudo em troca de rota E em cruzamento de breakpoint.
   //
@@ -260,6 +297,7 @@ export function useNavMenu({
     setLastRouteKey(routeKey);
     setOpenId(null);
     setMobileOpen(false);
+    setAccountOpen(false);
   }
 
   // Com nada aberto, nenhum timer pendente deve sobreviver — senão um hover
@@ -292,6 +330,7 @@ export function useNavMenu({
   return {
     openId,
     isMobileOpen,
+    isAccountOpen,
     openSectionId,
     openPanel,
     closeAll,
@@ -305,5 +344,7 @@ export function useNavMenu({
     closeMobile,
     toggleMobile,
     toggleSection,
+    toggleAccount,
+    closeAccount,
   };
 }

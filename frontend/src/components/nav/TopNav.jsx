@@ -31,7 +31,6 @@ import { NavMenuTrigger } from './NavMenuTrigger';
 import { MegaPanel } from './MegaPanel';
 import { MobileNavPanel } from './MobileNavPanel';
 import { UserMenu } from './UserMenu';
-import { ThemeToggle } from './ThemeToggle';
 import { HelpButton } from './HelpButton';
 
 /**
@@ -57,6 +56,8 @@ export default function TopNav({ mainRef }) {
   const triggerRefs = useRef({});
   const panelRefs = useRef({});
   const mobileTriggerRef = useRef(null);
+  const accountTriggerRef = useRef(null);
+  const accountPanelRef = useRef(null);
 
   const menu = useNavMenu({
     isDesktop,
@@ -64,7 +65,7 @@ export default function TopNav({ mainRef }) {
     pathname,
     mainRef,
     initialSectionId: activeGroupId ?? 'geral',
-    refs: { containerRef, triggerRefs, panelRefs, mobileTriggerRef },
+    refs: { containerRef, triggerRefs, panelRefs, mobileTriggerRef, accountTriggerRef },
   });
 
   /**
@@ -255,16 +256,25 @@ export default function TopNav({ mainRef }) {
                 SC 3.2.6 Consistent Help permite reflow, não reordenação — a ajuda
                 nunca muda de posição relativa, e é por isso que ela vem primeiro.
 
-                Nem relógio nem nome de usuário: num header cuja função é navegar,
-                os dois eram ruído. O divisor separa os controles da aplicação da
-                ação de sessão, que é destrutiva. A identificação da conta vive no
-                rodapé do painel mobile, onde há espaço para ela. */}
+                Só a ajuda fica solta na barra, porque a SC 3.2.6 Consistent Help
+                exige que o ponto de entrada de ajuda viva no layout compartilhado e
+                não mude de ordem relativa entre breakpoints.
+
+                Tudo que é "meu" — identidade, tema e sair — está atrás do avatar.
+                Relógio e nome escrito saíram de vez: num header cuja função é
+                navegar, os dois eram ruído. O divisor separa a ajuda da área de
+                conta. */}
             <div className="flex shrink-0 items-center gap-2">
               <HelpButton />
-              <ThemeToggle />
               <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
               <div className="hidden lg:block">
-                <UserMenu />
+                <UserMenu
+                  isOpen={menu.isAccountOpen}
+                  onToggle={menu.toggleAccount}
+                  onClose={menu.closeAccount}
+                  triggerRef={accountTriggerRef}
+                  panelRef={accountPanelRef}
+                />
               </div>
             </div>
           </div>
