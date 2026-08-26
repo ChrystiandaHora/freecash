@@ -2,7 +2,8 @@
  * Componente de Layout Master da Aplicação Autenticada.
  *
  * Estrutura o esqueleto visual do painel: a barra de navegação superior com
- * mega-menu, o container que injeta as páginas filhas e o rodapé.
+ * mega-menu, o container que injeta as páginas filhas e o rodapé com o mapa do
+ * site (`nav/SiteFooter`).
  *
  * Antes da migração para navbar este arquivo tinha 685 linhas e acumulava oito
  * responsabilidades. Cada uma foi para o seu lugar: os dados de navegação em
@@ -16,6 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import TopNav from './nav/TopNav';
+import SiteFooter from './nav/SiteFooter';
 import { navIndex } from '../config/navigation';
 import { getRouteTitle } from '../lib/navigation';
 
@@ -72,9 +74,7 @@ export default function DashboardLayout() {
         </div>
       </main>
 
-      <footer className="border-t border-border/30 py-4 text-center text-xs text-muted-foreground">
-        &copy; {new Date().getFullYear()} FreeCash. Todos os direitos reservados.
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
