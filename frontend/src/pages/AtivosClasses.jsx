@@ -30,6 +30,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
+import { useToast } from '../context/ToastContext';
 
 /* ─────────────────────────── Delete Confirm ─────────────────────────── */
 /**
@@ -70,6 +71,7 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
 export default function AtivosClasses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   // Modal state: { type: 'delete-classe'|'delete-cat'|'delete-sub', data: {} }
   const [modal, setModal] = useState(null);
@@ -79,20 +81,31 @@ export default function AtivosClasses() {
   const [successMsg, setSuccessMsg] = useState('');
 
   /* ── Queries ── */
-  const { data: classes, isLoading: loadC, isError: errC, refetch: refetchC } = useQuery({
+  const { data: classes, isLoading: loadC, isFetching: fetchC, isError: errC, refetch: refetchC } = useQuery({
     queryKey: ['classesAtivos'],
     queryFn: async () => { const r = await api.get('/api/investimentos/classes/'); return r.data; },
   });
 
-  const { data: categorias, isLoading: loadCat, refetch: refetchCat } = useQuery({
+  const { data: categorias, isLoading: loadCat, isFetching: fetchCat, refetch: refetchCat } = useQuery({
     queryKey: ['categoriasAtivos'],
     queryFn: async () => { const r = await api.get('/api/investimentos/categorias/'); return r.data; },
   });
 
-  const { data: subcategorias, isLoading: loadSub, refetch: refetchSub } = useQuery({
+  const { data: subcategorias, isLoading: loadSub, isFetching: fetchSub, refetch: refetchSub } = useQuery({
     queryKey: ['subcategoriasAtivos'],
     queryFn: async () => { const r = await api.get('/api/investimentos/subcategorias/'); return r.data; },
   });
+
+  const isFetchingAny = fetchC || fetchCat || fetchSub;
+
+  const handleAtualizarEstrutura = async () => {
+    try {
+      await Promise.all([refetchC(), refetchCat(), refetchSub()]);
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   const invalidateAll = () => {
     queryClient.invalidateQueries(['classesAtivos']);
@@ -219,11 +232,12 @@ export default function AtivosClasses() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => { refetchC(); refetchCat(); refetchSub(); }}
+            onClick={handleAtualizarEstrutura}
+            disabled={isFetchingAny}
             className="rounded-xl h-9 w-9 shrink-0"
             aria-label="Atualizar estrutura ANBIMA"
           >
-            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 text-muted-foreground ${isFetchingAny ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
         </div>
       </div>

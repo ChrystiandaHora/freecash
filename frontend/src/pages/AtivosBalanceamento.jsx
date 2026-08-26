@@ -28,6 +28,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
+import { useToast } from '../context/ToastContext';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -109,6 +110,7 @@ function MetaSlider({ id, label, value, onChange, disabled }) {
 /* ─────────────────────────── Main Page ─────────────────────────── */
 export default function AtivosBalanceamento() {
   const queryClient = useQueryClient();
+  const { addToast } = useToast();
 
   // Metas locais: { [id]: porcentagem }
   const [editingMetas, setEditingMetas] = useState({});
@@ -135,6 +137,7 @@ export default function AtivosBalanceamento() {
     data: balanceData,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useQuery({
     queryKey: ['investimentosBalanceamento'],
@@ -143,6 +146,15 @@ export default function AtivosBalanceamento() {
       return res.data;
     },
   });
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   /* ── Mutation ── */
   const saveMetasMutation = useMutation({
@@ -354,11 +366,12 @@ export default function AtivosBalanceamento() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => refetch()}
+            onClick={handleAtualizar}
+            disabled={isFetching}
             className="rounded-xl h-9 w-9 shrink-0"
             aria-label="Atualizar dados de balanceamento"
           >
-            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 text-muted-foreground ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
         </div>
       </div>

@@ -178,6 +178,7 @@ export default function Metas() {
   const {
     data: planoData,
     isLoading: isLoadingPlano,
+    isFetching: isFetchingPlano,
     isError: isErrorPlano,
     refetch: refetchPlano,
   } = useQuery({ queryKey: ['metas-plano'], queryFn: fetchPlanoMetas })
@@ -185,9 +186,21 @@ export default function Metas() {
   const {
     data: metas = [],
     isLoading: isLoadingMetas,
+    isFetching: isFetchingMetas,
     isError: isErrorMetas,
     refetch: refetchMetas,
   } = useQuery({ queryKey: ['metas'], queryFn: fetchMetas })
+
+  const isFetchingAny = isFetchingPlano || isFetchingMetas
+
+  const handleAtualizar = async () => {
+    try {
+      await Promise.all([refetchPlano(), refetchMetas()])
+      addToast('Dados atualizados.', 'success')
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error')
+    }
+  }
 
   const plano = planoData?.plano
   const sugestoes = planoData?.sugestoes
@@ -474,15 +487,13 @@ export default function Metas() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              refetchPlano()
-              refetchMetas()
-            }}
+            onClick={handleAtualizar}
+            disabled={isFetchingAny}
           >
-            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetchingAny ? 'animate-spin' : ''}`} aria-hidden="true" />
             Atualizar
           </Button>
-          <Button onClick={abrirNovaMeta}>
+          <Button size="sm" onClick={abrirNovaMeta}>
             <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Nova Meta
           </Button>

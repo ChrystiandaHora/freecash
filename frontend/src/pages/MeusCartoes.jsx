@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
+import { useToast } from '../context/ToastContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -206,10 +207,20 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function MeusCartoes() {
-  const { data: cartoes = [], isLoading, isError, refetch } = useQuery({
+  const { addToast } = useToast();
+  const { data: cartoes = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['cartoes'],
     queryFn: () => fetchCartoes(),
   })
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   const totalLimite = cartoes.reduce((acc, c) => acc + Number(c.limite ?? 0), 0)
   const totalUsado = cartoes.reduce((acc, c) => acc + Number(c.fatura_atual ?? 0), 0)
@@ -226,8 +237,8 @@ export default function MeusCartoes() {
             Visão consolidada de limites e faturas
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="mr-1.5 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={handleAtualizar} disabled={isFetching}>
+          <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
       </div>

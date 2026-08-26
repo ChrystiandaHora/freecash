@@ -25,6 +25,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { getCurrentMonthDateRange } from '../lib/utils';
+import { useToast } from '../context/ToastContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,15 +45,25 @@ const formatDate = (dateStr) => {
 export default function Receitas() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { addToast } = useToast()
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
   const [filteredReceitas, setFilteredReceitas] = useState(null)
   const [actionError, setActionError] = useState('')
 
-  const { data: receitas = [], isLoading, isError, refetch } = useQuery({
+  const { data: receitas = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['receitas'],
     queryFn: () => fetchReceitas(),
   })
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch()
+      addToast('Dados atualizados.', 'success')
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error')
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: deleteReceita,
@@ -208,11 +219,11 @@ export default function Receitas() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="mr-1.5 h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={handleAtualizar} disabled={isFetching}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button onClick={() => navigate('/receitas/novo')}>
+          <Button size="sm" onClick={() => navigate('/receitas/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Receita
           </Button>

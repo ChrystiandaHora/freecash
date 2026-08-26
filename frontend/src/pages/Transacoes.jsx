@@ -18,6 +18,7 @@ import { Select } from '../components/ui/Select';
 import { Alert } from '../components/ui/Alert';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { DataTable } from '../components/ui/DataTable';
+import { useToast } from '../context/ToastContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,11 +46,21 @@ export default function Transacoes() {
   const [mes, setMes] = useState(String(hoje.getMonth() + 1).padStart(2, '0'))
   const [ano, setAno] = useState(String(hoje.getFullYear()))
   const [filteredTransacoes, setFilteredTransacoes] = useState(null)
+  const { addToast } = useToast()
 
-  const { data: transacoes = [], isLoading, isError, refetch } = useQuery({
+  const { data: transacoes = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['transacoes', mes, ano],
     queryFn: () => fetchTransacoes({ mes, ano }),
   })
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch()
+      addToast('Dados atualizados.', 'success')
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error')
+    }
+  }
 
   // KPIs (calculados dinamicamente com base nos filtros da tabela)
   const transacoesParaKpis = filteredTransacoes ?? transacoes
@@ -135,8 +146,8 @@ export default function Transacoes() {
             Extrato consolidado de entradas e saídas
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="mr-1.5 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={handleAtualizar} disabled={isFetching}>
+          <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
       </div>

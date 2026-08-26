@@ -35,6 +35,7 @@ import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { DataTable } from '../components/ui/DataTable';
 import { getCurrentMonthDateRange } from '../lib/utils';
+import { useToast } from '../context/ToastContext';
 
 const fetchComprasCartao = async (params = {}) => {
   const query = new URLSearchParams();
@@ -67,6 +68,7 @@ function formatCurrency(value) {
 export default function ComprasCartao() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { addToast } = useToast();
 
   // Upload states
   const [selectedCard, setSelectedCard] = useState('');
@@ -90,11 +92,20 @@ export default function ComprasCartao() {
   });
   const cartoes = cartoesData || [];
 
-  const { data: contasData, isLoading: isContasLoading, isError: isContasError, refetch: refetchContas } = useQuery({
+  const { data: contasData, isLoading: isContasLoading, isError: isContasError, isFetching: isContasFetching, refetch: refetchContas } = useQuery({
     queryKey: ['compras-cartao'],
     queryFn: () => fetchComprasCartao(),
   });
   const contas = contasData || [];
+
+  const handleAtualizarCompras = async () => {
+    try {
+      await refetchContas();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   const { data: categoriasData } = useQuery({
     queryKey: ['categorias'],
@@ -300,11 +311,11 @@ export default function ComprasCartao() {
           <Button
             id="btn-atualizar-compras"
             variant="outline"
-            onClick={() => refetchContas()}
-            disabled={isContasLoading}
+            onClick={handleAtualizarCompras}
+            disabled={isContasFetching}
             className="gap-2"
           >
-            <RefreshCw className={`h-4 w-4 ${isContasLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isContasFetching ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>

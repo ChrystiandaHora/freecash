@@ -29,6 +29,7 @@ import { Button } from '../components/ui/Button';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
+import { useToast } from '../context/ToastContext';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -82,6 +83,7 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
 export default function AtivosHistorico() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [deletingTransacao, setDeletingTransacao] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -232,6 +234,7 @@ export default function AtivosHistorico() {
     data: transacoes,
     isLoading: isLoadingT,
     isError: isErrorT,
+    isFetching: isFetchingT,
     refetch: refetchT,
   } = useQuery({
     queryKey: ['transacoesInvestimento'],
@@ -242,6 +245,15 @@ export default function AtivosHistorico() {
   });
 
   const isLoading = isLoadingT;
+
+  const handleAtualizar = async () => {
+    try {
+      await refetchT();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   if (isLoading) return (
     <div role="status" className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
@@ -279,8 +291,8 @@ export default function AtivosHistorico() {
             <Plus className="h-4 w-4" />
             Nova Ordem
           </Button>
-          <Button variant="outline" size="icon" onClick={() => refetchT()} className="rounded-xl h-9 w-9 shrink-0" aria-label="Atualizar histórico">
-            <RefreshCw className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Button variant="outline" size="icon" onClick={handleAtualizar} disabled={isFetchingT} className="rounded-xl h-9 w-9 shrink-0" aria-label="Atualizar histórico">
+            <RefreshCw className={`h-4 w-4 text-muted-foreground ${isFetchingT ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
         </div>
       </div>

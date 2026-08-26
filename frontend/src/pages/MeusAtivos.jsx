@@ -323,12 +323,12 @@ export default function MeusAtivos() {
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <Button 
             onClick={() => updateQuotesMutation.mutate()}
-            disabled={updateQuotesMutation.isLoading}
+            disabled={updateQuotesMutation.isPending}
             variant="outline"
             className="rounded-xl h-10 px-4 gap-2 font-semibold transition-all border border-border/40 hover:bg-accent hover:text-accent-foreground text-foreground shadow-sm active:scale-98"
           >
-            <RefreshCw className={`h-4 w-4 ${updateQuotesMutation.isLoading ? 'animate-spin' : ''}`} />
-            {updateQuotesMutation.isLoading ? 'Atualizando...' : 'Atualizar Cotações'}
+            <RefreshCw className={`h-4 w-4 ${updateQuotesMutation.isPending ? 'animate-spin' : ''}`} />
+            {updateQuotesMutation.isPending ? 'Atualizando...' : 'Atualizar Cotações'}
           </Button>
 
           <Button 

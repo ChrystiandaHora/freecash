@@ -25,6 +25,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { getCurrentMonthDateRange } from '../lib/utils';
+import { useToast } from '../context/ToastContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ const getStatusInfo = (conta) => {
 export default function ContasPagar() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { addToast } = useToast()
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
   const [deletingConta, setDeletingConta] = useState(null) // Conta em exclusão (para o aviso de cascata)
@@ -115,10 +117,19 @@ export default function ContasPagar() {
   }
 
   // Query
-  const { data: contas = [], isLoading, isError, refetch } = useQuery({
+  const { data: contas = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['contasPagar'],
     queryFn: () => fetchContasPagar(),
   })
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch()
+      addToast('Dados atualizados.', 'success')
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error')
+    }
+  }
 
   // Mutation: pagar conta
   const pagarMutation = useMutation({
@@ -412,14 +423,14 @@ export default function ContasPagar() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="mr-1.5 h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={handleAtualizar} disabled={isFetching}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/contas-pagar/lote')}>
             Cadastro em Lote
           </Button>
-          <Button onClick={() => navigate('/contas-pagar/novo')}>
+          <Button size="sm" onClick={() => navigate('/contas-pagar/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Conta
           </Button>

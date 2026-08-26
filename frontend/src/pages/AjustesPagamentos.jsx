@@ -31,6 +31,7 @@ import api from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
+import { useToast } from '../context/ToastContext';
 
 // ─── API helpers ───────────────────────────────────────────
 const fetchContas = () =>
@@ -140,12 +141,22 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
 export default function AjustesPagamentos() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const { data: contas = [], isLoading, isError, refetch } = useQuery({
+  const { data: contas = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['contas-bancarias'],
     queryFn: () => fetchContas(),
   });
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: deleteConta,
@@ -188,12 +199,12 @@ export default function AjustesPagamentos() {
           <Button
             id="btn-atualizar-contas"
             variant="outline"
-            onClick={() => refetch()}
-            disabled={isLoading}
+            onClick={handleAtualizar}
+            disabled={isFetching}
             className="gap-2"
             aria-label="Atualizar cartões e contas"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
           <Button id="btn-novo-cartao" onClick={handleNew} className="gap-2">
             <Plus className="h-4 w-4" aria-hidden="true" />

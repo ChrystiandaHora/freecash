@@ -46,6 +46,7 @@ import {
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
+import { useToast } from '../context/ToastContext';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -224,8 +225,9 @@ function FallbackDRETable({ ano }) {
 export default function Relatorios() {
   const [ano, setAno] = useState(currentYear);
   const [expandedSection, setExpandedSection] = useState('dre');
+  const { addToast } = useToast();
 
-  const { data: dreData, isLoading, isError, refetch } = useQuery({
+  const { data: dreData, isError, isFetching, refetch } = useQuery({
     queryKey: ['relatoriosDRE', ano],
     queryFn: async () => {
       const res = await api.get(`/api/relatorios/dre/?ano=${ano}`);
@@ -233,6 +235,15 @@ export default function Relatorios() {
     },
     retry: 0, // Don't retry if endpoint doesn't exist yet
   });
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch();
+      addToast('Relatórios atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os relatórios.', 'error');
+    }
+  };
 
   // Also fetch dashboard for cross-panel data
   const { data: dashData } = useQuery({
@@ -391,11 +402,12 @@ export default function Relatorios() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => refetch()}
+              onClick={handleAtualizar}
+              disabled={isFetching}
               className="rounded-xl h-9 w-9 shrink-0"
               aria-label="Atualizar relatórios"
             >
-              <RefreshCw className={`h-4 w-4 text-muted-foreground ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              <RefreshCw className={`h-4 w-4 text-muted-foreground ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
           </div>
         </div>

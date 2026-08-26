@@ -293,10 +293,19 @@ export default function PipelineKanban() {
 
   const hoje = new Date()
 
-  const { data: contas = [], isLoading, isError, refetch } = useQuery({
+  const { data: contas = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['contasPagar', hoje.getMonth() + 1, hoje.getFullYear()],
     queryFn: () => fetchContasPagar({ mes: hoje.getMonth() + 1, ano: hoje.getFullYear() }),
   })
+
+  const handleAtualizar = async () => {
+    try {
+      await refetch()
+      addToast('Dados atualizados.', 'success')
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error')
+    }
+  }
 
   // Feedback via toast em vez de estado local: o ToastContext já se auto-dispensa,
   // pausa no hover/foco e tem botão de fechar — um Alert local ficaria na tela
@@ -387,8 +396,8 @@ export default function PipelineKanban() {
             Clique em um card para editar ou arraste para a coluna "Pagas" para quitá-lo
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="mr-1.5 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={handleAtualizar} disabled={isFetching}>
+          <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
       </div>
