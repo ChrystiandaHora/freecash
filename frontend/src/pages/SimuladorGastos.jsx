@@ -1,58 +1,36 @@
 /**
  * Componente de Simulador de Gastos e Receitas.
- * 
+ *
  * Permite ao usuário simular cenários financeiros em memória (client-side),
  * cruzando lançamentos temporários com despesas/receitas reais do banco de dados
  * para os próximos 12 meses.
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Plus,
-  Trash2,
-  AlertCircle,
-  Calendar,
-  Layers,
-  Activity,
-  Sparkles,
-  RefreshCw,
-  FolderOpen,
-  CalendarDays,
-  TrendingDown,
-  Table2,
-  LayoutGrid,
-  ShieldCheck
-} from 'lucide-react';
-import Chart from 'react-apexcharts';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { fetchContas, fetchSaldoAtual } from '../services/financeiro';
-import CalendarHeatmap from '../components/CalendarHeatmap';
 
 // UI components
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
 
-// Helpers
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0);
-
-// Data por extenso: leitor de tela lê "26 de agosto de 2026" em vez de "26/08".
-const formatDateLong = (date) =>
-  date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+import PontoDeViradaCard from './simulador/PontoDeViradaCard';
+import SaldoKpiCards from './simulador/SaldoKpiCards';
+import LancamentoForm from './simulador/LancamentoForm';
+import SimulacoesAtivasList from './simulador/SimulacoesAtivasList';
+import FluxoProjetadoChart from './simulador/FluxoProjetadoChart';
+import AnaliseDetalhada from './simulador/AnaliseDetalhada';
 
 // Meio centavo: abaixo disso o dia conta como zerado, não como negativo.
 const EPS = 0.005;
 
 export default function SimuladorGastos() {
   const { addToast } = useToast();
-  
+
   // Tema atual para o ApexCharts
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
-  
+
   useEffect(() => {
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains('dark'));
@@ -103,7 +81,7 @@ export default function SimuladorGastos() {
   }, [projectionMonths]);
 
   // Carregar dados reais do backend
-  const { data: realContas = [], isLoading, refetch } = useQuery({
+  const { data: realContas = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ['contas-simulacao', dateRange.inicio, dateRange.fim],
     queryFn: () => fetchContas({ data_inicio: dateRange.inicio, data_fim: dateRange.fim }),
     enabled: !!dateRange.inicio && !!dateRange.fim,
@@ -254,21 +232,21 @@ export default function SimuladorGastos() {
     if (item.frequencia === 'unica') {
       return item.mesInicio === monthKey ? item.valor : 0;
     }
-    
+
     if (item.frequencia === 'recorrente') {
       return monthKey >= item.mesInicio ? item.valor : 0;
     }
-    
+
     if (item.frequencia === 'parcelada') {
       if (monthKey < item.mesInicio) return 0;
-      
+
       const [startYear, startMonth] = item.mesInicio.split('-').map(Number);
       const [currYear, currMonth] = monthKey.split('-').map(Number);
-      
+
       const diffMonths = (currYear - startYear) * 12 + (currMonth - startMonth);
       return diffMonths < item.parcelas ? (item.valor / item.parcelas) : 0;
     }
-    
+
     return 0;
   };
 
@@ -449,9 +427,6 @@ export default function SimuladorGastos() {
   // Roda sobre `projecaoFutura`, não sobre a série inteira: varrer os dias já
   // vividos do mês corrente faria o card diagnosticar o passado — apontar como
   // "menor folga" o fluxo com que o mês abriu, ou dar um prazo já vencido.
-  //
-  // Vive fora do `heatmap` de propósito: não depende da métrica pintada, e o card
-  // do topo não deve recalcular quando o usuário alterna acumulado/diário.
   const pontoDeVirada = useMemo(() => {
     if (projecaoFutura.length === 0) return null;
 
@@ -474,6 +449,33 @@ export default function SimuladorGastos() {
     // já passou.
     const prazoEsgotado = Boolean(vespera && vespera < inicioHorizonte);
 
+    // O "porquê": as despesas (reais + simuladas) entre hoje e o pior dia são o
+    // que de fato empurra o acumulado para o vermelho — não basta apontar a
+    // data, é preciso nomear as contas. Agrupadas por descrição porque um
+    // lançamento recorrente ou parcelado aparece uma vez por mês na série
+    // diária, e listar cada ocorrência separadamente só adicionaria ruído.
+    let principaisDespesas = [];
+    if (primeiroVermelho) {
+      const ateOPior = projecaoFutura.filter((d) => d.date <= pior.date);
+      const porDescricao = new Map();
+      ateOPior.forEach((d) => {
+        d.itens.forEach((item) => {
+          if (item.tipo !== 'D') return;
+          const key = `${item.simulado ? 'sim' : 'real'}-${item.descricao}`;
+          const atual = porDescricao.get(key) || {
+            descricao: item.descricao,
+            simulado: item.simulado,
+            total: 0,
+            ocorrencias: 0,
+          };
+          atual.total += item.valor;
+          atual.ocorrencias += 1;
+          porDescricao.set(key, atual);
+        });
+      });
+      principaisDespesas = Array.from(porDescricao.values()).sort((a, b) => b.total - a.total);
+    }
+
     return {
       primeiroVermelho,
       pior,
@@ -484,89 +486,11 @@ export default function SimuladorGastos() {
       prazoEsgotado,
       // Espelho do caso positivo: o dia mais apertado de um horizonte que fecha.
       folgaMinima: primeiroVermelho ? null : pior,
+      principaisDespesas,
       inicioHorizonte,
       fimHorizonte: projecaoFutura[projecaoFutura.length - 1].date,
     };
   }, [projecaoFutura]);
-
-  // Métrica pintada no mapa de calor e alternância para a visão em tabela.
-  const [heatmapMetric, setHeatmapMetric] = useState('acumulado'); // 'acumulado' | 'fluxo'
-  const [showHeatmapTable, setShowHeatmapTable] = useState(false);
-
-  // Discretiza a série diária em 7 classes: neutro + 3 degraus por braço.
-  // Os cortes são os tercis de cada braço, então a escala se adapta à ordem de
-  // grandeza da carteira em vez de usar limites fixos arbitrários.
-  const heatmap = useMemo(() => {
-    const valueOf = (d) => (heatmapMetric === 'acumulado' ? d.acumulado : d.fluxo);
-    const values = projecaoFutura.map(valueOf);
-
-    const asc = (a, b) => a - b;
-    const positives = values.filter((v) => v > EPS).sort(asc);
-    const negatives = values.filter((v) => v < -EPS).map(Math.abs).sort(asc);
-    const tercil = (arr, p) =>
-      arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * p))] : 0;
-
-    const posCuts = [tercil(positives, 1 / 3), tercil(positives, 2 / 3)];
-    const negCuts = [tercil(negatives, 1 / 3), tercil(negatives, 2 / 3)];
-
-    const levelOf = (v) => {
-      if (v > EPS) return v <= posCuts[0] ? 1 : v <= posCuts[1] ? 2 : 3;
-      if (v < -EPS) {
-        const mag = Math.abs(v);
-        return mag <= negCuts[0] ? -1 : mag <= negCuts[1] ? -2 : -3;
-      }
-      return 0;
-    };
-
-    const metricNome =
-      heatmapMetric === 'acumulado' ? 'Fluxo acumulado desde hoje' : 'Fluxo do dia';
-    const daysByKey = new Map();
-
-    projecaoFutura.forEach((d) => {
-      const value = valueOf(d);
-      const level = levelOf(value);
-      const dateLabel = formatDateLong(d.date);
-      const sinal = level > 0 ? 'positivo' : level < 0 ? 'negativo' : 'zerado';
-
-      daysByKey.set(d.key, {
-        ...d,
-        value,
-        level,
-        dateLabel,
-        metricNome,
-        srLabel:
-          `${dateLabel}: ${metricNome.toLowerCase()} de ${formatCurrency(value)} (${sinal}). ` +
-          `Entradas ${formatCurrency(d.receitas)}, saídas ${formatCurrency(d.despesas)}.`,
-      });
-    });
-
-    // Legenda: uma faixa por classe, com o intervalo em reais no rótulo.
-    const legend = [
-      { level: -3, label: `Abaixo de -${formatCurrency(negCuts[1])}` },
-      { level: -2, label: `-${formatCurrency(negCuts[1])} a -${formatCurrency(negCuts[0])}` },
-      { level: -1, label: `-${formatCurrency(negCuts[0])} a zero` },
-      { level: 0, label: 'Sem movimento (zero)' },
-      { level: 1, label: `Zero a ${formatCurrency(posCuts[0])}` },
-      { level: 2, label: `${formatCurrency(posCuts[0])} a ${formatCurrency(posCuts[1])}` },
-      { level: 3, label: `Acima de ${formatCurrency(posCuts[1])}` },
-    ];
-
-    // O resumo de dias no vermelho vem do `pontoDeVirada`: ele olha sempre o saldo
-    // acumulado, independente da métrica pintada aqui.
-    return {
-      daysByKey,
-      legend,
-      firstDate: projecaoFutura[0]?.date || null,
-      lastDate: projecaoFutura[projecaoFutura.length - 1]?.date || null,
-    };
-  }, [projecaoFutura, heatmapMetric]);
-
-  // Dias com algum lançamento — a visão em tabela do mapa de calor. Dias sem
-  // movimento repetem o saldo do dia anterior, então nada se perde ao omiti-los.
-  const heatmapTableRows = useMemo(
-    () => projecaoFutura.filter((d) => d.itens.length > 0),
-    [projecaoFutura],
-  );
 
   // Cálculo dos KPIs focados no mês atual e na projeção de 6 meses
   const kpis = useMemo(() => {
@@ -579,19 +503,19 @@ export default function SimuladorGastos() {
         diff6m: 0,
       };
     }
-    
+
     // Mês atual (primeiro mês da projeção)
     const current = monthlyData[0];
     const currentReal = current.realNet;
     const currentSim = current.simNet;
-    
+
     // Projeção de 6 meses (index 5)
     const targetIdx = Math.min(5, monthlyData.length - 1);
     const projected6m = monthlyData[targetIdx];
     const projectedReal6m = projected6m.accumulatedReal;
     const projectedSim6m = projected6m.accumulatedSim;
     const diff6m = projectedSim6m - projectedReal6m;
-    
+
     return {
       currentReal,
       currentSim,
@@ -610,113 +534,18 @@ export default function SimuladorGastos() {
     return monthlyData.slice(0, 6);
   }, [monthlyData]);
 
-  // Gráfico do ApexCharts (Fluxo Projetado de 6 Meses)
-  const chartOptions = {
-    chart: {
-      type: 'bar',
-      height: 320,
-      toolbar: { show: false },
-      fontFamily: 'inherit',
-      background: 'transparent',
-      animations: { enabled: true, speed: 600 },
-    },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        borderRadius: 4,
-      },
-    },
-    colors: ['#3b82f6', '#10b981', '#f43f5e'], // Azul para Fluxo do Mês, Verde para Receitas, Vermelho para Despesas
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: chartData.map(d => d.label.split('/')[0]),
-      labels: {
-        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }
-      }
-    },
-    yaxis: {
-      labels: {
-        formatter: (val) => formatCurrency(val),
-        style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }
-      }
-    },
-    grid: {
-      borderColor: isDark ? 'rgba(148, 163, 184, 0.08)' : 'rgba(100, 116, 139, 0.08)',
-      strokeDashArray: 4,
-    },
-    theme: {
-      mode: isDark ? 'dark' : 'light',
-    },
-    tooltip: {
-      theme: isDark ? 'dark' : 'light',
-      y: {
-        formatter: (val) => formatCurrency(val),
-      }
-    },
-    legend: {
-      position: 'top',
-      horizontalAlign: 'right',
-      labels: {
-        colors: isDark ? '#f8fafc' : '#0f172a',
-      }
+  // O botão só existe porque o usuário pode editar uma conta em outra tela e
+  // voltar aqui sem que o cache do react-query saiba disso. O toast é o único
+  // jeito de confirmar que a busca de fato rodou — sem ele o clique não parece
+  // fazer nada quando os números não mudam.
+  const handleAtualizarDados = async () => {
+    try {
+      await refetch();
+      addToast('Dados atualizados.', 'success');
+    } catch {
+      addToast('Não foi possível atualizar os dados.', 'error');
     }
   };
-
-  const chartSeries = [
-    { name: 'Fluxo do Mês', data: chartData.map(d => d.simNet) },
-    { name: 'Receitas', data: chartData.map(d => d.realRevenues + d.simRevenues) },
-    { name: 'Despesas', data: chartData.map(d => d.realExpenses + d.simExpenses) },
-  ];
-
-  // Estado para ver detalhes de simulação em um mês específico
-  const [selectedMonthDetails, setSelectedMonthDetails] = useState(null);
-
-  // Conteúdo do balão de um dia do mapa de calor. É só um reforço visual: os
-  // mesmos números já estão no texto acessível da célula e na visão em tabela.
-  const renderHeatmapTooltip = (day) => (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-foreground">{day.dateLabel}</p>
-
-      <p className="text-sm font-bold tabular-nums">
-        <span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          {day.metricNome}
-        </span>
-        <span className={day.value >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-          {formatCurrency(day.value)}
-        </span>
-      </p>
-
-      {day.itens.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Sem lançamentos neste dia.</p>
-      ) : (
-        <ul className="space-y-1 border-t border-border pt-2">
-          {day.itens.slice(0, 4).map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2 text-xs">
-              <span className="truncate text-muted-foreground">
-                {item.simulado && (
-                  <Sparkles className="mr-1 inline h-3 w-3 text-amber-500" aria-hidden="true" />
-                )}
-                {item.descricao}
-              </span>
-              <span
-                className={`shrink-0 font-semibold tabular-nums ${
-                  item.tipo === 'R' ? 'text-emerald-500' : 'text-red-500'
-                }`}
-              >
-                {item.tipo === 'R' ? '+' : '-'}{formatCurrency(item.valor)}
-              </span>
-            </li>
-          ))}
-          {day.itens.length > 4 && (
-            <li className="text-xs text-muted-foreground">
-              e mais {day.itens.length - 4}...
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
 
   return (
     <div className="space-y-6 p-1 sm:p-4">
@@ -734,770 +563,64 @@ export default function SimuladorGastos() {
             Simule o impacto de novos gastos e receitas recorrentes ou parceladas em seu fluxo de caixa para os próximos 12 meses.
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => refetch()} 
-          disabled={isLoading}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAtualizarDados}
+          disabled={isFetching}
           className="self-start md:self-center flex gap-2 items-center"
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar Dados Reais
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Atualizar Dados
         </Button>
       </div>
 
-      {/* Ponto de virada: a conclusão da tela. Responde "quanto" e "até quando"
-          em texto, para não obrigar a ler o mapa de calor e deduzir. */}
-      <Card
-        className={
-          pontoDeVirada?.primeiroVermelho
-            ? 'border-red-600/40 bg-red-500/5 dark:border-red-400/40'
-            : 'border-emerald-600/40 bg-emerald-500/5 dark:border-emerald-400/40'
-        }
-      >
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            {pontoDeVirada?.primeiroVermelho ? (
-              <AlertCircle
-                className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
-                aria-hidden="true"
-              />
-            ) : (
-              <ShieldCheck
-                className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                aria-hidden="true"
-              />
-            )}
-            <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">
-              Ponto de virada
-            </h2>
-          </div>
-        </CardHeader>
+      <PontoDeViradaCard pontoDeVirada={pontoDeVirada} projecaoCarregando={projecaoCarregando} />
 
-        {/* Região viva estável: o conteúdo troca conforme o usuário mexe nas
-            simulações, e o leitor de tela anuncia o novo diagnóstico. */}
-        <CardContent>
-          <div aria-live="polite" className="space-y-3 text-sm">
-            {projecaoCarregando ? (
-              <p className="text-muted-foreground">Calculando o ponto de virada...</p>
-            ) : !pontoDeVirada ? (
-              <p className="text-muted-foreground">
-                Sem lançamentos suficientes para projetar o horizonte.
-              </p>
-            ) : pontoDeVirada.primeiroVermelho ? (
-              <>
-                <p className="text-base text-foreground">
-                  Suas saídas passam as entradas em{' '}
-                  <strong className="font-semibold text-red-600 dark:text-red-400">
-                    {formatDateLong(pontoDeVirada.primeiroVermelho.date)}
-                  </strong>
-                  .
-                </p>
-
-                {pontoDeVirada.dataLimite ? (
-                  <p className="text-base text-foreground">
-                    Para atravessar o horizonte até{' '}
-                    <strong className="font-semibold">
-                      {formatDateLong(pontoDeVirada.fimHorizonte)}
-                    </strong>{' '}
-                    sem recorrer a reserva, você precisa de{' '}
-                    <strong className="font-semibold">
-                      {formatCurrency(pontoDeVirada.margemNecessaria)}
-                    </strong>{' '}
-                    até{' '}
-                    <strong className="font-semibold">
-                      {formatDateLong(pontoDeVirada.dataLimite)}
-                    </strong>
-                    .
-                  </p>
-                ) : (
-                  <p className="text-base text-foreground">
-                    O fluxo já entra negativo hoje: não sobrou prazo para agir antes.
-                    Atravessar o horizonte até{' '}
-                    <strong className="font-semibold">
-                      {formatDateLong(pontoDeVirada.fimHorizonte)}
-                    </strong>{' '}
-                    exige{' '}
-                    <strong className="font-semibold">
-                      {formatCurrency(pontoDeVirada.margemNecessaria)}
-                    </strong>{' '}
-                    agora.
-                  </p>
-                )}
-
-                <p className="text-muted-foreground">
-                  O pior momento é{' '}
-                  <strong className="font-semibold text-red-600 dark:text-red-400">
-                    {formatCurrency(pontoDeVirada.pior.acumulado)}
-                  </strong>{' '}
-                  em {formatDateLong(pontoDeVirada.pior.date)} — são{' '}
-                  {pontoDeVirada.diasNoVermelho}{' '}
-                  {pontoDeVirada.diasNoVermelho === 1 ? 'dia' : 'dias'} no vermelho.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-base text-foreground">
-                  Suas entradas cobrem as saídas todos os dias até{' '}
-                  <strong className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatDateLong(pontoDeVirada.fimHorizonte)}
-                  </strong>
-                  .
-                </p>
-                {pontoDeVirada.folgaMinima && (
-                  <p className="text-muted-foreground">
-                    No dia mais apertado o acumulado ainda é de{' '}
-                    <strong className="font-semibold text-foreground">
-                      {formatCurrency(pontoDeVirada.folgaMinima.acumulado)}
-                    </strong>{' '}
-                    ({formatDateLong(pontoDeVirada.folgaMinima.date)}).
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Nota permanente, não um aviso de falha: por decisão de produto o card
-              mede fluxo, e ignorar o caixa é o ponto — é assim que um mês
-              estruturalmente no vermelho aparece mesmo com reserva sobrando. Sem
-              esta linha o leitor confunde o número com o saldo da conta.
-              O valor é o mínimo DENTRO da janela: esticar o horizonte pode
-              aumentá-lo. Por isso a data-fim aparece sempre na frase acima. */}
-          {!projecaoCarregando && pontoDeVirada && (
-            <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-              Este diagnóstico ignora o seu saldo em caixa: mede só o fluxo acumulado de hoje
-              em diante. O saldo projetado com o caixa incluído está na tabela de projeção
-              mensal.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card className="relative overflow-hidden border-border bg-card/65 backdrop-blur-md transition-all hover:scale-[1.01]">
-          <div className="absolute right-3 top-3 rounded-full bg-blue-500/10 p-2 text-blue-500">
-            <Activity className="h-5 w-5" />
-          </div>
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Mês Atual (Real)</span>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {isLoading ? '...' : formatCurrency(kpis.currentReal)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <span className="text-xs text-muted-foreground">Lançamento líquido real deste mês</span>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-primary/30 bg-primary/5 backdrop-blur-md transition-all hover:scale-[1.01]">
-          <div className="absolute right-3 top-3 rounded-full bg-primary/10 p-2 text-primary">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <CardHeader className="pb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Mês Atual (Simulado)</span>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {isLoading ? '...' : formatCurrency(kpis.currentSim)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <span className="text-xs text-muted-foreground">Fluxo estimado deste mês</span>
-          </CardContent>
-        </Card>
-      </div>
+      <SaldoKpiCards isLoading={isLoading} kpis={kpis} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1 space-y-6">
-          <Card className="border-border bg-card/65 backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Plus className="h-5 w-5 text-primary" /> Novo Lançamento Simulado
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddSimulacao} className="space-y-4">
-                <div>
-                  <label htmlFor="sim-descricao" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Descrição
-                  </label>
-                  <Input
-                    value={descricao}
-                    onChange={e => setDescricao(e.target.value)}
-                    placeholder="Ex: Assinatura Streaming, Notebook Novo"
-                    required
-                    id="sim-descricao"
-                  />
-                </div>
+          <LancamentoForm
+            onSubmit={handleAddSimulacao}
+            descricao={descricao}
+            setDescricao={setDescricao}
+            tipo={tipo}
+            setTipo={setTipo}
+            valor={valor}
+            setValor={setValor}
+            categoria={categoria}
+            setCategoria={setCategoria}
+            categoriasSugeridas={categoriasSugeridas}
+            mesInicio={mesInicio}
+            setMesInicio={setMesInicio}
+            projectionMonths={projectionMonths}
+            dia={dia}
+            setDia={setDia}
+            frequencia={frequencia}
+            setFrequencia={setFrequencia}
+            parcelas={parcelas}
+            setParcelas={setParcelas}
+          />
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="sim-tipo" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Tipo
-                    </label>
-                    <Select
-                      value={tipo}
-                      onChange={e => setTipo(e.target.value)}
-                      id="sim-tipo"
-                    >
-                      <option value="D">Despesa (Gasto)</option>
-                      <option value="R">Receita (Entrada)</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label htmlFor="sim-valor" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Valor (R$)
-                    </label>
-                    <Input
-                      value={valor}
-                      onChange={e => setValor(e.target.value)}
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      required
-                      id="sim-valor"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="sim-categoria" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Categoria
-                  </label>
-                  <Input
-                    value={categoria}
-                    onChange={e => setCategoria(e.target.value)}
-                    placeholder="Ex: Casa, Lazer, Salário"
-                    list="sim-categorias-sugeridas"
-                    id="sim-categoria"
-                  />
-                  <datalist id="sim-categorias-sugeridas">
-                    {categoriasSugeridas.map(c => <option key={c} value={c} />)}
-                  </datalist>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label htmlFor="sim-mes-inicio" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Mês de Início
-                    </label>
-                    <Select
-                      value={mesInicio}
-                      onChange={e => setMesInicio(e.target.value)}
-                      id="sim-mes-inicio"
-                    >
-                      {projectionMonths.map(m => (
-                        <option key={m.key} value={m.key}>{m.label}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label htmlFor="sim-dia" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Dia
-                    </label>
-                    <Select
-                      value={dia}
-                      onChange={e => setDia(e.target.value)}
-                      id="sim-dia"
-                      aria-describedby="sim-dia-ajuda"
-                    >
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                        <option key={d} value={String(d)}>{d}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <p id="sim-dia-ajuda" className="col-span-3 text-xs text-muted-foreground">
-                    O dia posiciona o lançamento no mapa de calor. Em meses mais curtos ele
-                    cai no último dia disponível.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="sim-frequencia" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Frequência
-                  </label>
-                  <Select
-                    value={frequencia}
-                    onChange={e => setFrequencia(e.target.value)}
-                    id="sim-frequencia"
-                  >
-                    <option value="unica">Lançamento Único (Avulso)</option>
-                    <option value="recorrente">Mensal Recorrente (Fixo)</option>
-                    <option value="parcelada">Parcelado</option>
-                  </Select>
-                </div>
-
-                {frequencia === 'parcelada' && (
-                  <div className="animate-in slide-in-from-top-1 duration-200">
-                    <label htmlFor="sim-parcelas" className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Quantidade de Parcelas (Meses)
-                    </label>
-                    <Select
-                      value={parcelas}
-                      onChange={e => setParcelas(e.target.value)}
-                      required
-                      id="sim-parcelas"
-                    >
-                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
-                        const numericValor = parseFloat(valor);
-                        const labelSuffix = (!isNaN(numericValor) && numericValor > 0)
-                          ? ` (${n}x de ${formatCurrency(numericValor / n)})`
-                          : '';
-                        return (
-                          <option key={n} value={String(n)}>
-                            {n} meses{labelSuffix}
-                          </option>
-                        );
-                      })}
-                    </Select>
-                  </div>
-                )}
-
-                <Button type="submit" className="w-full flex items-center justify-center gap-2">
-                  <Plus className="h-4 w-4" /> Adicionar à Simulação
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/65 backdrop-blur-md">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Layers className="h-5 w-5 text-amber-500" /> Simulações Ativas
-              </CardTitle>
-              {simuladas.length > 0 && (
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  onClick={handleLimparTudo}
-                  className="text-muted-foreground hover:text-destructive text-xs"
-                >
-                  Limpar Tudo
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="max-h-[350px] overflow-y-auto pr-1 space-y-3">
-              {simuladas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
-                  <AlertCircle className="h-8 w-8 mb-2 text-muted-foreground/50" />
-                  <p className="text-xs">Nenhum lançamento simulado ativo.</p>
-                  <p className="text-xs mt-1">Use o formulário acima para planejar cenários.</p>
-                </div>
-              ) : (
-                simuladas.map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 transition-all duration-200"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-foreground">{item.descricao}</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={item.tipo === 'R' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}
-                        >
-                          {item.tipo === 'R' ? 'Entrada' : 'Saída'}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground/80">
-                          {formatCurrency(item.valor)}
-                          {item.frequencia === 'parcelada' && ` (${item.parcelas}x de ${formatCurrency(item.valor / item.parcelas)})`}
-                        </span>
-                        <span>•</span>
-                        <span>{item.categoria}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 font-medium text-amber-500/95">
-                          <Calendar className="h-3 w-3" />
-                          {item.frequencia === 'unica' && `Único (${item.mesInicio}, dia ${item.dia ?? 1})`}
-                          {item.frequencia === 'recorrente' && `Recorrente (desde ${item.mesInicio}, dia ${item.dia ?? 1})`}
-                          {item.frequencia === 'parcelada' && `Parcelado (${item.parcelas}x desde ${item.mesInicio}, dia ${item.dia ?? 1})`}
-                        </span>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleRemoveSimulacao(item.id)} 
-                      className="text-muted-foreground hover:text-destructive active:scale-95"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <SimulacoesAtivasList
+            simuladas={simuladas}
+            onRemove={handleRemoveSimulacao}
+            onLimparTudo={handleLimparTudo}
+          />
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border bg-card/65 backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-500" /> Fluxo Projetado (6 meses)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex h-[320px] items-center justify-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <span className="text-xs text-muted-foreground">Carregando dados da carteira...</span>
-                  </div>
-                </div>
-              ) : (
-                <Chart 
-                  options={chartOptions} 
-                  series={chartSeries} 
-                  type="bar" 
-                  height={320} 
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card/65 backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" /> Fluxo de Projeção Mensal
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-border/80 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-4">Mês</th>
-                      <th className="py-3 px-3 text-right">Receitas (R+S)</th>
-                      <th className="py-3 px-3 text-right">Despesas (R+S)</th>
-                      <th className="py-3 px-3 text-right">Saldo do Mês</th>
-                      <th className="py-3 px-3 text-right">Saldo Acumulado</th>
-                      <th className="py-3 px-4 text-center">Simulações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {isLoading ? (
-                      <tr>
-                        <td colSpan="6" className="py-10 text-center text-muted-foreground text-xs">
-                          Buscando contas a pagar e receitas...
-                        </td>
-                      </tr>
-                    ) : (
-                      monthlyData.map((data) => {
-                        const hasSimulations = data.activeSimulatedItems.length > 0;
-                        return (
-                          <tr 
-                            key={data.key} 
-                            className="hover:bg-muted/20 transition-colors duration-150"
-                          >
-                            <td className="py-3.5 px-4 font-semibold text-foreground">
-                              {data.label}
-                            </td>
-                            <td className="py-3.5 px-3 text-right text-xs">
-                              <span className="text-muted-foreground font-medium block">
-                                R: {formatCurrency(data.realRevenues)}
-                              </span>
-                              {data.simRevenues > 0 && (
-                                <span className="text-emerald-500 font-bold block text-xs">
-                                  S: +{formatCurrency(data.simRevenues)}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-3 text-right text-xs">
-                              <span className="text-muted-foreground font-medium block">
-                                R: {formatCurrency(data.realExpenses)}
-                              </span>
-                              {data.simExpenses > 0 && (
-                                <span className="text-red-500 font-bold block text-xs">
-                                  S: +{formatCurrency(data.simExpenses)}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-3 text-right">
-                              <div className="text-xs">
-                                <span className={`font-semibold block ${data.realNet >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                                  R: {formatCurrency(data.realNet)}
-                                </span>
-                                <span className={`font-bold block ${data.simNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                  Proj: {formatCurrency(data.simNet)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-3 text-right">
-                              <div className="text-xs">
-                                <span className="text-muted-foreground block">
-                                  R: {formatCurrency(data.accumulatedReal)}
-                                </span>
-                                <span className={`font-bold block text-sm ${data.accumulatedSim >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                  Proj: {formatCurrency(data.accumulatedSim)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              {hasSimulations ? (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => setSelectedMonthDetails(data)}
-                                  className="h-7 rounded px-2.5 text-xs bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                >
-                                  Ver ({data.activeSimulatedItems.length})
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/40">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <FluxoProjetadoChart isLoading={isLoading} chartData={chartData} isDark={isDark} />
         </div>
       </div>
 
-      <Card className="border-border bg-card/65 backdrop-blur-md">
-        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
-              Mapa de Calor Diário
-            </CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Cada quadradinho é um dia, de hoje até o fim da janela de 12 meses. Azul
-              indica que as entradas ainda cobrem as saídas; vermelho (hachurado) indica
-              que as saídas passaram. Não considera o saldo em caixa. Passe o mouse — ou
-              navegue com as setas — para ver o dia.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border border-border p-0.5" role="group" aria-label="Métrica do mapa de calor">
-              {[
-                { id: 'acumulado', label: 'Fluxo acumulado' },
-                { id: 'fluxo', label: 'Fluxo do dia' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  aria-pressed={heatmapMetric === opt.id}
-                  onClick={() => setHeatmapMetric(opt.id)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                    heatmapMetric === opt.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted/60'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              aria-pressed={showHeatmapTable}
-              aria-controls="heatmap-conteudo"
-              onClick={() => setShowHeatmapTable((v) => !v)}
-              className="flex items-center gap-2"
-            >
-              {showHeatmapTable ? (
-                <><LayoutGrid className="h-4 w-4" aria-hidden="true" /> Ver calendário</>
-              ) : (
-                <><Table2 className="h-4 w-4" aria-hidden="true" /> Ver tabela</>
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-5">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-            <span className="flex items-center gap-2">
-              <TrendingDown
-                className={`h-4 w-4 ${pontoDeVirada?.diasNoVermelho > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}
-                aria-hidden="true"
-              />
-              <strong className="font-semibold text-foreground">
-                {pontoDeVirada?.diasNoVermelho ?? 0}
-              </strong>
-              <span className="text-muted-foreground">
-                {pontoDeVirada?.diasNoVermelho === 1 ? 'dia no vermelho' : 'dias no vermelho'}
-              </span>
-            </span>
-            {pontoDeVirada?.primeiroVermelho && (
-              <span className="text-muted-foreground">
-                Primeiro em{' '}
-                <strong className="font-semibold text-foreground">
-                  {formatDateLong(pontoDeVirada.primeiroVermelho.date)}
-                </strong>
-              </span>
-            )}
-            {pontoDeVirada?.pior && pontoDeVirada.pior.acumulado < 0 && (
-              <span className="text-muted-foreground">
-                Pior acumulado{' '}
-                <strong className="font-semibold text-red-600 dark:text-red-400">
-                  {formatCurrency(pontoDeVirada.pior.acumulado)}
-                </strong>{' '}
-                em{' '}
-                <strong className="font-semibold text-foreground">
-                  {formatDateLong(pontoDeVirada.pior.date)}
-                </strong>
-              </span>
-            )}
-          </div>
-
-          <div id="heatmap-conteudo">
-            {isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  <span className="text-xs text-muted-foreground">Montando a projeção diária...</span>
-                </div>
-              </div>
-            ) : showHeatmapTable ? (
-              <div className="max-h-130 overflow-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <caption className="pb-3 text-left text-xs text-muted-foreground">
-                    Dias com algum lançamento previsto ou simulado. Dias omitidos não têm
-                    movimento e mantêm o acumulado do dia anterior. O acumulado parte de
-                    zero hoje e não inclui o saldo em caixa.
-                  </caption>
-                  <thead className="sticky top-0 bg-card">
-                    <tr className="border-b border-border/80 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th scope="col" className="py-2.5 px-3">Data</th>
-                      <th scope="col" className="py-2.5 px-3 text-right">Entradas</th>
-                      <th scope="col" className="py-2.5 px-3 text-right">Saídas</th>
-                      <th scope="col" className="py-2.5 px-3 text-right">Fluxo do dia</th>
-                      <th scope="col" className="py-2.5 px-3 text-right">Fluxo acumulado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {heatmapTableRows.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="py-10 text-center text-xs text-muted-foreground">
-                          Nenhum lançamento previsto na janela de projeção.
-                        </td>
-                      </tr>
-                    ) : (
-                      heatmapTableRows.map((d) => (
-                        <tr key={d.key} className="transition-colors hover:bg-muted/20">
-                          <th scope="row" className="py-2.5 px-3 text-left font-medium text-foreground tabular-nums">
-                            {d.date.toLocaleDateString('pt-BR')}
-                          </th>
-                          <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                            {formatCurrency(d.receitas)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                            {formatCurrency(d.despesas)}
-                          </td>
-                          <td className={`py-2.5 px-3 text-right font-medium tabular-nums ${d.fluxo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {formatCurrency(d.fluxo)}
-                          </td>
-                          <td className={`py-2.5 px-3 text-right font-bold tabular-nums ${d.acumulado >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {formatCurrency(d.acumulado)}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ) : heatmap.firstDate && heatmap.lastDate ? (
-              <CalendarHeatmap
-                daysByKey={heatmap.daysByKey}
-                firstDate={heatmap.firstDate}
-                lastDate={heatmap.lastDate}
-                renderTooltip={renderHeatmapTooltip}
-              />
-            ) : null}
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Escala — {heatmapMetric === 'acumulado' ? 'fluxo acumulado desde hoje' : 'fluxo do dia'}
-            </h3>
-            <ul className="flex flex-wrap gap-x-4 gap-y-2">
-              {heatmap.legend.map((item) => (
-                <li key={item.level} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span
-                    className="heat-cell h-3.5 w-3.5 shrink-0 rounded-[3px] ring-1 ring-inset ring-border"
-                    data-level={item.level}
-                    data-sign={item.level > 0 ? 'pos' : item.level < 0 ? 'neg' : 'zero'}
-                    aria-hidden="true"
-                  />
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Os cortes são os tercis da própria projeção, então a escala acompanha a ordem de
-              grandeza do seu fluxo. A hachura diagonal marca os dias negativos sem depender
-              da cor, e a visão em tabela traz os mesmos números por extenso.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {selectedMonthDetails && (
-        <Modal
-          isOpen
-          title={
-            <span className="flex items-center gap-2">
-              <FolderOpen className="h-5 w-5 text-amber-500" aria-hidden="true" /> Detalhes: {selectedMonthDetails.label}
-            </span>
-          }
-          onClose={() => setSelectedMonthDetails(null)}
-          size="sm"
-        >
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Abaixo estão os lançamentos simulados ativos que afetam a projeção deste mês específico:
-            </p>
-
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-              {selectedMonthDetails.activeSimulatedItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-lg border border-border bg-muted/40 flex justify-between items-center"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-foreground">{item.descricao}</span>
-                      <Badge className={item.tipo === 'R' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}>
-                        {item.tipo === 'R' ? 'Entrada' : 'Saída'}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Categoria: <span className="text-foreground/80 font-medium">{item.categoria}</span>
-                    </div>
-                    <div className="text-xs text-amber-500/90 font-semibold uppercase">
-                      {item.frequencia === 'unica' && 'Único'}
-                      {item.frequencia === 'recorrente' && 'Recorrente'}
-                      {item.frequencia === 'parcelada' && `Parcelado (${item.parcelas}x)`}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-sm font-bold block ${item.tipo === 'R' ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {item.tipo === 'R' ? '+' : '-'}{formatCurrency(item.currentMonthVal)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button
-                variant="secondary"
-                onClick={() => setSelectedMonthDetails(null)}
-                className="px-5"
-              >
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <AnaliseDetalhada
+        isLoading={isLoading}
+        monthlyData={monthlyData}
+        projecaoFutura={projecaoFutura}
+        pontoDeVirada={pontoDeVirada}
+      />
     </div>
   );
 }
