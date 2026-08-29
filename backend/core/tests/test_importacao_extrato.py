@@ -1,6 +1,6 @@
 import os
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from django.contrib.auth.models import User
@@ -322,3 +322,122 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(compra.data_compra, date(2026, 4, 10))
 
 
+
+
+class DataFuturaNaImportacaoTests(APITestCase):
+    """Impede que o importador invente dinheiro que ainda não entrou.
+
+    O extrato descreve o que aconteceu, mas nem toda linha já aconteceu: fatura e
+    agendamento trazem parcela e provento datados à frente. Antes da correção o
+    importador marcava tudo como realizado usando a data da linha, e o resultado
+    era pior que um rótulo errado — o lançamento sumia da projeção, porque a
+    âncora leva `data_realizacao <= ontem` e o fluxo de pendentes leva
+    `transacao_realizada=False`. Ele não pertencia a nenhum dos dois.
+    """
+
+    def setUp(self):
+        """Cria o usuário e um extrato sem cartão, onde a regra de data se aplica."""
+        self.user = User.objects.create_user(
+            username="importador", password="senha-bem-comprida-123"
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+        self.hoje = timezone.localdate()
+        self.extrato = ExtratoImportado.objects.create(
+            usuario=self.user, arquivo_nome="extrato.ofx", banco="generico"
+        )
+
+    def _linha(self, data_movimento, tipo="C", valor="1000.00"):
+        """Cria uma linha pendente de extrato.
+
+        Returns:
+            LinhaExtrato: A linha persistida.
+        """
+        return LinhaExtrato.objects.create(
+            extrato=self.extrato, data=data_movimento,
+            descricao="Provento", valor=Decimal(valor), tipo=tipo,
+        )
+
+    def _importar(self, linha):
+        """Dispara a conciliação assistida para uma linha.
+
+        Returns:
+            Response: A resposta do endpoint de processamento.
+        """
+        return self.client.post(
+            "/api/ferramentas/conciliacao/processar/",
+            {"acao": "importar", "extrato_id": self.extrato.id,
+             "linha_ids": [linha.id]},
+            format="json",
+        )
+
+    def test_linha_futura_nasce_pendente(self):
+        """Salário de daqui a uma semana não pode entrar como já recebido."""
+        linha = self._linha(self.hoje + timedelta(days=7))
+
+        self.assertEqual(self._importar(linha).status_code, status.HTTP_200_OK)
+
+        conta = Conta.objects.get(usuario=self.user)
+        self.assertFalse(conta.transacao_realizada)
+        self.assertIsNone(conta.data_realizacao)
+        self.assertEqual(conta.data_prevista, self.hoje + timedelta(days=7))
+
+    def test_linha_passada_nasce_liquidada(self):
+        """O caso comum não pode regredir: o que já ocorreu segue realizado."""
+        linha = self._linha(self.hoje - timedelta(days=3))
+
+        self.assertEqual(self._importar(linha).status_code, status.HTTP_200_OK)
+
+        conta = Conta.objects.get(usuario=self.user)
+        self.assertTrue(conta.transacao_realizada)
+        self.assertEqual(conta.data_realizacao, self.hoje - timedelta(days=3))
+
+    def test_linha_de_hoje_nasce_liquidada(self):
+        """A fronteira é inclusiva: o que caiu hoje já é caixa."""
+        linha = self._linha(self.hoje)
+
+        self.assertEqual(self._importar(linha).status_code, status.HTTP_200_OK)
+
+        conta = Conta.objects.get(usuario=self.user)
+        self.assertTrue(conta.transacao_realizada)
+        self.assertEqual(conta.data_realizacao, self.hoje)
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_upload_direto_tambem_respeita_a_data(self, mock_processar):
+        """A regra vale nos dois caminhos: upload direto e conciliação assistida.
+
+        São dois blocos de criação separados no mesmo arquivo, e corrigir só um
+        deixaria a porta aberta pela outra.
+
+        O upload exige cartão, e despesa de cartão já nascia pendente por conta do
+        vencimento da fatura. Quem atravessa a regra de data aqui é o crédito, que
+        não entra no ramo do cartão — era por ali que provento agendado virava
+        dinheiro recebido.
+        """
+        cartao = CartaoCredito.objects.create(
+            usuario=self.user, nome="Cartão", limite=Decimal("5000.00"),
+            dia_fechamento=15, dia_vencimento=25, ativo=True,
+        )
+        mock_processar.return_value = [
+            {"data": self.hoje - timedelta(days=2), "descricao": "Ocorrido",
+             "valor": Decimal("500.00"), "tipo": "C"},
+            {"data": self.hoje + timedelta(days=10), "descricao": "Agendado",
+             "valor": Decimal("900.00"), "tipo": "C"},
+        ]
+
+        import io as _io
+        arquivo = _io.BytesIO(b"conteudo")
+        arquivo.name = "extrato.pdf"
+        resposta = self.client.post(
+            "/api/ferramentas/importar-extrato/",
+            {"arquivo": arquivo, "cartao": str(cartao.uuid), "banco": "generico"},
+            format="multipart",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Conta.objects.get(descricao="Ocorrido").transacao_realizada)
+
+        agendado = Conta.objects.get(descricao="Agendado")
+        self.assertFalse(agendado.transacao_realizada)
+        self.assertIsNone(agendado.data_realizacao)

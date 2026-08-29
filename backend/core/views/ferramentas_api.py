@@ -13,6 +13,7 @@ Endpoints expostos:
 import re
 import tempfile
 import os
+from datetime import date
 
 from django.utils import timezone
 from django.http import HttpResponse
@@ -30,6 +31,25 @@ from core.serializers import (
     ExtratoImportadoSerializer,
     LinhaExtratoSerializer,
 )
+
+
+def _ja_ocorreu(data_movimento: date) -> bool:
+    """Decide se a linha importada pode nascer liquidada.
+
+    O extrato descreve o que aconteceu, mas nem toda linha já aconteceu: fatura e
+    agendamento trazem parcela e provento datados à frente. Marcar essas como
+    realizadas inventa dinheiro que já teria entrado, e o estrago não para aí — o
+    lançamento ainda escapa das duas metades da projeção, porque a âncora leva
+    `data_realizacao <= ontem` e o fluxo de pendentes leva
+    `transacao_realizada=False`. Ver `core.services.projecao_service`.
+
+    Args:
+        data_movimento: Data que o extrato atribui à linha.
+
+    Returns:
+        bool: True se a data já passou ou é hoje.
+    """
+    return data_movimento <= timezone.localdate()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -150,7 +170,7 @@ class FerramentasImportarExtratoAPIView(APIView):
             count = 0
             for line in linhas_extraidas:
                 tipo_conta = 'R' if line.get('tipo', 'D') == 'C' else 'D'
-                transacao_realizada = True
+                transacao_realizada = _ja_ocorreu(line['data'])
                 data_prevista = line['data']
                 data_compra = None
                 categoria = None
@@ -297,7 +317,7 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                         pk=linha_id, extrato=extrato, status='pendente'
                     )
                     tipo_conta = 'R' if linha.tipo == 'C' else 'D'
-                    transacao_realizada = True
+                    transacao_realizada = _ja_ocorreu(linha.data)
                     data_prevista = linha.data
                     data_compra = None
                     categoria = None
