@@ -121,7 +121,7 @@ def get_backupable_models():
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
         "Ativo": 7,
-        "ReceitaRecorrente": 7.5,
+        "LancamentoRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
@@ -134,6 +134,40 @@ def get_backupable_models():
         return priority.get(m.__name__, 100)
 
     return sorted(backup_models, key=get_priority)
+
+
+# Nomes de classe usados em versões anteriores do sistema, por modelo atual.
+# As chaves do arquivo `.fcbk` são nomes de classe, então renomear um modelo
+# invalidaria os backups já gerados pelos usuários.
+NOMES_LEGADOS_DE_MODELO = {
+    "LancamentoRecorrente": ("ReceitaRecorrente",),
+}
+
+# Renomeações de campo, por modelo atual: {nome_antigo: nome_novo}. Chaves de
+# chave estrangeira aparecem no backup como `<campo>_uuid`.
+CAMPOS_RENOMEADOS_POR_MODELO = {
+    "Conta": {"receita_recorrente_uuid": "recorrencia_uuid"},
+}
+
+
+def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
+    """Reescreve as chaves de um registro de backup para os nomes atuais.
+
+    Args:
+        model_name (str): Nome atual da classe do modelo.
+        linha (dict): Registro lido do backup.
+
+    Returns:
+        dict: O mesmo registro, com as chaves renomeadas quando aplicável.
+    """
+    renomeios = CAMPOS_RENOMEADOS_POR_MODELO.get(model_name)
+    if not renomeios:
+        return linha
+
+    for antigo, novo in renomeios.items():
+        if antigo in linha and novo not in linha:
+            linha[novo] = linha.pop(antigo)
+    return linha
 
 
 def restore_user_data_fcbk(data_dict: dict, user) -> dict:
@@ -252,7 +286,36 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         is_one_to_one_user = True
                         break
 
-                records = data_dict.get("data", {}).get(app_label, {}).get(model_name, [])
+                registros_do_app = data_dict.get("data", {}).get(app_label, {})
+                records = registros_do_app.get(model_name, [])
+
+                # Compatibilidade com backups gerados antes de um modelo ser
+                # renomeado. As chaves do `.fcbk` são nomes de classe, então um
+                # rename tornaria os registros invisíveis aqui e a restauração
+                # perderia os dados em silêncio — sem erro algum, que é o pior tipo
+                # de falha num backup.
+                if not records:
+                    for nome_legado in NOMES_LEGADOS_DE_MODELO.get(model_name, ()):
+                        legados = registros_do_app.get(nome_legado)
+                        if legados:
+                            logger.info(
+                                "Backup antigo: lendo %s a partir da chave legada %s.",
+                                model_name, nome_legado,
+                            )
+                            records = legados
+                            break
+
+                # A normalização de campo vale para TODO registro, não só para os de
+                # chave legada: `Conta` nunca foi renomeada, mas o campo que aponta
+                # para a regra de recorrência foi (`receita_recorrente` ->
+                # `recorrencia`), e as FKs aparecem no backup como `<campo>_uuid`.
+                # Sem isto, restaurar um backup antigo devolveria as contas sem o
+                # vínculo com a regra que as gerou.
+                if records and model_name in CAMPOS_RENOMEADOS_POR_MODELO:
+                    records = [
+                        _normalizar_campos_legados(model_name, dict(linha))
+                        for linha in records
+                    ]
                 logger.debug(
                     "Restaurando %d registros de %s.%s", len(records), app_label, model_name
                 )

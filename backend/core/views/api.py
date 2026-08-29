@@ -7,10 +7,12 @@ serviços de apoio para cadastros em lote, liquidação e consolidação de grá
 """
 
 import calendar
+import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from dateutil.relativedelta import relativedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum, Q, F, Value
 from django.db.models.functions import Coalesce, Greatest
@@ -21,6 +23,12 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from core.throttles import AuthScopedRateThrottle
+from core.views.cookies import clear_refresh_cookie, set_refresh_cookie
+
+logger = logging.getLogger("core")
 
 from core.models import (
     AporteMeta, Categoria, Conta, CartaoCredito, MetaFinanceira, PlanoMetas
@@ -308,6 +316,8 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     e de atualização (refresh token, configurado em um cookie seguro HttpOnly).
     """
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs) -> Response:
         """Gera os tokens JWT e define o refresh token em um cookie HttpOnly seguro.
@@ -322,26 +332,17 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
-            raise InvalidToken(e.detail)
-            
+            # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
+            # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
+            # em vez de 401 sempre que o token era inválido, expirado ou revogado.
+            raise InvalidToken(str(e))
+
         data = serializer.validated_data
         response_data = {
             "access": data["access"]
         }
         response = Response(response_data, status=status.HTTP_200_OK)
-        
-        # Set the refresh token in HttpOnly cookie
-        refresh_token = data["refresh"]
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=7 * 24 * 60 * 60, # 7 days
-            path="/api/token/refresh/",
-        )
-        return response
+        return set_refresh_cookie(response, data["refresh"])
 
 class CookieTokenRefreshView(TokenRefreshView):
     """View customizada para renovação de token JWT.
@@ -360,7 +361,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             Response: Novo token de acesso gerado.
         """
         # Extract refresh token from cookies
-        refresh_token = request.COOKIES.get("refresh_token")
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
         if not refresh_token:
             # check body just in case
             refresh_token = request.data.get("refresh")
@@ -374,7 +375,10 @@ class CookieTokenRefreshView(TokenRefreshView):
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
-            raise InvalidToken(e.detail)
+            # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
+            # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
+            # em vez de 401 sempre que o token era inválido, expirado ou revogado.
+            raise InvalidToken(str(e))
             
         data = serializer.validated_data
         response_data = {
@@ -385,118 +389,43 @@ class CookieTokenRefreshView(TokenRefreshView):
         # If SimpleJWT rotated the refresh token, set the new one in the cookie
         new_refresh = data.get("refresh")
         if new_refresh:
-            response.set_cookie(
-                key="refresh_token",
-                value=new_refresh,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=7 * 24 * 60 * 60,
-                path="/api/token/refresh/",
-            )
+            set_refresh_cookie(response, new_refresh)
         return response
 
 class CookieTokenClearView(APIView):
     """Endpoint responsável pelo logout do usuário no sistema.
 
-    Limpa e deleta o cookie HttpOnly do refresh token para invalidar a sessão ativa.
+    Revoga o refresh token recebido no cookie (registrando-o na blacklist do
+    SimpleJWT) e em seguida remove o cookie, encerrando a sessão de fato.
+
+    Nota sobre o access token: por ser stateless, ele continua válido até expirar
+    (15 minutos). Essa janela é inerente a JWT sem introspecção e está documentada
+    em `docs/autenticacao.md`.
     """
     permission_classes = []
+
     def post(self, request) -> Response:
-        """Remove o cookie seguro de refresh token, encerrando a autenticação.
+        """Revoga o refresh token e remove o cookie, encerrando a autenticação.
 
         Args:
-            request (Request): Requisição de logout.
+            request (Request): Requisição de logout, contendo o cookie do refresh token.
 
         Returns:
-            Response: Confirmação de logout bem-sucedido.
+            Response: Confirmação de logout. O logout é sempre reportado como
+                bem-sucedido: um token ausente, expirado ou já revogado significa
+                que a sessão já não existe, que é exatamente o estado desejado.
         """
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
+
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                # Token expirado, malformado ou já revogado: nada a fazer.
+                logger.info("Logout com refresh token inválido ou já revogado.")
+
         response = Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh_token", path="/api/token/refresh/")
-        return response
-
-
-from django.db import transaction
-from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-from core.services.criar_usuario import criar_usuario_com_ecosistema
-
-class RegistrationAPIView(APIView):
-    """Endpoint responsável pela criação e registro de novos usuários no FreeCash.
-
-    Realiza validações de senhas, evita duplicação de usernames e cria o
-    ecossistema financeiro básico (categorias iniciais) em uma transação atômica.
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs) -> Response:
-        """Cria um novo usuário, gera suas credenciais e retorna os tokens JWT iniciais.
-
-        Args:
-            request (Request): Requisição com username, password e confirm.
-
-        Returns:
-            Response: Token de acesso e cookie HttpOnly do refresh token.
-        """
-        username = request.data.get("username")
-        password = request.data.get("password")
-        confirm = request.data.get("confirm")
-
-        if not username or not password or not confirm:
-            return Response(
-                {"detail": "Todos os campos (usuário, senha e confirmação de senha) são obrigatórios."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        username = username.strip()
-
-        if len(password) < 6:
-            return Response(
-                {"detail": "A senha deve ter no mínimo 6 caracteres."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if password != confirm:
-            return Response(
-                {"detail": "As senhas não coincidem."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        User = get_user_model()
-        if User.objects.filter(username=username).exists():
-            return Response(
-                {"detail": "Este nome de usuário já está em uso."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            with transaction.atomic():
-                user = criar_usuario_com_ecosistema(username, password)
-            
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-            refresh['username'] = user.username
-            response_data = {
-                "access": str(refresh.access_token)
-            }
-            response = Response(response_data, status=status.HTTP_201_CREATED)
-            
-            # Set the refresh token in HttpOnly cookie
-            response.set_cookie(
-                key="refresh_token",
-                value=str(refresh),
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=7 * 24 * 60 * 60, # 7 days
-                path="/api/token/refresh/",
-            )
-            return response
-        except Exception as e:
-            return Response(
-                {"detail": f"Erro interno ao criar usuário: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return clear_refresh_cookie(response)
 
 
 # ─── Integrated REST Endpoints for React Frontend ─────────────────────────────
@@ -589,7 +518,11 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         serializer.save(usuario=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Response:
-        """Customiza a criação resolvendo a categoria pelo nome em string e mapeando a data de vencimento.
+        """Customiza a criação resolvendo a categoria pelo nome e mapeando a data de vencimento.
+
+        Quando `recorrencia` vem preenchida, cria um `LancamentoRecorrente` de
+        despesa e gera suas ocorrências, em vez de uma `Conta` avulsa — mesmo
+        contrato já usado pelas receitas.
 
         Args:
             request (Request): Requisição contendo os dados da despesa.
@@ -598,12 +531,13 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
             Response: A despesa criada serializada.
         """
         data = request.data.copy()
-        
+
         # 1. Map data_vencimento -> data_prevista
         if 'data_vencimento' in data:
             data['data_prevista'] = data['data_vencimento']
-            
+
         # 2. Resolve or create category name string
+        categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
             categoria_obj, _ = Categoria.objects.get_or_create(
@@ -612,9 +546,74 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
                 tipo=Categoria.TIPO_DESPESA
             )
             data['categoria'] = categoria_obj.id
-            
+
         # 3. Enforce tipo = Despesa
         data['tipo'] = Conta.TIPO_DESPESA
+
+        # 4. Despesa fixa: cria a regra e materializa as ocorrências.
+        # Sem isto, a projeção de saldo de 12 meses só enxergaria as despesas
+        # lançadas manualmente mês a mês, e a curva subiria de forma irreal.
+        frequencia = data.get('recorrencia')
+        if frequencia:
+            from datetime import datetime
+
+            from core.models import LancamentoRecorrente
+            from core.services.recorrencia_service import criar_regra_e_gerar
+
+            frequencias_validas = dict(LancamentoRecorrente.FREQUENCIA_CHOICES)
+            if frequencia not in frequencias_validas:
+                return Response(
+                    {"recorrencia": [
+                        "Frequência inválida. Use: "
+                        + ", ".join(frequencias_validas)
+                    ]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not data.get('data_prevista'):
+                return Response(
+                    {"data_vencimento": ["Obrigatória para uma despesa recorrente."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                data_inicio = datetime.strptime(
+                    str(data['data_prevista']), "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                return Response(
+                    {"data_vencimento": ["Use o formato AAAA-MM-DD."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            data_fim = None
+            if data.get('data_fim'):
+                try:
+                    data_fim = datetime.strptime(
+                        str(data['data_fim']), "%Y-%m-%d"
+                    ).date()
+                except ValueError:
+                    return Response(
+                        {"data_fim": ["Use o formato AAAA-MM-DD."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            _, primeira = criar_regra_e_gerar(
+                usuario=request.user,
+                descricao=data.get('descricao', ''),
+                categoria=categoria_obj,
+                valor=data.get('valor'),
+                frequencia=frequencia,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                tipo=LancamentoRecorrente.TIPO_DESPESA,
+            )
+            return Response(
+                ContasPagarAPISerializer(
+                    primeira, context={'request': request}
+                ).data,
+                status=status.HTTP_201_CREATED,
+            )
         
         # Validate using standard serializer
         serializer = ContaSerializer(data=data, context={'request': request})
@@ -912,7 +911,7 @@ class ReceitasViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs) -> Response:
         """Customiza a criação mapeando a data de recebimento e resolvendo a categoria.
 
-        Quando `tipo == 'recorrente'`, cria uma `ReceitaRecorrente` e gera suas
+        Quando `tipo == 'recorrente'`, cria uma `LancamentoRecorrente` e gera suas
         ocorrências iniciais em vez de uma `Conta` avulsa.
 
         Args:
@@ -980,7 +979,7 @@ class ReceitasViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs) -> Response:
         """Customiza a atualização mapeando categoria pelo nome e data de recebimento.
 
-        Quando `tipo == 'recorrente'`, atualiza (ou cria) a `ReceitaRecorrente`
+        Quando `tipo == 'recorrente'`, atualiza (ou cria) a `LancamentoRecorrente`
         vinculada e propaga os novos valores para ocorrências futuras não
         realizadas, sem afetar histórico já liquidado.
 
@@ -1026,19 +1025,19 @@ class ReceitasViewSet(viewsets.ModelViewSet):
                 datetime.strptime(request.data['data_fim'], "%Y-%m-%d").date()
                 if request.data.get('data_fim') else None
             )
-            if instance.receita_recorrente_id:
+            if instance.recorrencia_id:
                 campos = {"valor": serializer.instance.valor, "descricao": serializer.instance.descricao,
                           "categoria": categoria_obj}
                 if frequencia:
                     campos["frequencia"] = frequencia
                 campos["data_fim"] = data_fim
-                propagar_edicao(instance.receita_recorrente, **campos)
+                propagar_edicao(instance.recorrencia, **campos)
             elif frequencia:
-                from core.models import ReceitaRecorrente
+                from core.models import LancamentoRecorrente
                 from core.services.recorrencia_service import gerar_ocorrencias, HORIZONTE_PADRAO_MESES
                 from dateutil.relativedelta import relativedelta
 
-                regra = ReceitaRecorrente.objects.create(
+                regra = LancamentoRecorrente.objects.create(
                     usuario=request.user,
                     descricao=serializer.instance.descricao,
                     categoria=categoria_obj,
@@ -1050,8 +1049,8 @@ class ReceitasViewSet(viewsets.ModelViewSet):
                 # Vincula esta ocorrência já existente ANTES de gerar as futuras,
                 # para que `gerar_ocorrencias` a reconheça e não crie uma duplicata
                 # na mesma data_inicio.
-                serializer.instance.receita_recorrente = regra
-                serializer.instance.save(update_fields=["receita_recorrente"])
+                serializer.instance.recorrencia = regra
+                serializer.instance.save(update_fields=["recorrencia"])
                 horizonte = regra.data_inicio + relativedelta(months=HORIZONTE_PADRAO_MESES)
                 gerar_ocorrencias(regra, horizonte)
 

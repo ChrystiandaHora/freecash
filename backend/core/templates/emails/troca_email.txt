@@ -1,0 +1,10 @@
+Olá, {{ nome }}.
+
+Você pediu para trocar o e-mail da sua conta para {{ email_novo }}.
+
+Abra o endereço abaixo no navegador para confirmar:
+
+{{ link }}
+
+Até você confirmar, o e-mail antigo continua valendo para entrar e recuperar a
+senha. Este link vale por {{ validade_dias }} dia{{ validade_dias|pluralize }}.

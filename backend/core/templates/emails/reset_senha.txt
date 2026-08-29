@@ -1,0 +1,13 @@
+Olá, {{ nome }}.
+
+Recebemos um pedido para redefinir a senha da sua conta no FreeCash.
+
+Abra o endereço abaixo no navegador para escolher uma senha nova:
+
+{{ link }}
+
+Este link vale por {{ validade_horas }} hora{{ validade_horas|pluralize }} e deixa de
+funcionar assim que a senha for alterada.
+
+Se você não pediu para redefinir a senha, ignore esta mensagem: sua senha atual
+continua valendo.

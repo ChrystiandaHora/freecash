@@ -1,9 +1,14 @@
-"""Serviço de Geração de Ocorrências de Receita Recorrente.
+"""Serviço de Geração de Ocorrências de Lançamento Recorrente.
 
-Como o projeto não possui Celery/cron, as ocorrências futuras (`Conta`) de uma
-`ReceitaRecorrente` são geradas sob demanda: ao criar/editar a regra, e ao
-listar Receitas de um período além do horizonte já gerado. A geração é
-idempotente — chamar duas vezes para o mesmo período nunca duplica registros.
+Como o projeto não possui Celery/cron, as ocorrências futuras (`Conta`) de um
+`LancamentoRecorrente` são geradas sob demanda: ao criar/editar a regra, ao
+listar um período além do horizonte já gerado, e ao montar a projeção de saldos.
+A geração é idempotente — chamar duas vezes para o mesmo período nunca duplica
+registros.
+
+A regra cobre receita **e** despesa. Enquanto cobria só entradas, qualquer
+projeção de longo prazo ficava otimista: a receita fixa era materializada meses à
+frente e as despesas fixas não existiam fora do que fora lançado à mão.
 """
 
 from datetime import date, timedelta
@@ -11,7 +16,7 @@ from dateutil.relativedelta import relativedelta
 
 from django.db.models import Max
 
-from core.models import Conta, ReceitaRecorrente
+from core.models import Conta, LancamentoRecorrente
 from core.services.fatura_service import add_months
 
 HORIZONTE_PADRAO_MESES = 12
@@ -22,22 +27,22 @@ def _proxima_data(data_atual: date, frequencia: str) -> date:
 
     Mensal/anual reaproveitam `add_months` (já trata dia 31 em mês curto).
     """
-    if frequencia == ReceitaRecorrente.FREQ_MENSAL:
+    if frequencia == LancamentoRecorrente.FREQ_MENSAL:
         return add_months(data_atual, 1)
-    if frequencia == ReceitaRecorrente.FREQ_ANUAL:
+    if frequencia == LancamentoRecorrente.FREQ_ANUAL:
         return add_months(data_atual, 12)
-    if frequencia == ReceitaRecorrente.FREQ_QUINZENAL:
+    if frequencia == LancamentoRecorrente.FREQ_QUINZENAL:
         return data_atual + timedelta(days=14)
-    if frequencia == ReceitaRecorrente.FREQ_SEMANAL:
+    if frequencia == LancamentoRecorrente.FREQ_SEMANAL:
         return data_atual + timedelta(days=7)
     raise ValueError(f"Frequência desconhecida: {frequencia!r}")
 
 
-def gerar_ocorrencias(regra: ReceitaRecorrente, ate_data: date) -> int:
+def gerar_ocorrencias(regra: LancamentoRecorrente, ate_data: date) -> int:
     """Gera as ocorrências (`Conta`) de uma regra até `ate_data`, sem duplicar.
 
     Args:
-        regra (ReceitaRecorrente): A regra de recorrência.
+        regra (LancamentoRecorrente): A regra de recorrência.
         ate_data (date): Data limite (inclusive) até onde gerar ocorrências.
 
     Returns:
@@ -55,11 +60,13 @@ def gerar_ocorrencias(regra: ReceitaRecorrente, ate_data: date) -> int:
     criadas = 0
     while candidata <= limite:
         _, criado = Conta.objects.get_or_create(
-            receita_recorrente=regra,
+            recorrencia=regra,
             data_prevista=candidata,
             defaults={
                 "usuario": regra.usuario,
-                "tipo": Conta.TIPO_RECEITA,
+                # O tipo vem da regra: era fixo em receita quando o modelo só
+                # cobria entradas.
+                "tipo": regra.tipo,
                 "descricao": regra.descricao,
                 "categoria": regra.categoria,
                 "valor": regra.valor,
@@ -72,14 +79,27 @@ def gerar_ocorrencias(regra: ReceitaRecorrente, ate_data: date) -> int:
     return criadas
 
 
-def criar_regra_e_gerar(usuario, descricao, categoria, valor, frequencia, data_inicio, data_fim=None) -> tuple[ReceitaRecorrente, Conta]:
+def criar_regra_e_gerar(usuario, descricao, categoria, valor, frequencia, data_inicio,
+                        data_fim=None, tipo=LancamentoRecorrente.TIPO_RECEITA) -> tuple[LancamentoRecorrente, Conta]:
     """Cria a regra de recorrência e gera imediatamente suas ocorrências iniciais.
 
+    Args:
+        usuario (User): Proprietário da regra.
+        descricao (str): Descrição aplicada a cada ocorrência.
+        categoria (Categoria | None): Categoria aplicada a cada ocorrência.
+        valor (Decimal): Valor de cada ocorrência.
+        frequencia (str): Periodicidade de geração.
+        data_inicio (date): Data da primeira ocorrência.
+        data_fim (date | None): Limite opcional de geração.
+        tipo (str): Receita ou despesa. O default de receita preserva o
+            comportamento das chamadas anteriores à generalização do modelo.
+
     Returns:
-        tuple[ReceitaRecorrente, Conta]: A regra criada e sua primeira ocorrência.
+        tuple[LancamentoRecorrente, Conta]: A regra criada e sua primeira ocorrência.
     """
-    regra = ReceitaRecorrente.objects.create(
+    regra = LancamentoRecorrente.objects.create(
         usuario=usuario,
+        tipo=tipo,
         descricao=descricao,
         categoria=categoria,
         valor=valor,
@@ -102,7 +122,7 @@ def estender_horizonte_se_necessario(usuario, mes: int, ano: int) -> None:
     fim_periodo = date(ano, mes, 1) + relativedelta(months=1) - timedelta(days=1)
     horizonte_minimo = fim_periodo + relativedelta(months=1)
 
-    regras_ativas = ReceitaRecorrente.objects.filter(usuario=usuario, ativa=True)
+    regras_ativas = LancamentoRecorrente.objects.filter(usuario=usuario, ativa=True)
     for regra in regras_ativas:
         ultima = regra.ocorrencias.aggregate(max_data=Max("data_prevista"))["max_data"]
         coberto_ate = ultima or (regra.data_inicio - timedelta(days=1))
@@ -110,13 +130,40 @@ def estender_horizonte_se_necessario(usuario, mes: int, ano: int) -> None:
             gerar_ocorrencias(regra, horizonte_minimo)
 
 
-def pausar_regra(regra: ReceitaRecorrente) -> None:
+def garantir_horizonte(usuario, ate_data: date) -> int:
+    """Materializa as ocorrências de todas as regras ativas até `ate_data`.
+
+    `estender_horizonte_se_necessario` resolve o caso "estou listando o mês X";
+    esta função resolve o caso "vou projetar até a data Y", que é o que a tela de
+    Horizonte de Saldos precisa. Sem ela, a projeção de 12 meses leria apenas o
+    horizonte já gerado (12 meses a contar da criação de cada regra, não de hoje) e
+    os meses finais apareceriam vazios de receita e despesa fixa — exatamente onde
+    a previsibilidade importa mais.
+
+    Idempotente, como toda a geração deste módulo: `get_or_create` por
+    (regra, data_prevista).
+
+    Args:
+        usuario (User): Proprietário das regras.
+        ate_data (date): Data limite, inclusive.
+
+    Returns:
+        int: Quantidade de ocorrências criadas nesta chamada.
+    """
+    criadas = 0
+    regras_ativas = LancamentoRecorrente.objects.filter(usuario=usuario, ativa=True)
+    for regra in regras_ativas:
+        criadas += gerar_ocorrencias(regra, ate_data)
+    return criadas
+
+
+def pausar_regra(regra: LancamentoRecorrente) -> None:
     """Interrompe a geração futura sem apagar ocorrências já existentes."""
     regra.ativa = False
     regra.save(update_fields=["ativa", "atualizada_em"])
 
 
-def propagar_edicao(regra: ReceitaRecorrente, **campos) -> int:
+def propagar_edicao(regra: LancamentoRecorrente, **campos) -> int:
     """Atualiza a regra e propaga os campos para ocorrências futuras não realizadas.
 
     Nunca toca ocorrências com `transacao_realizada=True` (histórico fechado).

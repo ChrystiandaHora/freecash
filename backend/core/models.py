@@ -148,9 +148,9 @@ class Conta(AuditoriaModel):
         help_text="Marca se este registro é uma fatura de cartão (não uma despesa individual)",
     )
 
-    # Origem, caso esta ocorrência tenha sido gerada por uma regra de receita recorrente
-    receita_recorrente = models.ForeignKey(
-        "core.ReceitaRecorrente",
+    # Origem, caso esta ocorrência tenha sido gerada por uma regra de recorrência
+    recorrencia = models.ForeignKey(
+        "core.LancamentoRecorrente",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -263,15 +263,24 @@ class Conta(AuditoriaModel):
         super().save(*args, **kwargs)
 
 
-class ReceitaRecorrente(AuditoriaModel):
-    """Regra de geração automática de receitas recorrentes (salário, aluguel recebido, etc.).
+class LancamentoRecorrente(AuditoriaModel):
+    """Regra de geração automática de lançamentos recorrentes, de receita ou de despesa.
 
     Não representa um lançamento financeiro em si — as ocorrências reais são
-    materializadas como `Conta` (tipo Receita) vinculadas via `receita_recorrente`,
-    geradas sob demanda por `core.services.recorrencia_service`.
+    materializadas como `Conta` vinculadas via `recorrencia`, geradas sob demanda
+    por `core.services.recorrencia_service`.
+
+    Nasceu como `ReceitaRecorrente`, cobrindo apenas entradas. O campo `tipo` foi
+    acrescentado porque a projeção de saldo de 12 meses ficava sistematicamente
+    otimista sem despesas fixas: a receita recorrente era materializada um ano à
+    frente, enquanto aluguel, assinaturas e contas de consumo só existiam nos meses
+    já lançados à mão. Generalizar a regra existente, em vez de criar um modelo
+    paralelo de despesa, evita manter dois motores de recorrência — e dois lugares
+    para corrigir cada defeito de geração.
 
     Atributos:
         usuario (User): Proprietário da regra.
+        tipo (str): Se as ocorrências geradas são receita ou despesa.
         descricao (str): Descrição aplicada a cada ocorrência gerada.
         categoria (Categoria): Categoria aplicada a cada ocorrência gerada.
         valor (Decimal): Valor de cada ocorrência gerada.
@@ -280,6 +289,13 @@ class ReceitaRecorrente(AuditoriaModel):
         data_fim (date): Data limite opcional; indefinida se vazia.
         ativa (bool): Se False, para a geração de novas ocorrências (histórico é preservado).
     """
+
+    TIPO_RECEITA = "R"
+    TIPO_DESPESA = "D"
+    TIPO_CHOICES = (
+        (TIPO_RECEITA, "Receita"),
+        (TIPO_DESPESA, "Despesa"),
+    )
 
     FREQ_MENSAL = "mensal"
     FREQ_QUINZENAL = "quinzenal"
@@ -295,7 +311,12 @@ class ReceitaRecorrente(AuditoriaModel):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="receitas_recorrentes",
+        related_name="lancamentos_recorrentes",
+    )
+    # Default de receita para que as regras já existentes, criadas quando o modelo
+    # só cobria entradas, mantenham exatamente o comportamento anterior.
+    tipo = models.CharField(
+        max_length=1, choices=TIPO_CHOICES, default=TIPO_RECEITA, db_index=True
     )
     descricao = models.CharField(max_length=255, blank=True)
     categoria = models.ForeignKey(
@@ -303,7 +324,7 @@ class ReceitaRecorrente(AuditoriaModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="receitas_recorrentes",
+        related_name="lancamentos_recorrentes",
     )
     valor = models.DecimalField(max_digits=12, decimal_places=2)
     frequencia = models.CharField(max_length=10, choices=FREQUENCIA_CHOICES, default=FREQ_MENSAL)
@@ -313,26 +334,42 @@ class ReceitaRecorrente(AuditoriaModel):
 
     class Meta:
         ordering = ["-data_inicio"]
-        verbose_name = "Receita Recorrente"
-        verbose_name_plural = "Receitas Recorrentes"
+        verbose_name = "Lançamento Recorrente"
+        verbose_name_plural = "Lançamentos Recorrentes"
 
     def __str__(self):
-        return f"{self.descricao} ({self.get_frequencia_display()})"
+        return f"{self.descricao} ({self.get_tipo_display()}, {self.get_frequencia_display()})"
 
 
 class ConfigUsuario(AuditoriaModel):
-    """Configurações e preferências personalizadas de cada usuário do sistema.
+    """Configurações, preferências e estado de identidade de cada usuário.
+
+    Além das preferências de uso, este modelo guarda o estado de verificação de
+    e-mail. Os campos ficam aqui, e não num modelo novo, porque este já é o perfil
+    um-para-um do usuário, já é criado junto com a conta por
+    `criar_usuario_com_ecosistema` e já herda a auditoria de `AuditoriaModel`.
+
+    O endereço confirmado permanece em `User.email` — é onde o Django, o admin e o
+    gerador de token de redefinição de senha esperam encontrá-lo. `email_pendente`
+    existe para uma futura troca de endereço, em que o novo e-mail precisa ser
+    confirmado sem que o usuário perca o acesso ao atual.
 
     Atributos:
         usuario (OneToOneField): Usuário proprietário das configurações.
         moeda_padrao (str): Código da moeda padrão do usuário (ex: BRL).
         ultimo_export_em (datetime): Registro da data e hora da última exportação de dados.
+        email_verificado (bool): Se o usuário já comprovou posse do endereço em `User.email`.
+        email_verificado_em (datetime): Momento da confirmação, ou nulo se ainda não houve.
+        email_pendente (str): Endereço aguardando confirmação numa troca de e-mail.
     """
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="config"
     )
     moeda_padrao = models.CharField(max_length=10, default="BRL")
     ultimo_export_em = models.DateTimeField(null=True, blank=True)
+    email_verificado = models.BooleanField(default=False)
+    email_verificado_em = models.DateTimeField(null=True, blank=True)
+    email_pendente = models.EmailField(blank=True, default="")
 
     def __str__(self):
         """Retorna uma string que identifica o proprietário das configurações.
@@ -762,3 +799,65 @@ class AporteMeta(AuditoriaModel):
             str: Resumo legível do aporte.
         """
         return f"{self.data} - R$ {self.valor}"
+
+
+class LogAcaoAdmin(AuditoriaModel):
+    """Registro imutável das ações administrativas sobre contas de usuário.
+
+    Um painel capaz de suspender contas precisa deixar rastro de quem fez o quê e
+    quando: sem isso, "minha conta foi bloqueada e ninguém sabe por quê" não tem
+    resposta possível.
+
+    Ambas as chaves usam `SET_NULL` em vez de `CASCADE`. Apagar a conta de um
+    administrador não pode apagar o histórico do que ele fez — o registro perderia
+    exatamente a informação que justifica a sua existência.
+
+    Atributos:
+        ator (ForeignKey): Administrador que executou a ação, ou nulo se a conta dele
+            foi removida depois.
+        ator_username (str): Nome de usuário do ator no momento da ação, preservado
+            de forma independente para que o registro continue legível.
+        alvo (ForeignKey): Conta afetada pela ação.
+        alvo_username (str): Nome de usuário do alvo no momento da ação.
+        acao (str): Qual operação foi executada.
+        detalhe (str): Observação livre sobre o contexto da ação.
+    """
+
+    ACAO_SUSPENDER = "suspender"
+    ACAO_REATIVAR = "reativar"
+    ACAO_CHOICES = [
+        (ACAO_SUSPENDER, "Suspender conta"),
+        (ACAO_REATIVAR, "Reativar conta"),
+    ]
+
+    ator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acoes_admin_realizadas",
+    )
+    ator_username = models.CharField(max_length=150)
+    alvo = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acoes_admin_recebidas",
+    )
+    alvo_username = models.CharField(max_length=150)
+    acao = models.CharField(max_length=20, choices=ACAO_CHOICES)
+    detalhe = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-criada_em"]
+        verbose_name = "Log de ação administrativa"
+        verbose_name_plural = "Logs de ações administrativas"
+
+    def __str__(self):
+        """Descreve a ação de forma legível.
+
+        Returns:
+            str: Resumo no formato "ator ação alvo".
+        """
+        return f"{self.ator_username} {self.get_acao_display()} {self.alvo_username}"

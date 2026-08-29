@@ -257,7 +257,7 @@ class ReceitasAPISerializer(serializers.ModelSerializer):
     """Serializador customizado otimizado para a exibição de Receitas.
 
     Facilita a visualização do estado de liquidação e recebimento, além de
-    refletir se a receita é uma ocorrência gerada por uma `ReceitaRecorrente`.
+    refletir se a receita é uma ocorrência gerada por uma `LancamentoRecorrente`.
     """
     categoria = serializers.CharField(source='categoria.nome', read_only=True)
     realizada = serializers.BooleanField(source='transacao_realizada', read_only=True)
@@ -277,17 +277,17 @@ class ReceitasAPISerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
 
     def get_tipo(self, obj) -> str:
-        """Retorna 'recorrente' se esta ocorrência pertence a uma ReceitaRecorrente ativa."""
-        return 'recorrente' if obj.receita_recorrente_id else 'unica'
+        """Retorna 'recorrente' se esta ocorrência pertence a uma LancamentoRecorrente ativa."""
+        return 'recorrente' if obj.recorrencia_id else 'unica'
 
     def get_recorrencia(self, obj) -> str | None:
         """Retorna a frequência da regra de recorrência, se houver."""
-        return obj.receita_recorrente.frequencia if obj.receita_recorrente_id else None
+        return obj.recorrencia.frequencia if obj.recorrencia_id else None
 
     def get_data_fim(self, obj) -> str | None:
         """Retorna a data limite da regra de recorrência, se houver."""
-        if obj.receita_recorrente_id and obj.receita_recorrente.data_fim:
-            return obj.receita_recorrente.data_fim.isoformat()
+        if obj.recorrencia_id and obj.recorrencia.data_fim:
+            return obj.recorrencia.data_fim.isoformat()
         return None
 
 

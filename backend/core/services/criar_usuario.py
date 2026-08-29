@@ -8,11 +8,12 @@ de receitas, gastos e investimentos.
 
 from django.contrib.auth import get_user_model
 from core.models import ConfigUsuario, Categoria
+from core.services.email_service import normalizar_email
 
 User = get_user_model()
 
 
-def criar_usuario_com_ecosistema(username, senha):
+def criar_usuario_com_ecosistema(username, senha, email=""):
     """Cria uma nova conta de usuário, inicializando suas configurações e categorias padrão.
 
     Garante integridade referencial ao criar de forma atômica o perfil, o
@@ -21,11 +22,17 @@ def criar_usuario_com_ecosistema(username, senha):
     Args:
         username (str): Nome de usuário único para autenticação.
         senha (str): Senha do usuário em texto plano.
+        email (str): Endereço de e-mail da conta. O padrão vazio existe para as
+            contas criadas por linha de comando (como o superusuário), que não
+            passam pelo fluxo de registro; o índice único de e-mail é parcial e
+            tolera múltiplos registros sem endereço.
 
     Returns:
         User: A instância do usuário Django recém-criada.
     """
-    usuario = User.objects.create_user(username=username, password=senha)
+    usuario = User.objects.create_user(
+        username=username, password=senha, email=normalizar_email(email)
+    )
 
     # Config do usuário
     ConfigUsuario.objects.get_or_create(usuario=usuario)

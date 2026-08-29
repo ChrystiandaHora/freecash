@@ -76,7 +76,7 @@ def get_backupable_models():
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
         "Ativo": 7,
-        "ReceitaRecorrente": 7.5,
+        "LancamentoRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
         "CarteiraHistorico": 10,
