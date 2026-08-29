@@ -129,6 +129,100 @@ class AncoragemDoSaldoTests(ProjecaoBaseTestCase):
         self.assertTrue(all(d["dia"] >= self.hoje.day for d in primeiro_mes["dias"]))
 
 
+class PontoCegoDoLiquidadoTests(ProjecaoBaseTestCase):
+    """Cobre a fronteira entre a âncora e o fluxo.
+
+    A âncora leva `data_realizacao <= ontem` e os pendentes entram por
+    `data_prevista`. Quem for liquidado com data de hoje em diante não pertence a
+    nenhum dos dois grupos por esses critérios, e antes da correção sumia da
+    projeção — dinheiro real que a curva simplesmente não enxergava. O importador
+    de extrato produz esse registro sozinho: ele marca a linha como realizada com
+    a data do extrato, mesmo quando ela ainda não chegou.
+    """
+
+    def test_liquidado_com_data_futura_entra_no_fluxo(self):
+        """Receita marcada como recebida numa data futura não pode sumir."""
+        self.lancar(Conta.TIPO_RECEITA, "1000.00", self.hoje - timedelta(days=5),
+                    realizada=True)
+        # Salário de daqui a uma semana, já marcado como recebido na importação.
+        futuro = self.hoje + timedelta(days=7)
+        self.lancar(Conta.TIPO_RECEITA, "4593.68", futuro, realizada=True)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        # A âncora corta em ontem, então o lançamento futuro fica fora dela.
+        self.assertEqual(Decimal(projecao["saldo_inicial"]), Decimal("1000.00"))
+        self.assertEqual(self.saldo_do_dia(projecao, self.hoje), Decimal("1000.00"))
+        # E aparece no dia em que o dinheiro entra.
+        self.assertEqual(self.saldo_do_dia(projecao, futuro), Decimal("5593.68"))
+
+    def test_liquidado_hoje_conta_uma_vez_so(self):
+        """A fronteira exata: liquidado hoje entra pelo fluxo, e só por ele."""
+        self.lancar(Conta.TIPO_RECEITA, "2000.00", self.hoje - timedelta(days=2),
+                    realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "300.00", self.hoje, realizada=True)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["saldo_inicial"]), Decimal("2000.00"))
+        self.assertEqual(self.saldo_do_dia(projecao, self.hoje), Decimal("1700.00"))
+
+    def test_liquidado_e_pendente_no_mesmo_dia_somam(self):
+        """As duas populações convivem sem uma anular a outra."""
+        alvo = self.hoje + timedelta(days=3)
+        self.lancar(Conta.TIPO_RECEITA, "500.00", alvo, realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "200.00", alvo)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(self.saldo_do_dia(projecao, alvo), Decimal("300.00"))
+
+    def test_liquidado_pela_data_de_realizacao_e_nao_pela_prevista(self):
+        """O que governa o liquidado é quando o dinheiro andou, não o vencimento."""
+        prevista = self.hoje - timedelta(days=10)
+        realizacao = self.hoje + timedelta(days=4)
+        self.lancar(Conta.TIPO_DESPESA, "800.00", prevista, realizada=True,
+                    data_realizacao=realizacao)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        # Já liquidada, então não é pendência atrasada.
+        self.assertEqual(Decimal(projecao["atrasados"]["despesas"]), Decimal("0.00"))
+        self.assertEqual(self.saldo_do_dia(projecao, self.hoje), Decimal("0.00"))
+        self.assertEqual(self.saldo_do_dia(projecao, realizacao), Decimal("-800.00"))
+
+    def test_liquidado_alem_da_janela_nao_entra(self):
+        """Fora do horizonte é fora do horizonte, liquidado ou não."""
+        self.lancar(Conta.TIPO_RECEITA, "1000.00", self.hoje - timedelta(days=1),
+                    realizada=True)
+        self.lancar(Conta.TIPO_RECEITA, "9999.00", date(2027, 6, 1), realizada=True)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+        ultimo_dia = projecao["meses"][-1]["dias"][-1]
+
+        self.assertEqual(Decimal(ultimo_dia["saldo"]), Decimal("1000.00"))
+
+    def test_compra_de_cartao_liquidada_nao_dobra_com_a_fatura(self):
+        """O filtro de cartão vale para as duas metades do fluxo.
+
+        Sem ele na consulta dos liquidados, a correção reabriria justamente a
+        dupla contagem que o filtro existe para impedir. Como o signal
+        `monitorar_salvamento_conta` consolida a fatura assim que a compra é
+        salva, o desembolso esperado é o da fatura — uma vez, não duas.
+        """
+        cartao = CartaoCredito.objects.create(
+            usuario=self.user, nome="Cartão", limite=Decimal("5000.00"),
+            dia_fechamento=1, dia_vencimento=10,
+        )
+        alvo = self.hoje + timedelta(days=5)
+        self.lancar(Conta.TIPO_DESPESA, "400.00", alvo, realizada=True, cartao=cartao)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        # -800.00 seria compra + fatura somadas; -400.00 é o desembolso real.
+        self.assertEqual(self.saldo_do_dia(projecao, alvo), Decimal("-400.00"))
+
+
 class FiltroDeCartaoTests(ProjecaoBaseTestCase):
     """Verifica que compra de cartão e fatura não são somadas juntas."""
 

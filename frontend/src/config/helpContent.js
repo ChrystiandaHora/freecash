@@ -453,6 +453,7 @@ export const helpContent = {
     overview: "Projeção do saldo acumulado dia a dia para os próximos 12 meses, a partir do dinheiro que você tem hoje.",
     features: [
       "Parte do saldo real em caixa, e não de zero — contas vencidas e ainda não pagas entram no saldo de abertura.",
+      "O que já foi liquidado com data de hoje em diante entra no dia em que o dinheiro anda, e não no saldo de abertura.",
       "Inclui as ocorrências futuras das suas regras de recorrência, de receita e de despesa.",
       "Compras de cartão não são somadas junto da fatura: o desembolso é contado uma vez só, no vencimento.",
       "Aviso destacado com o primeiro dia em que o saldo fica negativo, se houver."

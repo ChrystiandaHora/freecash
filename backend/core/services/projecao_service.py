@@ -5,7 +5,13 @@ O saldo projetado de um dia soma três partes: a âncora (o caixa de hoje, vindo
 liquidados, que entram no primeiro dia em vez de serem descartados) e o fluxo
 futuro acumulado.
 
-Duas invariantes:
+Três invariantes:
+
+**A âncora e o fluxo precisam particionar o universo.** A âncora leva
+`data_realizacao <= ontem`; o fluxo leva os pendentes por `data_prevista` e os
+liquidados por `data_realizacao` de hoje em diante. Se o fluxo olhasse apenas
+`transacao_realizada=False`, o liquidado com data de hoje ou do futuro cairia
+fora das duas metades e sumiria do saldo.
 
 **O filtro de cartão** `Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)` em toda
 consulta de valor. A compra individual e a fatura consolidada são o mesmo dinheiro;
@@ -54,7 +60,24 @@ def _centavos(valor) -> Decimal:
 
 
 def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
-    """Agrupa por dia os lançamentos previstos e ainda não liquidados da janela.
+    """Agrupa por dia o que ainda vai mexer no caixa dentro da janela.
+
+    São duas populações, e cada uma é datada pelo campo que a governa:
+
+    - **Pendente**, pelo `data_prevista`: ainda não liquidou, então a data que
+      importa é a que se espera.
+    - **Liquidado dentro da janela**, pelo `data_realizacao`: a âncora corta em
+      *ontem*, então o que foi liquidado de hoje em diante ainda não está nela.
+
+    Sem a segunda metade sobra um ponto cego. A âncora só enxerga
+    `data_realizacao <= ontem` e a primeira metade só enxerga
+    `transacao_realizada=False`; um lançamento liquidado com data de hoje ou do
+    futuro escapa das duas e some da projeção. O importador de extrato produz
+    exatamente esse registro — ele marca a linha como realizada usando a data do
+    extrato, sem checar se ela já passou.
+
+    As duas consultas não se sobrepõem: `transacao_realizada` separa as
+    populações, e nenhum lançamento satisfaz as duas ao mesmo tempo.
 
     Args:
         inicio: Primeiro dia da janela, inclusive.
@@ -63,7 +86,15 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
     Returns:
         dict[date, dict]: Mapa de data para `{"receitas": Decimal, "despesas": Decimal}`.
     """
-    linhas = (
+    movimentos = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
+
+    def _acumular(linhas, campo_data: str) -> None:
+        """Soma cada linha agregada no dia que o campo de data indica."""
+        for linha in linhas:
+            chave = "receitas" if linha["tipo"] == Conta.TIPO_RECEITA else "despesas"
+            movimentos[linha[campo_data]][chave] += _centavos(linha["total"])
+
+    pendentes = (
         Conta.objects.filter(
             usuario=usuario,
             transacao_realizada=False,
@@ -74,11 +105,21 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
         .values("data_prevista", "tipo")
         .annotate(total=Sum("valor"))
     )
+    _acumular(pendentes, "data_prevista")
 
-    movimentos = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
-    for linha in linhas:
-        chave = "receitas" if linha["tipo"] == Conta.TIPO_RECEITA else "despesas"
-        movimentos[linha["data_prevista"]][chave] += _centavos(linha["total"])
+    liquidados = (
+        Conta.objects.filter(
+            usuario=usuario,
+            transacao_realizada=True,
+            data_realizacao__gte=inicio,
+            data_realizacao__lte=fim,
+        )
+        .filter(FILTRO_CARTAO)
+        .values("data_realizacao", "tipo")
+        .annotate(total=Sum("valor"))
+    )
+    _acumular(liquidados, "data_realizacao")
+
     return movimentos
 
 
