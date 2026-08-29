@@ -450,7 +450,7 @@ export const helpContent = {
 
   "/horizonte-saldos": {
     title: "Horizonte de Saldos",
-    overview: "Projeção do saldo acumulado dia a dia para os próximos 12 meses, a partir do dinheiro que você tem hoje.",
+    overview: "Projeção do saldo acumulado dia a dia para os próximos 12 meses, a partir do dinheiro líquido que você tem hoje — o valor aplicado em investimentos fica de fora, salvo se você pedir o contrário.",
     features: [
       "Parte do saldo real em caixa, e não de zero — contas vencidas e ainda não pagas entram no saldo de abertura.",
       "O que já foi liquidado com data de hoje em diante entra no dia em que o dinheiro anda, e não no saldo de abertura.",
@@ -461,6 +461,7 @@ export const helpContent = {
     actions: {
       "Limite de atenção": "Define o piso de conforto. Dias com saldo abaixo dele aparecem sinalizados.",
       "Considerar aportes das metas": "Alterna para um segundo cenário, que desconta o aporte mensal necessário para cumprir cada meta no prazo. É comparação, não compromisso: o saldo principal continua mostrando apenas o que você já assumiu.",
+      "Considerar valor investido": "Soma ao saldo de abertura o custo de aquisição da sua carteira. Por padrão ele fica de fora: dinheiro aplicado não está disponível para pagar conta, e mantê-lo no saldo esconde aperto de caixa. Usa o preço médio pago, não a cotação do dia — o que saiu do caixa foi o custo, e cotação faria a linha de corte oscilar com o mercado. Só aparece se você tiver ativos cadastrados.",
       "Clique numa célula": "Abre os lançamentos previstos daquele dia."
     }
   },

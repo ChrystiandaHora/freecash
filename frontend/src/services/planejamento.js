@@ -14,12 +14,22 @@ import api from './api';
  * @param {number} [params.meses=12] - Tamanho da janela, em meses.
  * @param {string|number|null} [params.limiteAtencao] - Saldo abaixo do qual o dia
  *   é sinalizado como atenção. Nulo desliga a faixa intermediária.
+ * @param {boolean} [params.considerarInvestimentos=false] - Devolve o custo da
+ *   carteira ao saldo de abertura. Desligado, a projeção mostra só o líquido.
  * @returns {Promise<Object>} Projeção agrupada por mês.
  */
-export async function buscarHorizonteSaldos({ meses = 12, limiteAtencao = null } = {}) {
+export async function buscarHorizonteSaldos({
+  meses = 12,
+  limiteAtencao = null,
+  considerarInvestimentos = false,
+} = {}) {
   const params = { meses };
   if (limiteAtencao !== null && limiteAtencao !== '') {
     params.limite_atencao = limiteAtencao;
+  }
+  // Só viaja quando ligado: ausente e falso significam a mesma coisa no servidor.
+  if (considerarInvestimentos) {
+    params.considerar_investimentos = true;
   }
   const { data } = await api.get('/api/planejamento/horizonte-saldos/', { params });
   return data;

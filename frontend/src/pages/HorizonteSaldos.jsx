@@ -17,10 +17,16 @@
  *
  * **Metas são um cenário, não a projeção.** O aporte planejado é intenção de poupar;
  * misturá-lo à curva principal faria o usuário ler como dívida algo que pode desfazer.
+ *
+ * **O investido fica fora por padrão.** Dinheiro aplicado não paga conta, e mantê-lo no
+ * saldo esconde aperto de caixa — somá-lo de volta é que precisa ser pedido. Vai como
+ * parâmetro ao servidor, e não como série paralela: é deslocamento constante da âncora,
+ * e cruzá-lo com o cenário de metas geraria quatro séries para duas perguntas. Refazendo
+ * a busca, a classificação de cada dia continua vindo pronta de lá.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, AlertTriangle, CalendarClock, Loader2, Target } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CalendarClock, Loader2, Target, Wallet } from 'lucide-react';
 
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
@@ -87,15 +93,20 @@ function ItemLegenda({ situacao, texto }) {
 
 export default function HorizonteSaldos() {
   const [considerarMetas, setConsiderarMetas] = useState(false);
+  const [considerarInvestimentos, setConsiderarInvestimentos] = useState(false);
   const [limiteAtencao, setLimiteAtencao] = useState('1000');
   const [diaSelecionado, setDiaSelecionado] = useState(null);
 
   const tabelaRef = useRef(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['planejamento', 'horizonte', limiteAtencao],
+    queryKey: ['planejamento', 'horizonte', limiteAtencao, considerarInvestimentos],
     queryFn: () =>
-      buscarHorizonteSaldos({ meses: 12, limiteAtencao: limiteAtencao || null }),
+      buscarHorizonteSaldos({
+        meses: 12,
+        limiteAtencao: limiteAtencao || null,
+        considerarInvestimentos,
+      }),
   });
 
   // Detalhe do dia: só busca quando há célula selecionada, e reusa a grade do
@@ -153,8 +164,15 @@ export default function HorizonteSaldos() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Horizonte de Saldos
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Saldo acumulado projetado dia a dia, a partir de {formatarMoeda(data.saldo_inicial)} em caixa hoje.
+        {/* `aria-live` porque o número muda por ação do usuário nos filtros, sem
+            que nada receba foco: sem isso a troca passaria despercebida a quem
+            navega por leitor de tela. */}
+        <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+          Saldo acumulado projetado dia a dia, a partir de {formatarMoeda(data.saldo_inicial)} em caixa hoje
+          {Number(data.valor_investido) > 0 && !data.investimentos_considerados
+            ? `, já sem os ${formatarMoeda(data.valor_investido)} aplicados na carteira`
+            : ''}
+          .
         </p>
       </header>
 
@@ -213,17 +231,42 @@ export default function HorizonteSaldos() {
           </p>
         </div>
 
-        <Button
-          type="button"
-          variant={considerarMetas ? 'default' : 'outline'}
-          onClick={() => setConsiderarMetas((v) => !v)}
-          aria-pressed={considerarMetas}
-          className="flex h-9 items-center gap-2 rounded-xl px-4 text-xs"
-        >
-          <Target className="h-4 w-4" aria-hidden="true" />
-          Considerar aportes das metas
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={considerarMetas ? 'default' : 'outline'}
+            onClick={() => setConsiderarMetas((v) => !v)}
+            aria-pressed={considerarMetas}
+            className="flex h-9 items-center gap-2 rounded-xl px-4 text-xs"
+          >
+            <Target className="h-4 w-4" aria-hidden="true" />
+            Considerar aportes das metas
+          </Button>
+
+          {/* Só aparece para quem tem carteira: um botão que soma zero é ruído. */}
+          {Number(data.valor_investido) > 0 && (
+            <Button
+              type="button"
+              variant={considerarInvestimentos ? 'default' : 'outline'}
+              onClick={() => setConsiderarInvestimentos((v) => !v)}
+              aria-pressed={considerarInvestimentos}
+              aria-describedby="ajuda-considerar-investimentos"
+              className="flex h-9 items-center gap-2 rounded-xl px-4 text-xs"
+            >
+              <Wallet className="h-4 w-4" aria-hidden="true" />
+              Considerar valor investido
+            </Button>
+          )}
+        </div>
       </div>
+
+      {Number(data.valor_investido) > 0 && (
+        <p id="ajuda-considerar-investimentos" className="sr-only">
+          Soma {formatarMoeda(data.valor_investido)}, o custo de aquisição da sua
+          carteira, ao saldo de abertura da projeção. Por padrão esse valor fica de
+          fora, porque dinheiro aplicado não está disponível para pagar contas.
+        </p>
+      )}
 
       <Card className="overflow-hidden rounded-2xl border-border/40">
         <CardContent className="space-y-3 p-4">
@@ -244,6 +287,9 @@ export default function HorizonteSaldos() {
                 {considerarMetas
                   ? ', descontando os aportes necessários às metas'
                   : ', considerando apenas os lançamentos registrados'}
+                {Number(data.valor_investido) > 0 && !data.investimentos_considerados
+                  ? ', e sem o valor aplicado na carteira de investimentos'
+                  : ''}
               </caption>
               <thead>
                 <tr>

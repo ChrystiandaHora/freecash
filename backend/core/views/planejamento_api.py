@@ -37,8 +37,9 @@ class HorizonteSaldosAPIView(APIView):
         """Devolve a projeção diária agrupada por mês.
 
         Args:
-            request: Aceita `meses` (tamanho da janela) e
-                `limite_atencao` (saldo abaixo do qual o dia é sinalizado).
+            request: Aceita `meses` (tamanho da janela), `limite_atencao` (saldo
+                abaixo do qual o dia é sinalizado) e `considerar_investimentos`
+                (devolve o custo da carteira ao saldo de abertura).
 
         Returns:
             Response: 200 com a projeção, ou 400 se `limite_atencao` não for número.
@@ -63,8 +64,15 @@ class HorizonteSaldosAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        # Ausente é falso: por padrão a projeção mostra só o dinheiro líquido, e
+        # somar a carteira de volta exige pedido explícito.
+        considerar = str(
+            request.query_params.get("considerar_investimentos", "")
+        ).lower() in ("1", "true")
+
         dados = horizonte_saldos(
-            request.user, date.today(), meses=meses, limite_atencao=limite
+            request.user, date.today(), meses=meses, limite_atencao=limite,
+            considerar_investimentos=considerar,
         )
         return Response(dados, status=status.HTTP_200_OK)
 

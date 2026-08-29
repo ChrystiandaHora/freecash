@@ -33,7 +33,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
-from django.db.models import Q, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
 
 from core.models import Conta, MetaFinanceira
 from core.services.dashboard_helper import saldo_liquidez_ate
@@ -57,6 +57,33 @@ def _centavos(valor) -> Decimal:
         Decimal: Valor com duas casas decimais.
     """
     return Decimal(valor or 0).quantize(Decimal("0.01"))
+
+
+def _valor_investido(usuario) -> Decimal:
+    """Soma o custo de aquisição das posições que o usuário ainda mantém.
+
+    É `quantidade × preço médio`, e não valor de mercado, porque o que saiu do
+    caixa para comprar foi o custo. Cotação faria a linha de corte oscilar todo
+    dia e misturaria lucro não realizado — que ainda não é dinheiro — ao saldo.
+
+    O import fica local: `investimento.models` importa `core.models`, e amarrar a
+    volta no topo deste módulo fecharia o ciclo em tempo de importação. É o mesmo
+    caminho que `metas_service` e `export_service` já usam.
+
+    Returns:
+        Decimal: Custo de aquisição total da carteira, com duas casas.
+    """
+    from investimento.models import Ativo
+
+    total = Ativo.objects.filter(usuario=usuario).aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                F("quantidade") * F("preco_medio"),
+                output_field=DecimalField(max_digits=19, decimal_places=4),
+            )
+        )
+    )["total"]
+    return _centavos(total)
 
 
 def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
@@ -196,11 +223,16 @@ def _aportes_mensais_de_metas(usuario, inicio: date, fim: date) -> dict[date, De
 
 
 def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
-                     limite_atencao: Decimal | None = None) -> dict:
+                     limite_atencao: Decimal | None = None,
+                     considerar_investimentos: bool = False) -> dict:
     """Projeta o saldo acumulado dia a dia para os próximos meses.
 
     Args:
         meses: Tamanho da janela, em meses.
+        considerar_investimentos: Devolve ao saldo de abertura o custo da
+            carteira. Desligado — o padrão — a projeção mostra só o dinheiro
+            líquido. É um deslocamento constante: a forma da curva não muda,
+            o patamar sobe.
 
     Returns:
         dict: Janela projetada, agrupada por mês, com o saldo de cada dia, os
@@ -218,6 +250,14 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
     saldo_inicial = _centavos(saldo_liquidez_ate(usuario, hoje - timedelta(days=1)))
     atrasados = _pendencias_atrasadas(usuario, hoje)
     saldo_inicial += atrasados["receitas"] - atrasados["despesas"]
+
+    # O padrão é a leitura conservadora: dinheiro aplicado não é dinheiro
+    # disponível para pagar conta, e deixá-lo no saldo esconde o aperto de caixa.
+    # Quem quer o patrimônio inteiro pede explicitamente. O valor vai na resposta
+    # nos dois casos, porque a interface precisa dele para rotular o botão.
+    valor_investido = _valor_investido(usuario)
+    if not considerar_investimentos:
+        saldo_inicial -= valor_investido
 
     movimentos = _movimentos_por_dia(usuario, hoje, fim)
     aportes_meta = _aportes_mensais_de_metas(usuario, hoje, fim)
@@ -300,6 +340,8 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
             "receitas": str(atrasados["receitas"]),
             "despesas": str(atrasados["despesas"]),
         },
+        "valor_investido": str(valor_investido),
+        "investimentos_considerados": considerar_investimentos,
         "limite_atencao": str(limite_atencao) if limite_atencao is not None else None,
         "primeiro_dia_negativo": primeiro_negativo,
         "primeiro_dia_negativo_com_metas": primeiro_negativo_com_metas,

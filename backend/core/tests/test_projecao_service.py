@@ -339,6 +339,137 @@ class DespesaRecorrenteNaProjecaoTests(ProjecaoBaseTestCase):
         )
 
 
+class ValorInvestidoNoHorizonteTests(ProjecaoBaseTestCase):
+    """Cobre o recorte de liquidez: quanto sobra fora da carteira.
+
+    Caixa e carteira se sobrepõem quando a compra do ativo não foi lançada como
+    despesa: o mesmo dinheiro aparece no saldo e no patrimônio. O padrão é a
+    leitura conservadora — dinheiro aplicado não paga conta —, e somar a carteira
+    de volta é que exige pedido explícito.
+    """
+
+    def _ativo(self, ticker: str, quantidade: str, preco_medio: str):
+        """Cria uma posição na carteira do usuário de teste.
+
+        Returns:
+            Ativo: A posição persistida.
+        """
+        from investimento.models import Ativo
+
+        return Ativo.objects.create(
+            usuario=self.user, ticker=ticker,
+            quantidade=Decimal(quantidade), preco_medio=Decimal(preco_medio),
+        )
+
+    def test_por_padrao_o_investido_fica_fora_do_saldo(self):
+        """Sem pedir nada, a projeção mostra só o dinheiro líquido."""
+        self.lancar(Conta.TIPO_RECEITA, "5000.00", self.hoje - timedelta(days=2),
+                    realizada=True)
+        self._ativo("XPTO11", "100", "20.00")
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("2000.00"))
+        self.assertEqual(Decimal(projecao["saldo_inicial"]), Decimal("3000.00"))
+        self.assertFalse(projecao["investimentos_considerados"])
+
+    def test_considerar_devolve_a_carteira_ao_saldo(self):
+        """Ligado, o saldo volta a ser o patrimônio inteiro."""
+        self.lancar(Conta.TIPO_RECEITA, "5000.00", self.hoje - timedelta(days=2),
+                    realizada=True)
+        self._ativo("XPTO11", "100", "20.00")
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1,
+                                    considerar_investimentos=True)
+
+        self.assertEqual(Decimal(projecao["saldo_inicial"]), Decimal("5000.00"))
+        self.assertTrue(projecao["investimentos_considerados"])
+
+    def test_valor_investido_vai_na_resposta_nos_dois_modos(self):
+        """A interface precisa do número para rotular o botão antes do clique."""
+        self._ativo("XPTO11", "10", "33.33")
+
+        for considerar in (False, True):
+            projecao = horizonte_saldos(self.user, self.hoje, meses=1,
+                                        considerar_investimentos=considerar)
+            self.assertEqual(
+                Decimal(projecao["valor_investido"]), Decimal("333.30")
+            )
+
+    def test_soma_todas_as_posicoes(self):
+        """Uma carteira é a soma das posições, não a maior delas."""
+        self._ativo("AAAA11", "10", "15.00")
+        self._ativo("BBBB11", "5", "40.00")
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("350.00"))
+
+    def test_carteira_de_outro_usuario_nao_entra(self):
+        """Vazamento aqui apareceria como saldo a menos, sem explicação na tela."""
+        outro = User.objects.create_user(
+            username="bruno", password="senha-bem-comprida-123",
+            email="bruno@exemplo.com",
+        )
+        from investimento.models import Ativo
+        Ativo.objects.create(usuario=outro, ticker="ZZZZ11",
+                             quantidade=Decimal("1000"), preco_medio=Decimal("50.00"))
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("0.00"))
+
+    def test_sem_carteira_os_dois_modos_coincidem(self):
+        """Quem não investe não pode ver diferença entre ligado e desligado."""
+        self.lancar(Conta.TIPO_RECEITA, "800.00", self.hoje - timedelta(days=1),
+                    realizada=True)
+
+        padrao = horizonte_saldos(self.user, self.hoje, meses=1)
+        considerando = horizonte_saldos(self.user, self.hoje, meses=1,
+                                        considerar_investimentos=True)
+
+        self.assertEqual(Decimal(padrao["valor_investido"]), Decimal("0.00"))
+        self.assertEqual(
+            Decimal(padrao["saldo_inicial"]), Decimal(considerando["saldo_inicial"])
+        )
+
+    def test_alternar_desloca_a_curva_sem_deformar(self):
+        """É deslocamento constante: todo dia sobe o mesmo, e o fluxo não muda."""
+        self.lancar(Conta.TIPO_RECEITA, "5000.00", self.hoje - timedelta(days=2),
+                    realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "700.00", self.hoje + timedelta(days=4))
+        self._ativo("XPTO11", "100", "20.00")
+
+        padrao = horizonte_saldos(self.user, self.hoje, meses=1)
+        considerando = horizonte_saldos(self.user, self.hoje, meses=1,
+                                        considerar_investimentos=True)
+
+        diferencas = {
+            Decimal(a["saldo"]) - Decimal(b["saldo"])
+            for a, b in zip(considerando["meses"][0]["dias"], padrao["meses"][0]["dias"])
+        }
+        self.assertEqual(diferencas, {Decimal("2000.00")})
+
+    def test_o_padrao_pode_revelar_um_dia_negativo(self):
+        """O ponto do recurso: o estouro que o dinheiro aplicado escondia.
+
+        Com a carteira somada, a despesa cabe no saldo. Sem ela, não cabe — e o
+        dia do estouro é o da despesa, não hoje: até lá o caixa líquido é positivo.
+        """
+        vencimento = self.hoje + timedelta(days=5)
+        self.lancar(Conta.TIPO_RECEITA, "2500.00", self.hoje - timedelta(days=2),
+                    realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "2200.00", vencimento)
+        self._ativo("XPTO11", "100", "20.00")
+
+        padrao = horizonte_saldos(self.user, self.hoje, meses=1)
+        considerando = horizonte_saldos(self.user, self.hoje, meses=1,
+                                        considerar_investimentos=True)
+
+        self.assertIsNone(considerando["primeiro_dia_negativo"])
+        self.assertEqual(padrao["primeiro_dia_negativo"], vencimento.isoformat())
+
+
 class CenarioDeMetasTests(ProjecaoBaseTestCase):
     """Verifica que o aporte de metas é cenário, não compromisso."""
 
