@@ -159,7 +159,7 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 **Meus Ativos & Detalhe de Posição**
 - Tabela com Ticker, Quantidade, Preço Médio, Cotação Atual, Valor Total e Retorno (% colorido)
 - Busca e filtro por classe de ativo
-- Atualização de cotações via Yahoo Finance (`yfinance`) com um clique
+- Atualização de cotações com um clique: TradingView e CVM em lote (escopado aos seus ativos), ou Yahoo Finance por ativo, tudo via `urllib` — sem dependência de `yfinance`
 - Tela de detalhamento do ativo (`/investimentos/ativos/:id`) com abas de Dados Gerais, Rentabilidade e Histórico de Transações
 
 **Balanceamento de Carteira**
@@ -175,6 +175,55 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 
 **Cálculo Automático de Posição**
 - Django Signal `atualizar_ativo_apos_transacao` recalcula Preço Médio e Quantidade sempre que uma transação é criada, editada ou removida
+
+---
+
+### Planejamento e Previsibilidade
+
+**Horizonte de Saldos** (`/horizonte-saldos`)
+- Saldo acumulado projetado dia a dia para os próximos 12 meses, em grade de dias x meses
+- Parte do dinheiro real em caixa; contas vencidas e não pagas entram no saldo de abertura
+- Inclui as ocorrências futuras das regras de recorrência, de receita **e de despesa**
+- Aviso destacado com o primeiro dia em que o saldo fica negativo
+- Cenário alternativo que desconta o aporte mensal necessário para cumprir cada meta no prazo
+- Clique numa célula abre os lançamentos daquele dia
+
+**Calendário de Pagamentos** (`/calendario`)
+- Grade mensal com o que vence e o que entra em cada dia, e quantos lançamentos seguem pendentes
+- Liquidação direta pela célula do dia, para receitas e despesas
+- Compras de cartão aparecem no dia, mas o total considera a fatura — o dinheiro sai uma vez só
+
+**Despesas fixas**
+- Regras de recorrência passaram a cobrir despesas, não só receitas (mensal, quinzenal, semanal, anual)
+- Cadastradas pelo formulário de Contas a Pagar, marcando "É uma despesa fixa"
+
+Detalhes de arquitetura e limites conhecidos em [docs/planejamento.md](docs/planejamento.md).
+
+---
+
+### Contas e Administração
+
+**Contas de usuário**
+- Cadastro com e-mail obrigatório e senha validada pelos `AUTH_PASSWORD_VALIDATORS` do Django
+- Login por e-mail ou nome de usuário
+- Confirmação de e-mail por link, com reenvio
+- Recuperação de senha por e-mail, sem revelar quais endereços têm conta
+- Troca de senha encerra as sessões abertas da conta
+
+**Minha conta** (`/conta`, pelo avatar no topo)
+- Edição de nome de usuário e moeda padrão
+- Troca de e-mail com senha atual e confirmação no novo endereço — o e-mail antigo só deixa de valer quando o link é aberto, e recebe um aviso da alteração
+- Troca de senha com o usuário logado, encerrando as outras sessões da conta
+- Sessões ativas, com opção de desconectar os outros dispositivos
+- Exclusão definitiva da conta e de todos os dados (LGPD), com dupla confirmação
+
+**Painel administrativo** (`/admin/usuarios` e `/admin/metricas`, só para `is_staff`)
+- Listagem de contas com busca e filtros por estado e por confirmação de e-mail
+- Suspender e reativar acesso, com motivo registrado em histórico de auditoria
+- Métricas de plataforma: contas, adoção, atividade recente e cadastros por dia
+- Expõe apenas metadados de conta — nunca dados financeiros de usuário
+
+Detalhes de arquitetura e limites conhecidos em [docs/autenticacao.md](docs/autenticacao.md).
 
 ---
 
@@ -208,9 +257,9 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 | Python 3.12 + Django 6 | Core da API |
 | Django REST Framework | Endpoints RESTful |
 | PostgreSQL 16 + psycopg3 | Banco de dados |
-| djangorestframework-simplejwt | Autenticação JWT via cookies HttpOnly |
-| yfinance | Cotações de mercado (Yahoo Finance) |
-| pandas + openpyxl | Importação/exportação de planilhas |
+| djangorestframework-simplejwt | Autenticação JWT via cookies HttpOnly, com blacklist de refresh token |
+| gunicorn | Servidor de aplicação em produção |
+| openpyxl | Importação/exportação de planilhas |
 | pdfplumber + reportlab | Leitura e geração de PDFs |
 | whitenoise | Servir arquivos estáticos |
 
@@ -255,6 +304,24 @@ Acesso após subir:
 
 *Para encerrar, pressione `Ctrl+C`.*
 
+### Produção
+
+```bash
+# Configure o .env primeiro: DJANGO_DEBUG=False, DJANGO_SECRET_KEY real,
+# credenciais do banco, SMTP e as origens do seu domínio.
+# O backend valida a configuração no boot e se recusa a subir se algo faltar.
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Diferenças em relação ao compose de desenvolvimento: gunicorn no lugar do
+`runserver`, nginx servindo o build estático do React e fazendo proxy de `/api/`
+(mesma origem, sem CORS), sem *bind mount* do código, e sem `makemigrations` em
+tempo de deploy.
+
+Para publicar num servidor de verdade — contratar a VPS, configurar acesso SSH,
+subir os contêineres e ligar HTTPS — o passo a passo completo está em
+**[DEPLOY.md](DEPLOY.md)**.
+
 ### Opção B: Execução Manual
 
 #### Backend
@@ -297,7 +364,7 @@ freecash/
 │   ├── investimento/           # Módulo de investimentos (ativos, ANBIMA, cotações)
 │   │   ├── models.py           # Ativo, TransacaoInvestimento, ClasseAtivo, CategoriaAtivo, etc.
 │   │   ├── signals.py          # Recálculo automático de preço médio
-│   │   └── services/           # dashboard_service, calculators, yfinance sync
+│   │   └── services/           # dashboard_service, calculators, tradingview, cvm
 │   ├── freecash/               # Configurações globais Django (settings, urls)
 │   └── requirements.txt
 │
@@ -310,10 +377,14 @@ freecash/
 │       └── App.jsx             # Roteamento + provedores globais
 │
 ├── docs/screenshots/           # 16 Screenshots de alta resolução do sistema
-├── docker-compose.yml
-├── Dockerfile.backend
-├── Dockerfile.frontend
-├── Dockerfile.postgres
+├── docs/autenticacao.md        # Identidade, sessão, e-mail e painel administrativo
+├── docker-compose.yml          # Desenvolvimento
+├── docker-compose.prod.yml     # Produção (gunicorn + nginx)
+├── backend/Dockerfile.backend
+├── backend/Dockerfile.postgres
+├── frontend/Dockerfile.frontend
+├── frontend/nginx.conf         # Fallback de rotas do SPA + proxy de /api/
+├── .github/workflows/ci.yml
 ├── run.sh                      # Orquestrador Bash (recomendado)
 └── run.py                      # Orquestrador Python alternativo
 ```
@@ -348,16 +419,23 @@ React 19 (Vite)          HTTP REST / JWT Bearer        Django 6 (DRF)
 
 ## Testes
 
+425 testes de backend (Django `unittest`, exigem PostgreSQL) e testes de
+frontend em Vitest. Rodam automaticamente a cada pull request para `main`.
+
 ```bash
 # Via Docker
 docker compose exec backend python manage.py test
 
-# Local
-cd backend && python manage.py test
-
 # Suite específica
-python manage.py test investimento.tests
+docker compose exec backend python manage.py test investimento.tests
+
+# Frontend
+cd frontend && npm run test
 ```
+
+Rodar fora do Docker, medir cobertura, as convenções que os testes deste projeto
+exigem (envio de e-mail, callbacks de commit, cache do throttle) e como o CI está
+configurado: **[docs/testes.md](docs/testes.md)**.
 
 ---
 

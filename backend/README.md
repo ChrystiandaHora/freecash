@@ -182,3 +182,9 @@ python manage.py test
 python manage.py test investimento.tests
 python manage.py test core.tests
 ```
+
+Os testes exigem PostgreSQL — SQLite não serve, porque a migration
+`core/0002_email_unico_case_insensitive` usa um índice único parcial.
+
+Guia completo (rodar sem Docker, cobertura, convenções de e-mail e throttle,
+lacunas conhecidas): [docs/testes.md](../docs/testes.md).

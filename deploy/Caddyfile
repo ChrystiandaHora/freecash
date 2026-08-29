@@ -1,0 +1,37 @@
+# Proxy reverso com TLS automático.
+#
+# O Caddy obtém e renova o certificado Let's Encrypt sozinho, sem cron, sem
+# comando de renovação e sem editar configuração depois. É por isso que ele está
+# aqui em vez do Certbot: para um primeiro deploy, é uma linha em vez de um
+# procedimento.
+#
+# Pré-requisitos, os dois igualmente obrigatórios:
+#   1. O domínio de DOMAIN precisa apontar (registro A) para o IP deste servidor.
+#   2. As portas 80 e 443 precisam estar abertas no firewall e livres no host —
+#      é por elas que o Let's Encrypt valida que você controla o domínio.
+#
+# Se a emissão falhar, o Caddy registra o motivo no log e continua tentando:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.prod.tls.yml logs caddy
+
+{$DOMAIN} {
+	# O contêiner do frontend serve o SPA e já faz proxy de /api/ para o backend,
+	# então tudo entra por um único destino.
+	reverse_proxy frontend:80
+
+	encode gzip
+
+	# Cabeçalhos que o nginx interno não tem como definir sozinho, por não saber
+	# que a conexão externa é HTTPS.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		# O Caddy anuncia a própria versão por padrão.
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
