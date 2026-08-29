@@ -52,20 +52,15 @@ services:
         postgres:
           condition: service_healthy
 
-      # Sobrescreve o CMD da imagem (gunicorn) para manter o auto-reload em
-      # desenvolvimento. `createcachetable` cria a tabela usada pelo throttle de
-      # autenticação — é um comando, não uma migration, então precisa vir explícito.
+      # Sobrescreve apenas o CMD da imagem (gunicorn) para manter o auto-reload em
+      # desenvolvimento. `migrate` e `createcachetable` não aparecem aqui: rodam no
+      # entrypoint.sh, uma vez para os dois ambientes.
       #
-      # `makemigrations` não roda aqui: as migrations são versionadas, então gerar
-      # arquivo dentro do container criaria migration não revisada e divergente do
-      # que o servidor vai aplicar. Ao alterar um modelo, rode manualmente
+      # `makemigrations` também não roda no boot: as migrations são versionadas, e
+      # gerar arquivo dentro do container criaria migration não revisada, divergente
+      # do que o servidor vai aplicar. Ao alterar um modelo, rode
       # `docker compose exec backend python manage.py makemigrations` e commite.
-      command: >
-        sh -c "
-        python manage.py migrate &&
-        python manage.py createcachetable &&
-        python manage.py runserver 0.0.0.0:8000
-        "
+      command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
   frontend:
     build:

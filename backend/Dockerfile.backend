@@ -40,6 +40,26 @@ RUN pip install --no-cache /wheels/* \
 
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+# DJANGO_DEBUG=True vale apenas para esta camada de build: collectstatic não toca
+# o banco nem precisa de configuração de produção, e sem isto a validação de boot
+# de settings.py (que exige SECRET_KEY e DB_* reais quando DEBUG=False) abortaria a
+# construção da imagem. A variável não persiste para o runtime.
+RUN DJANGO_DEBUG=True python manage.py collectstatic --noinput
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# O entrypoint aplica migrations e cria a tabela de cache do throttle antes de
+# entregar o controle ao processo web, seja ele o runserver do compose de
+# desenvolvimento ou o gunicorn do CMD abaixo. O chmod é defensivo: um checkout
+# feito no Windows pode perder o bit de execução.
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Servidor de aplicação de produção. `runserver` é um servidor de desenvolvimento:
+# single-threaded, com auto-reload e sem endurecimento — nunca deve atender tráfego
+# público. O gunicorn já constava em requirements.txt sem nunca ser usado.
+# O compose de desenvolvimento sobrescreve este CMD para manter o auto-reload.
+CMD ["gunicorn", "freecash.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "3", \
+     "--timeout", "60", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]

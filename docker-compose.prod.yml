@@ -1,0 +1,121 @@
+# Composição de produção do FreeCash.
+#
+# Diferenças deliberadas em relação ao docker-compose.yml (desenvolvimento):
+#
+# - Sem bind mount do código. O compose de desenvolvimento monta ./backend:/app, o
+#   que faz o contêiner executar o código da máquina host em vez do que foi
+#   construído na imagem — e permitiria que um `makemigrations` acidental gravasse
+#   migrations não versionadas dentro do volume.
+# - Sem `makemigrations`. Em produção só se aplica o que já está versionado; gerar
+#   migration a partir do estado dos models em tempo de deploy é como o esquema do
+#   banco divergir do repositório sem ninguém notar.
+# - gunicorn (CMD da imagem) em vez de `runserver`.
+# - Frontend servido pelo nginx a partir do build estático, não pelo dev server do Vite.
+# - Postgres sem porta publicada no host: só o backend precisa alcançá-lo.
+#
+# Uso:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Requer um .env com DJANGO_DEBUG=False, DJANGO_SECRET_KEY real, credenciais do
+# banco e as origens de produção. settings.py falha no boot se algo faltar.
+
+services:
+  postgres:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.postgres
+    image: freecash/postgres:1.0
+    container_name: freecash_postgres_prod
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    image: freecash/backend:prod
+    container_name: freecash_backend_prod
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      DJANGO_DEBUG: "False"
+
+    expose:
+      - "8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    # migrate aplica o que está versionado; createcachetable cria a tabela do
+    # throttle de autenticação (comando, não migration — sem ela o rate limiting
+    # dos endpoints de login e registro falha em tempo de requisição).
+    # Em seguida, `exec` entrega o processo ao CMD da imagem (gunicorn), para que
+    # ele receba os sinais do Docker como PID 1.
+    # migrate e createcachetable rodam no entrypoint.sh. Aqui só o processo web,
+    # repetindo o CMD da imagem porque o número de workers vem do ambiente.
+    command:
+      - gunicorn
+      - freecash.wsgi:application
+      - --bind=0.0.0.0:8000
+      - --workers=${GUNICORN_WORKERS:-3}
+      - --timeout=60
+      - --access-logfile=-
+      - --error-logfile=-
+
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    image: freecash/frontend:prod
+    container_name: freecash_frontend_prod
+    restart: unless-stopped
+
+    ports:
+      - "${HTTP_PORT:-80}:80"
+
+    depends_on:
+      - backend
+
+    # O nginx da imagem alpine traz wget. Sem healthcheck, um container que subiu
+    # mas está servindo erro segue marcado como "running" e o restart automático
+    # nunca dispara.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data_prod:

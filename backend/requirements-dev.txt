@@ -1,0 +1,10 @@
+# Dependências usadas apenas para desenvolver e testar. Ficam fora de
+# requirements.txt de propósito: a imagem de produção não instala este arquivo,
+# então nada aqui aumenta a superfície do container que atende tráfego.
+#
+# Instalação: pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+
+# Medição de cobertura dos testes. Ver docs/testes.md.
+coverage==7.16.0
