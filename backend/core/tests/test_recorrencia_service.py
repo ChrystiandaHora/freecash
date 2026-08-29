@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from core.models import Categoria, Conta, ReceitaRecorrente
+from core.models import Categoria, Conta, LancamentoRecorrente
 from core.services.recorrencia_service import (
     gerar_ocorrencias,
     criar_regra_e_gerar,
@@ -31,7 +31,7 @@ class RecorrenciaServiceTests(TestCase):
         )
 
     def _criar_regra(self, frequencia="mensal", data_inicio=date(2026, 1, 31), data_fim=None):
-        return ReceitaRecorrente.objects.create(
+        return LancamentoRecorrente.objects.create(
             usuario=self.user,
             descricao="Salário",
             categoria=self.categoria,
@@ -48,14 +48,14 @@ class RecorrenciaServiceTests(TestCase):
 
         self.assertEqual(criadas_1, 4)  # jan, fev, mar, abr
         self.assertEqual(criadas_2, 0)
-        self.assertEqual(Conta.objects.filter(receita_recorrente=regra).count(), 4)
+        self.assertEqual(Conta.objects.filter(recorrencia=regra).count(), 4)
 
     def test_dia_31_cai_em_fevereiro_curto(self):
         regra = self._criar_regra(data_inicio=date(2026, 1, 31))
         gerar_ocorrencias(regra, date(2026, 3, 31))
 
         datas = sorted(
-            Conta.objects.filter(receita_recorrente=regra).values_list("data_prevista", flat=True)
+            Conta.objects.filter(recorrencia=regra).values_list("data_prevista", flat=True)
         )
         self.assertEqual(datas[0], date(2026, 1, 31))
         self.assertEqual(datas[1], date(2026, 2, 28))  # 2026 não é bissexto
@@ -64,13 +64,13 @@ class RecorrenciaServiceTests(TestCase):
     def test_pausar_nao_remove_ocorrencias_existentes(self):
         regra = self._criar_regra()
         gerar_ocorrencias(regra, date(2026, 3, 31))
-        total_antes = Conta.objects.filter(receita_recorrente=regra).count()
+        total_antes = Conta.objects.filter(recorrencia=regra).count()
 
         pausar_regra(regra)
         regra.refresh_from_db()
 
         self.assertFalse(regra.ativa)
-        self.assertEqual(Conta.objects.filter(receita_recorrente=regra).count(), total_antes)
+        self.assertEqual(Conta.objects.filter(recorrencia=regra).count(), total_antes)
 
         # E não gera mais nada mesmo se chamado diretamente após a pausa não é o
         # que barra a geração (isso é papel de estender_horizonte_se_necessario);
@@ -83,7 +83,7 @@ class RecorrenciaServiceTests(TestCase):
 
         estender_horizonte_se_necessario(self.user, 6, 2026)
 
-        self.assertEqual(Conta.objects.filter(receita_recorrente=regra).count(), 1)
+        self.assertEqual(Conta.objects.filter(recorrencia=regra).count(), 1)
 
     def test_estender_horizonte_gera_mes_futuro(self):
         regra = self._criar_regra()
@@ -92,7 +92,7 @@ class RecorrenciaServiceTests(TestCase):
         estender_horizonte_se_necessario(self.user, 6, 2026)
 
         self.assertTrue(
-            Conta.objects.filter(receita_recorrente=regra, data_prevista__month=6, data_prevista__year=2026).exists()
+            Conta.objects.filter(recorrencia=regra, data_prevista__month=6, data_prevista__year=2026).exists()
         )
 
     def test_criar_regra_e_gerar_retorna_primeira_ocorrencia(self):
@@ -101,26 +101,26 @@ class RecorrenciaServiceTests(TestCase):
             descricao="Aluguel recebido",
             categoria=self.categoria,
             valor=Decimal("1500.00"),
-            frequencia=ReceitaRecorrente.FREQ_MENSAL,
+            frequencia=LancamentoRecorrente.FREQ_MENSAL,
             data_inicio=date(2026, 3, 10),
         )
         self.assertEqual(primeira.data_prevista, date(2026, 3, 10))
-        self.assertEqual(primeira.receita_recorrente_id, regra.id)
-        self.assertGreater(Conta.objects.filter(receita_recorrente=regra).count(), 1)
+        self.assertEqual(primeira.recorrencia_id, regra.id)
+        self.assertGreater(Conta.objects.filter(recorrencia=regra).count(), 1)
 
     def test_edicao_nao_afeta_ocorrencia_ja_realizada(self):
         hoje = date.today()
         regra = self._criar_regra(data_inicio=hoje)
         gerar_ocorrencias(regra, hoje + relativedelta(months=2))
 
-        realizada = Conta.objects.get(receita_recorrente=regra, data_prevista=hoje)
+        realizada = Conta.objects.get(recorrencia=regra, data_prevista=hoje)
         realizada.marcar_realizada(hoje)
 
         propagar_edicao(regra, valor=Decimal("6000.00"), descricao="Salário Novo", categoria=self.categoria)
 
         realizada.refresh_from_db()
         futura = (
-            Conta.objects.filter(receita_recorrente=regra)
+            Conta.objects.filter(recorrencia=regra)
             .exclude(id=realizada.id)
             .order_by("data_prevista")
             .first()
@@ -135,6 +135,6 @@ class RecorrenciaServiceTests(TestCase):
         gerar_ocorrencias(regra, date(2026, 6, 1))
 
         datas = list(
-            Conta.objects.filter(receita_recorrente=regra).values_list("data_prevista", flat=True)
+            Conta.objects.filter(recorrencia=regra).values_list("data_prevista", flat=True)
         )
         self.assertEqual(sorted(datas), [date(2026, 1, 1), date(2026, 2, 1)])

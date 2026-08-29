@@ -39,6 +39,9 @@ class EndToEndFlowScreensTestCase(APITestCase):
         url_register = reverse('api-register')
         payload = {
             "username": "brandnewuser",
+            # O e-mail passou a ser obrigatório no registro: é o que viabiliza a
+            # confirmação de conta e a recuperação de senha.
+            "email": "brandnewuser@exemplo.com",
             "password": "brandnewpassword123",
             "confirm": "brandnewpassword123"
         }

@@ -7,7 +7,7 @@
  * Não precisa de jsdom nem de @testing-library — `lib/navigation.js` é puro.
  */
 import { describe, expect, it } from 'vitest';
-import { navGroups, navIndex } from '../config/navigation';
+import { filtrarGruposVisiveis, navGroups, navIndex } from '../config/navigation';
 import { findActiveNav, getRouteTitle } from './navigation';
 import { helpContent } from '../config/helpContent';
 
@@ -93,9 +93,21 @@ describe('getRouteTitle', () => {
 describe('integridade da config', () => {
   const items = navGroups.flatMap((g) => g.items);
 
-  it('tem os 5 grupos e os 18 itens esperados', () => {
-    expect(navGroups).toHaveLength(5);
-    expect(items).toHaveLength(18);
+  it('tem os 6 grupos e os 22 itens esperados', () => {
+    // O sexto grupo é Administração, marcado com `adminOnly`. Ele permanece na
+    // tabela para todos os usuários porque `navIndex` também resolve o
+    // `document.title` e o estado ativo; quem renderiza é que o filtra, via
+    // `filtrarGruposVisiveis`.
+    expect(navGroups).toHaveLength(6);
+    expect(items).toHaveLength(22);
+  });
+
+  it('esconde o grupo administrativo de quem não é administrador', () => {
+    expect(filtrarGruposVisiveis(true)).toHaveLength(6);
+
+    const semAdmin = filtrarGruposVisiveis(false);
+    expect(semAdmin).toHaveLength(5);
+    expect(semAdmin.some((g) => g.adminOnly)).toBe(false);
   });
 
   it('não repete caminhos', () => {

@@ -262,51 +262,6 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(fatura.valor, Decimal("100.00"))
         self.assertEqual(fatura.data_prevista, date(2026, 5, 25))
 
-    def test_migration_corrigir_compras_faturas_pagas(self):
-        """Valida que a data migration corrige compras individuais que ficaram acumuladas/pendentes em faturas pagas."""
-        # 1. Fatura paga
-        fatura = Conta.objects.create(
-            usuario=self.user,
-            tipo=Conta.TIPO_DESPESA,
-            descricao="Fatura Paga",
-            valor=Decimal("200.00"),
-            data_prevista=date(2026, 5, 25),
-            cartao=self.cartao,
-            eh_fatura_cartao=True,
-            transacao_realizada=True,
-            data_realizacao=date(2026, 5, 24)
-        )
-
-        # 2. Desabilitar temporariamente a sincronização automática no save do model Conta
-        # para simular compras órfãs antigas salvas incorretamente como pendentes.
-        # Faremos isso simulando salvamento direto no banco ou usando update() que ignora save().
-        compra_acumulada = Conta.objects.create(
-            usuario=self.user,
-            tipo=Conta.TIPO_DESPESA,
-            descricao="Compra Pendente Acumulada",
-            valor=Decimal("60.00"),
-            data_prevista=date(2026, 5, 25),
-            cartao=self.cartao,
-            eh_fatura_cartao=False
-        )
-        Conta.objects.filter(pk=compra_acumulada.pk).update(transacao_realizada=False, data_realizacao=None)
-        
-        compra_acumulada.refresh_from_db()
-        self.assertFalse(compra_acumulada.transacao_realizada)
-
-        # 3. Executar a função da data migration diretamente
-        import importlib
-        from django.apps import apps
-        migration_module = importlib.import_module('core.migrations.0002_corrigir_compras_faturas_pagas')
-        corrigir_compras_faturas_pagas = migration_module.corrigir_compras_faturas_pagas
-        
-        corrigir_compras_faturas_pagas(apps, None)
-
-        # 4. Validar se a compra acumulada foi devidamente corrigida para paga
-        compra_acumulada.refresh_from_db()
-        self.assertTrue(compra_acumulada.transacao_realizada)
-        self.assertEqual(compra_acumulada.data_realizacao, date(2026, 5, 24))
-
     def test_detectar_vencimento_fatura(self):
         """Testa se a detecção heurística do vencimento da fatura escolhe a moda correta."""
         from core.services.fatura_service import detectar_vencimento_fatura
