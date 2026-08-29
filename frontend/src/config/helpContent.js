@@ -425,5 +425,87 @@ export const helpContent = {
     actions: {
       "Salvar": "Salva as correções do lançamento da ordem."
     }
+  },
+
+  "/conta": {
+    title: "Minha Conta",
+    overview: "Seus dados de acesso e preferências. Acesse pelo avatar no topo da tela.",
+    features: [
+      "Indicadores no topo: identidade, situação do e-mail e dispositivos conectados.",
+      "Nome de usuário e moeda padrão.",
+      "Troca de e-mail com confirmação no novo endereço.",
+      "Troca de senha com o usuário logado.",
+      "Sessões ativas, com opção de desconectar os outros dispositivos.",
+      "Exclusão definitiva da conta."
+    ],
+    actions: {
+      "Salvar perfil": "Atualiza nome de usuário e moeda. Não pede senha: são dados que não dão acesso a nada.",
+      "Enviar confirmação": "Inicia a troca de e-mail. Pede a senha atual, porque é o e-mail que recupera sua conta. O endereço novo só passa a valer quando você abre o link enviado a ele — até lá, o atual continua funcionando.",
+      "Cancelar troca": "Descarta uma troca pendente e invalida o link já enviado.",
+      "Alterar senha": "Pede a senha atual e encerra as outras sessões da conta. A sessão em uso continua aberta.",
+      "Encerrar as outras sessões": "Desconecta todos os outros dispositivos; esta janela continua conectada. A contagem cobre quem entrou nos últimos 7 dias — uma sessão fechada sem sair da conta continua sendo contada até esse prazo vencer.",
+      "Excluir permanentemente": "Apaga a conta e todo o histórico financeiro. Exige a senha e o nome de usuário digitado por extenso. Não há como desfazer — exporte um backup antes."
+    }
+  },
+
+  "/horizonte-saldos": {
+    title: "Horizonte de Saldos",
+    overview: "Projeção do saldo acumulado dia a dia para os próximos 12 meses, a partir do dinheiro que você tem hoje.",
+    features: [
+      "Parte do saldo real em caixa, e não de zero — contas vencidas e ainda não pagas entram no saldo de abertura.",
+      "Inclui as ocorrências futuras das suas regras de recorrência, de receita e de despesa.",
+      "Compras de cartão não são somadas junto da fatura: o desembolso é contado uma vez só, no vencimento.",
+      "Aviso destacado com o primeiro dia em que o saldo fica negativo, se houver."
+    ],
+    actions: {
+      "Limite de atenção": "Define o piso de conforto. Dias com saldo abaixo dele aparecem sinalizados.",
+      "Considerar aportes das metas": "Alterna para um segundo cenário, que desconta o aporte mensal necessário para cumprir cada meta no prazo. É comparação, não compromisso: o saldo principal continua mostrando apenas o que você já assumiu.",
+      "Clique numa célula": "Abre os lançamentos previstos daquele dia."
+    }
+  },
+
+  "/calendario": {
+    title: "Calendário de Pagamentos",
+    overview: "Agenda mensal do que vence e do que entra, com liquidação direta.",
+    features: [
+      "Cada dia mostra o total a receber e a pagar, e quantos lançamentos seguem pendentes.",
+      "Compras de cartão aparecem no dia, mas o total considera a fatura — o dinheiro sai uma vez só.",
+      "O dia de hoje fica destacado na grade."
+    ],
+    actions: {
+      "Clique num dia": "Abre a lista de lançamentos daquele dia.",
+      "Marcar como pago / Marcar como recebido": "Registra o lançamento como liquidado na data de hoje. O texto do botão acompanha o tipo: despesa é paga, receita é recebida.",
+      "Desfazer pagamento / Desfazer recebimento": "Devolve um lançamento já liquidado ao estado pendente, caso tenha sido marcado por engano.",
+      "Navegação de mês": "Use as setas para mudar de mês, ou 'Ir para hoje' para voltar ao mês corrente."
+    }
+  },
+
+  "/admin/usuarios": {
+    title: "Contas de Usuário",
+    overview: "Administração de acesso das contas da plataforma. Visível apenas para administradores.",
+    features: [
+      "Busca por nome de usuário ou e-mail, com filtro por estado da conta.",
+      "Indicação de quais contas já confirmaram o endereço de e-mail.",
+      "Volume de uso por conta (quantidade de lançamentos e de ativos).",
+      "Esta tela não exibe dados financeiros: administrar a plataforma não exige ver as finanças de ninguém."
+    ],
+    actions: {
+      "Suspender": "Bloqueia o acesso e desconecta a pessoa imediatamente. Pede um motivo, que fica registrado no histórico administrativo.",
+      "Reativar": "Devolve o acesso a uma conta suspensa."
+    }
+  },
+
+  "/admin/metricas": {
+    title: "Métricas da Plataforma",
+    overview: "Indicadores de contas e adoção do produto. Visível apenas para administradores.",
+    features: [
+      "Totais de contas ativas, suspensas e administradoras.",
+      "Percentual de contas com e-mail confirmado.",
+      "Contas criadas e contas que acessaram nos últimos 7 e 30 dias.",
+      "Curva de cadastros por dia, com os mesmos dados disponíveis em tabela."
+    ],
+    actions: {
+      "Período": "Alterna a janela do gráfico de cadastros entre 7, 30 e 90 dias."
+    }
   }
 };

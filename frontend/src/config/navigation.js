@@ -31,6 +31,10 @@ import {
   CheckSquare,
   DownloadCloud,
   Settings,
+  Users,
+  BarChart3,
+  CalendarClock,
+  TrendingUp,
 } from 'lucide-react';
 import { buildNavIndex } from '../lib/navigation';
 
@@ -41,6 +45,11 @@ import { buildNavIndex } from '../lib/navigation';
  * - `docTitle`: sobrescreve `name` no `document.title` (WCAG 2.4.2).
  * - `aliases`: caminhos extras que ativam o item (ex.: `/` → Dashboard).
  * - `exact`: escape hatch; por padrão é derivado em `buildNavIndex`.
+ * - `adminOnly`: o grupo só é renderizado para quem tem `is_staff`. Ele permanece
+ *   na tabela mesmo para os demais usuários porque `navIndex` também resolve o
+ *   `document.title` e o estado ativo; retirá-lo daqui deixaria essas rotas sem
+ *   título para o próprio administrador. Filtrar é responsabilidade de quem
+ *   renderiza — ver `filtrarGruposVisiveis`.
  */
 export const navGroups = [
   {
@@ -62,6 +71,8 @@ export const navGroups = [
       { name: 'Transações', path: '/transacoes', icon: List },
       { name: 'Simulador de Gastos', path: '/simulador', icon: ClockIcon },
       { name: 'Metas', path: '/metas', icon: Target },
+      { name: 'Horizonte de Saldos', path: '/horizonte-saldos', icon: TrendingUp },
+      { name: 'Calendário', path: '/calendario', icon: CalendarClock, docTitle: 'Calendário de Pagamentos' },
     ],
   },
   {
@@ -91,7 +102,30 @@ export const navGroups = [
       { name: 'Pagamentos', path: '/pagamentos', icon: Settings, docTitle: 'Formas de Pagamento' },
     ],
   },
+  {
+    id: 'administracao',
+    label: 'Administração',
+    adminOnly: true,
+    items: [
+      { name: 'Contas de Usuário', path: '/admin/usuarios', icon: Users },
+      { name: 'Métricas', path: '/admin/metricas', icon: BarChart3, docTitle: 'Métricas da Plataforma' },
+    ],
+  },
 ];
 
 /** Índice pré-computado (singleton de módulo) consumido por `findActiveNav`. */
 export const navIndex = buildNavIndex(navGroups);
+
+/**
+ * Filtra os grupos de navegação conforme o papel de quem está navegando.
+ *
+ * Esconder o grupo é conveniência de interface, não controle de acesso: as rotas
+ * são guardadas por `AdminRoute` no cliente e pela permission class
+ * `IsAdminPlataforma` no servidor.
+ *
+ * @param {boolean} isAdmin - Se quem navega tem papel administrativo.
+ * @returns {Array} Grupos que devem ser renderizados.
+ */
+export function filtrarGruposVisiveis(isAdmin) {
+  return isAdmin ? navGroups : navGroups.filter((grupo) => !grupo.adminOnly);
+}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,17 @@ const schema = z.object({
   categoria: z.string().min(1, 'Informe a categoria'),
   valor: z.coerce.number().positive('Valor deve ser positivo'),
   data_vencimento: z.string().min(1, 'Data de vencimento obrigatória'),
+  // Vazio significa despesa avulsa; preenchido cria uma regra de despesa fixa.
+  recorrencia: z.string().optional(),
+  data_fim: z.string().optional(),
 });
+
+const FREQUENCIAS = [
+  { valor: 'mensal', rotulo: 'Todo mês' },
+  { valor: 'quinzenal', rotulo: 'A cada 15 dias' },
+  { valor: 'semanal', rotulo: 'Toda semana' },
+  { valor: 'anual', rotulo: 'Uma vez por ano' },
+];
 
 export default function ContaPagarForm() {
   const { id } = useParams();
@@ -27,6 +37,10 @@ export default function ContaPagarForm() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
   });
+
+  // Despesa fixa só pode ser definida na criação: editar uma ocorrência já gerada
+  // altera aquele lançamento, não a regra que o produziu.
+  const [ehFixa, setEhFixa] = useState(false);
 
   // Query to fetch single record when in edit mode
   const { data: conta, isLoading: isFetching } = useQuery({
@@ -72,10 +86,24 @@ export default function ContaPagarForm() {
 
   const onSubmit = (values) => {
     if (isEdit) {
-      updateMutation.mutate({ id, ...values });
-    } else {
-      createMutation.mutate(values);
+      // `recorrencia` e `data_fim` não participam da edição de uma ocorrência:
+      // editar um lançamento gerado altera aquele registro, não a regra.
+      const campos = { ...values };
+      delete campos.recorrencia;
+      delete campos.data_fim;
+      updateMutation.mutate({ id, ...campos });
+      return;
     }
+
+    const dados = { ...values };
+    if (!ehFixa) {
+      delete dados.recorrencia;
+      delete dados.data_fim;
+    } else if (!dados.data_fim) {
+      // String vazia viraria uma data inválida no servidor.
+      delete dados.data_fim;
+    }
+    createMutation.mutate(dados);
   };
 
   if (isEdit && isFetching) {
@@ -193,6 +221,69 @@ export default function ContaPagarForm() {
                   <p id="conta-vencimento-error" role="alert" className="text-xs text-red-500">{errors.data_vencimento.message}</p>
                 )}
               </div>
+
+              {/* Despesa fixa. Só aparece na criação: editar uma ocorrência
+                  altera aquele lançamento, não a regra que o gerou. É o que
+                  permite ao Horizonte de Saldos projetar aluguel, assinaturas e
+                  contas de consumo pelos doze meses da janela — sem isto, a
+                  projeção enxergaria só as despesas lançadas mês a mês e a curva
+                  subiria de forma irreal. */}
+              {!isEdit && !isFaturaCartao && (
+                <div className="sm:col-span-2 space-y-3 rounded-xl border border-border/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      id="conta-eh-fixa"
+                      type="checkbox"
+                      checked={ehFixa}
+                      onChange={(e) => setEhFixa(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                      aria-describedby="ajuda-conta-eh-fixa"
+                    />
+                    <div>
+                      <label htmlFor="conta-eh-fixa" className="text-sm font-medium text-foreground">
+                        É uma despesa fixa
+                      </label>
+                      <p id="ajuda-conta-eh-fixa" className="text-xs text-muted-foreground">
+                        Repete automaticamente e entra na projeção do Horizonte de Saldos.
+                      </p>
+                    </div>
+                  </div>
+
+                  {ehFixa && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="conta-recorrencia" className="text-sm font-medium text-foreground">
+                          Com que frequência?
+                        </label>
+                        <select
+                          id="conta-recorrencia"
+                          {...register('recorrencia')}
+                          className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                        >
+                          {FREQUENCIAS.map((f) => (
+                            <option key={f.valor} value={f.valor}>{f.rotulo}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label htmlFor="conta-data-fim" className="text-sm font-medium text-foreground">
+                          Até quando?
+                        </label>
+                        <Input
+                          id="conta-data-fim"
+                          {...register('data_fim')}
+                          type="date"
+                          aria-describedby="ajuda-conta-data-fim"
+                        />
+                        <p id="ajuda-conta-data-fim" className="text-xs text-muted-foreground">
+                          Deixe em branco se não tem data para acabar.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {(createMutation.isError || updateMutation.isError) && (

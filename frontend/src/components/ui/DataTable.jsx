@@ -10,6 +10,8 @@
  */
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
+
+import { DateRangeCalendar } from "./DateRangeCalendar"
 import {
   ArrowUpDown, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
@@ -164,7 +166,9 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
     }
   }, [onClose])
 
-  const PANEL_WIDTH = 248
+  // O filtro de data abriga uma grade de sete colunas e precisa de mais espaço que
+  // os demais tipos, que são um ou dois campos em coluna.
+  const PANEL_WIDTH = type === "date" ? 300 : 248
   const style = {
     position: "fixed",
     top: anchorRect.bottom + 6,
@@ -191,27 +195,11 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
       </p>
 
       {type === "date" && (
-        <div className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            De
-            <input
-              type="date"
-              autoFocus
-              className={inputClass}
-              value={value?.from ?? ""}
-              onChange={(e) => onChange({ ...value, from: e.target.value })}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Até
-            <input
-              type="date"
-              className={inputClass}
-              value={value?.to ?? ""}
-              onChange={(e) => onChange({ ...value, to: e.target.value })}
-            />
-          </label>
-        </div>
+        <DateRangeCalendar
+          value={value}
+          onChange={onChange}
+          inputClass={inputClass}
+        />
       )}
 
       {type === "number" && (

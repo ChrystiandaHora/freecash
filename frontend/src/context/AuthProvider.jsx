@@ -26,8 +26,9 @@
  * // Uso do hook de autenticação em um componente filho:
  * const { user, login, logout, isAuthenticated } = useAuth();
  */
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';
+import { buscarPerfil } from '../services/auth';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -51,9 +52,32 @@ const decodeToken = (token) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  /**
+   * Carrega do servidor o estado mutável da conta (e-mail confirmado, papel).
+   *
+   * Esse estado NÃO pode sair do JWT. Com `ROTATE_REFRESH_TOKENS` ativo, o
+   * SimpleJWT reaproveita o payload do refresh na rotação e troca apenas `jti` e
+   * `exp`: uma claim de estado ficaria congelada por até sete dias, e um
+   * administrador rebaixado seguiria com o papel antigo por uma semana.
+   *
+   * A falha é tolerada de propósito: perder o perfil não deve deslogar quem já
+   * tem sessão válida — apenas esconde o aviso de confirmação de e-mail.
+   */
+  const recarregarPerfil = useCallback(async () => {
+    try {
+      const dados = await buscarPerfil();
+      setPerfil(dados);
+      return dados;
+    } catch {
+      setPerfil(null);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -64,32 +88,41 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(access);
         const decoded = decodeToken(access);
         setUser(decoded);
+        await recarregarPerfil();
       } catch {
         setAccessToken(null);
         setUser(null);
+        setPerfil(null);
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
-  }, [API_URL]);
+  }, [API_URL, recarregarPerfil]);
 
-  const login = async (username, password) => {
-    const response = await api.post('/api/token/', { username, password });
+  /**
+   * Autentica o usuário. O identificador pode ser o e-mail ou o nome de usuário:
+   * o backend `EmailOuUsernameBackend` resolve os dois, o que mantém as contas
+   * criadas antes da adoção do e-mail — inclusive o superusuário — funcionando.
+   */
+  const login = async (identificador, password) => {
+    const response = await api.post('/api/token/', { username: identificador, password });
     const { access } = response.data;
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    await recarregarPerfil();
     return decoded;
   };
 
-  const register = async (username, password, confirm) => {
-    const response = await api.post('/api/register/', { username, password, confirm });
+  const register = async (username, email, password, confirm) => {
+    const response = await api.post('/api/register/', { username, email, password, confirm });
     const { access } = response.data;
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    await recarregarPerfil();
     return decoded;
   };
 
@@ -101,11 +134,23 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setAccessToken(null);
       setUser(null);
+      setPerfil(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        perfil,
+        loading,
+        login,
+        register,
+        logout,
+        recarregarPerfil,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -19,7 +19,8 @@
 import { useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Wallet, X } from 'lucide-react';
-import { navGroups, navIndex } from '../../config/navigation';
+import { filtrarGruposVisiveis, navIndex } from '../../config/navigation';
+import { useAuth } from '../../context/AuthProvider';
 import { findActiveNav } from '../../lib/navigation';
 import {
   DESKTOP_NAV_QUERY,
@@ -43,6 +44,15 @@ export default function TopNav({ mainRef }) {
   const { pathname } = useLocation();
   const isDesktop = useMediaQuery(DESKTOP_NAV_QUERY);
   const canHover = useMediaQuery(FINE_HOVER_QUERY);
+  const { perfil } = useAuth();
+
+  // O grupo Administração só existe na navegação de quem tem papel administrativo.
+  // Esconder é conveniência: as rotas são guardadas por `AdminRoute` no cliente e
+  // por `IsAdminPlataforma` no servidor.
+  const gruposVisiveis = useMemo(
+    () => filtrarGruposVisiveis(Boolean(perfil?.is_staff)),
+    [perfil?.is_staff]
+  );
 
   // Resolve UMA vez por rota, em vez de 18 comparações por render.
   const active = useMemo(() => findActiveNav(pathname, navIndex), [pathname]);
@@ -92,7 +102,7 @@ export default function TopNav({ mainRef }) {
    * Sem wrapping nas pontas — wrapping é afordância de menu, não de disclosure.
    */
   const onTriggerKeyDown = (groupId, index) => (event) => {
-    const ids = navGroups.map((g) => g.id);
+    const ids = gruposVisiveis.map((g) => g.id);
 
     const focusTrigger = (i) => {
       const target = triggerRefs.current[ids[i]];
@@ -206,7 +216,7 @@ export default function TopNav({ mainRef }) {
                   segundo saía como "Navegação principal, navegação". */}
               <nav aria-label="Principal" className="hidden h-full lg:block">
                 <ul className="flex h-full items-stretch gap-1">
-                  {navGroups.map((group, index) => {
+                  {gruposVisiveis.map((group, index) => {
                     const triggerId = `navtrig-${group.id}`;
                     const panelId = `navpanel-${group.id}`;
                     const isOpen = menu.openId === group.id;
@@ -284,7 +294,7 @@ export default function TopNav({ mainRef }) {
       <MobileNavPanel
         isOpen={menu.isMobileOpen}
         isDesktop={isDesktop}
-        groups={navGroups}
+        groups={gruposVisiveis}
         openSectionId={menu.openSectionId}
         onToggleSection={menu.toggleSection}
         activePath={activePath}
