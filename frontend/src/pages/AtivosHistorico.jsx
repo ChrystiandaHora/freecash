@@ -4,9 +4,6 @@
  * Exibe o extrato consolidado e cronológico de todas as operações executadas
  * (compras, vendas e recebimentos de dividendos) com suporte a filtros rápidos
  * por tipo de operação e buscas por ticker/nome de ativos.
- *
- * @component
- * @returns {React.JSX.Element}
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

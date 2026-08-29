@@ -26,10 +26,6 @@ def _max_age_refresh() -> int:
 def set_refresh_cookie(response, refresh_token: str):
     """Grava o refresh token em cookie HttpOnly na resposta informada.
 
-    Args:
-        response (Response): Resposta que receberá o cookie.
-        refresh_token (str): Refresh token JWT serializado.
-
     Returns:
         Response: A mesma resposta, para permitir encadeamento.
     """
@@ -50,9 +46,6 @@ def clear_refresh_cookie(response):
 
     O `path` e o `samesite` precisam coincidir com os usados na gravação, senão o
     navegador ignora a instrução de remoção e o cookie permanece.
-
-    Args:
-        response (Response): Resposta que receberá a instrução de remoção.
 
     Returns:
         Response: A mesma resposta, para permitir encadeamento.

@@ -13,16 +13,14 @@ from core.services.email_service import normalizar_email
 User = get_user_model()
 
 
-def criar_usuario_com_ecosistema(username, senha, email=""):
+def criar_usuario_com_ecosistema(username: str, senha: str, email: str = ""):
     """Cria uma nova conta de usuário, inicializando suas configurações e categorias padrão.
 
     Garante integridade referencial ao criar de forma atômica o perfil, o
     registro de ConfigUsuario e as categorias financeiras essenciais do sistema.
 
     Args:
-        username (str): Nome de usuário único para autenticação.
-        senha (str): Senha do usuário em texto plano.
-        email (str): Endereço de e-mail da conta. O padrão vazio existe para as
+        email: Endereço de e-mail da conta. O padrão vazio existe para as
             contas criadas por linha de comando (como o superusuário), que não
             passam pelo fluxo de registro; o índice único de e-mail é parcial e
             tolera múltiplos registros sem endereço.

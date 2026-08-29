@@ -1,21 +1,11 @@
 """Testes das métricas de plataforma do painel administrativo.
 
-`coletar_metricas` só era exercitado através do endpoint, que verifica o formato
-da resposta e a autorização. O que faltava era conferir os números em si — e são
-eles que sustentam qualquer decisão tomada a partir do painel.
-
-Três pontos concentram o risco:
-
-**A série de cadastros precisa incluir os dias sem cadastro.** Uma série com
-lacunas produz um gráfico onde a linha liga dois pontos distantes como se o
-período entre eles tivesse tido crescimento contínuo.
-
-**O percentual de verificação não pode dividir por zero.** Base vazia é o estado
-de toda instalação nova, exatamente quando o painel é aberto pela primeira vez.
-
-**Nenhum valor financeiro pode aparecer.** O painel mostra contagem de conta,
-nunca soma de dinheiro. Esse limite é uma decisão de privacidade do produto, e um
-teste é o que impede que um campo novo o atravesse por descuido.
+O endpoint já verifica formato e autorização; o que faltava era conferir os números
+que sustentam as decisões tomadas a partir do painel. Três pontos concentram o
+risco: a série de cadastros precisa incluir os dias sem cadastro (senão o gráfico
+liga dois pontos distantes como se houvesse crescimento contínuo), o percentual não
+pode dividir por zero (base vazia é o estado de toda instalação nova) e nenhum
+valor financeiro pode aparecer.
 """
 
 from datetime import timedelta
@@ -33,12 +23,8 @@ User = get_user_model()
 class ColetarMetricasTests(TestCase):
     """Verifica os indicadores agregados da plataforma."""
 
-    def _criar(self, username, **campos):
+    def _criar(self, username: str, **campos):
         """Cria um usuário com config associada.
-
-        Args:
-            username (str): Nome de usuário.
-            **campos: Demais campos aceitos por `create_user`.
 
         Returns:
             User: A conta criada.

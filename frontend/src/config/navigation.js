@@ -9,8 +9,6 @@
  * O campo `icon` é mantido mesmo o mega-menu desktop sendo puramente
  * tipográfico: o acordeão mobile pode usá-lo, e removê-lo obrigaria a
  * re-derivar o mapa ícone↔rota depois.
- *
- * @module config/navigation
  */
 import {
   LayoutDashboard,

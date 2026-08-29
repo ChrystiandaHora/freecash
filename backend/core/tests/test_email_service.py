@@ -1,16 +1,9 @@
 """Testes do serviço de envio de e-mails transacionais.
 
-Duas garantias justificam estes testes, e as duas são invisíveis olhando só a
-assinatura das funções:
-
-**O e-mail nunca sai antes do commit.** O envio é agendado com
-`transaction.on_commit`. Sem isso, um erro posterior dentro do `atomic` desfaria a
-criação da conta e o usuário receberia, ainda assim, um e-mail confirmando uma
-conta inexistente, com um link que jamais funcionaria.
-
-**A falha de envio não derruba a requisição.** Se o servidor de e-mail estiver
-fora do ar, o cadastro precisa ser concluído: a conta existe, e todo fluxo oferece
-"reenviar" como recuperação.
+Duas garantias invisíveis na assinatura das funções: o e-mail nunca sai antes do
+commit, senão um erro posterior no `atomic` desfaria a criação da conta e o usuário
+receberia confirmação de conta inexistente; e a falha de envio não derruba a
+requisição — a conta existe, e todo fluxo oferece "reenviar".
 """
 
 from unittest import mock

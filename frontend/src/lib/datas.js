@@ -8,8 +8,6 @@
  * tela sem deixar rastro — o intervalo simplesmente exclui o primeiro ou o último
  * dia. Por isso as datas aqui são montadas e lidas por partes explícitas, e o parse
  * segue a convenção que o projeto já usa: sufixo `T00:00:00`.
- *
- * @module lib/datas
  */
 
 /** Nomes de mês em português, para o cabeçalho do calendário. */

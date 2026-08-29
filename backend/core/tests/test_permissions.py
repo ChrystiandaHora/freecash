@@ -1,17 +1,10 @@
 """Testes unitários das classes de permissão.
 
-`test_permissao_email_verificado.py` cobre o efeito destas classes através dos
-endpoints. Aqui elas são exercitadas diretamente, porque duas regras de fronteira
-são difíceis de provocar por HTTP e são justamente onde um erro passa despercebido:
-
-**O último dia da carência ainda vale.** Um `<` no lugar de `<=` cortaria o acesso
-24 horas antes do prometido, e o teste de endpoint — feito com conta recém-criada
-— continuaria passando.
-
-**`IsAdminPlataforma` lê o banco, não a claim do JWT.** Com `ROTATE_REFRESH_TOKENS`,
-o SimpleJWT preserva o payload original na rotação; um administrador rebaixado
-seguiria administrador por até sete dias se a decisão viesse do token. Verificar a
-classe diretamente, com o objeto de usuário, deixa essa dependência explícita.
+`test_permissao_email_verificado.py` cobre o efeito via endpoints; aqui as classes
+são exercitadas direto, porque duas fronteiras são difíceis de provocar por HTTP: o
+último dia da carência ainda vale (um `<` no lugar de `<=` cortaria o acesso um dia
+antes do prometido, e o teste de endpoint, feito com conta nova, continuaria
+passando) e `IsAdminPlataforma` lê o banco, não a claim do JWT.
 """
 
 from datetime import timedelta
@@ -43,9 +36,6 @@ class BasePermissaoTestCase(TestCase):
     def requisicao_de(self, usuario):
         """Monta uma requisição autenticada como o usuário informado.
 
-        Args:
-            usuario (User | AnonymousUser): Quem faz a requisição.
-
         Returns:
             HttpRequest: Requisição com `user` preenchido.
         """
@@ -66,12 +56,8 @@ class EmailVerificadoOuCarenciaTests(BasePermissaoTestCase):
         )
         self.config, _ = ConfigUsuario.objects.get_or_create(usuario=self.usuario)
 
-    def _envelhecer_conta(self, dias):
-        """Recua a data de cadastro do usuário.
-
-        Args:
-            dias (int): Quantos dias no passado colocar `date_joined`.
-        """
+    def _envelhecer_conta(self, dias: int):
+        """Recua a data de cadastro do usuário."""
         self.usuario.date_joined = timezone.now() - timedelta(days=dias)
         self.usuario.save(update_fields=["date_joined"])
 

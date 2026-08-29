@@ -17,11 +17,6 @@ class ClasseAtivo(AuditoriaModel):
     """Representa a classe macroeconômica do ativo (Renda Fixa, Renda Variável, etc.).
 
     Nível 1 da hierarquia de segmentação de ativos.
-
-    Atributos:
-        usuario (User): Proprietário da classe de ativos.
-        nome (str): Nome descritivo (ex: Renda Fixa).
-        ativa (bool): Estado da classe.
     """
 
     usuario = models.ForeignKey(
@@ -48,15 +43,9 @@ class ClasseAtivo(AuditoriaModel):
 
 
 class CategoriaAtivo(AuditoriaModel):
-    """Representa a categoria intermediária de segmentação do ativo (ex: Ações, Tesouro Direto).
+    """Categoria intermediária do ativo (ex.: Ações, Tesouro Direto).
 
     Nível 2 da hierarquia.
-
-    Atributos:
-        usuario (User): Proprietário da categoria de ativos.
-        classe (ClasseAtivo): A macro classe à qual pertence.
-        nome (str): Nome descritivo da categoria.
-        ativa (bool): Flag de ativação.
     """
 
     usuario = models.ForeignKey(
@@ -91,12 +80,6 @@ class SubcategoriaAtivo(AuditoriaModel):
     """Representa a subcategoria folha do ativo (ex: Soberano, Tijolo, Papel).
 
     Nível 3 da árvore hierárquica.
-
-    Atributos:
-        usuario (User): Proprietário da subcategoria.
-        categoria (CategoriaAtivo): Categoria intermediária vinculada.
-        nome (str): Nome descritivo da subcategoria.
-        ativa (bool): Flag de ativação.
     """
 
     usuario = models.ForeignKey(
@@ -135,15 +118,7 @@ class Ativo(AuditoriaModel):
     Renda Fixa (emissor, indexador, taxa, vencimento) ficam em `DetalheRendaFixa`.
 
     Atributos:
-        usuario (User): Proprietário do ativo custodiado.
-        ticker (str): Código de negociação do ativo na bolsa (ex: PETR4).
-        nome (str): Nome completo ou razão social da empresa emissora.
-        subcategoria (SubcategoriaAtivo): Vínculo com a folha da segmentação de ativos.
-        moeda (str): Código monetário oficial (ex: BRL).
-        ativo (bool): Flag de custódia ativa.
-        meta_porcentagem (Decimal): Meta percentual de alocação no portfólio.
-        quantidade (Decimal): Quantidade em custódia do investidor.
-        preco_medio (Decimal): Preço médio de aquisição por cota/título.
+        preco_medio: Preço médio de aquisição por cota/título.
     """
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -317,13 +292,7 @@ class DetalheRendaFixa(AuditoriaModel):
 
 
 class Cotacao(AuditoriaModel):
-    """Snapshot histórico de cotação diária de um ativo B3 a mercado.
-
-    Atributos:
-        ativo (Ativo): O ativo custodiado correspondente.
-        data (date): Data de competência da cotação.
-        valor (Decimal): Valor unitário de mercado do ativo na data.
-    """
+    """Snapshot histórico de cotação diária de um ativo B3 a mercado."""
     ativo = models.ForeignKey(
         Ativo,
         on_delete=models.CASCADE,
@@ -349,14 +318,10 @@ class Transacao(AuditoriaModel):
     """Representa uma ordem executada de Compra, Venda ou recebimento de Provento.
 
     Atributos:
-        usuario (User): O investidor proprietário da ordem.
-        ativo (Ativo): Ativo financeiro negociado.
-        tipo (str): Tipo da operação ('C' para Compra, 'V' para Venda, 'D' para Proventos/Dividendos).
-        data (date): Data física de execução da ordem.
-        quantidade (Decimal): Quantidade transacionada na data.
-        preco_unitario (Decimal): Preço pago ou recebido por cota/título.
-        taxas (Decimal): Custos de corretagem e taxas de liquidação da B3.
-        valor_total (Decimal): Valor final líquido consolidado da transação.
+        usuario: O investidor proprietário da ordem.
+        tipo: Tipo da operação ('C' para Compra, 'V' para Venda, 'D' para Proventos/Dividendos).
+        data: Data física de execução da ordem.
+        preco_unitario: Preço pago ou recebido por cota/título.
     """
     TIPO_COMPRA = "C"
     TIPO_VENDA = "V"
@@ -413,14 +378,7 @@ class CarteiraHistorico(AuditoriaModel):
     alimentando de forma instantânea gráficos e séries evolutivas anuais do frontend.
 
     Atributos:
-        usuario (User): Investidor proprietário do snapshot.
-        data (date): Data de apuração do snapshot.
-        patrimonio (Decimal): Valor total consolidado a mercado na data.
-        total_compras (Decimal): Volume de ordens de compra acumulado.
-        total_vendas (Decimal): Volume de ordens de venda acumulado.
-        total_dividendos (Decimal): Proventos acumulados recebidos na data.
-        rentabilidade (Decimal): Lucro/Prejuízo total consolidado na data.
-        rentabilidade_percentual (Decimal): Percentual de rentabilidade acumulado da carteira.
+        rentabilidade: Lucro/Prejuízo total consolidado na data.
     """
 
     usuario = models.ForeignKey(

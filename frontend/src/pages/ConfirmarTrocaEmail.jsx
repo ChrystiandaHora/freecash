@@ -5,10 +5,6 @@
  * sessão — por isso esta rota fica fora de `PublicRoute` e de `ProtectedRoute`,
  * como a de verificação de conta. A autorização vem do token, que só pôde ser
  * gerado por quem já provou a senha atual.
- *
- * @module ConfirmarTrocaEmail
- * @component
- * @returns {React.JSX.Element}
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

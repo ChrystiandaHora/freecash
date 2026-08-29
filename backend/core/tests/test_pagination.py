@@ -1,18 +1,11 @@
 """Testes da paginação padrão da API.
 
-`PadraoPageNumberPagination` é a `DEFAULT_PAGINATION_CLASS` do projeto, e carrega
-uma decisão incomum: pagina **apenas** quando o cliente pede, com o parâmetro
-`page`. Sem ele, a listagem continua sendo um array puro.
-
-Esse comportamento é o que permite que ~20 pontos de consumo do frontend sigam
-funcionando sem alteração. Se alguém "corrigir" a classe para paginar sempre,
-todas as telas não migradas passariam a mostrar os primeiros 100 lançamentos como
-se fossem o total — um erro de leitura financeira sem nenhum sinal visível. Este
-arquivo existe para que essa mudança quebre um teste em vez de quebrar um número
-na tela de alguém.
-
-O teto de `max_page_size` fecha a outra ponta: sem ele, `page_size` seria a brecha
-para pedir a base inteira de volta.
+`PadraoPageNumberPagination` pagina **apenas** quando o cliente pede `page`; sem
+ele, a listagem continua sendo um array puro. É o que permite que ~20 pontos de
+consumo do frontend sigam funcionando sem alteração. Se alguém "corrigir" a classe
+para paginar sempre, as telas não migradas mostrariam os primeiros 100 lançamentos
+como se fossem o total. Este arquivo existe para que isso quebre um teste em vez de
+um número na tela. O teto de `max_page_size` fecha a outra ponta.
 """
 
 from django.contrib.auth import get_user_model
@@ -45,11 +38,11 @@ class PadraoPageNumberPaginationTests(TestCase):
         self.factory = APIRequestFactory()
         self.queryset = User.objects.order_by("pk")
 
-    def _requisicao(self, query=""):
+    def _requisicao(self, query: str = ""):
         """Monta uma Request do DRF com a query string informada.
 
         Args:
-            query (str): Query string sem o '?' inicial.
+            query: Query string sem o '?' inicial.
 
         Returns:
             Request: Requisição pronta para `paginate_queryset`.

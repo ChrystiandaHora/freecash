@@ -1,25 +1,13 @@
 /**
  * Componente Raiz da Aplicação FreeCash (App Router).
  *
- * Configura a estrutura global da SPA: provedor de estado de autenticação
- * (`AuthProvider`), sistema de notificações (`ToastProvider`), cliente de
- * cache de dados remotos (`QueryClientProvider` / TanStack Query) e o roteador
- * declarativo (`BrowserRouter`).
+ * Monta os provedores globais — autenticação, toasts e cache do TanStack Query — e o
+ * roteador. `PublicRoute` manda o autenticado para `/dashboard`, `ProtectedRoute` manda
+ * o anônimo para `/login`, e `AdminRoute` exige `perfil.is_staff` lido da API.
  *
- * Padrão de Rotas:
- * - `PublicRoute`   → redireciona usuários autenticados para `/dashboard`.
- * - `ProtectedRoute` → redireciona usuários não-autenticados para `/login`.
+ * As páginas autenticadas ficam sob o layout mestre `DashboardLayout`, em rotas filhas.
  *
- * Todas as páginas autenticadas são renderizadas sob o layout mestre
- * `DashboardLayout` via rotas filhas (nested routes).
- *
- * @module App
- * @component
  * @returns {JSX.Element} Árvore de provedores e roteador da aplicação.
- *
- * @example
- * // Ponto de entrada (main.jsx)
- * createRoot(document.getElementById('root')).render(<App />);
  */
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

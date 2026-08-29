@@ -17,10 +17,6 @@ class Command(BaseCommand):
         """Gatilha a consulta e atualização em lote de cotações no TradingView Screener.
 
         Registra as cotações criadas com sucesso ou imprime erros ocorridos no canal stdout.
-
-        Args:
-            *args: Argumentos posicionais.
-            **options: Opções do terminal.
         """
         self.stdout.write("Iniciando atualização de cotações...")
         # Sem `usuario`: aqui a varredura global é intencional e legítima, porque o

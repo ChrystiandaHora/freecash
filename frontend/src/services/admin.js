@@ -3,8 +3,6 @@
  *
  * Todos estes endpoints exigem `is_staff` no servidor. O gate no frontend é
  * conveniência de navegação — quem tentar chamar diretamente recebe 403.
- *
- * @module services/admin
  */
 import api from './api';
 

@@ -5,8 +5,6 @@
  * cabe numa célula de grade com doze colunas, e a completa, exibida no detalhe do
  * dia. Concentrar as duas aqui evita que a grade e o detalhe arredondem de formas
  * diferentes e pareçam discordar entre si.
- *
- * @module lib/moeda
  */
 
 const COMPLETO = new Intl.NumberFormat('pt-BR', {

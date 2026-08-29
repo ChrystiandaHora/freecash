@@ -10,8 +10,6 @@
  *
  * A trava de scroll do corpo (em `useNavMenu`) é medida de reflow (SC 1.4.10),
  * não alegação de modalidade.
- *
- * @module components/nav/MobileNavPanel
  */
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -28,7 +26,6 @@ import { NavLinkList } from './NavLinkList';
  * @param {string | null} props.activeGroupId - Grupo da rota atual.
  * @param {(path: string) => void} props.onNavigate - Chamado ao clicar num link.
  * @param {React.ReactNode} props.footer - Bloco de usuário/logout no rodapé.
- * @returns {React.JSX.Element}
  */
 export function MobileNavPanel({
   isOpen,

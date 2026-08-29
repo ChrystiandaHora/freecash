@@ -9,7 +9,6 @@
  * Fica só nas telas autenticadas: o Login não tem rodapé, porque links para
  * rotas protegidas ali só levariam a um redirect.
  *
- * @component
  * @returns {React.JSX.Element} O rodapé com o mapa do site e o aviso de copyright.
  */
 import { useLocation } from 'react-router-dom';

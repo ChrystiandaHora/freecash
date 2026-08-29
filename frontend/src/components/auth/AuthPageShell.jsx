@@ -1,22 +1,18 @@
 /**
  * Moldura compartilhada das telas públicas de identidade.
  *
- * Confirmação de e-mail, "esqueci minha senha" e redefinição de senha são telas
- * curtas, de passagem, que precisam parecer parte do mesmo produto que a tela de
- * login sem replicar o painel de marca dela. Concentrar a moldura aqui evita que
- * as três divirjam em espaçamento, tipografia ou posição do controle de tema.
+ * Confirmação de e-mail, "esqueci minha senha" e redefinição são telas curtas, de
+ * passagem, que precisam parecer o mesmo produto da tela de login sem replicar o painel
+ * de marca dela. Concentrar a moldura evita que as três divirjam em espaçamento,
+ * tipografia ou posição do controle de tema.
  *
- * O `<h1>` vive nesta moldura, dentro do `<main>`: cada uma dessas rotas é uma
- * página inteira, e não um fragmento, então precisa do seu próprio título de
- * primeiro nível.
+ * O `<h1>` vive aqui, dentro do `<main>`: cada rota é uma página inteira, não um
+ * fragmento, então precisa do próprio título de primeiro nível.
  *
- * @component
- * @param {Object} props - Propriedades do componente.
  * @param {string} props.titulo - Título da página, renderizado como `<h1>`.
  * @param {string} [props.descricao] - Linha de apoio abaixo do título.
  * @param {React.ReactNode} props.children - Conteúdo do cartão.
  * @param {React.ReactNode} [props.rodape] - Ações secundárias abaixo do conteúdo.
- * @returns {React.JSX.Element} Moldura renderizada.
  */
 import { Wallet } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader } from '../ui/Card';

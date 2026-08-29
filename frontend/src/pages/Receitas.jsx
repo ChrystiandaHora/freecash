@@ -5,7 +5,6 @@
  * receitas ou fluxos recorrentes de caixa. Renderiza cartões informativos contendo o
  * previsto do mês atual e o consolidado realizado/restante de todo o histórico.
  *
- * @component
  * @returns {React.JSX.Element} Dashboard analítico e listagem de receitas.
  */
 import { useState, useMemo } from 'react';

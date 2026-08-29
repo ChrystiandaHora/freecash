@@ -4,12 +4,7 @@
  * Exibe pequenos status, categorias ou tags estilizados com cores harmônicas
  * translúcidas e bordas sutis.
  *
- * @component
- * @param {Object} props - Propriedades do componente.
- * @param {string} [props.className] - Estilos CSS extras do Tailwind.
  * @param {"default" | "destructive" | "warning" | "success" | "secondary" | "outline"} [props.variant="default"] - Estilo temático do status exibido.
- * @param {React.HTMLAttributes<HTMLSpanElement>} props - Demais atributos de elemento HTML `<span>`.
- * @param {React.Ref<HTMLSpanElement>} ref - Referência DOM encaminhada.
  * @returns {React.JSX.Element} Elemento JSX do Badge renderizado.
  */
 import * as React from "react"

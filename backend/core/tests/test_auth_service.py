@@ -1,21 +1,10 @@
 """Testes da revogação de sessões.
 
-`revogar_tokens_do_usuario` é o ponto único usado pela redefinição de senha, pela
-suspensão administrativa e pelo encerramento de todas as sessões. Os fluxos que o
-chamam têm testes; a função em si não tinha — e é ela que decide se um refresh
-token roubado continua valendo por até sete dias.
-
-O que precisa ser verdade:
-
-**Revogar de fato invalida.** Não basta contar: o token precisa deixar de servir
-para obter um novo access token.
-
-**A revogação é por usuário.** Um encerramento de sessões não pode alcançar a
-conta de outra pessoa.
-
-**Chamar duas vezes não inventa revogações.** O retorno alimenta o log e a
-resposta da API; contar de novo o que já estava na blacklist daria a impressão
-de que havia sessões abertas que não existiam.
+`revogar_tokens_do_usuario` é usado pela redefinição de senha, pela suspensão
+administrativa e pelo encerramento de todas as sessões — e é ele que decide se um
+refresh token roubado continua valendo por sete dias. Verifica que revogar de fato
+invalida (não só conta), que só alcança o usuário informado, e que chamar duas
+vezes não inventa revogações — o retorno alimenta log e resposta da API.
 """
 
 from django.contrib.auth import get_user_model

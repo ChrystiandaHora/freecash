@@ -1,29 +1,17 @@
 /**
  * Sistema de Notificações em Toast (ToastContext).
  *
- * Provedor de contexto que implementa um sistema de notificações temporárias
- * (toasts) posicionadas no canto inferior direito da tela. Cada notificação
- * é exibida por um tempo configurável e removida automaticamente após sua
- * expiração.
+ * Provedor das notificações temporárias no canto inferior direito, cada uma removida
+ * automaticamente após o tempo configurado. Tipos: `success`, `error`, `warning` e
+ * `info` (padrão), cada um com cor e ícone próprios.
  *
- * Tipos de Toast suportados:
- * - `'success'` → Verde esmeralda com ícone de confirmação.
- * - `'error'`   → Vermelho destrutivo com ícone de alerta.
- * - `'warning'` → Âmbar com ícone de aviso triangular.
- * - `'info'`    → Cor primária com ícone informativo (padrão).
+ * Contexto exportado: `{ addToast, removeToast }`.
  *
- * Contexto Exportado: `{ addToast, removeToast }`
- *
- * @module ToastContext
- * @component
- *
- * @param {object}         props          - Props do componente.
- * @param {React.ReactNode} props.children - Árvore de componentes filhos que
- *                                          terão acesso ao contexto de toast.
+ * @param {object} props - Props do componente.
+ * @param {React.ReactNode} props.children - Árvore que terá acesso ao contexto.
  * @returns {JSX.Element} Provider com o container de toasts renderizado.
  *
  * @example
- * // Disparar um toast de sucesso em qualquer componente filho:
  * const { addToast } = useToast();
  * addToast('Operação realizada com sucesso!', 'success');
  */

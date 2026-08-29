@@ -73,11 +73,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
         return Categoria.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        """Salva a nova categoria atribuindo o usuário autenticado da requisição.
-
-        Args:
-            serializer (Serializer): Instância do serializador da categoria.
-        """
+        """Salva a nova categoria atribuindo o usuário autenticado da requisição."""
         serializer.save(usuario=self.request.user)
 
 
@@ -98,11 +94,7 @@ class CartaoCreditoViewSet(viewsets.ModelViewSet):
         return CartaoCredito.objects.filter(usuario=self.request.user, ativo=True)
 
     def perform_create(self, serializer):
-        """Associa o usuário autenticado como proprietário ao criar o cartão.
-
-        Args:
-            serializer (Serializer): Instância do serializador do cartão.
-        """
+        """Associa o usuário autenticado como proprietário ao criar o cartão."""
         serializer.save(usuario=self.request.user)
 
 
@@ -146,11 +138,7 @@ class ContaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        """Salva a nova conta associando-a ao usuário autenticado.
-
-        Args:
-            serializer (Serializer): Serializador da conta contendo dados validados.
-        """
+        """Salva a nova conta associando-a ao usuário autenticado."""
         serializer.save(usuario=self.request.user)
 
 
@@ -171,7 +159,7 @@ class SaldoAtualAPIView(APIView):
         da janela e hoje seriam contados duas vezes — uma no saldo, outra na curva.
 
         Args:
-            request (Request): Requisição HTTP autenticada, com `ate` (YYYY-MM-DD)
+            request: Requisição HTTP autenticada, com `ate` (YYYY-MM-DD)
                 opcional na query string. Datas inválidas caem em hoje.
 
         Returns:
@@ -202,9 +190,6 @@ class DashboardAPIView(APIView):
 
     def get(self, request):
         """Processa a requisição GET retornando o payload completo do dashboard financeiro.
-
-        Args:
-            request (Request): Requisição HTTP contendo parâmetros opcionais de mês/ano.
 
         Returns:
             Response: Dicionário contendo estatísticas, séries temporais e listas do dashboard.
@@ -322,9 +307,6 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs) -> Response:
         """Gera os tokens JWT e define o refresh token em um cookie HttpOnly seguro.
 
-        Args:
-            request (Request): Requisição contendo as credenciais (username, password).
-
         Returns:
             Response: Dicionário contendo o token de acesso (access token).
         """
@@ -353,9 +335,6 @@ class CookieTokenRefreshView(TokenRefreshView):
 
     def post(self, request, *args, **kwargs) -> Response:
         """Processa a renovação do token de acesso utilizando o refresh token do cookie.
-
-        Args:
-            request (Request): Requisição contendo cookies ou dados do refresh token.
 
         Returns:
             Response: Novo token de acesso gerado.
@@ -407,9 +386,6 @@ class CookieTokenClearView(APIView):
     def post(self, request) -> Response:
         """Revoga o refresh token e remove o cookie, encerrando a autenticação.
 
-        Args:
-            request (Request): Requisição de logout, contendo o cookie do refresh token.
-
         Returns:
             Response: Confirmação de logout. O logout é sempre reportado como
                 bem-sucedido: um token ausente, expirado ou já revogado significa
@@ -456,11 +432,7 @@ class CartaoCreditoAPIViewSet(viewsets.ModelViewSet):
         return CartaoCredito.objects.filter(usuario=self.request.user, ativo=True)
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar um novo cartão.
-
-        Args:
-            serializer (Serializer): Serializador do cartão.
-        """
+        """Salva a associação do usuário logado ao criar um novo cartão."""
         serializer.save(usuario=self.request.user)
 
 
@@ -502,19 +474,11 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-data_prevista')
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar a despesa.
-
-        Args:
-            serializer (Serializer): Serializador da conta.
-        """
+        """Salva a associação do usuário logado ao criar a despesa."""
         serializer.save(usuario=self.request.user)
 
     def perform_update(self, serializer):
-        """Garante a associação do usuário ao atualizar a despesa.
-
-        Args:
-            serializer (Serializer): Serializador da conta.
-        """
+        """Garante a associação do usuário ao atualizar a despesa."""
         serializer.save(usuario=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Response:
@@ -523,9 +487,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         Quando `recorrencia` vem preenchida, cria um `LancamentoRecorrente` de
         despesa e gera suas ocorrências, em vez de uma `Conta` avulsa — mesmo
         contrato já usado pelas receitas.
-
-        Args:
-            request (Request): Requisição contendo os dados da despesa.
 
         Returns:
             Response: A despesa criada serializada.
@@ -631,9 +592,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         não pode ser alterado manualmente — ele é sempre calculado automaticamente
         pelo sistema de signals.
 
-        Args:
-            request (Request): Dados da modificação.
-
         Returns:
             Response: Despesa atualizada serializada.
         """
@@ -682,9 +640,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         consolidação recriaria a fatura no próximo salvamento. Por isso a
         exclusão de uma fatura remove o período inteiro.
 
-        Args:
-            request (Request): Requisição HTTP.
-
         Returns:
             Response: 204 sem conteúdo em caso de sucesso.
         """
@@ -702,10 +657,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
     def pagar(self, request, pk=None) -> Response:
         """Liquida a despesa marcando-a como paga na data atual.
 
-        Args:
-            request (Request): Requisição HTTP.
-            pk (str, optional): ID da conta.
-
         Returns:
             Response: Despesa paga serializada.
         """
@@ -716,10 +667,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['put'], url_path='desfazer-pagamento')
     def desfazer_pagamento(self, request, pk=None) -> Response:
         """Reverte o status de pago da despesa, retornando-a a pendente.
-
-        Args:
-            request (Request): Requisição HTTP.
-            pk (str, optional): ID da conta.
 
         Returns:
             Response: Despesa revertida serializada.
@@ -733,7 +680,7 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         """Registra múltiplos lançamentos de despesa simultaneamente de forma atômica.
 
         Args:
-            request (Request): Requisição contendo 'itens' (lista de despesas) e 'todas_pagas'.
+            request: Requisição contendo 'itens' (lista de despesas) e 'todas_pagas'.
 
         Returns:
             Response: Confirmação do total de despesas criadas ou lista detalhada de erros.
@@ -893,19 +840,11 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-data_prevista')
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar a receita.
-
-        Args:
-            serializer (Serializer): Serializador da receita.
-        """
+        """Salva a associação do usuário logado ao criar a receita."""
         serializer.save(usuario=self.request.user)
 
     def perform_update(self, serializer):
-        """Salva o usuário autenticado na receita atualizada.
-
-        Args:
-            serializer (Serializer): Serializador de atualização.
-        """
+        """Salva o usuário autenticado na receita atualizada."""
         serializer.save(usuario=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Response:
@@ -913,9 +852,6 @@ class ReceitasViewSet(viewsets.ModelViewSet):
 
         Quando `tipo == 'recorrente'`, cria uma `LancamentoRecorrente` e gera suas
         ocorrências iniciais em vez de uma `Conta` avulsa.
-
-        Args:
-            request (Request): Dados da nova receita.
 
         Returns:
             Response: Receita criada serializada.
@@ -982,9 +918,6 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         Quando `tipo == 'recorrente'`, atualiza (ou cria) a `LancamentoRecorrente`
         vinculada e propaga os novos valores para ocorrências futuras não
         realizadas, sem afetar histórico já liquidado.
-
-        Args:
-            request (Request): Dados da modificação.
 
         Returns:
             Response: Receita atualizada serializada.
@@ -1112,9 +1045,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
     def _verificar_editavel(self, despesa: Conta) -> Response | None:
         """Verifica se a compra pode ser editada/excluída (fatura não paga).
 
-        Args:
-            despesa (Conta): A compra individual a ser verificada.
-
         Returns:
             Response | None: Resposta de erro 403 se não editável, None se permitido.
         """
@@ -1160,9 +1090,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Compras enviadas sem categoria nascem caracterizadas como gasto de cartão,
         para não aparecerem como "Sem categoria" nos painéis.
-
-        Args:
-            serializer (Serializer): Serializador validado.
         """
         extras = {
             'usuario': self.request.user,
@@ -1180,9 +1107,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Aceita `data_compra` e calcula automaticamente a `data_prevista` (vencimento)
         com base nas configurações do cartão selecionado. O signal sincroniza a fatura.
-
-        Args:
-            request (Request): Dados da nova compra.
 
         Returns:
             Response: Compra criada serializada.
@@ -1218,9 +1142,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         """Atualiza uma compra individual de cartão.
 
         Impede a edição se a fatura correspondente já estiver paga.
-
-        Args:
-            request (Request): Dados da atualização.
 
         Returns:
             Response: Compra atualizada serializada.
@@ -1265,9 +1186,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Impede a exclusão se a fatura correspondente já estiver paga.
         O signal `post_delete` atualiza automaticamente o valor da fatura.
-
-        Args:
-            request (Request): Requisição HTTP.
 
         Returns:
             Response: 204 No Content em caso de sucesso.
@@ -1340,7 +1258,7 @@ class TransacoesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RelatoriosDREAPIView(APIView):
-    """Endpoint responsável pela emissão simplificada do relatório de DRE (Demonstração do Resultado do Exercício).
+    """Emite o relatório de DRE (Demonstração do Resultado do Exercício).
 
     Emite agregados anuais consolidados contendo o somatório de receitas,
     despesas fixas e variáveis, rentabilidade e dividendos acumulados da carteira.
@@ -1349,9 +1267,6 @@ class RelatoriosDREAPIView(APIView):
 
     def get(self, request) -> Response:
         """Calcula e formata os dados anuais da DRE.
-
-        Args:
-            request (Request): Requisição HTTP contendo 'ano' na query string.
 
         Returns:
             Response: Payload JSON estruturado com DRE anual de receitas, despesas e investimentos.
@@ -1474,9 +1389,6 @@ class ExecutiveBIDashboardAPIView(APIView):
 
     def get(self, request) -> Response:
         """Calcula e formata a série mensal e indicadores de saúde patrimonial do usuário.
-
-        Args:
-            request (Request): Requisição HTTP.
 
         Returns:
             Response: Dicionário contendo labels de meses, séries de liquidez, custódia, DRE e KPIs.
@@ -1686,11 +1598,7 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        """Salva a nova meta atribuindo o usuário autenticado.
-
-        Args:
-            serializer (Serializer): Serializador da meta com dados validados.
-        """
+        """Salva a nova meta atribuindo o usuário autenticado."""
         serializer.save(usuario=self.request.user)
 
     @action(detail=False, methods=['post'], url_path='gerar-padrao')
@@ -1701,7 +1609,7 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         de modo que ajustar a renda não apaga o progresso registrado.
 
         Args:
-            request (Request): Requisição autenticada, sem corpo obrigatório.
+            request: Requisição autenticada, sem corpo obrigatório.
 
         Returns:
             Response: Lista das metas padrão atualizadas, ou 400 se o plano
@@ -1727,9 +1635,6 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         `{"patrimonio_renda": "150", "reserva_emergencia": "12"}`, e recalcula
         os valores-alvo correspondentes. Aplicado em transação para que uma
         entrada inválida não deixe metade dos multiplicadores atualizados.
-
-        Args:
-            request (Request): Requisição com o mapa de multiplicadores.
 
         Returns:
             Response: Todas as metas do usuário já atualizadas, ou 400 com os
@@ -1782,12 +1687,11 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='aportes')
-    def aportes(self, request, pk=None) -> Response:
+    def aportes(self, request, pk: str = None) -> Response:
         """Registra um aporte na meta e soma o valor no acumulado.
 
         Args:
-            request (Request): Requisição com `valor` e, opcionalmente, `data` e `observacao`.
-            pk (str): Chave primária da meta.
+            request: Requisição com `valor` e, opcionalmente, `data` e `observacao`.
 
         Returns:
             Response: A meta atualizada, já com o novo aporte no histórico.
@@ -1809,16 +1713,11 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(meta).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['delete'], url_path=r'aportes/(?P<aporte_id>[^/.]+)')
-    def remover_aporte(self, request, pk=None, aporte_id=None) -> Response:
+    def remover_aporte(self, request, pk: str = None, aporte_id: str = None) -> Response:
         """Exclui um aporte e desconta o valor do acumulado da meta.
 
         Necessário para corrigir um lançamento errado: sem isso, um aporte
         digitado com o valor trocado ficaria somado para sempre.
-
-        Args:
-            request (Request): Requisição autenticada.
-            pk (str): Chave primária da meta.
-            aporte_id (str): Chave primária do aporte a excluir.
 
         Returns:
             Response: A meta atualizada, ou 404 se o aporte não pertencer a ela.
@@ -1853,9 +1752,6 @@ class PlanoMetasAPIView(APIView):
     def get(self, request) -> Response:
         """Retorna o plano salvo, as médias sugeridas e o gasto do mês corrente.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: Payload com `plano`, `sugestoes` e `gasto_essencial_mes`.
         """
@@ -1877,9 +1773,6 @@ class PlanoMetasAPIView(APIView):
 
     def put(self, request) -> Response:
         """Atualiza a base de cálculo do usuário.
-
-        Args:
-            request (Request): Requisição com os campos do plano a atualizar.
 
         Returns:
             Response: O plano atualizado, ou 400 com os erros de validação.

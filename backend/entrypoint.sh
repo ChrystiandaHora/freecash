@@ -1,19 +1,12 @@
 #!/bin/sh
-# Preparação do banco antes de subir o processo web.
+# Preparação do banco antes de subir o processo web, em todo boot e ambiente.
 #
-# Estes dois passos precisam rodar em todo boot, em qualquer ambiente, e antes de
-# qualquer requisição ser aceita:
+# `createcachetable` cria a tabela do cache `throttle`: é comando, não migration,
+# e sem ela todo endpoint com rate limit devolve 500. Os dois passos ficavam
+# duplicados no `command:` dos composes, fáceis de sair de sincronia.
 #
-#   migrate            — aplica as migrations versionadas. Idempotente.
-#   createcachetable   — cria a tabela do cache `throttle` (DatabaseCache). É um
-#                        comando, não uma migration, então não vem no migrate.
-#                        Sem ela, todo endpoint com rate limit devolve erro 500.
-#
-# Ficavam duplicados no `command:` dos dois composes, onde era fácil um sair de
-# sincronia com o outro. Aqui existem uma vez, e cada ambiente só decide o
-# processo final: runserver em desenvolvimento, gunicorn (CMD da imagem) em
-# produção. O `exec` no fim substitui o shell pelo processo web, para que ele
-# receba os sinais do Docker diretamente e o container pare sem esperar timeout.
+# O `exec` final substitui o shell pelo processo web, para ele receber os sinais do
+# Docker direto e o container parar sem esperar timeout.
 set -e
 
 echo "==> Aplicando migrations"

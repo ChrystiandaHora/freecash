@@ -1,18 +1,11 @@
 """Testes da listagem e do encerramento de sessões da própria conta.
 
-A tela de conta prometia "as outras sessões serão encerradas" sem que o usuário
-pudesse ver sessão nenhuma. Estes endpoints fecham essa lacuna.
-
-Dois pontos merecem verificação explícita:
-
-**A contagem precisa refletir a realidade da blacklist.** Um token revogado ou
-expirado não é sessão; contá-lo transformaria o número num alarme falso permanente,
-e o usuário aprenderia a ignorá-lo.
-
-**Encerrar não pode deslogar quem pediu.** O cookie do refresh token tem
-`path=/api/token/` e não chega a esta rota, então não há como identificar a sessão
-atual para poupá-la. A solução é revogar todas e emitir uma nova ao chamador — o
-resultado observável é o mesmo, e o teste garante que a sessão em uso sobrevive.
+A tela prometia "as outras sessões serão encerradas" sem que o usuário pudesse ver
+sessão nenhuma. Dois pontos merecem verificação: a contagem precisa refletir a
+blacklist, porque contar token revogado viraria alarme falso permanente que o
+usuário aprende a ignorar; e encerrar não pode deslogar quem pediu — o cookie do
+refresh tem `path=/api/token/` e não chega a esta rota, então a solução é revogar
+todas e emitir uma nova ao chamador.
 """
 
 from datetime import timedelta

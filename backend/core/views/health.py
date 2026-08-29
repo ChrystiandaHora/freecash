@@ -36,9 +36,6 @@ class HealthCheckAPIView(APIView):
     def get(self, request) -> Response:
         """Executa uma consulta trivial ao banco e reporta o resultado.
 
-        Args:
-            request (Request): Requisição HTTP.
-
         Returns:
             Response: 200 com `{"status": "ok"}` quando o banco responde, ou 503
                 quando não — o que faz o orquestrador tirar esta instância do

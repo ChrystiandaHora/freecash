@@ -38,9 +38,6 @@ class DespesaRecorrenteAPITests(APITestCase):
     def _payload(self, **extra):
         """Monta um corpo válido de despesa recorrente.
 
-        Args:
-            **extra: Campos a sobrescrever.
-
         Returns:
             dict: Corpo pronto para envio.
         """

@@ -1,23 +1,18 @@
 """Endpoints de identidade: registro, confirmação de e-mail e redefinição de senha.
 
-Estas views ficam num módulo próprio porque `core/views/api.py` já passa de 1900
-linhas e concentra o domínio financeiro. Identidade é outro assunto, com outras
-regras de segurança, e merece ser lida em isolamento.
+Separados de `core/views/api.py`, que concentra o domínio financeiro e já passa de
+1900 linhas. Três princípios atravessam o arquivo:
 
-Três princípios atravessam o arquivo:
-
-**Não revelar quem tem conta.** O pedido de redefinição de senha responde
-exatamente a mesma coisa exista ou não a conta. Num sistema financeiro, confirmar
-que um endereço tem conta já é informação sensível.
+**Não revelar quem tem conta.** O pedido de redefinição responde a mesma coisa
+exista ou não o cadastro: num sistema financeiro, confirmar que um endereço tem
+conta já é informação sensível.
 
 **Idempotência onde o usuário pode repetir a ação.** Confirmar um e-mail já
-confirmado responde sucesso, não erro: clicar duas vezes no link do e-mail é
-comportamento normal e não deveria produzir uma tela de falha.
+confirmado responde sucesso: clicar duas vezes no link é normal, não é falha.
 
-**Nada de estado em claim de JWT.** Com `ROTATE_REFRESH_TOKENS`, o SimpleJWT
-reaproveita o payload do refresh na rotação, trocando apenas `jti` e `exp`. Uma
-claim como `email_verificado` ficaria desatualizada por até sete dias. Estado
-mutável é servido por `GET /api/auth/me/`, que sempre lê do banco.
+**Nada de estado em claim de JWT.** Com `ROTATE_REFRESH_TOKENS`, o payload é
+reaproveitado na rotação, e uma claim como `email_verificado` ficaria
+desatualizada por até sete dias. Estado mutável vem de `GET /api/auth/me/`.
 """
 
 import logging
@@ -65,9 +60,6 @@ RESPOSTA_RESET_GENERICA = {
 def _resolver_usuario(uid: str):
     """Recupera o usuário a partir do identificador codificado no link.
 
-    Args:
-        uid (str): Chave primária do usuário em base64 segura para URL.
-
     Returns:
         User | None: O usuário correspondente, ou None se o identificador for
             inválido, malformado ou não existir. Nunca levanta exceção: um `uid`
@@ -82,9 +74,6 @@ def _resolver_usuario(uid: str):
 
 def _dados_do_usuario(user) -> dict:
     """Monta a representação pública do usuário autenticado.
-
-    Args:
-        user (User): Usuário autenticado.
 
     Returns:
         dict: Identidade e estado de verificação, além do papel administrativo.
@@ -113,9 +102,6 @@ class RegistrationAPIView(APIView):
 
     def post(self, request) -> Response:
         """Registra o usuário e devolve os tokens iniciais de sessão.
-
-        Args:
-            request (Request): Requisição com username, email, password e confirm.
 
         Returns:
             Response: 201 com o token de acesso e o cookie do refresh token, ou 400
@@ -156,9 +142,6 @@ class MeAPIView(APIView):
     def get(self, request) -> Response:
         """Devolve os dados da conta autenticada, lidos do banco.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: 200 com identidade, e-mail e estado de verificação.
         """
@@ -180,9 +163,6 @@ class EmailVerifyConfirmAPIView(APIView):
 
     def post(self, request) -> Response:
         """Valida o token e marca o e-mail como verificado.
-
-        Args:
-            request (Request): Requisição com `uid` e `token`.
 
         Returns:
             Response: 200 quando o e-mail está confirmado — inclusive se já
@@ -247,9 +227,6 @@ class EmailVerifyResendAPIView(APIView):
     def post(self, request) -> Response:
         """Dispara um novo e-mail de confirmação, se ainda for necessário.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: 200 sempre que a situação já é a desejada ou o envio foi
                 agendado; 400 se a conta não tem endereço cadastrado.
@@ -289,9 +266,6 @@ class PasswordResetRequestAPIView(APIView):
     def post(self, request) -> Response:
         """Envia o link de redefinição sem revelar se a conta existe.
 
-        Args:
-            request (Request): Requisição com o campo `email`.
-
         Returns:
             Response: 202 com a mesma mensagem em todos os casos.
         """
@@ -327,9 +301,6 @@ class PasswordResetConfirmAPIView(APIView):
         O `default_token_generator` do Django inclui o hash da senha e o
         `last_login` no valor assinado, então a troca de senha invalida o próprio
         token — uso único, sem tabela de controle.
-
-        Args:
-            request (Request): Requisição com `uid`, `token`, `nova_senha` e `confirmar`.
 
         Returns:
             Response: 200 com o cookie de sessão removido, ou 400 se o token for

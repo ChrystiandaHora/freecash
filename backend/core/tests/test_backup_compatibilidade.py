@@ -1,16 +1,11 @@
 """Testes de compatibilidade da restauração com backups de versões anteriores.
 
-As chaves do arquivo `.fcbk` são **nomes de classe de modelo**
-(`data[app][NomeDoModelo]`) e **nomes de campo** (chaves estrangeiras como
-`<campo>_uuid`). Isso torna qualquer renomeação no código uma quebra de formato de
-arquivo: um `.fcbk` gerado antes da mudança continua trazendo os nomes antigos.
+As chaves do `.fcbk` são nomes de classe de modelo e de campo, o que torna qualquer
+renomeação no código uma quebra de formato de arquivo. O modo de falha é o pior
+possível num backup: a restauração não dá erro, apenas não encontra os registros e
+devolve a base sem eles.
 
-O modo de falha é o pior possível num backup — a restauração não dá erro, apenas
-não encontra os registros e devolve a base sem eles. Estes testes existem para que
-a próxima renomeação de modelo ou de campo não passe sem o mapa de compatibilidade
-correspondente.
-
-Caso concreto coberto: `ReceitaRecorrente` virou `LancamentoRecorrente`, e
+Caso coberto: `ReceitaRecorrente` virou `LancamentoRecorrente`, e
 `Conta.receita_recorrente` virou `Conta.recorrencia`.
 """
 

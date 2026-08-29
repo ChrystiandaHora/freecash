@@ -1,29 +1,20 @@
 /**
  * Calendário de Pagamentos e Recebimentos.
  *
- * Enquanto o Horizonte de Saldos responde "para onde meu saldo vai", esta tela
- * responde "o que acontece nesta semana" — e permite agir: cada lançamento pode
- * ser liquidado direto da célula do dia.
+ * Enquanto o Horizonte de Saldos responde "para onde meu saldo vai", esta tela responde
+ * "o que acontece nesta semana" — e permite liquidar direto da célula do dia.
  *
- * ## Decisões de leitura
+ * Três decisões de leitura:
  *
- * **Grade de calendário em `<table>`, não em `<div>`.** Um mês é uma matriz de
- * semanas por dias da semana, e é isso que uma tabela descreve. Com `<div>`, quem
- * usa leitor de tela perde a navegação por linha e coluna e a associação com o
- * cabeçalho do dia da semana.
+ * **Grade em `<table>`, não em `<div>`.** Um mês é uma matriz de semanas por dias da
+ * semana. Com `<div>`, quem usa leitor de tela perde a navegação por linha e coluna e a
+ * associação com o cabeçalho.
  *
- * **Entrada e saída não se distinguem só por cor.** A SC 1.4.1 exige um segundo
- * meio, então cada valor carrega o sinal de mais ou de menos, e o estado
- * liquidado aparece como texto, não apenas como opacidade.
+ * **Entrada e saída não se distinguem só por cor** (SC 1.4.1): cada valor traz o sinal
+ * de mais ou menos, e o estado liquidado é texto, não apenas opacidade.
  *
- * **A compra de cartão aparece, mas não entra no total do dia.** Quem abre o
- * calendário quer reconhecer a compra que fez; somá-la ao total contaria o mesmo
- * dinheiro duas vezes, porque o desembolso real acontece na fatura. O servidor já
- * devolve os totais com esse recorte.
- *
- * @module CalendarioPagamentos
- * @component
- * @returns {React.JSX.Element}
+ * **A compra de cartão aparece, mas não entra no total do dia.** Somá-la contaria o
+ * mesmo dinheiro duas vezes, porque o desembolso real acontece na fatura.
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

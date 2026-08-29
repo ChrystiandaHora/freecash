@@ -1,23 +1,14 @@
 # Composição de produção do FreeCash.
 #
-# Diferenças deliberadas em relação ao docker-compose.yml (desenvolvimento):
-#
-# - Sem bind mount do código. O compose de desenvolvimento monta ./backend:/app, o
-#   que faz o contêiner executar o código da máquina host em vez do que foi
-#   construído na imagem — e permitiria que um `makemigrations` acidental gravasse
-#   migrations não versionadas dentro do volume.
-# - Sem `makemigrations`. Em produção só se aplica o que já está versionado; gerar
-#   migration a partir do estado dos models em tempo de deploy é como o esquema do
-#   banco divergir do repositório sem ninguém notar.
-# - gunicorn (CMD da imagem) em vez de `runserver`.
-# - Frontend servido pelo nginx a partir do build estático, não pelo dev server do Vite.
-# - Postgres sem porta publicada no host: só o backend precisa alcançá-lo.
-#
-# Uso:
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Requer um .env com DJANGO_DEBUG=False, DJANGO_SECRET_KEY real, credenciais do
-# banco e as origens de produção. settings.py falha no boot se algo faltar.
+# Diferenças em relação ao compose de desenvolvimento: sem bind mount do código
+# (o contêiner roda o que foi construído na imagem), gunicorn em vez de
+# `runserver`, SPA servido pelo nginx a partir do build estático, e Postgres sem
+# porta publicada no host.
+#
+# Requer um .env de produção — DJANGO_DEBUG=False, SECRET_KEY real, credenciais e
+# origens. O settings.py falha no boot se algo faltar. Ver DEPLOY.md.
 
 services:
   postgres:
@@ -67,11 +58,6 @@ services:
       postgres:
         condition: service_healthy
 
-    # migrate aplica o que está versionado; createcachetable cria a tabela do
-    # throttle de autenticação (comando, não migration — sem ela o rate limiting
-    # dos endpoints de login e registro falha em tempo de requisição).
-    # Em seguida, `exec` entrega o processo ao CMD da imagem (gunicorn), para que
-    # ele receba os sinais do Docker como PID 1.
     # migrate e createcachetable rodam no entrypoint.sh. Aqui só o processo web,
     # repetindo o CMD da imagem porque o número de workers vem do ambiente.
     command:
@@ -107,9 +93,8 @@ services:
     depends_on:
       - backend
 
-    # O nginx da imagem alpine traz wget. Sem healthcheck, um container que subiu
-    # mas está servindo erro segue marcado como "running" e o restart automático
-    # nunca dispara.
+    # Sem healthcheck, um container que subiu mas serve erro segue "running" e o
+    # restart automático nunca dispara.
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
       interval: 30s

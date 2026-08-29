@@ -1,17 +1,13 @@
 """Serializers dos fluxos de identidade: registro, verificação e senha.
 
-O registro era validado à mão dentro da view: campos obrigatórios conferidos um a
-um, senha com mínimo próprio de 6 caracteres e nenhuma chamada a
-`validate_password`. O efeito era que os `AUTH_PASSWORD_VALIDATORS` configurados em
-settings — inclusive o que impede senha parecida com o nome de usuário — nunca
-rodavam. Concentrar isso em serializers devolve a validação ao lugar onde o DRF a
-espera e faz os validadores do Django valerem de verdade.
+O registro era validado à mão dentro da view, com mínimo próprio de 6 caracteres e
+sem chamar `validate_password` — então os `AUTH_PASSWORD_VALIDATORS` do settings,
+inclusive o que impede senha parecida com o nome de usuário, nunca rodavam.
 
-Uma assimetria deliberada nas mensagens de erro: dizer que um **nome de usuário**
-já existe é inevitável, porque a tela de login já revela o mesmo pela resposta de
-autenticação. Já confirmar que um **e-mail** está cadastrado entregaria a um
-atacante a informação de quem tem conta aqui — e, num sistema financeiro, essa
-associação é sensível por si só. Por isso o erro de e-mail duplicado é genérico.
+Uma assimetria deliberada nas mensagens: dizer que um **nome de usuário** já existe é
+inevitável, porque a tela de login revela o mesmo. Já confirmar que um **e-mail** está
+cadastrado entregaria quem tem conta aqui — associação sensível num sistema
+financeiro. Por isso o erro de e-mail duplicado é genérico.
 """
 
 from django.contrib.auth import get_user_model
@@ -39,9 +35,6 @@ class RegistrationSerializer(serializers.Serializer):
     def validate_username(self, valor: str) -> str:
         """Normaliza e garante que o nome de usuário esteja livre.
 
-        Args:
-            valor (str): Nome de usuário informado.
-
         Returns:
             str: Nome de usuário sem espaços nas bordas.
 
@@ -55,9 +48,6 @@ class RegistrationSerializer(serializers.Serializer):
 
     def validate_email(self, valor: str) -> str:
         """Normaliza o endereço e recusa duplicatas sem confirmar a existência.
-
-        Args:
-            valor (str): Endereço informado.
 
         Returns:
             str: Endereço normalizado.
@@ -77,9 +67,6 @@ class RegistrationSerializer(serializers.Serializer):
 
     def validate(self, dados: dict) -> dict:
         """Confere a confirmação de senha e aplica os validadores do Django.
-
-        Args:
-            dados (dict): Campos já validados individualmente.
 
         Returns:
             dict: Os mesmos dados, se válidos.
@@ -122,9 +109,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     def validate_email(self, valor: str) -> str:
         """Normaliza o endereço para casar com o armazenado.
 
-        Args:
-            valor (str): Endereço informado.
-
         Returns:
             str: Endereço normalizado.
         """
@@ -146,9 +130,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
     def validate(self, dados: dict) -> dict:
         """Confere se as duas senhas informadas coincidem.
-
-        Args:
-            dados (dict): Campos já validados individualmente.
 
         Returns:
             dict: Os mesmos dados, se válidos.

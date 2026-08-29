@@ -20,9 +20,6 @@ def parse_pdf_generico(pdf_path: str) -> List[Dict[str, Any]]:
     tentando localizar e decodificar os formatos mais habituais de datas e
     valores monetários brasileiros.
 
-    Args:
-        pdf_path (str): Caminho absoluto ou relativo do arquivo PDF no disco.
-
     Returns:
         List[Dict[str, Any]]: Lista contendo dicionários estruturados de transações,
         onde cada um possui as chaves: 'data' (date), 'descricao' (str), 'valor' (Decimal) e 'tipo' (str).
@@ -60,7 +57,7 @@ def parse_pdf_nubank(pdf_path: str) -> List[Dict[str, Any]]:
     no início da linha. O parser calcula o ano dinamicamente e mapeia as saídas.
 
     Args:
-        pdf_path (str): Caminho para o extrato em formato PDF.
+        pdf_path: Caminho para o extrato em formato PDF.
 
     Returns:
         List[Dict[str, Any]]: Lista de dicionários de transações decodificadas.
@@ -144,9 +141,7 @@ def _extrair_linha(
     """Extrai informações estruturadas de uma única linha de texto bruto de extrato.
 
     Args:
-        line (str): A string da linha extraída do PDF.
-        date_patterns (list): Lista de expressões regulares de padrões de data.
-        valor_pattern (str): Expressão regular do padrão monetário.
+        valor_pattern: Expressão regular do padrão monetário.
 
     Returns:
         Dict[str, Any] | None: Transação estruturada ou None caso a linha não corresponda aos padrões mínimos.
@@ -214,7 +209,7 @@ def parse_layout_colunas(pdf_path: str) -> List[Dict[str, Any]]:
     data de vencimento da fatura presente na capa do extrato.
 
     Args:
-        pdf_path (str): Caminho para o extrato em formato PDF.
+        pdf_path: Caminho para o extrato em formato PDF.
 
     Returns:
         List[Dict[str, Any]]: Lista de dicionários de transações.
@@ -292,8 +287,7 @@ def processar_pdf(pdf_path: str, banco: str = "generico") -> List[Dict[str, Any]
     e o parser do Nubank para garantir a maior taxa de sucesso de leitura possível.
 
     Args:
-        pdf_path (str): Caminho físico do arquivo no servidor.
-        banco (str, optional): Instituição de origem ('nubank', 'santander', 'generico'). Defaults to "generico".
+        banco: Instituição de origem ('nubank', 'santander', 'generico'). Defaults to "generico".
 
     Returns:
         List[Dict[str, Any]]: Lista consolidada de transações encontradas.

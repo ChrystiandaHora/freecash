@@ -22,18 +22,14 @@ class DashboardInvestimentoService:
     """
 
     def __init__(self, user):
-        """Inicializa o serviço de dashboard vinculando o investidor.
-
-        Args:
-            user (User): Instância do usuário Django proprietário.
-        """
+        """Inicializa o serviço de dashboard vinculando o investidor."""
         self.user = user
 
     def obter_dados_dashboard(self, page_number: int = 1) -> dict:
         """Coleta, processa e pagina as estatísticas completas de investimento do usuário.
 
         Args:
-            page_number (int, optional): Número da página ativa para paginação de ativos. Defaults to 1.
+            page_number: Número da página ativa para paginação de ativos. Defaults to 1.
 
         Returns:
             dict: Payload consolidado contendo séries, patrimônio, custos e proventos.

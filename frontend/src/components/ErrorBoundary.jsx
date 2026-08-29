@@ -1,30 +1,17 @@
 /**
  * Fronteira de erro do aplicativo.
  *
- * Existe por causa de um caso real: `AjustePagamentoForm` chamava
- * `React.createElement` sem importar `React`, e o `ReferenceError` em tempo de
- * render **apagava a aplicação inteira** — nem a navegação sobrava. O app não tinha
- * nenhuma fronteira de erro, então qualquer exceção de render de qualquer
- * componente chegava à raiz e desmontava tudo, sem deixar rastro na tela.
+ * Existe por um caso real: `AjustePagamentoForm` chamava `React.createElement` sem
+ * importar `React`, e o `ReferenceError` em render **apagava a aplicação inteira** — nem
+ * a navegação sobrava, porque não havia fronteira alguma. Uma tela branca não diz o que
+ * aconteceu, não permite voltar e não distingue "o app quebrou" de "a internet caiu".
  *
- * A diferença que isto faz não é cosmética: uma tela branca não diz o que
- * aconteceu, não permite voltar e não distingue "o app quebrou" de "a internet
- * caiu". Um erro contido mostra o que falhou, preserva a navegação e oferece uma
- * saída.
+ * É componente de classe porque `componentDidCatch` e `getDerivedStateFromError` só
+ * existem nessa forma; o React não oferece equivalente em hook.
  *
- * ## Por que classe, e não hook
- *
- * `componentDidCatch` e `getDerivedStateFromError` só existem em componente de
- * classe. O React não oferece equivalente em hook — é a única razão pela qual este
- * arquivo diverge do padrão funcional do resto do projeto.
- *
- * ## Escopo
- *
- * Captura erros de **render** dos descendentes. Não captura erro em manipulador de
- * evento, `setTimeout` ou promessa rejeitada — esses seguem para o console e, no
- * caso das chamadas de API, são tratados pelo React Query em cada tela.
- *
- * @module components/ErrorBoundary
+ * Captura erros de **render** dos descendentes. Erro em manipulador de evento,
+ * `setTimeout` ou promessa rejeitada não passa por aqui — nas chamadas de API, quem
+ * trata é o React Query em cada tela.
  */
 import { Component } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';

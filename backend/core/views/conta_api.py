@@ -1,25 +1,19 @@
-"""Endpoints das operações que o usuário faz sobre a própria conta.
+"""Endpoints das operações do usuário sobre a própria conta.
 
-Perfil, troca de e-mail, troca de senha e exclusão. Ficam separados de
-`auth_api.py` — que trata de *entrar* no sistema — porque aqui o usuário já está
-autenticado e o assunto é administrar a própria identidade.
+Perfil, troca de e-mail, troca de senha e exclusão. Separados de `auth_api.py`
+— que trata de *entrar* no sistema — porque aqui o usuário já está autenticado.
 
 Três princípios atravessam o arquivo:
 
-**A senha atual é exigida no que redireciona ou destrói acesso.** Quem alcança uma
-sessão aberta consegue tudo o que a sessão consegue; pedir a senha transforma essas
-ações em algo que só o dono faz. Editar nome ou moeda não pede, de propósito:
-exigir a senha a cada ajuste de preferência treinaria o usuário a digitá-la sem
-pensar, enfraquecendo a proteção onde ela importa.
+**A senha atual é exigida no que redireciona ou destrói acesso**, mas não em
+preferências: pedi-la a cada ajuste treinaria o usuário a digitá-la sem pensar.
 
-**A troca de e-mail não vale antes de confirmada.** O novo endereço fica em
-`email_pendente` e só substitui `User.email` quando o link enviado a ele é aberto.
-Um erro de digitação, assim, não deixa a conta sem endereço válido para
-recuperação; e quem tomasse uma sessão não conseguiria trancar o dono para fora.
+**A troca de e-mail só vale depois de confirmada** no endereço novo, que fica em
+`email_pendente`. Um erro de digitação não deixa a conta sem endereço para
+recuperação, e quem tomasse uma sessão não trancaria o dono para fora.
 
-**Trocar senha encerra as outras sessões.** Se a senha foi trocada porque vazou,
-manter as sessões abertas preservaria o acesso do invasor exatamente no momento em
-que a vítima acredita ter resolvido o problema.
+**Trocar a senha encerra as outras sessões** — senão o invasor mantém o acesso
+justamente quando a vítima acredita ter resolvido o problema.
 """
 
 import logging
@@ -58,9 +52,6 @@ User = get_user_model()
 def _dados_da_conta(user) -> dict:
     """Monta a representação da conta para as telas de perfil.
 
-    Args:
-        user (User): Usuário autenticado.
-
     Returns:
         dict: Identidade, estado de verificação e preferências.
     """
@@ -84,9 +75,6 @@ class PerfilAPIView(APIView):
     def get(self, request) -> Response:
         """Devolve os dados da conta.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: 200 com os dados da conta.
         """
@@ -94,9 +82,6 @@ class PerfilAPIView(APIView):
 
     def patch(self, request) -> Response:
         """Atualiza nome de usuário e preferências.
-
-        Args:
-            request (Request): Requisição com os campos a alterar.
 
         Returns:
             Response: 200 com os dados atualizados, ou 400 com os erros por campo.
@@ -132,9 +117,6 @@ class TrocaEmailSolicitarAPIView(APIView):
 
     def post(self, request) -> Response:
         """Registra o novo endereço como pendente e envia o link de confirmação.
-
-        Args:
-            request (Request): Requisição com `senha_atual` e `novo_email`.
 
         Returns:
             Response: 202 informando que a confirmação foi enviada, ou 400 com os
@@ -179,9 +161,6 @@ class TrocaEmailCancelarAPIView(APIView):
     def post(self, request) -> Response:
         """Limpa o endereço pendente, invalidando o link já enviado.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: 200 com os dados da conta.
         """
@@ -208,9 +187,6 @@ class TrocaEmailConfirmarAPIView(APIView):
 
     def post(self, request) -> Response:
         """Valida o token e promove o endereço pendente a endereço da conta.
-
-        Args:
-            request (Request): Requisição com `uid` e `token`.
 
         Returns:
             Response: 200 quando a troca é concluída, ou 400 se o link for
@@ -288,9 +264,6 @@ class TrocaSenhaAPIView(APIView):
         deslogar quem acabou de trocar a própria senha, no exato momento em que
         demonstrou ser o dono, seria hostil sem ganho de segurança.
 
-        Args:
-            request (Request): Requisição com `senha_atual`, `nova_senha` e `confirmar`.
-
         Returns:
             Response: 200 com um token de acesso novo, ou 400 com os erros por campo.
         """
@@ -335,9 +308,6 @@ class ExcluirContaAPIView(APIView):
         irreversível e leva junto todo o histórico financeiro, então um clique
         acidental não pode bastar.
 
-        Args:
-            request (Request): Requisição com `senha_atual` e `confirmacao`.
-
         Returns:
             Response: 200 com o cookie de sessão removido, ou 400 com os erros.
         """
@@ -365,18 +335,13 @@ class ExcluirContaAPIView(APIView):
 def _contar_sessoes_ativas(usuario) -> int:
     """Conta os refresh tokens vivos de um usuário.
 
-    Uma sessão existe enquanto o seu refresh token não expirou e não foi revogado.
-    Os dados vêm do próprio app de blacklist do SimpleJWT, sem modelo novo.
+    Uma sessão existe enquanto seu refresh token não expirou nem foi revogado; os dados
+    vêm do app de blacklist do SimpleJWT, sem modelo novo.
 
-    **A contagem superestima.** Com `ROTATE_REFRESH_TOKENS`, cada renovação emite um
-    token novo e revoga o anterior — então uma sessão em uso contribui com exatamente
-    um token. Mas uma sessão abandonada sem logout deixa o seu último token pendente
-    até expirar, e continua sendo contada por até sete dias. Por isso a interface
-    fala em "dispositivos conectados nos últimos 7 dias", e não afirma uma precisão
-    que o dado não tem.
-
-    Args:
-        usuario (User): Dono das sessões.
+    **A contagem superestima:** uma sessão em uso contribui com um token, mas uma sessão
+    abandonada sem logout deixa o último token pendente até expirar. Por isso a interface
+    fala em "dispositivos conectados nos últimos 7 dias", sem afirmar precisão que o dado
+    não tem.
 
     Returns:
         int: Quantidade de refresh tokens ainda válidos.
@@ -397,9 +362,6 @@ class SessoesAPIView(APIView):
 
     def get(self, request) -> Response:
         """Devolve a contagem de sessões ativas.
-
-        Args:
-            request (Request): Requisição autenticada.
 
         Returns:
             Response: 200 com a contagem e a janela a que ela se refere.
@@ -435,9 +397,6 @@ class EncerrarOutrasSessoesAPIView(APIView):
         nova para o chamador chega ao mesmo resultado observável — só a sessão atual
         sobrevive — sem ampliar essa superfície. É o mesmo mecanismo que a troca de
         senha já usa.
-
-        Args:
-            request (Request): Requisição autenticada.
 
         Returns:
             Response: 200 com um token de acesso novo e o cookie renovado.

@@ -42,8 +42,7 @@ def gerar_ocorrencias(regra: LancamentoRecorrente, ate_data: date) -> int:
     """Gera as ocorrências (`Conta`) de uma regra até `ate_data`, sem duplicar.
 
     Args:
-        regra (LancamentoRecorrente): A regra de recorrência.
-        ate_data (date): Data limite (inclusive) até onde gerar ocorrências.
+        ate_data: Data limite (inclusive) até onde gerar ocorrências.
 
     Returns:
         int: Quantidade de novas ocorrências criadas.
@@ -84,14 +83,8 @@ def criar_regra_e_gerar(usuario, descricao, categoria, valor, frequencia, data_i
     """Cria a regra de recorrência e gera imediatamente suas ocorrências iniciais.
 
     Args:
-        usuario (User): Proprietário da regra.
-        descricao (str): Descrição aplicada a cada ocorrência.
-        categoria (Categoria | None): Categoria aplicada a cada ocorrência.
-        valor (Decimal): Valor de cada ocorrência.
-        frequencia (str): Periodicidade de geração.
-        data_inicio (date): Data da primeira ocorrência.
-        data_fim (date | None): Limite opcional de geração.
-        tipo (str): Receita ou despesa. O default de receita preserva o
+        data_fim: Limite opcional de geração.
+        tipo: Receita ou despesa. O default de receita preserva o
             comportamento das chamadas anteriores à generalização do modelo.
 
     Returns:
@@ -133,19 +126,14 @@ def estender_horizonte_se_necessario(usuario, mes: int, ano: int) -> None:
 def garantir_horizonte(usuario, ate_data: date) -> int:
     """Materializa as ocorrências de todas as regras ativas até `ate_data`.
 
-    `estender_horizonte_se_necessario` resolve o caso "estou listando o mês X";
-    esta função resolve o caso "vou projetar até a data Y", que é o que a tela de
-    Horizonte de Saldos precisa. Sem ela, a projeção de 12 meses leria apenas o
-    horizonte já gerado (12 meses a contar da criação de cada regra, não de hoje) e
-    os meses finais apareceriam vazios de receita e despesa fixa — exatamente onde
-    a previsibilidade importa mais.
-
-    Idempotente, como toda a geração deste módulo: `get_or_create` por
+    `estender_horizonte_se_necessario` resolve "estou listando o mês X"; esta resolve "vou
+    projetar até a data Y", que é o que o Horizonte de Saldos precisa. Sem ela, a projeção
+    leria só o horizonte já gerado — 12 meses a contar da criação de cada regra, não de
+    hoje — e os meses finais viriam vazios. Idempotente: `get_or_create` por
     (regra, data_prevista).
 
     Args:
-        usuario (User): Proprietário das regras.
-        ate_data (date): Data limite, inclusive.
+        ate_data: Data limite, inclusive.
 
     Returns:
         int: Quantidade de ocorrências criadas nesta chamada.

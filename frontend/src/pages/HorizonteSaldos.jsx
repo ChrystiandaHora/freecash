@@ -1,34 +1,22 @@
 /**
  * Horizonte de Saldos — projeção do saldo acumulado, dia a dia, por 12 meses.
  *
- * Responde à pergunta que nenhuma tela existente respondia: *em que dia meu saldo
- * fica negativo?* O dashboard mostra o mês corrente e o simulador trabalha com
- * cenários hipotéticos em memória; aqui a curva sai dos lançamentos reais já
- * registrados, incluindo as ocorrências futuras das regras recorrentes.
+ * Responde *em que dia meu saldo fica negativo?* — o dashboard mostra só o mês corrente
+ * e o simulador trabalha com cenários em memória. Aqui a curva sai dos lançamentos
+ * reais, incluindo as ocorrências futuras das regras recorrentes.
  *
- * ## Decisões de leitura
+ * Três decisões de leitura:
  *
- * **A situação de cada dia não é comunicada só por cor.** A SC 1.4.1 não admite
- * cor como único meio, e numa grade de ~370 células isso é fácil de esquecer.
- * Cada célula carrega três sinais redundantes: a cor de fundo, uma **borda
- * esquerda com espessura e estilo próprios** por situação (sólida no negativo,
- * tracejada na atenção, ausente no confortável) e um texto `sr-only` com a
- * palavra da situação. O saldo negativo ainda traz o sinal de menos, que é o
- * indicador mais direto de todos.
+ * **A situação do dia não é comunicada só por cor** (SC 1.4.1), o que numa grade de ~370
+ * células é fácil de esquecer. Cada célula tem cor de fundo, borda esquerda com
+ * espessura própria por situação e um texto `sr-only` com a palavra — além do sinal de
+ * menos no saldo negativo.
  *
- * **O detalhe do dia reusa o endpoint do calendário.** Clicar numa célula precisa
- * mostrar os lançamentos daquele dia, e essa informação já é servida por
- * `/api/planejamento/calendario/`. Criar um endpoint só para isso duplicaria a
- * regra de qual lançamento entra na conta.
+ * **O detalhe do dia reusa `/api/planejamento/calendario/`.** Um endpoint só para isso
+ * duplicaria a regra de qual lançamento entra na conta.
  *
- * **Metas são um cenário, não a projeção.** O botão alterna entre o saldo dos
- * compromissos assumidos e o saldo descontando o aporte necessário às metas. Um
- * aporte planejado é intenção de poupar, e misturá-lo à curva principal faria o
- * usuário ler como dívida algo que ele decidiu e pode desfazer.
- *
- * @module HorizonteSaldos
- * @component
- * @returns {React.JSX.Element}
+ * **Metas são um cenário, não a projeção.** O aporte planejado é intenção de poupar;
+ * misturá-lo à curva principal faria o usuário ler como dívida algo que pode desfazer.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -82,10 +70,8 @@ function dataPorExtenso(iso) {
 /**
  * Item da legenda, com o mesmo tratamento de borda usado nas células.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {string} props.situacao - Chave em `ESTILO_POR_SITUACAO`.
  * @param {string} props.texto - Descrição exibida.
- * @returns {React.JSX.Element}
  */
 function ItemLegenda({ situacao, texto }) {
   return (

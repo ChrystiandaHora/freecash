@@ -5,9 +5,6 @@
  * 1. Importar e conciliar faturas em PDF (Santander/Nubank).
  * 2. Visualizar histórico completo de compras individuais lançadas no cartão, com busca e filtros.
  * 3. Editar e excluir compras individuais de cartão diretamente no sistema via Modais.
- *
- * @component
- * @returns {React.JSX.Element}
  */
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';

@@ -10,7 +10,6 @@
  * Além das quatro metas padrão, permite cadastrar metas personalizadas e
  * registrar aportes, com todo o acervo listado numa tabela filtrável.
  *
- * @component
  * @returns {React.JSX.Element} Painel e listagem de metas financeiras.
  */
 import { useMemo, useState } from 'react'

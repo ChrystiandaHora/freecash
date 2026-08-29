@@ -6,8 +6,6 @@
  * permite apontar o problema no campo certo em vez de exibir um aviso genérico no
  * topo — mas exige que o cliente saiba ler os dois formatos, já que erros de
  * autenticação e de permissão continuam usando `detail`.
- *
- * @module lib/apiErros
  */
 
 /**

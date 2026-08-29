@@ -5,7 +5,6 @@
  * Disponibiliza interfaces interativas para criar, ler, atualizar e deletar (CRUD) ativos,
  * bem como iniciar ordens de compra/venda vinculadas a cada ticker.
  *
- * @component
  * @returns {React.JSX.Element} Visualização em tabela com modais flutuantes de cadastro operacional.
  */
 import { useState } from 'react';

@@ -1,17 +1,13 @@
-"""Testes da exclusão de uma conta de usuário e de tudo que pende dela.
+"""Testes da exclusão de uma conta e de tudo que pende dela.
 
-Excluir um usuário era **impossível** no sistema. Os receivers de `post_delete` de
-`Conta` e `Categoria` chamavam `atualizar_config`, que faz `get_or_create` da
-`ConfigUsuario`: durante o cascade, isso recriava a configuração apontando para uma
-linha de `auth_user` que estava sendo apagada na mesma transação. O commit falhava
-com violação de chave estrangeira e a remoção inteira era desfeita.
+Excluir um usuário era **impossível**: os receivers de `post_delete` de `Conta` e
+`Categoria` chamavam `atualizar_config`, cujo `get_or_create` recriava a
+`ConfigUsuario` apontando para a linha de `auth_user` que estava sendo apagada na
+mesma transação. O commit falhava com violação de FK e a remoção era desfeita.
 
-O defeito era invisível no uso normal — ninguém apaga a própria conta num app de
-finanças pessoais de uso individual — e só aparece quando o produto vai a público,
-onde o direito de exclusão da LGPD torna a operação obrigatória.
-
-Estes testes garantem que a exclusão funciona com dados reais pendurados no
-usuário, que é justamente o cenário em que os signals disparam.
+Invisível no uso individual — ninguém apaga a própria conta — e obrigatório num
+produto público, onde a LGPD garante o direito de exclusão. Os testes usam dados
+reais pendurados no usuário, que é o cenário em que os signals disparam.
 """
 
 from datetime import date

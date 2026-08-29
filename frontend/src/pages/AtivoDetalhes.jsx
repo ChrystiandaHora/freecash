@@ -4,7 +4,6 @@
  * Centraliza e exibe informações cadastrais, parâmetros de renda fixa,
  * métricas de rentabilidade a mercado e o histórico completo de transações do ativo.
  *
- * @component
  * @returns {React.JSX.Element} Tela widescreen SaaS Flat Premium.
  */
 import { useState } from 'react';

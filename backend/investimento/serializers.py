@@ -110,11 +110,8 @@ class AtivoSerializer(serializers.ModelSerializer):
             return clean_cnpj
         return value
 
-    def validate(self, attrs) -> dict:
+    def validate(self, attrs: dict) -> dict:
         """Sanitiza campos opcionais nulos de Renda Fixa/Variável.
-
-        Args:
-            attrs (dict): Atributos de entrada validados.
 
         Returns:
             dict: Atributos pós-sanitização.

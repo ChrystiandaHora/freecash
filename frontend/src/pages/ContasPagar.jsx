@@ -5,7 +5,6 @@
  * Oferece ações rápidas para liquidar/pagar compromissos diretamente a partir da listagem
  * e exibe o status de vencimento (Paga, Pendente, Atrasada ou Próxima) com cores representativas.
  *
- * @component
  * @returns {React.JSX.Element} Tela de controle de contas a pagar contendo KPIs de pendências e tabela CRUD.
  */
 import { useState, useMemo } from 'react';
@@ -76,9 +75,6 @@ const getStatusInfo = (conta) => {
  * Permite a listagem, filtragem por coluna (data, status, categoria) e manipulação de obrigações financeiras (CRUD).
  * Oferece ações rápidas para quitar/marcar contas como pagas com animação de fading visual de linha
  * e modais dedicados de cadastros com esquemas de validação robustos via Zod e React Hook Form.
- *
- * @component
- * @returns {React.JSX.Element}
  */
 export default function ContasPagar() {
   const queryClient = useQueryClient()

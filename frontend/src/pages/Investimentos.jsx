@@ -8,7 +8,6 @@
  * Permite também a simulação em tempo real e reajuste de metas de balanceamento,
  * recomendando aportes e ordens ideais de compra.
  *
- * @component
  * @returns {React.JSX.Element} Painel de controle de investimentos contendo abas
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */

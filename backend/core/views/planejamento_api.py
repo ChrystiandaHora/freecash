@@ -37,7 +37,7 @@ class HorizonteSaldosAPIView(APIView):
         """Devolve a projeção diária agrupada por mês.
 
         Args:
-            request (Request): Aceita `meses` (tamanho da janela) e
+            request: Aceita `meses` (tamanho da janela) e
                 `limite_atencao` (saldo abaixo do qual o dia é sinalizado).
 
         Returns:
@@ -78,7 +78,7 @@ class CalendarioPagamentosAPIView(APIView):
         """Devolve a grade do mês com os lançamentos de cada dia.
 
         Args:
-            request (Request): Aceita `ano` e `mes`; sem eles, usa o mês corrente.
+            request: Aceita `ano` e `mes`; sem eles, usa o mês corrente.
 
         Returns:
             Response: 200 com a grade, ou 400 se o período for inválido.
@@ -122,20 +122,16 @@ class _LiquidacaoBase(APIView):
     O escopo por usuário é a única barreira de autorização aqui, e por isso é
     explícito: um lançamento de outra pessoa devolve 404, nunca 403 — a resposta
     não deve confirmar que aquele identificador existe.
-
-    Atributos:
-        marcar (bool): Se a ação liquida (True) ou desfaz a liquidação (False).
     """
 
     permission_classes = [permissions.IsAuthenticated]
     marcar = True
 
-    def post(self, request, pk) -> Response:
+    def post(self, request, pk: int) -> Response:
         """Aplica a mudança de estado ao lançamento informado.
 
         Args:
-            request (Request): Requisição autenticada. Aceita `data` na liquidação.
-            pk (int): Identificador do lançamento.
+            request: Requisição autenticada. Aceita `data` na liquidação.
 
         Returns:
             Response: 200 com o novo estado, ou 404 se o lançamento não for do

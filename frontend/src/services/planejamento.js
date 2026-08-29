@@ -4,8 +4,6 @@
  * Horizonte de Saldos e Calendário de Pagamentos leem o mesmo acervo de
  * lançamentos por ângulos diferentes: o horizonte responde "para onde meu saldo
  * vai", o calendário responde "o que acontece nesta semana".
- *
- * @module services/planejamento
  */
 import api from './api';
 

@@ -1,15 +1,12 @@
 """Testes da projeção de saldo e do calendário de pagamentos.
 
-A propriedade mais importante em teste é a **ancoragem**: o saldo do primeiro dia
-projetado tem de ser o dinheiro que existe hoje, não zero. Sem isso a tela
-mostraria fluxo líquido disfarçado de saldo, e a pergunta "em que dia eu fico
-negativo?" receberia uma resposta errada por um valor constante.
+A propriedade central é a **ancoragem**: o saldo do primeiro dia projetado é o
+dinheiro que existe hoje, não zero. Sem isso a tela mostra fluxo líquido disfarçado
+de saldo e a pergunta "em que dia eu fico negativo?" erra por um valor constante.
 
-Em seguida vem o **filtro de cartão**. A compra individual e a fatura consolidada
-são o mesmo dinheiro em dois níveis de registro; contar as duas na projeção faria
-o saldo aparecer muito menor do que é. Como a âncora (`saldo_liquidez_ate`) aplica
-esse filtro, o fluxo futuro precisa aplicar o mesmo — se as duas metades
-divergirem, elas passam a medir universos diferentes.
+Em seguida, o **filtro de cartão**: compra individual e fatura consolidada são o
+mesmo dinheiro em dois níveis de registro. A âncora (`saldo_liquidez_ate`) aplica o
+filtro, e o fluxo futuro precisa aplicar o mesmo, senão medem universos diferentes.
 """
 
 from datetime import date, timedelta
@@ -43,18 +40,9 @@ class ProjecaoBaseTestCase(TestCase):
         ConfigUsuario.objects.get_or_create(usuario=self.user)
         self.hoje = date(2026, 3, 10)
 
-    def lancar(self, tipo, valor, data_prevista, realizada=False,
-               data_realizacao=None, cartao=None, eh_fatura=False):
+    def lancar(self, tipo: str, valor: str, data_prevista: date, realizada: bool = False,
+               data_realizacao=None, cartao=None, eh_fatura: bool = False):
         """Cria um lançamento com o mínimo de parâmetros.
-
-        Args:
-            tipo (str): `Conta.TIPO_RECEITA` ou `Conta.TIPO_DESPESA`.
-            valor (str): Valor do lançamento.
-            data_prevista (date): Data prevista.
-            realizada (bool): Se já foi liquidado.
-            data_realizacao (date | None): Data da liquidação.
-            cartao (CartaoCredito | None): Cartão vinculado.
-            eh_fatura (bool): Se o registro é a fatura consolidada.
 
         Returns:
             Conta: O lançamento criado.
@@ -71,13 +59,11 @@ class ProjecaoBaseTestCase(TestCase):
             eh_fatura_cartao=eh_fatura,
         )
 
-    def saldo_do_dia(self, projecao, alvo: date, campo="saldo") -> Decimal:
+    def saldo_do_dia(self, projecao: dict, alvo: date, campo: str = "saldo") -> Decimal:
         """Extrai o saldo projetado de uma data específica.
 
         Args:
-            projecao (dict): Retorno de `horizonte_saldos`.
-            alvo (date): Data procurada.
-            campo (str): "saldo" ou "saldo_com_metas".
+            campo: "saldo" ou "saldo_com_metas".
 
         Returns:
             Decimal: Saldo daquele dia.
@@ -405,13 +391,10 @@ class CalendarioMesTests(ProjecaoBaseTestCase):
         self.assertEqual(do_dia["pendentes"], 1)
 
 
-def relativedelta_meses(n):
+def relativedelta_meses(n: int):
     """Devolve um deslocamento de `n` meses.
 
     Auxiliar local para manter os testes legíveis sem repetir o import.
-
-    Args:
-        n (int): Quantidade de meses.
 
     Returns:
         relativedelta: Deslocamento correspondente.

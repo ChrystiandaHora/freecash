@@ -11,10 +11,6 @@
  * para esta página em vez de para a API, porque clientes de e-mail e filtros
  * corporativos pré-carregam URLs das mensagens: um `GET` no endpoint consumiria o
  * token antes de o usuário clicar.
- *
- * @module VerificarEmail
- * @component
- * @returns {React.JSX.Element}
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

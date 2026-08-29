@@ -1,16 +1,17 @@
-"""Módulo de Mapeamento de Rotas da API REST do FreeCash.
+"""Mapeamento de rotas da API REST do FreeCash.
 
-Este arquivo configura centralizadamente as URLs e pontos de entrada expostos do
-backend Django. Ele registra os roteadores (DefaultRouter) do Django REST Framework
-e define os endpoints de autenticação via cookies (tokens JWT), dashboard consolidado,
-relatórios financeiros e ferramentas administrativas de conciliação bancária de OFX.
+Registra os roteadores do DRF e os endpoints de sessão JWT por cookie, dashboard,
+relatórios e ferramentas de conciliação.
 
 Barramento de APIs:
-    /api/token/ : Endpoints de controle de sessão JWT (Obtain, Refresh, Clear).
-    /api/dashboard/ : Agregados estatísticos mensais de finanças.
-    /api/financeiro/ : Lançamentos de despesas, receitas, transações e cartões de crédito.
-    /api/investimentos/ : Carteira ativa e simulador de alocação/balanceamento.
-    /api/ferramentas/ : Importação de OFX, conciliação e exportação de relatórios.
+    /api/token/ ......... Controle de sessão JWT (obter, renovar, encerrar).
+    /api/auth/ .......... Registro, verificação de e-mail e senha.
+    /api/admin/ ......... Painel administrativo da plataforma.
+    /api/dashboard/ ..... Agregados estatísticos mensais.
+    /api/financeiro/ .... Despesas, receitas, transações e cartões.
+    /api/planejamento/ .. Horizonte de saldos e calendário.
+    /api/investimentos/ . Carteira e simulador de balanceamento.
+    /api/ferramentas/ ... Importação de extrato, conciliação e exportação.
 """
 
 

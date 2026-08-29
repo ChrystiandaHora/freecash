@@ -1,44 +1,24 @@
 """Projeção de saldo diário e agenda de pagamentos e recebimentos.
 
-Responde a duas perguntas de planejamento que nenhuma tela existente respondia:
-*em que dia dos próximos doze meses meu saldo fica negativo?* e *o que vence
-nesta semana?*
+O saldo projetado de um dia soma três partes: a âncora (o caixa de hoje, vindo de
+`dashboard_helper.saldo_liquidez_ate`), a pendência acumulada (vencidos e não
+liquidados, que entram no primeiro dia em vez de serem descartados) e o fluxo
+futuro acumulado.
 
-## Como a projeção é construída
+Duas invariantes:
 
-O saldo projetado de um dia é a soma de três partes:
+**O filtro de cartão** `Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)` em toda
+consulta de valor. A compra individual e a fatura consolidada são o mesmo dinheiro;
+contar as duas encolhe o saldo. `saldo_liquidez_ate` usa o mesmo filtro — se as
+duas metades divergirem, âncora e fluxo medem universos diferentes.
 
-1. **A âncora** — o dinheiro que já está em caixa hoje, vindo de
-   `dashboard_helper.saldo_liquidez_ate`. Sem ela a curva partiria de zero e
-   mediria apenas o fluxo líquido futuro, não o saldo da conta.
-2. **A pendência acumulada** — lançamentos com `data_prevista` no passado que
-   nunca foram liquidados. São compromissos reais que ainda vão sair do caixa, e
-   por isso entram no primeiro dia da projeção em vez de serem descartados.
-3. **O fluxo futuro** — os lançamentos previstos, dia a dia, acumulados.
+**A recorrência precisa estar materializada.** `horizonte_saldos` chama
+`garantir_horizonte` antes de ler, senão os últimos meses da janela apareceriam sem
+receita nem despesa fixa.
 
-## Duas invariantes que não podem ser quebradas
-
-**O filtro de cartão.** Toda consulta de valor usa
-`Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)`. A compra individual de cartão
-e a fatura consolidada representam o mesmo dinheiro: contar as duas faria o saldo
-aparecer muito menor do que é. O mesmo filtro está em `saldo_liquidez_ate`, e as
-duas metades precisam concordar — se divergirem, a âncora e o fluxo passam a medir
-universos diferentes e o resultado não significa nada.
-
-**A recorrência precisa estar materializada.** As ocorrências futuras de uma regra
-recorrente só existem como `Conta` depois que alguém as gera. Por isso
-`horizonte_saldos` chama `garantir_horizonte` antes de ler: sem isso, os últimos
-meses da janela apareceriam sem receita nem despesa fixa — justamente onde a
-previsibilidade é mais valiosa.
-
-## O cenário de metas
-
-Metas financeiras têm valor-alvo, acumulado e prazo, mas nenhum cronograma de
-aporte. O aporte mensal necessário é derivado — (alvo − acumulado) ÷ meses até o
-prazo — e devolvido como uma **série separada**, não somada à principal. A
-distinção importa: uma despesa lançada é compromisso assumido; um aporte para meta
-é intenção de poupar. Misturar as duas numa única curva faria o usuário ler como
-dívida algo que ele decidiu, e pode desfazer.
+O cenário de metas vai numa **série separada**: o aporte necessário — (alvo −
+acumulado) ÷ meses até o prazo — é intenção de poupar, não compromisso assumido.
+Somá-lo à curva principal faria o usuário ler como dívida algo que ele decidiu.
 """
 
 from calendar import monthrange
@@ -67,9 +47,6 @@ def _centavos(valor) -> Decimal:
     A soma é feita em `Decimal` do início ao fim: acumular saldo diário por 365
     dias em ponto flutuante acumula erro visível na tela.
 
-    Args:
-        valor: Valor numérico ou nulo.
-
     Returns:
         Decimal: Valor com duas casas decimais.
     """
@@ -80,9 +57,8 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
     """Agrupa por dia os lançamentos previstos e ainda não liquidados da janela.
 
     Args:
-        usuario (User): Proprietário dos lançamentos.
-        inicio (date): Primeiro dia da janela, inclusive.
-        fim (date): Último dia da janela, inclusive.
+        inicio: Primeiro dia da janela, inclusive.
+        fim: Último dia da janela, inclusive.
 
     Returns:
         dict[date, dict]: Mapa de data para `{"receitas": Decimal, "despesas": Decimal}`.
@@ -114,8 +90,7 @@ def _pendencias_atrasadas(usuario, antes_de: date) -> dict:
     honesto é o primeiro dia, onde ficam visíveis como o buraco que já existe.
 
     Args:
-        usuario (User): Proprietário dos lançamentos.
-        antes_de (date): Data de corte, exclusiva.
+        antes_de: Data de corte, exclusiva.
 
     Returns:
         dict: Totais de receitas e despesas atrasadas.
@@ -146,11 +121,6 @@ def _aportes_mensais_de_metas(usuario, inicio: date, fim: date) -> dict[date, De
     Metas cujo prazo já passou e que seguem em aberto são cobradas integralmente no
     primeiro mês da janela — represar o valor num prazo vencido apenas esconderia
     que a meta está atrasada.
-
-    Args:
-        usuario (User): Proprietário das metas.
-        inicio (date): Primeiro dia da janela.
-        fim (date): Último dia da janela.
 
     Returns:
         dict[date, Decimal]: Aporte a debitar no primeiro dia de cada mês.
@@ -189,11 +159,7 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
     """Projeta o saldo acumulado dia a dia para os próximos meses.
 
     Args:
-        usuario (User): Proprietário dos dados.
-        hoje (date): Primeiro dia da projeção.
-        meses (int): Tamanho da janela, em meses.
-        limite_atencao (Decimal | None): Saldo abaixo do qual o dia é sinalizado
-            como atenção. `None` desliga a sinalização intermediária.
+        meses: Tamanho da janela, em meses.
 
     Returns:
         dict: Janela projetada, agrupada por mês, com o saldo de cada dia, os
@@ -307,8 +273,7 @@ def _situacao(saldo: Decimal, limite_atencao: Decimal | None) -> str:
     rótulo textual é o que permite ícone, texto e leitor de tela concordarem.
 
     Args:
-        saldo (Decimal): Saldo acumulado do dia.
-        limite_atencao (Decimal | None): Piso de conforto configurado.
+        limite_atencao: Piso de conforto configurado.
 
     Returns:
         str: "negativo", "atencao" ou "confortavel".
@@ -327,11 +292,6 @@ def calendario_mes(usuario, ano: int, mes: int) -> dict:
     calendário de pagamentos quer ver a compra individual que fez, e não apenas a
     fatura consolidada. Somar valores entre os dois níveis é que seria errado, e
     por isso os totais do dia separam o que é fatura do que é compra avulsa.
-
-    Args:
-        usuario (User): Proprietário dos lançamentos.
-        ano (int): Ano de referência.
-        mes (int): Mês de referência, de 1 a 12.
 
     Returns:
         dict: Dias do mês com seus lançamentos e totais.

@@ -1,20 +1,15 @@
 """Endpoints do painel administrativo da plataforma.
 
-**Limite de privacidade, não negociável:** estes endpoints expõem apenas metadados
-de conta — nome de usuário, e-mail, datas, estado de verificação, estado de
-atividade e contagens. Nunca transações, saldos, ativos ou qualquer valor
-financeiro. Administrar a plataforma não exige ver as finanças de ninguém, e o
-produto guarda informação financeira pessoal de terceiros.
+**Limite de privacidade, não negociável:** só metadados de conta — usuário,
+e-mail, datas, verificação, atividade e contagens. Nunca transações, saldos,
+ativos ou qualquer valor. Administrar a plataforma não exige ver as finanças de
+ninguém. `test_api_admin.py::test_resposta_nao_expoe_dado_financeiro` falha se um
+campo financeiro aparecer aqui.
 
-Se um campo financeiro aparecer aqui no futuro, o teste
-`test_api_admin.py::test_resposta_nao_expoe_dado_financeiro` falha — ele existe
-justamente para que essa fronteira não seja atravessada por descuido.
-
-A suspensão usa `is_active=False` do próprio `auth.User`, e não uma flag nova. A
-vantagem é que o enforcement vem de graça e em dois níveis: o backend de
-autenticação recusa o login, e o `JWTAuthentication` do SimpleJWT verifica
-`is_active` a cada requisição, de modo que o access token de quem foi suspenso para
-de funcionar na chamada seguinte, sem esperar os 15 minutos de validade.
+A suspensão usa `is_active=False` do próprio `auth.User` em vez de uma flag nova:
+o enforcement vem de graça em dois níveis — o backend de autenticação recusa o
+login, e o `JWTAuthentication` verifica `is_active` a cada requisição, então o
+access token do suspenso para de funcionar na chamada seguinte.
 """
 
 import logging
@@ -54,11 +49,6 @@ class AdminPaginacao(PadraoPageNumberPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         """Pagina sempre, independentemente do parâmetro `page`.
-
-        Args:
-            queryset (QuerySet): Conjunto de resultados a paginar.
-            request (Request): Requisição em processamento.
-            view (APIView | None): View que originou a listagem.
 
         Returns:
             list: A página solicitada.
@@ -140,23 +130,14 @@ class AdminUsuarioDetalheAPIView(RetrieveAPIView):
 
 
 class _AlterarEstadoContaBase(APIView):
-    """Base das ações que ligam e desligam o acesso de uma conta.
-
-    Atributos:
-        ativar (bool): Estado de `is_active` que a ação aplica.
-        acao (str): Valor registrado em `LogAcaoAdmin.acao`.
-    """
+    """Base das ações que ligam e desligam o acesso de uma conta."""
 
     permission_classes = [IsAdminPlataforma]
     ativar = True
     acao = LogAcaoAdmin.ACAO_REATIVAR
 
-    def post(self, request, pk) -> Response:
+    def post(self, request, pk: int) -> Response:
         """Aplica o novo estado à conta e registra a ação.
-
-        Args:
-            request (Request): Requisição do administrador.
-            pk (int): Chave primária da conta afetada.
 
         Returns:
             Response: 200 com o estado resultante, 404 se a conta não existe, ou
@@ -245,7 +226,7 @@ class AdminMetricasAPIView(APIView):
         """Coleta as métricas agregadas.
 
         Args:
-            request (Request): Requisição do administrador. Aceita `dias` para
+            request: Requisição do administrador. Aceita `dias` para
                 ajustar a janela da série de cadastros.
 
         Returns:

@@ -4,9 +4,6 @@
  * Permite que o investidor redefina as metas de alocação de sua carteira por ativo
  * e calcule instantaneamente o "Aporte Mágico", indicando onde comprar para reequilibrar
  * as posições mais deficitárias sem necessidade de realizar vendas.
- *
- * @component
- * @returns {React.JSX.Element}
  */
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,14 +42,11 @@ const formatPct = (value) => {
 /**
  * Componente de controle deslizante (Slider) customizado para ajuste de metas.
  *
- * @component
- * @param {Object} props - Propriedades do componente.
  * @param {number} props.id - ID único do ativo.
  * @param {string} props.label - Nome do ativo, usado para nomear os controles a leitores de tela.
  * @param {number} props.value - O valor percentual atual da meta.
  * @param {Function} props.onChange - Callback disparado ao alterar o valor da meta.
  * @param {boolean} props.disabled - Flag que desabilita a interação com o controle.
- * @returns {React.JSX.Element}
  */
 function MetaSlider({ id, label, value, onChange, disabled }) {
   return (

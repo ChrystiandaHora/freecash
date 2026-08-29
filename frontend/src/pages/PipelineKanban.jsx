@@ -1,34 +1,18 @@
 /**
  * Tela de Pipeline Kanban de Contas a Pagar.
  *
- * Visualização ágil do ciclo de vida das contas a pagar através de um
- * quadro Kanban interativo com arrastar-e-soltar (`@hello-pangea/dnd`).
+ * Quadro interativo com arrastar-e-soltar (`@hello-pangea/dnd`) sobre o ciclo de vida
+ * das contas a pagar, em cinco colunas: Atrasadas, Para Hoje, Próximos 7 Dias, Final do
+ * Mês e Pagas.
  *
- * Colunas do Quadro:
- * - **Atrasadas** → contas com `data_vencimento` anterior a hoje.
- * - **Para Hoje**  → contas com vencimento no dia atual.
- * - **Próximos 7 Dias** → contas vencendo dentro de 1–7 dias.
- * - **Final do Mês** → contas vencendo após 7 dias.
- * - **Pagas** → contas já quitadas (`pago === true`).
+ * Arrastar um card para **Pagas** dispara a mutation `pagarConta`
+ * (`POST /api/contas-pagar/{id}/pagar/`); movimentação entre as outras colunas é apenas
+ * visual, sem persistência. Clicar no corpo do card abre `ContaPagarEditModal`, que
+ * também permite quitar sem sair do quadro.
  *
- * Comportamento de Drag & Drop:
- * - Arrastar um card para a coluna **"Pagas"** dispara a mutation
- *   `pagarConta` que registra o pagamento via API (`POST /api/contas-pagar/{id}/pagar/`).
- * - Movimentação entre outras colunas é visual apenas (sem persistência de data).
+ * KPIs: Total Pendente, Total Atrasado, Contas Pagas e Total de Contas.
  *
- * Edição: clicar no corpo do card abre `ContaPagarEditModal`, permitindo alterar
- * descrição, categoria, valor e vencimento — ou quitar a conta pelo botão
- * "Marcar como paga" do próprio diálogo — sem sair do quadro.
- *
- * KPIs exibidos: Total Pendente, Total Atrasado, Contas Pagas, Total de Contas.
- *
- * @module PipelineKanban
- * @component
- * @returns {JSX.Element} Quadro Kanban interativo de gerenciamento de contas a pagar.
- *
- * @example
- * // Rota configurada em App.jsx:
- * <Route path="contas-kanban" element={<PipelineKanban />} />
+ * @returns {JSX.Element} Quadro Kanban de gerenciamento de contas a pagar.
  */
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 VERSION = "4.1"
 
 
-def _to_serializable(obj):
+def _to_serializable(obj: any):
     """Converte tipos complexos do Django/Python em tipos nativos serializáveis em JSON.
 
     Args:
-        obj (any): O valor a ser convertido (Decimal, UUID, datetime, date, etc.).
+        obj: O valor a ser convertido (Decimal, UUID, datetime, date, etc.).
 
     Returns:
         any: O valor convertido em formato nativo serializável (float, str, isoformat).
@@ -91,16 +91,12 @@ def get_backupable_models():
     return sorted(backup_models, key=get_priority)
 
 
-def encrypt_data(data_dict, password):
+def encrypt_data(data_dict: dict, password: str):
     """Criptografa um dicionário Python usando criptografia autenticada AES-GCM.
 
     Aplica derivação de chave robusta PBKDF2-HMAC-SHA256, gerando um Salt aleatório
     e executando a cifra AES-GCM com um Nonce seguro. Garante também checagem de
     integridade pública injetando o hash SHA256 do payload criptografado.
-
-    Args:
-        data_dict (dict): Dicionário contendo os metadados e dados exportados.
-        password (str): Senha definida pelo usuário para o backup.
 
     Returns:
         str: String codificada em Base64 contendo os dados protegidos (arquivo .fcbk).
@@ -129,16 +125,12 @@ def encrypt_data(data_dict, password):
     return base64.b64encode(final_file_data).decode("utf-8")
 
 
-def export_user_data(user, password):
+def export_user_data(user, password: str):
     """Coleta e exporta todos os registros financeiros do usuário em formato criptografado.
 
     Varre todos os modelos locais relevantes, mapeia e resolve relacionamentos
     baseando-se em UUIDs seguros (para preservação ao restaurar em outros bancos),
     e aplica a criptografia simétrica com a senha fornecida.
-
-    Args:
-        user (User): O usuário Django proprietário das informações.
-        password (str): Senha de proteção do backup.
 
     Returns:
         str: O conteúdo do backup final criptografado em Base64.

@@ -1,22 +1,10 @@
-# Sobreposição opcional: HTTPS com certificado automático.
+# Sobreposição opcional: HTTPS com certificado automático. Usar junto do compose de
+# produção; passo a passo e variáveis do .env em DEPLOY.md, cenário B.
 #
-# Uso, sempre junto com o compose de produção:
-#
-#   DOMAIN=freecash.exemplo.com \
 #   docker compose -f docker-compose.prod.yml -f docker-compose.prod.tls.yml up -d --build
 #
-# Antes de subir, no .env:
-#
-#   HTTP_PORT=127.0.0.1:8080     # tira o frontend da porta 80 pública; ele passa a
-#                                # escutar só em loopback, alcançável pelo Caddy
-#   DOMAIN=freecash.exemplo.com
-#   VITE_API_URL=https://freecash.exemplo.com
-#   DJANGO_ALLOWED_HOSTS=freecash.exemplo.com
-#   DJANGO_CSRF_TRUSTED_ORIGINS=https://freecash.exemplo.com
-#   DJANGO_SECURE_SSL_REDIRECT=True
-#
-# Este arquivo não é necessário nos outros dois cenários descritos em DEPLOY.md
-# (acesso por IP em HTTP, ou domínio atrás do Cloudflare).
+# `HTTP_PORT=127.0.0.1:8080` no .env é o que tira o frontend da porta pública: ele
+# passa a escutar só em loopback, alcançável apenas pelo Caddy.
 
 services:
   caddy:

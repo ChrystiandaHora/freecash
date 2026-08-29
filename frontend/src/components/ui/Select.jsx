@@ -4,13 +4,9 @@
  * Um seletor customizável construído sobre o elemento nativo HTML `<select>` contendo
  * estilizações sutis e indicador visual de seta descendente absolutizada.
  *
- * @component
  * @param {Object} props - Propriedades do seletor.
- * @param {string} [props.className] - Estilos CSS extras do Tailwind.
  * @param {React.ReactNode} props.children - As tags `<option>` representando as escolhas da caixa.
  * @param {React.SelectHTMLAttributes<HTMLSelectElement>} props - Atributos HTML `<select>` nativos.
- * @param {React.Ref<HTMLSelectElement>} ref - Referência DOM encaminhada.
- * @returns {React.JSX.Element}
  */
 import * as React from "react"
 import { cn } from "../../lib/utils"

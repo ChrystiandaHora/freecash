@@ -20,9 +20,8 @@ class TradingViewQuote:
     """Estrutura representativa de uma cotação de ativo retornada pelo TradingView.
 
     Atributos:
-        symbol (str): O ticker completo do ativo no formato do TradingView (ex: "BMFBOVESPA:PETR4").
-        close (Decimal): O valor de fechamento/cotação mais recente do ativo.
-        as_of (date): A data de referência da cotação consultada.
+        symbol: O ticker completo do ativo no formato do TradingView (ex: "BMFBOVESPA:PETR4").
+        close: O valor de fechamento/cotação mais recente do ativo.
     """
     symbol: str
     close: Decimal
@@ -40,7 +39,7 @@ def _normalize_to_tradingview_symbol(ticker: str) -> str:
         - Caso contrário, adiciona o prefixo padrão da Bolsa do Brasil "BMFBOVESPA:".
 
     Args:
-        ticker (str): O código do ativo cadastrado no sistema (ex: "PETR4", "PETR4.SA", "NASDAQ:AAPL").
+        ticker: O código do ativo cadastrado no sistema (ex: "PETR4", "PETR4.SA", "NASDAQ:AAPL").
 
     Returns:
         str: O ticker formatado e normalizado ou uma string vazia caso o parâmetro seja nulo/inválido.
@@ -65,8 +64,8 @@ def _build_scan_payload(symbols: list[str], limit: int) -> dict:
     para uma lista explícita de tickers dentro dos limites operacionais.
 
     Args:
-        symbols (list[str]): Lista de tickers normalizados no formato do TradingView.
-        limit (int): Número máximo de registros a serem processados no escopo do scanner.
+        symbols: Lista de tickers normalizados no formato do TradingView.
+        limit: Número máximo de registros a serem processados no escopo do scanner.
 
     Returns:
         dict: O dicionário representando o payload JSON estruturado pronto para serialização.
@@ -84,22 +83,22 @@ def fetch_quotes_brazil(
     timeout_seconds: int = 15,
     limit: int = 500,
 ) -> dict[str, TradingViewQuote]:
-    """Consulta e extrai as cotações atualizadas de múltiplos ativos de renda variável do Brasil.
+    """Consulta as cotações de vários ativos de renda variável do Brasil.
 
-    Realiza uma requisição HTTP POST síncrona diretamente no endpoint de scan do TradingView Brasil,
-    processa os resultados em formato JSON e constrói instâncias de cotações normalizadas.
+    Faz um POST síncrono no endpoint de scan do TradingView Brasil e normaliza o JSON de
+    resposta.
 
     Args:
-        tickers (Iterable[str]): Coleção de tickers dos ativos a serem consultados (ex: ["PETR4", "VALE3"]).
-        timeout_seconds (int, optional): Tempo limite em segundos para a requisição de rede. Defaults to 15.
-        limit (int, optional): Limite de paginação de registros consultados. Defaults to 500.
+        tickers: Tickers a consultar (ex.: ["PETR4", "VALE3"]).
+        timeout_seconds: Tempo limite da requisição. Defaults to 15.
+        limit: Limite de paginação. Defaults to 500.
 
     Raises:
-        RuntimeError: Se houver falha de rede (URLError/HTTPError) ou falha na decodificação do payload JSON.
+        RuntimeError: Falha de rede (URLError/HTTPError) ou JSON inválido.
 
     Returns:
-        dict[str, TradingViewQuote]: Dicionário mapeando cada ticker normalizado (ex: "BMFBOVESPA:PETR4")
-            à sua respectiva cotação consolidada (`TradingViewQuote`).
+        dict[str, TradingViewQuote]: Ticker normalizado (ex.: "BMFBOVESPA:PETR4") para a
+            cotação consolidada.
     """
     symbols = []
     for ticker in tickers:

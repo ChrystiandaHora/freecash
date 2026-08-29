@@ -1,18 +1,11 @@
 """Testes do painel administrativo.
 
-Três propriedades sustentam estes testes:
-
-**Autorização real, não cosmética.** O gate do frontend é conveniência; a recusa
-tem de vir do servidor. Um usuário comum precisa receber 403 em toda rota do
-painel, e um administrador suspenso deixa de ser administrador na hora.
-
-**A fronteira de privacidade.** O painel expõe metadados de conta e contagens,
-nunca valores financeiros. O teste `test_resposta_nao_expoe_dado_financeiro` existe
-para falhar caso alguém publique um campo de valor por descuido — é a única
-proteção automática dessa fronteira.
-
-**A suspensão encerra a sessão.** Marcar `is_active=False` sem revogar os tokens
-deixaria o suspenso operando por até sete dias via refresh token.
+Três propriedades: autorização real, não cosmética — o gate do frontend é
+conveniência, a recusa vem do servidor, e um administrador suspenso deixa de ser
+administrador na hora; a fronteira de privacidade, com
+`test_resposta_nao_expoe_dado_financeiro` como única proteção automática contra
+publicar um campo de valor por descuido; e a suspensão encerrando a sessão, senão o
+suspenso opera por sete dias via refresh token.
 """
 
 from django.contrib.auth import get_user_model
@@ -53,11 +46,7 @@ class AdminBaseTestCase(APITestCase):
         )
 
     def autenticar(self, usuario):
-        """Autentica com uma instância recém-carregada do usuário.
-
-        Args:
-            usuario (User): Conta a autenticar.
-        """
+        """Autentica com uma instância recém-carregada do usuário."""
         self.client.force_authenticate(user=User.objects.get(pk=usuario.pk))
 
 

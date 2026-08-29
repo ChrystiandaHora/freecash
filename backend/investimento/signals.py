@@ -14,18 +14,12 @@ from django.db.models.signals import post_delete
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def criar_classificacao_padrao(sender, instance, created, **kwargs):
-    """Inicializa a estrutura padrão de classes, categorias e subcategorias de ativos para novos usuários.
+def criar_classificacao_padrao(sender, instance, created: bool, **kwargs):
+    """Cria a árvore padrão de classes, categorias e subcategorias de ativos.
 
     Executado logo após a criação de um novo usuário Django, garantindo que ele tenha uma árvore
     de decisão padrão populada (Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos)
     para classificar seus investimentos na B3.
-
-    Args:
-        sender (Model): A classe do modelo que enviou o sinal (User).
-        instance (User): A instância do usuário recém-criada.
-        created (bool): Flag indicando se um novo registro foi criado.
-        **kwargs: Parâmetros adicionais repassados pelo sinal.
     """
     if created:
         # 1. Renda Fixa
@@ -168,17 +162,12 @@ def criar_classificacao_padrao(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Transacao)
 @receiver(post_delete, sender=Transacao)
-def atualizar_ativo_apos_transacao(sender, instance, **kwargs):
-    """Gatilha o recálculo de preço médio e quantidade em custódia de um ativo após transações.
+def atualizar_ativo_apos_transacao(sender, instance: Transacao, **kwargs):
+    """Dispara o recálculo de preço médio e custódia após uma transação.
 
     Escuta inserções, atualizações ou deleções de transações financeiras (compras/vendas),
     disparando a rotina matemática de PM fiscal ponderado para manter os dados de custódia
     atualizados.
-
-    Args:
-        sender (Model): A classe do modelo que enviou o sinal (Transacao).
-        instance (Transacao): A instância da transação que sofreu a mutação.
-        **kwargs: Parâmetros adicionais repassados pelo sinal.
     """
     if instance.ativo:
         recalcular_ativo(instance.ativo)

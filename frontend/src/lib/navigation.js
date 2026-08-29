@@ -8,8 +8,6 @@
  * Regra única: **prefixo mais longo vence, com fronteira de segmento**.
  * Substitui a lista chumbada de casos especiais que vivia no DashboardLayout
  * (`path !== '/dashboard' && path !== '/investimentos'`).
- *
- * @module lib/navigation
  */
 
 /**

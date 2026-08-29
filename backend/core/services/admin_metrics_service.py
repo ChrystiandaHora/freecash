@@ -27,7 +27,7 @@ def _serie_cadastros(dias: int) -> list[dict]:
     """Conta os cadastros por dia nos últimos N dias.
 
     Args:
-        dias (int): Tamanho da janela, em dias.
+        dias: Tamanho da janela, em dias.
 
     Returns:
         list[dict]: Itens `{"data": "YYYY-MM-DD", "total": int}` em ordem crescente,
@@ -58,7 +58,7 @@ def coletar_metricas(dias_serie: int = 30) -> dict:
     exatamente no painel usado para acompanhar esse crescimento.
 
     Args:
-        dias_serie (int): Tamanho da janela da série de cadastros, em dias.
+        dias_serie: Tamanho da janela da série de cadastros, em dias.
 
     Returns:
         dict: Indicadores de contas, verificação de e-mail e atividade recente.

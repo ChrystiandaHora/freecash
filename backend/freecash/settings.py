@@ -147,15 +147,10 @@ STATICFILES_DIRS = [
     BASE_DIR / "core" / "static",
 ]
 
-# O WhiteNoiseMiddleware já está na pilha, mas sozinho ele apenas serve os
-# arquivos de STATIC_ROOT. O storage abaixo é o que faz o resto do trabalho:
-# gera versões comprimidas (.gz/.br) no collectstatic e renomeia cada arquivo com
-# um hash do conteúdo, registrado num manifesto. Isso permite servir os estáticos
-# com cache longo sem risco de o navegador segurar uma versão velha — quando o
-# conteúdo muda, o nome muda.
-#
-# Em desenvolvimento o Django usa o finder e ignora o STATIC_ROOT, então o
-# manifesto não interfere no auto-reload.
+# O middleware do WhiteNoise apenas serve o STATIC_ROOT; é o storage abaixo que
+# comprime no collectstatic e renomeia cada arquivo com o hash do conteúdo. Isso
+# permite cache longo sem o navegador segurar versão velha: muda o conteúdo, muda o
+# nome. Em desenvolvimento o Django usa o finder e ignora o STATIC_ROOT.
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

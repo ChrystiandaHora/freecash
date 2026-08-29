@@ -1,35 +1,19 @@
 /**
  * Tela de Autenticação e Cadastro de Usuário (Login / Register).
  *
- * Página pública da aplicação que opera em dois modos alternáveis:
- * - **Login:** autentica o usuário via `useAuth().login()` e redireciona para `/dashboard`.
- * - **Cadastro:** registra um novo usuário via `useAuth().register()`, exigindo
- *   e-mail (necessário para confirmar a conta e recuperar a senha) e senha
- *   validada pelos `AUTH_PASSWORD_VALIDATORS` do servidor.
+ * Página pública em dois modos: **login**, via `useAuth().login()`, e **cadastro**, via
+ * `useAuth().register()`, que exige e-mail — necessário para confirmar a conta e
+ * recuperar a senha — e senha validada pelos `AUTH_PASSWORD_VALIDATORS` do servidor.
  *
- * O campo de identificação do login aceita **e-mail ou nome de usuário**, e por
- * isso é `type="text"`. Um `type="email"` bloquearia, na própria validação do
- * navegador, as contas criadas antes da adoção do e-mail — inclusive o
- * superusuário, que pode não ter endereço cadastrado.
+ * O campo de identificação aceita **e-mail ou nome de usuário**, e por isso é
+ * `type="text"`. Um `type="email"` bloquearia, na validação do navegador, as contas
+ * criadas antes da adoção do e-mail — inclusive o superusuário.
  *
- * Funcionalidades:
- * - Layout split-screen: painel de branding (desktop, `lg:` e acima) + formulário.
- * - Toggle de tema claro/escuro persistido no `localStorage`.
- * - Toggle de mostrar/ocultar senha nos campos de senha.
- * - Feedback de erros HTTP granular (400 → dados inválidos, 401 → credenciais erradas).
- * - Estado de carregamento com spinner (`Loader2`) durante chamadas à API.
- * - Orbs de gradiente decorativos para identidade visual premium.
+ * Traz layout split-screen (painel de branding em `lg:` e acima), toggle de tema e de
+ * visibilidade da senha, erro por código HTTP (400 dados inválidos, 401 credenciais) e
+ * estado de carregamento. Usuário já autenticado é redirecionado por `PublicRoute`.
  *
- * Proteção de rota: usuários já autenticados são redirecionados para `/dashboard`
- * pelo componente `PublicRoute` definido em `App.jsx`.
- *
- * @module Login
- * @component
  * @returns {JSX.Element} Tela de login/cadastro responsiva e acessível.
- *
- * @example
- * // Rota pública configurada em App.jsx:
- * <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';

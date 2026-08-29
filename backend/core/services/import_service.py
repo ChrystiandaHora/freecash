@@ -41,10 +41,6 @@ def decrypt_data_fcbk(encrypted_base64: str, password: str) -> dict:
     extrai os blocos de Salt/Nonce e descriptografa via AES-GCM, convertendo o
     JSON resultante em dicionário estruturado.
 
-    Args:
-        encrypted_base64 (str): O conteúdo codificado em Base64 lido do arquivo.
-        password (str): Senha do backup definida pelo usuário.
-
     Raises:
         ValueError: Se o arquivo estiver violado, senha incorreta ou arquivo corrompido.
 
@@ -153,10 +149,6 @@ CAMPOS_RENOMEADOS_POR_MODELO = {
 def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
     """Reescreve as chaves de um registro de backup para os nomes atuais.
 
-    Args:
-        model_name (str): Nome atual da classe do modelo.
-        linha (dict): Registro lido do backup.
-
     Returns:
         dict: O mesmo registro, com as chaves renomeadas quando aplicável.
     """
@@ -173,26 +165,17 @@ def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
 def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     """Substitui transacionalmente todas as entidades do usuário com os dados do backup.
 
-    Executa um processo atômico de limpeza (delete) dos dados atuais do usuário e
-    insere as novas entidades mapeando e religando chaves estrangeiras com base
-    em UUIDs estáveis contidos no dicionário de backup.
+    Apaga os dados atuais e reinsere os do backup, religando as chaves estrangeiras
+    pelos UUIDs estáveis do arquivo.
 
-    Desconecta temporariamente os signals do módulo de investimentos durante a
-    restauração para evitar recálculos parciais e incorretos de preço médio e
-    quantidade dos ativos enquanto as transações são reinseridas individualmente.
-    Após a restauração completa, força o recálculo de todos os ativos afetados.
-
-    Desconecta também os signals de consolidação de fatura do módulo core: o
-    backup já contém as faturas consolidadas com seus próprios UUIDs, e deixar o
-    signal ativo faria a restauração de uma compra de cartão criar uma fatura
-    "fantasma" (UUID novo) que depois duplicaria a fatura original do backup.
-
-    Args:
-        data_dict (dict): Dicionário contendo os dados decodificados do backup.
-        user (User): O usuário Django que está restaurando a base de dados.
+    Desconecta dois conjuntos de signals durante a operação. Os de investimento, para
+    não recalcular preço médio parcialmente a cada transação reinserida — o recálculo é
+    forçado no fim. E os de consolidação de fatura do core, porque o backup já traz as
+    faturas com seus UUIDs, e o signal ativo criaria uma fatura fantasma que depois
+    duplicaria a original.
 
     Returns:
-        dict: Estatísticas contendo total de registros restaurados ou falhas.
+        dict: Estatísticas com total de registros restaurados ou falhas.
     """
     # ── Desconectar signals de investimento durante a importação ─────────────
     # O signal post_save/post_delete de Transacao chama recalcular_ativo() a
@@ -603,11 +586,6 @@ def importar_universal(arquivo, usuario, password=None) -> dict:
     o isolamento transacional é gerenciado internamente por
     `restore_user_data_fcbk`, que também garante a reconexão dos signals Django
     de investimentos via bloco `try/finally` ao redor da transaction.
-
-    Args:
-        arquivo (File): O arquivo binário do backup carregado.
-        usuario (User): Instância do usuário que está processando o backup.
-        password (str, optional): Senha de criptografia. Requerido para '.fcbk'.
 
     Raises:
         ValueError: Se o formato for inválido ou a senha estiver faltando.

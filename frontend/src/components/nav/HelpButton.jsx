@@ -10,8 +10,6 @@
  * SC 3.2.6 Consistent Help: este é um mecanismo de ajuda automatizada, então ele
  * precisa viver no layout compartilhado — nunca posicionado tela por tela — e sua
  * ORDEM relativa ao tema e ao relógio não pode mudar entre breakpoints.
- *
- * @module components/nav/HelpButton
  */
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -49,7 +47,6 @@ const fallbackHelp = {
 };
 
 /**
- * @returns {React.JSX.Element}
  */
 export function HelpButton() {
   const [helpOpen, setHelpOpen] = useState(false);

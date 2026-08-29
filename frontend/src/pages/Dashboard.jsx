@@ -5,7 +5,6 @@
  * despesas liquidadas vs. previstas, cartões de crédito e taxa de poupança atual.
  * Renderiza gráficos interativos de fluxo de caixa projetado para apoio em tomadas de decisões.
  *
- * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 import { useState, useEffect } from 'react';
@@ -59,7 +58,6 @@ const formatPercentage = (value) => {
  * despesas liquidadas vs. previstas, cartões de crédito e taxa de poupança atual.
  * Renderiza gráficos interativos de fluxo de caixa projetado para apoio em tomadas de decisões.
  *
- * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 export default function Dashboard() {

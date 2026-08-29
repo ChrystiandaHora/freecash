@@ -1,15 +1,12 @@
-"""Testes dos relatórios exportáveis (PDF, Excel e CSV) e da camada de formatação.
+"""Testes dos relatórios exportáveis (PDF, Excel e CSV) e da formatação.
 
-Cobre quatro frentes que os geradores anteriores não tinham:
-
-1. Formatação pt-BR — a falha mais visível do relatório antigo era imprimir
-   ``R$ 3,048.21`` (padrão americano) em um documento em português.
-2. `get_despesas_por_categoria` — nova agregação, que precisa respeitar o mesmo
-   filtro anti-duplicidade de fatura de cartão usado pelas movimentações.
-3. `gerar_pdf` — geração ponta a ponta nos três escopos, incluindo os casos de
-   base vazia, documento multipágina e isolamento entre usuários.
-4. `gerar_excel` / `gerar_csv` — números gravados como número (e não texto),
-   totais que fecham com os dados e CSV que o Excel pt-BR abre sem assistente.
+Quatro frentes que os geradores anteriores não tinham: formatação pt-BR — a falha
+mais visível do relatório antigo era imprimir ``R$ 3,048.21`` num documento em
+português; `get_despesas_por_categoria`, que precisa respeitar o mesmo filtro
+anti-duplicidade de fatura usado pelas movimentações; `gerar_pdf` ponta a ponta nos
+três escopos, com base vazia, multipágina e isolamento entre usuários; e
+`gerar_excel`/`gerar_csv`, com números gravados como número e CSV que o Excel pt-BR
+abre sem assistente.
 """
 
 import io
@@ -237,9 +234,6 @@ class GerarPdfTests(BaseRelatorioTestCase):
     def _paginas(self, payload: bytes) -> int:
         """Conta as páginas declaradas no PDF.
 
-        Args:
-            payload (bytes): Conteúdo do arquivo gerado.
-
         Returns:
             int: Quantidade de objetos de página encontrados.
         """
@@ -304,7 +298,7 @@ class GerarExcelTests(BaseRelatorioTestCase):
         """Gera a planilha e devolve a pasta de trabalho carregada.
 
         Args:
-            escopo (str, optional): Escopo do relatório. Defaults to "completo".
+            escopo: Escopo do relatório. Defaults to "completo".
 
         Returns:
             Workbook: Planilha gerada, pronta para inspeção.

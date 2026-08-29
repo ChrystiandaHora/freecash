@@ -30,12 +30,8 @@ class MetasBaseAPITestCase(APITestCase):
         self.token = str(AccessToken.for_user(self.user))
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
 
-    def _criar_plano(self, renda="8000.00", custo="5000.00"):
+    def _criar_plano(self, renda: str = "8000.00", custo: str = "5000.00"):
         """Cria (ou atualiza) o plano do usuário de teste.
-
-        Args:
-            renda (str): Renda mensal de referência.
-            custo (str): Custo de vida mensal de referência.
 
         Returns:
             PlanoMetas: O plano persistido.
@@ -359,14 +355,11 @@ class AporteMetaAPITests(MetasBaseAPITestCase):
 class ProgressoPelaCarteiraAPITests(MetasBaseAPITestCase):
     """Verifica as metas cujo progresso vem do valor de mercado da carteira."""
 
-    def _criar_ativo(self, ticker, quantidade, preco_medio, cotacao=None):
+    def _criar_ativo(self, ticker: str, quantidade: str, preco_medio: str, cotacao=None):
         """Cria um ativo e, opcionalmente, sua cotação mais recente.
 
         Args:
-            ticker (str): Código do ativo.
-            quantidade (str): Quantidade em custódia.
-            preco_medio (str): Preço médio de aquisição.
-            cotacao (str | None): Cotação atual; None deixa o ativo sem cotação.
+            cotacao: Cotação atual; None deixa o ativo sem cotação.
 
         Returns:
             Ativo: O ativo criado.
@@ -454,13 +447,13 @@ class ProgressoPelaCarteiraAPITests(MetasBaseAPITestCase):
 class MetaMensalAPITests(MetasBaseAPITestCase):
     """Verifica a meta mensal, cujo progresso são os aportes da competência."""
 
-    def _criar_compra(self, valor, data=None, tipo=None):
+    def _criar_compra(self, valor: str, data=None, tipo=None):
         """Registra uma ordem na carteira do usuário de teste.
 
         Args:
-            valor (str): Valor total da ordem.
-            data (date | None): Data da ordem; None usa hoje.
-            tipo (str | None): Tipo da transação; None usa compra.
+            valor: Valor total da ordem.
+            data: Data da ordem; None usa hoje.
+            tipo: Tipo da transação; None usa compra.
 
         Returns:
             Transacao: A ordem criada.

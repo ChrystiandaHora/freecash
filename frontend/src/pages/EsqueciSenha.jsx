@@ -8,10 +8,6 @@
  *
  * Por isso o estado de sucesso é sempre o mesmo, e a tela nunca afirma que a
  * mensagem foi enviada — apenas que, se a conta existir, ela chegará.
- *
- * @module EsqueciSenha
- * @component
- * @returns {React.JSX.Element}
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';

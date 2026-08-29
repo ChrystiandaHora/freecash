@@ -12,10 +12,6 @@
  * sessão em curso e impede novo login. Por isso passa por confirmação em `ui/Modal`,
  * com campo de motivo — que fica registrado no histórico administrativo, para que
  * "minha conta foi bloqueada e ninguém sabe por quê" tenha resposta.
- *
- * @module AdminUsuarios
- * @component
- * @returns {React.JSX.Element}
  */
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

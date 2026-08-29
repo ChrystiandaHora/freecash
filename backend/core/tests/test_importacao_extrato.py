@@ -92,7 +92,7 @@ class ImportacaoExtratoTestCase(APITestCase):
 
     @patch('core.services.extrato_parser.processar_pdf')
     def test_reconciliacao_due_date_calculation(self, mock_processar):
-        """Testa se o processamento direto do upload calcula corretamente o vencimento (data_prevista)"""
+        """O upload calcula o vencimento (data_prevista) corretamente."""
         # Compra antes do fechamento (Compra: 10/05, Fechamento: 15/05, Vencimento: 25/05)
         # Compra após o fechamento (Compra: 18/05, Fechamento: 15/05, Vencimento: 25/06)
         mock_processar.return_value = [
@@ -159,7 +159,7 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertFalse(fatura_junho.transacao_realizada)
 
     def test_sync_compra_com_fatura_paga_na_criacao(self):
-        """Valida que criar uma compra de cartão vinculada a uma fatura já PAGA a marca como paga automaticamente."""
+        """Compra vinculada a fatura já paga nasce marcada como paga."""
         # 1. Criar fatura consolidada paga
         data_pagamento = date(2026, 5, 24)
         fatura = Conta.objects.create(
@@ -190,7 +190,7 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(compra.data_realizacao, data_pagamento)
 
     def test_sync_compra_com_fatura_paga_na_edicao(self):
-        """Valida que editar o vencimento de uma compra para um mês com fatura paga a marca como paga."""
+        """Mover a compra para um mês de fatura paga a marca como paga."""
         # 1. Fatura paga em Maio
         fatura_maio = Conta.objects.create(
             usuario=self.user,
@@ -225,7 +225,7 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertEqual(compra.data_realizacao, date(2026, 5, 24))
 
     def test_edit_fatura_cartao_metadata(self):
-        """Valida que editar a descrição e categoria de uma fatura de cartão via API funciona, ignorando alterações de valor/vencimento."""
+        """Editar descrição e categoria da fatura funciona; valor e vencimento são ignorados."""
         fatura = Conta.objects.create(
             usuario=self.user,
             tipo=Conta.TIPO_DESPESA,
@@ -281,7 +281,7 @@ class ImportacaoExtratoTestCase(APITestCase):
 
     @patch('core.services.extrato_parser.processar_pdf')
     def test_upload_parcela_antiga(self, mock_processar):
-        """Valida que uma compra de mês anterior (parcela) é associada ao vencimento da fatura importada atual."""
+        """Parcela de mês anterior entra no vencimento da fatura importada."""
         # Parcela de compra realizada em 10/04 (vencimento original seria 25/04)
         mock_processar.return_value = [
             {"data": date(2026, 4, 10), "descricao": "Compra Parcelada Antiga 2/3", "valor": Decimal("120.00"), "tipo": "D"},

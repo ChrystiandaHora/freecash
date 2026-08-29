@@ -10,18 +10,14 @@ from rest_framework import permissions
 class EmailVerificadoOuCarencia(permissions.BasePermission):
     """Exige e-mail confirmado para importar dados, após um período de carência.
 
-    Aplicada **apenas à importação**, e nunca ao CRUD financeiro nem à exportação.
+    Aplicada **apenas à importação**, nunca ao CRUD financeiro nem à exportação. O
+    critério é amplificação: importar processa arquivo enviado com `pdfplumber` e
+    leitores de planilha, gastando CPU e memória por requisição — é o que valeria
+    explorar a partir de uma conta descartável. Exportar percorre só os registros do
+    próprio usuário, e uma conta descartável não tem dados.
 
-    O critério é amplificação: importar recebe arquivo enviado pelo usuário e o
-    processa com `pdfplumber` e leitores de planilha, gastando CPU e memória por
-    requisição — é o que valeria a pena explorar a partir de uma conta descartável.
-    Exportar percorre só os registros do próprio usuário, então uma conta
-    descartável, sem dados, exporta nada: não há o que amplificar, e o portão foi
-    retirado de lá.
-
-    A carência existe para que o produto seja utilizável no primeiro acesso: quem
-    acabou de se cadastrar trabalha imediatamente, e a exigência só aparece se a
-    conta seguir não confirmada depois de alguns dias.
+    A carência mantém o produto utilizável no primeiro acesso: a exigência só aparece se
+    a conta seguir não confirmada depois de alguns dias.
     """
 
     message = (
@@ -36,10 +32,6 @@ class EmailVerificadoOuCarencia(permissions.BasePermission):
 
     def has_permission(self, request, view) -> bool:
         """Decide se a requisição pode prosseguir.
-
-        Args:
-            request (Request): Requisição em curso.
-            view (APIView): View sendo acessada.
 
         Returns:
             bool: True se o e-mail está confirmado ou a conta ainda está na carência.
@@ -69,26 +61,20 @@ class EmailVerificadoOuCarencia(permissions.BasePermission):
 class IsAdminPlataforma(permissions.BasePermission):
     """Restringe o acesso aos administradores da plataforma.
 
-    Usa a flag `is_staff` do próprio `auth.User` em vez de introduzir um modelo de
-    papéis. Para dois níveis — usuário e administrador — um modelo novo só
-    adicionaria uma tabela a manter e um segundo lugar onde a autorização poderia
-    divergir.
+    Usa `is_staff` do próprio `auth.User` em vez de um modelo de papéis: para dois
+    níveis, um modelo novo só somaria uma tabela a manter e um segundo lugar onde a
+    autorização poderia divergir.
 
-    O papel é sempre lido do banco, a cada requisição, e **nunca** de uma claim do
-    JWT: com `ROTATE_REFRESH_TOKENS`, o SimpleJWT preserva o payload original na
-    rotação, então um administrador rebaixado continuaria administrador por até
-    sete dias. `is_active` é verificado explicitamente para que a suspensão de um
-    administrador tenha efeito imediato.
+    O papel é lido do banco a cada requisição, nunca de claim do JWT — com
+    `ROTATE_REFRESH_TOKENS` o payload sobrevive à rotação, e um administrador rebaixado
+    seguiria administrador por sete dias. `is_active` é checado à parte para a suspensão
+    ter efeito imediato.
     """
 
     message = "Esta área é restrita aos administradores da plataforma."
 
     def has_permission(self, request, view) -> bool:
         """Decide se a requisição parte de um administrador ativo.
-
-        Args:
-            request (Request): Requisição em curso.
-            view (APIView): View sendo acessada.
 
         Returns:
             bool: True apenas para usuário autenticado, ativo e com `is_staff`.

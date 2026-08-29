@@ -40,10 +40,6 @@ class PasswordResetEmailThrottle(AuthScopedRateThrottle):
     def get_cache_key(self, request, view):
         """Compõe a chave de cache a partir do e-mail alvo da requisição.
 
-        Args:
-            request (Request): Requisição com o campo `email` no corpo.
-            view (APIView): View sendo acessada.
-
         Returns:
             str | None: Chave de cache, ou None quando não há e-mail no corpo — nesse
                 caso o throttle por IP já cobre a requisição.

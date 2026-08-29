@@ -32,20 +32,13 @@ def atualizar_config(usuario):
 def atualizar_config_existente(usuario):
     """Atualiza o timestamp apenas se a configuração ainda existir.
 
-    Existe para o caminho de exclusão. `atualizar_config` usa `get_or_create`, e
-    durante o cascade de remoção de um usuário isso **recriava** a `ConfigUsuario`
-    apontando para uma linha de `auth_user` que estava sendo apagada na mesma
-    transação. O commit então falhava com violação de chave estrangeira, e o
-    efeito prático era que **nenhum usuário podia ser excluído do sistema** —
-    inclusive pelo direito de exclusão da LGPD.
+    Existe para o caminho de exclusão. `atualizar_config` usa `get_or_create`, e durante
+    o cascade de remoção do usuário isso recriava a `ConfigUsuario` apontando para a
+    linha de `auth_user` sendo apagada na mesma transação: o commit falhava com violação
+    de FK e **nenhum usuário podia ser excluído** — inclusive pelo direito da LGPD.
 
-    `filter().update()` é no-op quando não há linha, que é exatamente o
-    comportamento desejado aqui: se a configuração já foi removida, não há
-    timestamp a registrar. `atualizada_em` é `auto_now`, e `update()` não dispara
-    `auto_now`, por isso o valor vai explícito.
-
-    Args:
-        usuario (User): Proprietário da configuração.
+    `filter().update()` é no-op sem linha, que é o comportamento desejado. `update()` não
+    dispara `auto_now`, por isso `atualizada_em` vai explícito.
     """
     ConfigUsuario.objects.filter(usuario=usuario).update(
         atualizada_em=timezone.now()
@@ -57,9 +50,6 @@ def _consolidar_fatura(conta: Conta) -> None:
 
     Esta função é idempotente: pode ser chamada múltiplas vezes sem efeitos colaterais.
     Ela respeita o estado de liquidação da fatura (não modifica faturas já pagas).
-
-    Args:
-        conta: A compra individual de cartão que disparou a consolidação.
     """
     from core.services.fatura_service import (
         atualizar_valor_fatura,
@@ -91,9 +81,6 @@ def _reconsolidar_apos_exclusao(conta: Conta) -> None:
 
     Se a fatura ficar com valor zero e não estiver paga, ela é removida
     automaticamente para não poluir a tela de Contas a Pagar.
-
-    Args:
-        conta: A compra individual de cartão que foi deletada.
     """
     from decimal import Decimal
     from core.services.fatura_service import atualizar_valor_fatura

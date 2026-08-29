@@ -35,9 +35,6 @@ class SenhaAtualMixin(serializers.Serializer):
     def validate_senha_atual(self, valor: str) -> str:
         """Confere a senha informada contra a do usuário autenticado.
 
-        Args:
-            valor (str): Senha em texto plano.
-
         Returns:
             str: A mesma senha, se conferir.
 
@@ -67,9 +64,6 @@ class PerfilUpdateSerializer(serializers.Serializer):
     def validate_username(self, valor: str) -> str:
         """Normaliza e garante que o nome de usuário esteja livre.
 
-        Args:
-            valor (str): Nome informado.
-
         Returns:
             str: Nome sem espaços nas bordas.
 
@@ -93,9 +87,6 @@ class PerfilUpdateSerializer(serializers.Serializer):
     def validate_moeda_padrao(self, valor: str) -> str:
         """Normaliza o código da moeda.
 
-        Args:
-            valor (str): Código informado.
-
         Returns:
             str: Código em maiúsculas, sem espaços.
 
@@ -118,9 +109,6 @@ class TrocaEmailSerializer(SenhaAtualMixin):
 
         A mensagem de conflito é genérica pelo mesmo motivo do cadastro: confirmar
         que um endereço tem conta no sistema já é informação sensível.
-
-        Args:
-            valor (str): Endereço informado.
 
         Returns:
             str: Endereço normalizado.
@@ -156,9 +144,6 @@ class TrocaSenhaSerializer(SenhaAtualMixin):
 
     def validate(self, dados: dict) -> dict:
         """Confere a confirmação e aplica os validadores do Django.
-
-        Args:
-            dados (dict): Campos já validados individualmente.
 
         Returns:
             dict: Os mesmos dados, se válidos.
@@ -200,9 +185,6 @@ class ExclusaoContaSerializer(SenhaAtualMixin):
 
     def validate_confirmacao(self, valor: str) -> str:
         """Confere se o texto digitado corresponde ao nome de usuário.
-
-        Args:
-            valor (str): Texto digitado como confirmação.
 
         Returns:
             str: O mesmo texto, se corresponder.

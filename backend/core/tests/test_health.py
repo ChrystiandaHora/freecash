@@ -1,17 +1,10 @@
 """Testes do endpoint de verificação de saúde.
 
-`/api/health/` é o que o healthcheck do docker-compose consulta para decidir se o
-contêiner está apto. Duas características dele são fáceis de quebrar sem
-perceber, e ambas têm consequência direta em produção:
-
-**Precisa responder sem autenticação e sem throttle.** Se um dia um `IsAuthenticated`
-global alcançar esta rota, o orquestrador passará a receber 401, marcará o
-contêiner como não saudável e ficará reiniciando uma aplicação que está
-funcionando perfeitamente.
-
-**Precisa falhar quando o banco falha.** Um healthcheck que responde 200 sempre é
-pior que nenhum: ele afirma que a instância pode atender tráfego enquanto toda
-requisição real devolve erro.
+`/api/health/` é o que o healthcheck do docker-compose consulta. Duas
+características são fáceis de quebrar sem perceber: precisa responder sem
+autenticação (um `IsAuthenticated` global faria o orquestrador receber 401 e
+reiniciar em laço uma aplicação sadia) e precisa falhar quando o banco falha — um
+healthcheck que responde 200 sempre é pior que nenhum.
 """
 
 from unittest.mock import patch

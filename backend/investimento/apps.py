@@ -17,9 +17,6 @@ class InvestimentoConfig(AppConfig):
     name = "investimento"
 
     def ready(self):
-        """Executa rotinas de inicialização assim que o registro de aplicações do Django é concluído.
-
-        Registra os receptores de sinais de banco de dados (signals.py) no barramento do Django.
-        """
+        """Registra os receptores de sinais (signals.py) no barramento do Django."""
         import investimento.signals
 

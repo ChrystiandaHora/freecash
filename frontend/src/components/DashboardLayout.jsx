@@ -11,7 +11,6 @@
  * `context/ThemeProvider.jsx`, e a barra, o relógio e a ajuda contextual em
  * `components/nav/`.
  *
- * @component
  * @returns {React.JSX.Element} O layout mestre com a navbar e o conteúdo da rota.
  */
 import { useEffect, useRef } from 'react';

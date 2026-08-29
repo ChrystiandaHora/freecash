@@ -34,10 +34,7 @@ class SaldoLiquidezServiceTests(APITestCase):
         """Cria uma Conta do usuário de teste com competência e caixa no mesmo dia.
 
         Args:
-            tipo (str): `Conta.TIPO_RECEITA` ou `Conta.TIPO_DESPESA`.
-            valor (str): Valor do lançamento.
-            realizada (bool): Se o lançamento já foi efetivado.
-            data_realizacao (date): Data de caixa. Assume hoje quando realizada.
+            data_realizacao: Data de caixa. Assume hoje quando realizada.
 
         Returns:
             Conta: O lançamento persistido.

@@ -20,9 +20,6 @@ def recalcular_ativo(ativo: Ativo) -> None:
     Varre de forma ordenada o histórico completo de transações do ativo na carteira,
     acrescendo quantidades nas compras e computando PM proporcional, e amortizando
     quantidades nas vendas sem alterar o preço médio.
-
-    Args:
-        ativo (Ativo): Instância do ativo custodiado a ser recalculado.
     """
     transacoes = ativo.transacoes.order_by("data", "criada_em")
 
@@ -72,17 +69,6 @@ def atualizar_cotacoes(usuario=None) -> tuple[int, list[str]]:
     """Busca em lote as cotações atuais de mercado (B3 via TradingView e Fundos via CVM).
 
     Atualiza ou cria o histórico diário de fechamento das cotações.
-
-    Args:
-        usuario (User | None): Restringe a atualização aos ativos deste usuário.
-            **Obrigatório quando a chamada parte de uma requisição HTTP.** `None`
-            percorre os ativos de toda a base e existe apenas para o comando de
-            linha de comando `update_quotes`, que roda em contexto de operador.
-
-            Sem esse escopo, qualquer usuário autenticado que acionasse o endpoint
-            de atualização passaria a escrever cotações dos ativos de todos os
-            demais e — pior — receberia de volta a lista de erros contendo os
-            *tickers* alheios, revelando a composição de carteira de terceiros.
 
     Returns:
         tuple[int, list[str]]: Tupla contendo o número de cotações gravadas com sucesso e a lista de erros ocorridos.

@@ -49,7 +49,7 @@ class FerramentasImportarAPIView(APIView):
         """Processa a requisição POST realizando o parse e gravação do arquivo importado.
 
         Args:
-            request (Request): Requisição multipart contendo a chave 'arquivo' e opcional 'password'.
+            request: Requisição multipart contendo a chave 'arquivo' e opcional 'password'.
 
         Returns:
             Response: Dicionário contendo estatísticas de registros criados, atualizados ou ignorados.
@@ -230,9 +230,6 @@ class FerramentasConciliacaoListAPIView(APIView):
     def get(self, request) -> Response:
         """Retorna a lista dos 20 extratos importados mais recentes e suas linhas pendentes.
 
-        Args:
-            request (Request): Requisição HTTP.
-
         Returns:
             Response: Payload JSON contendo extratos aninhados com suas linhas de status 'pendente'.
         """
@@ -263,7 +260,7 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
         """Processa a importação ou rejeição em lote de linhas de extrato selecionadas.
 
         Args:
-            request (Request): JSON contendo 'acao' ("importar"/"ignorar"), 'extrato_id' e 'linha_ids'.
+            request: JSON contendo 'acao' ("importar"/"ignorar"), 'extrato_id' e 'linha_ids'.
 
         Returns:
             Response: Confirmação do número de linhas alteradas com sucesso.
@@ -369,22 +366,15 @@ class FerramentasExportarAPIView(APIView):
     Suporta formatação de arquivo em planilha (.xlsx), formato simplificado (.csv),
     relatório visual em documento (.pdf) ou backup completo criptografado do sistema (.fcbk).
     """
-    # Exportar NÃO exige e-mail confirmado, ao contrário de importar.
-    #
-    # A exigência foi aplicada aqui por engano. O portão existe para conter ação
-    # amplificadora — custo desproporcional a partir de uma conta descartável —
-    # e exportar não é isso: `export_user_data` percorre apenas os registros do
-    # próprio usuário, então uma conta descartável, que não tem dados, exporta
-    # nada. Não há o que amplificar.
-    #
-    # Havia também uma contradição prática: a tela de exclusão de conta orienta
-    # "exporte um backup antes", e o portão bloqueava exatamente esse backup. Tirar
-    # do usuário o acesso aos seus próprios dados é o oposto da portabilidade que
-    # a funcionalidade existe para oferecer.
+    # Exportar não exige e-mail confirmado, ao contrário de importar: o portão
+    # contém ação amplificadora, e exportar percorre só os registros do próprio
+    # usuário — conta descartável não tem dados para exportar. Havia ainda uma
+    # contradição prática: a tela de exclusão orienta "exporte um backup antes", e o
+    # portão bloqueava justamente esse backup.
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> HttpResponse:
-        """Processa a solicitação de exportação de dados retornando o arquivo gerado para download.
+        """Exporta os dados do usuário e devolve o arquivo para download.
 
         Query Params suportados:
             formato (str): 'fcbk', 'excel', 'csv' ou 'pdf'. Defaults to 'excel'.
@@ -392,9 +382,6 @@ class FerramentasExportarAPIView(APIView):
             senha (str, optional): Senha de criptografia obrigatória para o formato '.fcbk'.
             data_inicio (str, optional): Data no formato YYYY-MM-DD para limite inferior do período.
             data_fim (str, optional): Data no formato YYYY-MM-DD para limite superior do período.
-
-        Args:
-            request (Request): Requisição GET com parâmetros de query string.
 
         Returns:
             HttpResponse: Arquivo binário ou de texto configurado com cabeçalho de download attachment.
@@ -494,7 +481,7 @@ class ContasBancariasViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Retorna todas as contas/cartões cadastrados do usuário autenticado (ativos e inativos).
+        """Lista as contas e cartões do usuário, ativos e inativos.
 
         Returns:
             QuerySet: Contas e cartões ordenados por nome.
@@ -503,20 +490,12 @@ class ContasBancariasViewSet(viewsets.ModelViewSet):
         return CartaoCredito.objects.filter(usuario=self.request.user).order_by('nome')
 
     def perform_create(self, serializer):
-        """Atribui o usuário autenticado da requisição como proprietário ao criar a conta.
-
-        Args:
-            serializer (Serializer): Serializador com dados validados da conta.
-        """
+        """Atribui o usuário autenticado da requisição como proprietário ao criar a conta."""
         serializer.save(usuario=self.request.user)
 
     @action(detail=True, methods=['post'])
     def toggle_ativo(self, request, pk=None) -> Response:
         """Inverte o estado de ativação da conta ou cartão selecionado sem deletar.
-
-        Args:
-            request (Request): Requisição HTTP.
-            pk (str, optional): Identificador único da conta.
 
         Returns:
             Response: Dicionário contendo o novo estado da flag 'ativo'.

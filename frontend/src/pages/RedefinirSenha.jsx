@@ -8,10 +8,6 @@
  * Concluída a troca, o servidor revoga as sessões abertas da conta — se a senha
  * anterior havia vazado, o invasor é desconectado junto. Por isso esta tela leva
  * ao login em vez de entrar automaticamente.
- *
- * @module RedefinirSenha
- * @component
- * @returns {React.JSX.Element}
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

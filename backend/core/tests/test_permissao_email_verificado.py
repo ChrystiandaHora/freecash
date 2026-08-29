@@ -1,25 +1,14 @@
 """Testes do portão de e-mail confirmado aplicado à importação.
 
-A regra em teste distingue três níveis de risco, e a distinção é de **amplificação**,
-não de importância:
+A regra distingue por **amplificação**, não por importância: o CRUD financeiro
+nunca é bloqueado (punir o dono não protege ninguém); exportar também não, porque
+uma conta descartável não tem dados para exportar — e bloquear ali contradizia a
+tela de exclusão, que orienta exportar antes de apagar; importar é bloqueado após a
+carência, porque processa arquivo enviado com leitores de PDF e planilha.
 
-- **CRUD financeiro** nunca é bloqueado. Impedir o dono de registrar os próprios
-  lançamentos pune quem tem os dados sem proteger ninguém.
-- **Exportar** também não é bloqueado. `export_user_data` percorre só os registros do
-  próprio usuário, então uma conta descartável — que não tem dados — exporta nada.
-  Não há o que amplificar. Bloquear ali também contradizia a tela de exclusão de
-  conta, que orienta exportar um backup antes de apagar tudo.
-- **Importar** é bloqueado após a carência. Recebe arquivo enviado pelo usuário e o
-  processa com leitores de PDF e de planilha, gastando CPU e memória por requisição.
-  É o que valeria a pena explorar a partir de uma conta descartável.
-
-A carência existe para o produto ser utilizável no primeiro acesso.
-
-Caso de borda que motivou uma correção: contas criadas **antes** de o e-mail virar
-obrigatório não têm endereço nenhum. Dizer "confirme seu e-mail" a elas é um beco sem
-saída, porque não há e-mail a confirmar e o reenvio recusa a operação. A mensagem
-passou a apontar para Minha Conta, onde a pessoa cadastra um — e recupera, junto, a
-capacidade de redefinir a senha.
+Caso de borda que motivou correção: contas sem endereço nenhum. Dizer "confirme seu
+e-mail" a elas é um beco sem saída — não há o que confirmar e o reenvio recusa a
+operação. A mensagem passou a apontar para Minha Conta.
 """
 
 from datetime import timedelta
@@ -55,11 +44,7 @@ class EmailVerificadoOuCarenciaTests(APITestCase):
         self.client.force_authenticate(user=User.objects.get(pk=self.user.pk))
 
     def _envelhecer_conta(self, dias: int):
-        """Recua a data de cadastro para simular o fim da carência.
-
-        Args:
-            dias (int): Quantos dias atrás a conta foi criada.
-        """
+        """Recua a data de cadastro para simular o fim da carência."""
         self.user.date_joined = timezone.now() - timedelta(days=dias)
         self.user.save(update_fields=["date_joined"])
 

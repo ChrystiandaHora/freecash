@@ -1,17 +1,9 @@
 """Testes da redefinição de senha.
 
-Duas propriedades merecem verificação explícita, porque são fáceis de quebrar sem
-perceber:
-
-**Não vazar quem tem conta.** O pedido responde exatamente a mesma coisa para um
-endereço cadastrado e para um desconhecido. Basta alguém adicionar um 404 "amigável"
-para transformar o endpoint num verificador de contas — e, num sistema financeiro,
-saber que alguém tem conta aqui já é informação sensível.
-
-**A troca de senha encerra as sessões abertas.** Se a senha foi trocada porque a
-anterior vazou, deixar de revogar os refresh tokens manteria o invasor conectado
-por até sete dias, exatamente no momento em que a vítima acredita ter resolvido o
-problema.
+Duas propriedades fáceis de quebrar sem perceber: não vazar quem tem conta — basta
+alguém acrescentar um 404 "amigável" para o endpoint virar verificador de cadastros
+— e encerrar as sessões abertas na troca, senão o invasor segue conectado por sete
+dias justamente quando a vítima acredita ter resolvido o problema.
 """
 
 from django.contrib.auth import get_user_model

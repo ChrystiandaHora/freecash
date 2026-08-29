@@ -1,23 +1,17 @@
 """Envio de e-mails transacionais do FreeCash.
 
-Este módulo concentra dois assuntos que costumam vazar para dentro das views: como
-o e-mail sai (síncrono ou em thread, e o que fazer quando falha) e como o link
-enviado é montado.
+Três decisões mantêm o envio fora do caminho crítico da requisição:
 
-Duas decisões estruturais:
+Todo envio é agendado com `transaction.on_commit`. Sem isso, um erro posterior no
+`atomic` desfaria a criação do usuário e ele receberia, ainda assim, a confirmação
+de uma conta que não existe.
 
-**O envio acontece fora da transação.** Toda chamada é agendada com
-`transaction.on_commit`. Sem isso, um erro posterior no `atomic` desfaria a criação
-do usuário e ele receberia, ainda assim, um e-mail confirmando uma conta que não
-existe — com um link que nunca funcionaria.
+Falha de SMTP vai para o log, nunca para o cliente: a conta já está criada e todo
+fluxo oferece "reenviar" como recuperação.
 
-**A falha de envio nunca derruba a requisição.** Se o SMTP estiver fora do ar, o
-cadastro do usuário não deve falhar: a conta foi criada, e todo fluxo aqui oferece
-"reenviar" como recuperação. A falha vai para o log, não para o cliente.
-
-O link aponta sempre para o SPA, nunca para a API. Clientes de e-mail e
-antivírus corporativos pré-carregam URLs das mensagens; se o link fosse o endpoint
-de confirmação, o token seria consumido antes de o usuário clicar.
+O link aponta para o SPA, nunca para a API. Clientes de e-mail e antivírus
+pré-carregam URLs das mensagens; se o link fosse o endpoint de confirmação, o token
+seria consumido antes de o usuário clicar.
 """
 
 import logging
@@ -41,9 +35,6 @@ def normalizar_email(email: str) -> str:
     Toda escrita de e-mail no sistema passa por esta função, para que o índice
     único sobre `LOWER(email)` e as buscas por `email__iexact` concordem sempre.
 
-    Args:
-        email (str): Endereço informado pelo usuário.
-
     Returns:
         str: Endereço sem espaços nas bordas e em minúsculas.
     """
@@ -51,12 +42,7 @@ def normalizar_email(email: str) -> str:
 
 
 def _enviar_agora(mensagem: EmailMultiAlternatives, descricao: str) -> None:
-    """Entrega a mensagem, registrando falhas sem propagá-las.
-
-    Args:
-        mensagem (EmailMultiAlternatives): Mensagem pronta para envio.
-        descricao (str): Rótulo do fluxo, usado no log.
-    """
+    """Entrega a mensagem, registrando falhas sem propagá-las."""
     try:
         mensagem.send(fail_silently=False)
         logger.info("E-mail enviado: %s", descricao)
@@ -68,16 +54,7 @@ def _enviar_agora(mensagem: EmailMultiAlternatives, descricao: str) -> None:
 
 def enviar_email(assunto: str, template_base: str, contexto: dict, destinatario: str,
                  descricao: str) -> None:
-    """Monta e agenda o envio de um e-mail em texto e HTML.
-
-    Args:
-        assunto (str): Assunto da mensagem.
-        template_base (str): Caminho do template sem extensão, relativo a `emails/`.
-            Espera encontrar as versões `.txt` e `.html`.
-        contexto (dict): Contexto de renderização dos templates.
-        destinatario (str): Endereço de destino.
-        descricao (str): Rótulo do fluxo, usado no log.
-    """
+    """Monta e agenda o envio de um e-mail em texto e HTML."""
     if not destinatario:
         logger.warning("Envio ignorado, destinatário vazio: %s", descricao)
         return
@@ -113,9 +90,6 @@ def enviar_email(assunto: str, template_base: str, contexto: dict, destinatario:
 def _url_frontend(caminho: str) -> str:
     """Compõe uma URL absoluta do SPA.
 
-    Args:
-        caminho (str): Caminho relativo, começando com barra.
-
     Returns:
         str: URL absoluta baseada em `FRONTEND_BASE_URL`.
     """
@@ -123,11 +97,7 @@ def _url_frontend(caminho: str) -> str:
 
 
 def enviar_verificacao_email(user) -> None:
-    """Envia o link de confirmação de endereço de e-mail.
-
-    Args:
-        user (User): Usuário destinatário, com `email` já definido.
-    """
+    """Envia o link de confirmação de endereço de e-mail."""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = email_verification_token.make_token(user)
 
@@ -151,10 +121,6 @@ def enviar_reset_senha(user, token: str) -> None:
     O token é recebido pronto, e não gerado aqui, porque quem decide se o pedido
     resulta em envio é a view — que precisa responder de forma idêntica exista ou
     não uma conta com aquele endereço.
-
-    Args:
-        user (User): Usuário destinatário.
-        token (str): Token de redefinição já gerado.
     """
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
@@ -180,7 +146,7 @@ def enviar_confirmacao_troca_email(user) -> None:
     usuário já tem acesso a ele.
 
     Args:
-        user (User): Usuário que solicitou a troca, com `email_pendente` definido.
+        user: Usuário que solicitou a troca, com `email_pendente` definido.
     """
     config = getattr(user, "config", None)
     pendente = getattr(config, "email_pendente", "") if config else ""
@@ -214,10 +180,6 @@ def avisar_troca_de_email(user, email_anterior: str) -> None:
     É a rede de segurança do fluxo: se a troca não partiu do dono, este é o aviso
     que chega a ele enquanto ainda tem como reagir. Por isso vai para o endereço
     que está sendo desativado, e não para o novo.
-
-    Args:
-        user (User): Usuário cuja conta mudou de endereço.
-        email_anterior (str): Endereço que deixou de valer.
     """
     if not email_anterior:
         return

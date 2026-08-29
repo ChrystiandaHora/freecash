@@ -4,8 +4,6 @@
  * Compartilhado entre o mega-painel (desktop), o acordeão (mobile) e o mapa do
  * site no rodapé, para que o contrato de acessibilidade dos links exista num
  * único lugar.
- *
- * @module components/nav/NavLinkList
  */
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -22,7 +20,6 @@ import { SectionLabel } from '../ui/SectionLabel';
  * @param {'lg' | 'md'} [props.size='lg'] - Escala tipográfica dos links.
  * @param {'span' | 'h2' | 'h3'} [props.labelAs='span'] - Elemento do rótulo da coluna.
  * @param {'card' | 'page'} [props.surface='card'] - Fundo sob os links; define a cor do ring-offset do foco.
- * @returns {React.JSX.Element}
  */
 export function NavLinkList({
   labelId,

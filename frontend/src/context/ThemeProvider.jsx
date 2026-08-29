@@ -13,8 +13,6 @@
  *    direto, sem tocar estado React. Depois da virada das 18:00 o `aria-label` e o
  *    ícone do botão ficavam obsoletos — diziam "modo diurno" às 19h. Agora o
  *    intervalo atualiza `resolvedTheme` em estado, e o DOM segue uma única fonte.
- *
- * @module context/ThemeProvider
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -40,7 +38,6 @@ const readStoredMode = () => {
 
 /**
  * @param {{children: React.ReactNode}} props
- * @returns {React.JSX.Element}
  */
 export function ThemeProvider({ children }) {
   const [mode, setModeState] = useState(readStoredMode);

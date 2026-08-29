@@ -5,7 +5,6 @@
  * Implementa filtros rápidos de competência (mês/ano) e uma tabela padronizada com
  * ordenação, filtro por coluna e paginação.
  *
- * @component
  * @returns {React.JSX.Element} Tabela estruturada de extrato financeiro mensal.
  */
 import { useState } from 'react';

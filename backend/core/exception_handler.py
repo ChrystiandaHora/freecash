@@ -17,12 +17,8 @@ from rest_framework.views import exception_handler as drf_exception_handler
 logger = logging.getLogger("core")
 
 
-def freecash_exception_handler(exc, context):
+def freecash_exception_handler(exc: Exception, context: dict):
     """Converte exceções em respostas da API, sem vazar detalhes internos.
-
-    Args:
-        exc (Exception): Exceção levantada durante o processamento da requisição.
-        context (dict): Contexto do DRF, contendo ao menos a view e a requisição.
 
     Returns:
         Response: Resposta tratada pelo DRF quando a exceção é prevista (validação,

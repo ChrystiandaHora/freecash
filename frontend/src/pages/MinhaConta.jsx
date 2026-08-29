@@ -3,37 +3,26 @@
  *
  * Acessível pelo menu da conta, no avatar do cabeçalho.
  *
- * ## Por que esta tela foi repaginada
+ * A primeira versão herdou o vocabulário das telas públicas de autenticação (coluna
+ * estreita, `h1` menor, sem animação) e parecia pertencer a outro produto. Foi
+ * repaginada para a linguagem das telas autenticadas: largura total, grid e linha de
+ * indicadores na abertura.
  *
- * A primeira versão foi escrita logo depois das telas públicas de autenticação
- * (`Login`, `EsqueciSenha`, `RedefinirSenha`) e herdou o vocabulário delas: coluna
- * de `max-w-2xl`, sem `animate-fade-in`, `h1` menor, rótulo de campo com o
- * tratamento tipográfico reservado a KPI. As telas autenticadas do app falam outra
- * língua — largura total, grid, `text-3xl font-extrabold`, linha de indicadores na
- * abertura. O resultado é que ela parecia pertencer a outro produto, porque
- * estilisticamente pertencia mesmo.
+ * Quatro decisões de leitura:
  *
- * ## Decisões de leitura
+ * **A tela abre mostrando, não pedindo.** Antes eram 9 campos e nenhuma informação;
+ * agora a primeira linha responde quem sou, se o e-mail está confirmado e quantos
+ * dispositivos estão conectados.
  *
- * **A tela abre mostrando, não pedindo.** Antes eram 9 campos e nenhuma informação:
- * quem entrava para conferir o próprio e-mail encontrava um formulário. Agora a
- * primeira linha responde "quem sou, meu e-mail está confirmado, quantos
- * dispositivos estão conectados" antes de qualquer campo.
+ * **Senha e Sessões ficam lado a lado**, porque trocar a senha encerra as sessões — ver
+ * as duas juntas é o que torna a consequência compreensível.
  *
- * **Senha e Sessões ficam lado a lado de propósito.** Trocar a senha encerra as
- * sessões; ver as duas juntas é o que torna essa consequência compreensível.
+ * **O vermelho vive no botão, não na moldura.** A borda vermelha permanente acendia o
+ * sinal mais forte da interface para quem só queria trocar a moeda; a confirmação
+ * passou para um `ui/Modal`.
  *
- * **O vermelho vive no botão, não na moldura.** A borda vermelha permanente do card
- * de exclusão acendia o sinal mais forte da interface para quem só queria trocar a
- * moeda. A confirmação passou para um `ui/Modal`, como já acontece ao excluir um
- * cartão em `AjustesPagamentos`.
- *
- * **Estado nunca depende só de cor.** O selo de e-mail usa `ui/Badge` com ícone e
- * texto; os erros de campo são texto ligado por `aria-describedby`.
- *
- * @module MinhaConta
- * @component
- * @returns {React.JSX.Element}
+ * **Estado nunca depende só de cor:** o selo de e-mail usa ícone e texto, e os erros de
+ * campo são ligados por `aria-describedby`.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -98,7 +87,6 @@ function formatarData(iso) {
 /**
  * Mensagem de erro de um campo, ligada ao controle por `aria-describedby`.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {string} props.id - Identificador referenciado pelo campo.
  * @param {string} [props.mensagem] - Texto do erro; nada é renderizado sem ele.
  * @returns {React.JSX.Element | null}
@@ -119,10 +107,8 @@ function ErroCampo({ id, mensagem }) {
  * reservado a rótulo de indicador e cabeçalho de bloco. Usá-lo em campo colocava
  * campo e cabeçalho na mesma voz e achatava a hierarquia da tela.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {string} props.htmlFor - Id do controle rotulado.
  * @param {React.ReactNode} props.children - Texto do rótulo.
- * @returns {React.JSX.Element}
  */
 function Rotulo({ htmlFor, children }) {
   return (
@@ -137,13 +123,11 @@ function Rotulo({ htmlFor, children }) {
  *
  * Rótulo em uppercase pequeno → valor em destaque → linha de apoio.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {React.ComponentType} props.icon - Ícone ilustrativo.
  * @param {string} props.rotulo - Nome do indicador.
  * @param {React.ReactNode} props.valor - Conteúdo principal.
  * @param {React.ReactNode} [props.apoio] - Linha de contexto abaixo do valor.
  * @param {React.ReactNode} [props.acao] - Ação opcional no rodapé do card.
- * @returns {React.JSX.Element}
  */
 function Indicador({ icon: Icon, rotulo, valor, apoio, acao }) {
   return (
@@ -175,13 +159,10 @@ function Indicador({ icon: Icon, rotulo, valor, apoio, acao }) {
 /**
  * Card de seção com cabeçalho e conteúdo.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {React.ComponentType} props.icon - Ícone do cabeçalho.
  * @param {string} props.titulo - Título da seção.
  * @param {string} props.descricao - Linha de apoio.
  * @param {React.ReactNode} props.children - Conteúdo.
- * @param {string} [props.className] - Estilos extras do container.
- * @returns {React.JSX.Element}
  */
 function Secao({ icon, titulo, descricao, children, className = '' }) {
   return (
@@ -202,9 +183,7 @@ function Secao({ icon, titulo, descricao, children, className = '' }) {
 /**
  * Barra de ações de formulário, à direita e separada por régua.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {React.ReactNode} props.children - Botões da barra.
- * @returns {React.JSX.Element}
  */
 function BarraAcoes({ children }) {
   return (
@@ -219,8 +198,6 @@ function BarraAcoes({ children }) {
  *
  * Preserva o cabeçalho da página: o spinner anterior substituía a tela inteira e o
  * layout "pulava" quando os dados chegavam.
- *
- * @returns {React.JSX.Element}
  */
 function EsqueletoConta() {
   return (
@@ -255,12 +232,10 @@ function EsqueletoConta() {
  * é montado depois que a consulta responde, então `useState` inicializa direto das
  * props — sem o efeito que copiaria dados para estado a cada mudança.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {Object} props.conta - Dados da conta já carregados.
  * @param {Object} props.erros - Erros por campo devolvidos pelo servidor.
  * @param {boolean} props.salvando - Se a gravação está em curso.
  * @param {(campos: Object) => void} props.onSalvar - Dispara a gravação.
- * @returns {React.JSX.Element}
  */
 function SecaoPerfil({ conta, erros, salvando, onSalvar }) {
   const [username, setUsername] = useState(conta.username);

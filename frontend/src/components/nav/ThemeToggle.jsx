@@ -12,8 +12,6 @@
  * Escape, não é hoverable e expira sozinho). Antes havia `title` E `aria-label`
  * com textos DIFERENTES no mesmo botão, o que dava dois candidatos concorrentes
  * a nome acessível (SC 2.5.3).
- *
- * @module components/nav/ThemeToggle
  */
 import { Moon, Sun, SunMoon } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -26,7 +24,6 @@ const MODE_LABEL = { light: 'Claro', dark: 'Escuro', auto: 'Automático' };
 /**
  * @param {Object} props
  * @param {'icon' | 'row'} [props.variant='icon'] - Forma do controle.
- * @returns {React.JSX.Element}
  */
 export function ThemeToggle({ variant = 'icon' }) {
   const { mode, cycleMode, resolvedTheme } = useTheme();

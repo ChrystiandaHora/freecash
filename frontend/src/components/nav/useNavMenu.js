@@ -1,22 +1,16 @@
 /**
  * Máquina de estado do mega-menu da navbar.
  *
- * Concentra abertura/fechamento, intenção de hover e as cinco vias de
- * fechamento. Vive como estado LOCAL do TopNav — nada fora da subárvore dele
- * precisa saber que um painel está aberto, já que o scrim renderiza no mesmo
- * fragmento.
+ * Concentra abertura/fechamento, intenção de hover e as cinco vias de fechamento. Vive
+ * como estado local do TopNav: nada fora da subárvore dele precisa saber que um painel
+ * está aberto.
  *
- * Contrato de acessibilidade relevante (A11Y.md / WCAG 2.2 AA):
- * - SC 1.4.13 "hoverable": o painel NÃO pode fechar quando o ponteiro entra
- *   nele — daí `cancelClose` no `onPointerEnter` do painel.
- * - SC 1.4.13 "persistent": nada de auto-fechamento por ociosidade. Fechar
- *   porque "the trigger loses hover/focus" é condição enumerada e permitida.
- * - SC 1.4.13 "dismissible": Escape descarta SEM mover o foco quando o foco está
- *   fora do painel (ver os três ramos em `handleEscape`).
- * - SC 2.1.1: clique/Enter/Espaço/foco abrem com atraso ZERO. Só o hover é
- *   debounced.
- *
- * @module components/nav/useNavMenu
+ * Contrato da SC 1.4.13 (A11Y.md / WCAG 2.2 AA): *hoverable* — o painel não fecha quando
+ * o ponteiro entra nele, daí o `cancelClose` no `onPointerEnter`; *persistent* — sem
+ * auto-fechamento por ociosidade, embora fechar quando o gatilho perde hover/foco seja
+ * condição permitida; *dismissible* — Escape descarta sem mover o foco quando ele está
+ * fora do painel. Por SC 2.1.1, clique, Enter, Espaço e foco abrem com atraso zero; só o
+ * hover é debounced.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 

@@ -18,19 +18,11 @@ logger = logging.getLogger("core")
 def revogar_tokens_do_usuario(user) -> int:
     """Invalida todos os refresh tokens ativos de um usuário.
 
-    Duas limitações que valem ser conhecidas, e que estão documentadas em
-    `docs/autenticacao.md`:
-
-    1. Tokens emitidos antes de o app `token_blacklist` ser instalado não têm
-       registro em `OutstandingToken` e portanto não são alcançáveis aqui. Eles
-       expiram naturalmente dentro da validade do refresh token.
-    2. O **access token** é stateless e continua válido até expirar (15 minutos),
-       mesmo depois desta chamada. Essa janela é inerente a JWT sem introspecção.
-       Para suspensão de conta ela não se aplica, porque o `JWTAuthentication`
-       verifica `is_active` a cada requisição.
-
-    Args:
-        user (User): Usuário cujas sessões devem ser encerradas.
+    Duas limitações, detalhadas em `docs/autenticacao.md`: tokens emitidos antes de o app
+    `token_blacklist` existir não têm registro em `OutstandingToken` e expiram
+    naturalmente; e o access token é stateless, seguindo válido por até 15 minutos — para
+    suspensão isso não se aplica, porque o `JWTAuthentication` verifica `is_active` a cada
+    requisição.
 
     Returns:
         int: Quantidade de tokens efetivamente revogados nesta chamada.

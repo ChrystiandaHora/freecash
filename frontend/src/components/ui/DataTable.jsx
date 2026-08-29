@@ -5,8 +5,6 @@
  * de frontend. Oferece paginação híbrida (local/servidor), ordenação de colunas (local/servidor),
  * filtros individuais por coluna (local/servidor), sombras de overflow responsivas automáticas
  * (via IntersectionObserver) e acessibilidade WCAG/WAI-ARIA.
- *
- * @component
  */
 import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"

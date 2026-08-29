@@ -9,7 +9,6 @@
  * tokens de design e as utilidades de base estejam disponíveis globalmente
  * antes de qualquer componente ser renderizado.
  *
- * @module main
  * @see {@link App} Componente raiz que encapsula providers e rotas.
  */
 import { StrictMode } from 'react'

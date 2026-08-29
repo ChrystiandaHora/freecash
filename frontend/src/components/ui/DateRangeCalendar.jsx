@@ -1,33 +1,20 @@
 /**
  * Calendário de seleção de intervalo, usado no filtro de data das tabelas.
  *
- * Substitui os dois campos `De` / `Até` soltos, que abriam o calendário nativo do
- * navegador um por vez: escolher um intervalo exigia dois pickers separados, sem
- * ver o período selecionado e sem atalho para pular de mês.
+ * Substitui os dois campos `De` / `Até` soltos, que abriam o calendário nativo um por
+ * vez, sem mostrar o período selecionado nem atalho para pular de mês.
  *
- * Os campos nativos **continuam presentes**, abaixo da grade. Eles são o caminho
- * digitável e colável, funcionam com qualquer tecnologia assistiva sem depender
- * deste widget, e removê-los trocaria uma coisa que funciona por uma mais bonita.
- * A grade é uma camada visual acrescentada, não uma substituição.
+ * Os campos nativos **continuam presentes** abaixo da grade: são o caminho digitável e
+ * colável, funcionam com qualquer tecnologia assistiva sem depender deste widget. A
+ * grade é uma camada acrescentada, não uma substituição.
  *
- * ## Padrão de acessibilidade
+ * Segue o padrão **grid** do WAI-ARIA: `role="grid"` com `gridcell` e roving tabindex —
+ * só o dia focado é tabulável. A alternativa (31 botões tabuláveis) também é conforme,
+ * mas custa 31 paradas de Tab por mês. Isso não contradiz a decisão de
+ * `A11Y-DECISIONS.md` que proíbe roving na navegação por disclosure: lá o widget não
+ * anunciava contrato de teclado, aqui `role="grid"` anuncia exatamente esse contrato.
  *
- * Segue o padrão **grid** do WAI-ARIA para calendários: `role="grid"` com
- * `gridcell`, e **roving tabindex** — só o dia focado é tabulável, e as setas
- * movem entre os dias.
- *
- * Isso é uma escolha entre duas alternativas conformes, e vale registrar por quê:
- * a alternativa seria 31 botões todos tabuláveis, o que também passa nos critérios
- * mas custa 31 paradas de Tab para atravessar um mês. O roving aqui **não**
- * contradiz a decisão registrada em `A11Y-DECISIONS.md` que o proíbe na navegação
- * por disclosure: lá o widget nunca anunciou contrato de teclado, aqui `role="grid"`
- * anuncia exatamente esse contrato, e é o que a tecnologia assistiva espera. Mesmo
- * raciocínio das abas de `AtivoDetalhes`.
- *
- * Teclado: setas movem por dia, PageUp/PageDown por mês, Home/End para o começo e
- * o fim da semana, Enter/Espaço seleciona.
- *
- * @module components/ui/DateRangeCalendar
+ * Teclado: setas por dia, PageUp/PageDown por mês, Home/End na semana, Enter seleciona.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';

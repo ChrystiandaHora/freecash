@@ -4,8 +4,6 @@
  * Reúne confirmação de e-mail, redefinição de senha e leitura do estado da conta.
  * Os endpoints de login, refresh e logout continuam em `context/AuthProvider.jsx`,
  * onde vivem junto do ciclo de vida do token.
- *
- * @module services/auth
  */
 import api from './api';
 

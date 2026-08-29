@@ -1,20 +1,10 @@
 """Testes do tratamento centralizado de exceções da API.
 
-`freecash_exception_handler` está registrado como `EXCEPTION_HANDLER` global do
-DRF: ele decide o corpo de **toda** resposta de erro do produto. Uma regressão
-aqui não quebra um endpoint, quebra todos ao mesmo tempo — e o modo de falha mais
-provável é silencioso, devolvendo detalhe interno ao cliente sem nada parecer
-errado.
-
-Duas garantias justificam estes testes:
-
-**Erro previsto continua com o formato do DRF.** Validação, permissão e 404 já
-têm corpo e status corretos; o handler não pode reescrevê-los, ou toda mensagem
-de campo do frontend deixaria de aparecer.
-
-**Erro imprevisto não vaza nada.** A mensagem da exceção pode conter nome de
-tabela, trecho de SQL ou caminho de arquivo. O cliente recebe um código opaco; o
-traceback fica no log, associado ao mesmo código.
+`freecash_exception_handler` é o `EXCEPTION_HANDLER` global: decide o corpo de toda
+resposta de erro. Uma regressão aqui quebra todos os endpoints ao mesmo tempo, e de
+forma silenciosa. Duas garantias: erro previsto mantém o formato do DRF (senão toda
+mensagem por campo desaparece do frontend) e erro imprevisto não vaza a mensagem
+original, que pode conter nome de tabela, SQL ou caminho de arquivo.
 """
 
 import re

@@ -1,17 +1,14 @@
-"""
-Serviço de Metas Financeiras.
+"""Serviço de Metas Financeiras.
 
-Concentra a regra de bolso que deriva quatro alvos financeiros a partir de dois
-números-base — renda mensal e custo de vida mensal:
+Deriva quatro alvos a partir de dois números-base, renda e custo de vida mensais:
 
     * Patrimônio para viver de renda ....... renda mensal x 200
     * Meta mensal (aporte) ................. renda mensal x 0,1  (por mês)
     * Reserva de emergência ................ custo de vida mensal x 6
     * Limite de gastos essenciais .......... renda mensal x 0,6 (teto mensal)
 
-Também calcula as médias mensais sugeridas a partir dos lançamentos já
-cadastrados, reaproveitando as agregações do dashboard para herdar o
-tratamento de faturas de cartão.
+Também sugere médias mensais a partir dos lançamentos, reaproveitando as agregações
+do dashboard para herdar o tratamento de faturas de cartão.
 """
 
 from decimal import Decimal
@@ -83,17 +80,12 @@ METAS_PADRAO = (
 
 
 def medias_mensais(usuario, meses: int = 3) -> tuple[float, float]:
-    """
-    Calcula a média mensal de receitas e despesas dos últimos meses fechados.
+    """Calcula a média mensal de receitas e despesas dos últimos meses fechados.
 
     A janela termina no mês corrente (inclusive) e recua `meses` competências.
     Cada mês é somado por `totals_for_range_competencia`, que já descarta as
     compras individuais de cartão quando existe fatura consolidada — sem isso o
     gasto no cartão seria contado duas vezes.
-
-    Args:
-        usuario (User): Instância do usuário autenticado no Django.
-        meses (int): Quantidade de competências consideradas na média (mínimo 1).
 
     Returns:
         tuple[float, float]: Média de (receitas, despesas) por mês.
@@ -117,14 +109,10 @@ def medias_mensais(usuario, meses: int = 3) -> tuple[float, float]:
 
 
 def gasto_essencial_do_mes(usuario) -> float:
-    """
-    Soma as despesas com competência no mês corrente.
+    """Soma as despesas com competência no mês corrente.
 
     Alimenta o acompanhamento da meta de teto: é o valor comparado contra o
     limite de gastos essenciais.
-
-    Args:
-        usuario (User): Instância do usuário autenticado no Django.
 
     Returns:
         float: Total de despesas previstas para o mês corrente.
@@ -135,16 +123,12 @@ def gasto_essencial_do_mes(usuario) -> float:
 
 
 def patrimonio_carteira(usuario) -> Decimal:
-    """
-    Soma o valor de mercado atual da carteira de investimentos do usuário.
+    """Soma o valor de mercado atual da carteira de investimentos do usuário.
 
     Cada posição é avaliada pela cotação mais recente, caindo para o preço médio
     quando o ativo ainda não tem cotação — o mesmo critério de
     `Ativo.valor_total_atual` e do dashboard de investimentos. A cotação entra
     por `Subquery` para que uma carteira grande não gere uma consulta por ativo.
-
-    Args:
-        usuario (User): Instância do usuário autenticado no Django.
 
     Returns:
         Decimal: Valor de mercado da carteira, com duas casas decimais.
@@ -172,15 +156,11 @@ def patrimonio_carteira(usuario) -> Decimal:
 
 
 def aportes_do_mes(usuario) -> Decimal:
-    """
-    Soma quanto foi aportado na carteira de investimentos no mês corrente.
+    """Soma quanto foi aportado na carteira de investimentos no mês corrente.
 
     Considera as ordens de compra (`Transacao` do tipo 'C') com data dentro da
     competência atual. Vendas não abatem: rebalancear a carteira não desfaz o
     dinheiro que entrou. Proventos também ficam de fora, por não serem aporte.
-
-    Args:
-        usuario (User): Instância do usuário autenticado no Django.
 
     Returns:
         Decimal: Total aportado no mês, com duas casas decimais.
@@ -200,14 +180,10 @@ def aportes_do_mes(usuario) -> Decimal:
 
 
 def valores_externos(usuario) -> dict:
-    """
-    Resolve, de uma vez, todas as origens automáticas de progresso.
+    """Resolve, de uma vez, todas as origens automáticas de progresso.
 
     Serve para que a serialização de uma lista de metas leia estes números do
     contexto em vez de consultar o banco meta a meta.
-
-    Args:
-        usuario (User): Instância do usuário autenticado no Django.
 
     Returns:
         dict: Mapa de `MetaFinanceira.origem_acumulado` para o valor calculado.
@@ -219,14 +195,7 @@ def valores_externos(usuario) -> dict:
 
 
 def calcular_valor_alvo(definicao: dict, renda: Decimal | None, custo_vida: Decimal | None) -> Decimal:
-    """
-    Aplica o multiplicador de uma meta padrão sobre a base correspondente.
-
-    Args:
-        definicao (dict): Entrada de `METAS_PADRAO` (ou equivalente) com as
-            chaves `base_calculo` e `multiplicador`.
-        renda (Decimal | None): Renda mensal de referência.
-        custo_vida (Decimal | None): Custo de vida mensal de referência.
+    """Aplica o multiplicador de uma meta padrão sobre a base correspondente.
 
     Returns:
         Decimal: Valor-alvo com duas casas decimais; zero se a base estiver vazia.
@@ -246,8 +215,7 @@ def calcular_valor_alvo(definicao: dict, renda: Decimal | None, custo_vida: Deci
 
 @transaction.atomic
 def gerar_metas_padrao(usuario, plano) -> list[MetaFinanceira]:
-    """
-    Cria ou recalcula as quatro metas padrão do usuário.
+    """Cria ou recalcula as quatro metas padrão do usuário.
 
     Cria o que faltar e recalcula os valores-alvo conforme a base atual do plano.
 
@@ -256,10 +224,6 @@ def gerar_metas_padrao(usuario, plano) -> list[MetaFinanceira]:
     conclusão. O alvo é recomputado a partir do multiplicador **armazenado** —
     quem trocou o ×200 por ×150 continua com ×150 depois de clicar em recalcular.
     Só a criação usa os valores de `METAS_PADRAO`.
-
-    Args:
-        usuario (User): Proprietário das metas.
-        plano (PlanoMetas): Plano com renda e custo de vida de referência.
 
     Returns:
         list[MetaFinanceira]: As metas padrão criadas ou atualizadas, em ordem.

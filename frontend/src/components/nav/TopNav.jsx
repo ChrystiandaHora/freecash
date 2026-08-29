@@ -13,8 +13,6 @@
  * - Nenhuma referência ARIA órfã: os cinco painéis ficam SEMPRE montados, porque
  *   os gatilhos apontam para eles via `aria-controls`.
  * - Um único landmark `<nav>` por viewport; nenhum `<nav>` aninhado por painel.
- *
- * @module components/nav/TopNav
  */
 import { useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -38,7 +36,6 @@ import { HelpButton } from './HelpButton';
  * @param {Object} props
  * @param {React.RefObject<HTMLElement>} props.mainRef - Ref do `<main>`, usada na guarda de
  *   SC 2.4.11 e para reposicionar o foco ao clicar na rota já ativa.
- * @returns {React.JSX.Element}
  */
 export default function TopNav({ mainRef }) {
   const { pathname } = useLocation();

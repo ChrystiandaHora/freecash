@@ -20,14 +20,7 @@ from investimento.models import Ativo, CarteiraHistorico, Cotacao, Transacao
 
 @dataclass(frozen=True)
 class HistoricoUpdateResult:
-    """Estrutura representativa de dados de estatísticas de processamento de snapshots.
-
-    Atributos:
-        created (int): Quantidade de snapshots diários criados.
-        updated (int): Quantidade de snapshots diários atualizados.
-        start_date (date): Data de início do processamento de snapshots.
-        end_date (date): Data de encerramento do processamento de snapshots.
-    """
+    """Estrutura representativa de dados de estatísticas de processamento de snapshots."""
     created: int
     updated: int
     start_date: date | None
@@ -41,11 +34,7 @@ class CarteiraHistoricoService:
     """
 
     def __init__(self, user):
-        """Inicializa o serviço de histórico atribuindo o investidor correspondente.
-
-        Args:
-            user (User): Instância do usuário Django proprietário da carteira.
-        """
+        """Inicializa o serviço de histórico atribuindo o investidor correspondente."""
         self.user = user
 
     def atualizar(self, *, ate_data: date | None = None) -> HistoricoUpdateResult:
@@ -55,7 +44,7 @@ class CarteiraHistoricoService:
         de aquisição (compras), resgates (vendas), proventos e rentabilidade diária.
 
         Args:
-            ate_data (date, optional): Data limite de encerramento. Defaults to date.today().
+            ate_data: Data limite de encerramento. Defaults to date.today().
 
         Returns:
             HistoricoUpdateResult: Estatísticas contendo criados, atualizados e limites temporais.
@@ -188,7 +177,7 @@ class CarteiraHistoricoService:
         Agrupa os dados diários em janelas mensais para renderização de gráficos.
 
         Args:
-            meses (int, optional): Número limite de meses a retornar. Defaults to 36.
+            meses: Número limite de meses a retornar. Defaults to 36.
 
         Returns:
             list[dict]: Lista de dicionários contendo patrimônio, custo investido, dividendos acumulados e dividendos mensais.
@@ -251,7 +240,7 @@ class CarteiraHistoricoService:
         """Gera a série anual consolidada em formato OHLC de patrimônio e investimentos.
 
         Args:
-            anos (int, optional): Número de anos de retrocesso histórico. Defaults to 10.
+            anos: Número de anos de retrocesso histórico. Defaults to 10.
 
         Returns:
             list[dict]: Lista contendo dicionários com a evolução anual.
@@ -358,7 +347,7 @@ def atualizar_historico_para_todos(*, ate_data: date | None = None) -> dict:
     """Sincroniza atomaticamente os snapshots históricos de todos os usuários do sistema.
 
     Args:
-        ate_data (date, optional): Data limite de atualização. Defaults to None (hoje).
+        ate_data: Data limite de atualização. Defaults to None (hoje).
 
     Returns:
         dict: Estatísticas de processamento global com chaves 'users', 'created' e 'updated'.

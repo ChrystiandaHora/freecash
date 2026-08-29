@@ -34,17 +34,15 @@ class Periodo:
 
 
 def totals_for_range_competencia(usuario, inicio: date, fim: date) -> tuple[float, float]:
-    """
-    Calcula a soma total de receitas e despesas com vencimento previsto (competência)
+    """Calcula a soma total de receitas e despesas com vencimento previsto (competência)
     dentro do intervalo de datas informado.
 
     Filtra lançamentos de despesas vinculadas a faturas para evitar duplicidades
     (só inclui compras individuais sem cartão ou a fatura de cartão consolidada).
 
     Args:
-        usuario (User): Instância do usuário autenticado no Django.
-        inicio (date): Data de início do intervalo (inclusive).
-        fim (date): Data de fim do intervalo (exclusive).
+        inicio: Data de início do intervalo (inclusive).
+        fim: Data de fim do intervalo (exclusive).
 
     Returns:
         tuple[float, float]: Uma tupla contendo (total_receitas, total_despesas).
@@ -64,11 +62,10 @@ def totals_for_range_competencia(usuario, inicio: date, fim: date) -> tuple[floa
 
 
 def strip_tz(v) -> date:
-    """
-    Normaliza valores de data removendo timezone ou convertendo datetimes em dates.
+    """Normaliza valores de data removendo timezone ou convertendo datetimes em dates.
 
     Args:
-        v (datetime | date): O objeto de data a ser normalizado.
+        v: O objeto de data a ser normalizado.
 
     Returns:
         date: A representação simplificada contendo apenas ano, mês e dia.
@@ -77,16 +74,11 @@ def strip_tz(v) -> date:
 
 
 def serie_por_dia_competencia(usuario, tipo: str, inicio: date, fim: date, ultimo_dia: int) -> tuple[list[str], list[float]]:
-    """
-    Gera uma série temporal diária agrupando valores previstos para um determinado
+    """Gera uma série temporal diária agrupando valores previstos para um determinado
     tipo de lançamento (Receitas ou Despesas) ao longo de um mês específico.
 
     Args:
-        usuario (User): Instância do usuário autenticado.
-        tipo (str): Tipo de lançamento (ex: Conta.TIPO_RECEITA ou Conta.TIPO_DESPESA).
-        inicio (date): Data de início do mês de referência.
-        fim (date): Data de fim do mês de referência.
-        ultimo_dia (int): Quantidade total de dias no mês.
+        tipo: Tipo de lançamento (ex: Conta.TIPO_RECEITA ou Conta.TIPO_DESPESA).
 
     Returns:
         tuple[list[str], list[float]]: Tupla contendo a lista de labels ("01", "02"...) e os valores acumulados por dia.
@@ -116,14 +108,7 @@ def serie_por_dia_competencia(usuario, tipo: str, inicio: date, fim: date, ultim
 
 
 def serie_6m_competencia(usuario, tipo: str, inicio_ref: date, fim_ref: date) -> tuple[list[str], list[float]]:
-    """
-    Gera uma série temporal histórica mensal de 6 meses retroativos para análises financeiras.
-
-    Args:
-        usuario (User): Instância do usuário autenticado.
-        tipo (str): Tipo de lançamento (Receitas ou Despesas).
-        inicio_ref (date): Data inicial do mês mais recente de referência.
-        fim_ref (date): Data final do mês mais recente de referência.
+    """Série mensal dos 6 meses anteriores.
 
     Returns:
         tuple[list[str], list[float]]: Labels formatados como "Mês/Ano" e seus valores acumulados.
@@ -155,14 +140,8 @@ def serie_6m_competencia(usuario, tipo: str, inicio_ref: date, fim_ref: date) ->
 
 
 def serie_fluxo_projetado_competencia(usuario, tipo: str, inicio_ref: date) -> tuple[list[str], list[float]]:
-    """
-    Calcula a projeção mensal de fluxo de caixa em uma janela de 6 meses
+    """Calcula a projeção mensal de fluxo de caixa em uma janela de 6 meses
     (2 meses anteriores, mês atual, e 3 meses subsequentes de projeção).
-
-    Args:
-        usuario (User): Instância do usuário autenticado.
-        tipo (str): Tipo de lançamento (Receitas ou Despesas).
-        inicio_ref (date): Data inicial do mês de referência atual.
 
     Returns:
         tuple[list[str], list[float]]: Labels dos 6 meses de janela e valores correspondentes.
@@ -201,18 +180,13 @@ SEM_CATEGORIA = "Sem categoria"
 def _explodir_fatura_por_categoria(fatura: Conta) -> dict[str, Decimal]:
     """Distribui o valor de uma fatura de cartão entre as categorias de suas compras.
 
-    A fatura consolidada é apenas o pagamento agregado do cartão — o gasto real
-    está nas compras individuais vinculadas a ela (mesmo usuário, cartão e
-    `data_prevista`). Compras ainda não classificadas pelo usuário são
-    caracterizadas como "Cartão de Crédito", e não como "Sem categoria".
+    A fatura consolidada é só o pagamento agregado; o gasto real está nas compras
+    vinculadas a ela (mesmo usuário, cartão e `data_prevista`). Compras não classificadas
+    entram como "Cartão de Crédito", não como "Sem categoria".
 
-    Quando o valor da fatura divergir da soma das compras (caso de fatura já
-    liquidada, cujo valor é congelado, ou ajustada manualmente), a diferença é
-    rateada proporcionalmente para que o detalhamento continue somando o mesmo
-    total exibido no painel.
-
-    Args:
-        fatura (Conta): Fatura consolidada de cartão (`eh_fatura_cartao=True`).
+    Se o valor da fatura divergir da soma das compras — fatura liquidada tem valor
+    congelado, e há ajuste manual — a diferença é rateada proporcionalmente, para o
+    detalhamento continuar somando o total exibido no painel.
 
     Returns:
         dict[str, Decimal]: Valor da fatura por nome de categoria.
@@ -258,13 +232,8 @@ def despesas_por_categoria(usuario, inicio: date, fim: date, campo_data: str, **
     usuário faz em cada compra chega até o gráfico de "Maiores Gastos".
 
     Args:
-        usuario (User): Instância do usuário autenticado.
-        inicio (date): Início do período (inclusive).
-        fim (date): Fim do período (exclusive).
-        campo_data (str): Campo de data usado no recorte ("data_prevista" para
-            competência, "data_realizacao" para caixa).
-        **extra_filtros: Filtros adicionais aplicados ao queryset (ex:
-            `transacao_realizada=True`).
+        inicio: Início do período (inclusive).
+        fim: Fim do período (exclusive).
 
     Returns:
         list[dict]: Itens `{"nome", "valor"}` ordenados do maior para o menor valor.
@@ -301,16 +270,13 @@ def despesas_por_categoria(usuario, inicio: date, fim: date, campo_data: str, **
 
 
 def breakdown_despesas_competencia(usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4) -> tuple[list[dict], dict]:
-    """
-    Realiza o detalhamento de gastos agrupados por categoria dentro de um período,
+    """Realiza o detalhamento de gastos agrupados por categoria dentro de um período,
     isolando as 'N' categorias mais caras e agrupando o restante em "Outros".
 
     Args:
-        usuario (User): Instância do usuário autenticado.
-        inicio (date): Início do período (inclusive).
-        fim (date): Fim do período (exclusive).
-        total_despesas (float): Valor total de despesas consolidadas no período.
-        top_n (int, opcional): Quantidade de categorias principais a listar. Padrão 4.
+        inicio: Início do período (inclusive).
+        fim: Fim do período (exclusive).
+        top_n: Quantidade de categorias principais a listar. Padrão 4.
 
     Returns:
         tuple[list[dict], dict]: Lista de despesas formatadas com porcentagens e dicionário da maior categoria.
@@ -351,14 +317,12 @@ def breakdown_despesas_competencia(usuario, inicio: date, fim: date, total_despe
 
 
 def clamp_int(value: str, default: int = 0, min_v: int = 0, max_v: int = 2) -> int:
-    """
-    Limita e sanitiza um valor inteiro contido em uma string dentro de limites mínimo e máximo.
+    """Converte a string para inteiro, preso entre os limites informados.
 
     Args:
-        value (str): A string a ser convertida em inteiro.
-        default (int): O valor padrão de retorno se a conversão falhar.
-        min_v (int): O limite mínimo aceitável.
-        max_v (int): O limite máximo aceitável.
+        default: O valor padrão de retorno se a conversão falhar.
+        min_v: O limite mínimo aceitável.
+        max_v: O limite máximo aceitável.
 
     Returns:
         int: O número inteiro sanitizado e restrito ao intervalo.
@@ -370,11 +334,7 @@ def clamp_int(value: str, default: int = 0, min_v: int = 0, max_v: int = 2) -> i
 
 
 def month_start(d: date) -> date:
-    """
-    Retorna a data correspondente ao primeiro dia do mês da data informada.
-
-    Args:
-        d (date): A data de referência.
+    """Retorna a data correspondente ao primeiro dia do mês da data informada.
 
     Returns:
         date: A data normalizada para o primeiro dia do mesmo mês.
@@ -383,11 +343,7 @@ def month_start(d: date) -> date:
 
 
 def next_month_start(d: date) -> date:
-    """
-    Calcula e retorna o primeiro dia do mês subsequente à data informada.
-
-    Args:
-        d (date): A data de referência.
+    """Calcula e retorna o primeiro dia do mês subsequente à data informada.
 
     Returns:
         date: A data correspondente ao primeiro dia do próximo mês.
@@ -396,13 +352,8 @@ def next_month_start(d: date) -> date:
 
 
 def make_periodo(hoje: date, periodo_idx: int) -> Periodo:
-    """
-    Gera as datas de controle para um período baseado em um índice de deslocamento
+    """Gera as datas de controle para um período baseado em um índice de deslocamento
     (0 = mês atual, 1 = mês anterior, 2 = próximo mês).
-
-    Args:
-        hoje (date): Data atual (hoje).
-        periodo_idx (int): O índice representativo do período.
 
     Returns:
         Periodo: A instância de Periodo estruturada contendo os limites de datas.
@@ -434,12 +385,7 @@ def make_periodo(hoje: date, periodo_idx: int) -> Periodo:
 
 
 def make_periodo_custom(ano: int, mes: int) -> Periodo:
-    """
-    Gera as datas de controle para um mês e ano específicos definidos pelo usuário.
-
-    Args:
-        ano (int): O ano de referência (ex: 2026).
-        mes (int): O mês de referência (1 a 12).
+    """Gera as datas de controle para um mês e ano específicos definidos pelo usuário.
 
     Returns:
         Periodo: A instância de Periodo estruturada contendo os limites e o label traduzido.
@@ -467,12 +413,7 @@ def make_periodo_custom(ano: int, mes: int) -> Periodo:
 
 
 def pct_change(atual: float, anterior: float) -> float | None:
-    """
-    Calcula a variação percentual entre o valor atual e o valor do período anterior.
-
-    Args:
-        atual (float): O valor consolidado no mês de referência.
-        anterior (float): O valor consolidado no mês anterior.
+    """Calcula a variação percentual entre o valor atual e o valor do período anterior.
 
     Returns:
         float | None: A variação percentual calculada ou None caso o valor anterior seja nulo.
@@ -483,13 +424,11 @@ def pct_change(atual: float, anterior: float) -> float | None:
 
 
 def totals_for_range_realizadas(usuario, inicio: date, fim: date) -> tuple[float, float]:
-    """
-    Calcula a soma de receitas e despesas efetuadas (regime de caixa) com base na data de realização.
+    """Soma receitas e despesas efetuadas, por data de realização (regime de caixa).
 
     Args:
-        usuario (User): Instância do usuário autenticado.
-        inicio (date): Data de início da realização (inclusive).
-        fim (date): Data de fim da realização (exclusive).
+        inicio: Data de início da realização (inclusive).
+        fim: Data de fim da realização (exclusive).
 
     Returns:
         tuple[float, float]: Uma tupla contendo (receitas_realizadas, despesas_realizadas).
@@ -511,25 +450,21 @@ def totals_for_range_realizadas(usuario, inicio: date, fim: date) -> tuple[float
 
 
 def saldo_liquidez_ate(usuario, ate: date) -> float:
-    """
-    Calcula a liquidez acumulada — o dinheiro efetivamente em caixa — até uma data.
+    """Calcula a liquidez acumulada — o dinheiro efetivamente em caixa — até uma data.
 
-    Diferente de `totals_for_range_realizadas`, que olha uma janela, aqui a soma é
-    aberta no início: percorre todo o histórico realizado até `ate`. É o saldo que
-    ancora a projeção do simulador — sem ele a curva partiria de zero e mediria
-    apenas o fluxo líquido futuro, não o saldo real da conta.
+    Diferente de `totals_for_range_realizadas`, a soma é aberta no início: percorre todo
+    o histórico realizado até `ate`. É o saldo que ancora a projeção do simulador; sem
+    ele a curva partiria de zero e mediria fluxo líquido, não saldo.
 
-    O filtro de cartão é obrigatório: sem ele a compra individual somaria junto da
-    fatura consolidada e o caixa apareceria menor do que é.
+    O filtro de cartão é obrigatório: sem ele a compra individual somaria junto da fatura
+    consolidada e o caixa apareceria menor do que é.
 
     Args:
-        usuario (User): Instância do usuário autenticado.
-        ate (date): Data limite da realização (inclusive).
+        ate: Data limite da realização (inclusive).
 
     Returns:
-        float: Receitas realizadas menos despesas realizadas até `ate`, em centavos
-            exatos — a subtração é feita em Decimal para o valor não chegar à tela
-            com ruído de ponto flutuante.
+        float: Receitas menos despesas realizadas até `ate`. A subtração é feita em
+            Decimal para o valor não chegar à tela com ruído de ponto flutuante.
     """
     qs = Conta.objects.filter(
         usuario=usuario,
@@ -547,15 +482,7 @@ def saldo_liquidez_ate(usuario, ate: date) -> float:
 
 
 def serie_por_dia_realizadas(usuario, tipo: str, inicio: date, fim: date, ultimo_dia: int) -> tuple[list[str], list[float]]:
-    """
-    Gera uma série diária agregando lançamentos realizados (regime de caixa) dentro de um mês.
-
-    Args:
-        usuario (User): Instância do usuário.
-        tipo (str): Tipo de lançamento (Receitas/Despesas).
-        inicio (date): Início do mês.
-        fim (date): Fim do mês.
-        ultimo_dia (int): Quantidade de dias no mês.
+    """Série diária dos lançamentos realizados no mês (regime de caixa).
 
     Returns:
         tuple[list[str], list[float]]: Labels diários e valores acumulados.
@@ -586,14 +513,7 @@ def serie_por_dia_realizadas(usuario, tipo: str, inicio: date, fim: date, ultimo
 
 
 def serie_6m_realizadas(usuario, tipo: str, inicio_ref: date, fim_ref: date) -> tuple[list[str], list[float]]:
-    """
-    Gera o histórico mensal de 6 meses de contas realizadas (caixa).
-
-    Args:
-        usuario (User): Instância do usuário.
-        tipo (str): Tipo de lançamento (Receitas/Despesas).
-        inicio_ref (date): Início do mês atual.
-        fim_ref (date): Fim do mês atual.
+    """Gera o histórico mensal de 6 meses de contas realizadas (caixa).
 
     Returns:
         tuple[list[str], list[float]]: Labels e valores da série mensal de caixa.
@@ -626,15 +546,10 @@ def serie_6m_realizadas(usuario, tipo: str, inicio_ref: date, fim_ref: date) -> 
 
 
 def breakdown_despesas_realizadas(usuario, inicio: date, fim: date, total_despesas: float, top_n: int = 4) -> tuple[list[dict], dict]:
-    """
-    Gera o breakdown detalhado de despesas realizadas por categoria.
+    """Gera o breakdown detalhado de despesas realizadas por categoria.
 
     Args:
-        usuario (User): Instância do usuário.
-        inicio (date): Início do período.
-        fim (date): Fim do período.
-        total_despesas (float): Soma total de despesas realizadas.
-        top_n (int, opcional): Quantidade de categorias principais. Padrão 4.
+        top_n: Quantidade de categorias principais. Padrão 4.
 
     Returns:
         tuple[list[dict], dict]: Breakdown detalhado e maior categoria encontrada.
@@ -678,13 +593,8 @@ def breakdown_despesas_realizadas(usuario, inicio: date, fim: date, total_despes
 
 
 def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date) -> list[dict]:
-    """
-    Gera o painel comparativo financeiro consolidado dos últimos 3 meses
+    """Gera o painel comparativo financeiro consolidado dos últimos 3 meses
     (do mais recente para o mais antigo) baseado em competência.
-
-    Args:
-        usuario (User): Instância do usuário autenticado.
-        inicio_ref (date): Data inicial do mês de referência mais recente.
 
     Returns:
         list[dict]: Lista de dicionários contendo o fechamento mensal agrupado.

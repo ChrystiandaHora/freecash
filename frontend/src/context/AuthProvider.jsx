@@ -1,30 +1,18 @@
 /**
  * Provedor de Contexto de Autenticação JWT (AuthProvider).
  *
- * Gerencia o ciclo de vida completo da sessão do usuário utilizando
- * autenticação baseada em JWT com refresh token via cookie HTTP-only:
+ * Gerencia a sessão com JWT e refresh token em cookie HTTP-only: na inicialização tenta
+ * renovar o access token silenciosamente por `/api/token/refresh/`, expõe `login`,
+ * `register` e `logout`, e guarda o access token **em memória**, não no localStorage,
+ * para mitigar XSS. O perfil vem de `/api/auth/me/`, não do payload do JWT, porque a
+ * rotação preserva o payload original.
  *
- * - Na inicialização, tenta renovar silenciosamente o `access token` via
- *   `/api/token/refresh/` (usando o cookie de refresh persistido).
- * - Expõe `login`, `register` e `logout` para operações de autenticação.
- * - Armazena o token de acesso em memória (via `setAccessToken`) para evitar
- *   exposição ao localStorage e mitigar ataques XSS.
- * - O payload do JWT é decodificado localmente para popular o objeto `user`
- *   sem necessidade de chamada adicional à API.
+ * Contexto exportado: `{ user, perfil, loading, login, register, logout,
+ * recarregarPerfil, isAuthenticated }`.
  *
- * Contexto Exportado: `{ user, loading, login, register, logout, isAuthenticated }`
- *
- * @module AuthProvider
- * @component
- *
- * @param {object}      props          - Props do componente.
- * @param {React.ReactNode} props.children - Árvore de componentes filhos que
- *                                          terão acesso ao contexto de auth.
+ * @param {object} props - Props do componente.
+ * @param {React.ReactNode} props.children - Árvore que terá acesso ao contexto.
  * @returns {JSX.Element} Provider do contexto de autenticação.
- *
- * @example
- * // Uso do hook de autenticação em um componente filho:
- * const { user, login, logout, isAuthenticated } = useAuth();
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';

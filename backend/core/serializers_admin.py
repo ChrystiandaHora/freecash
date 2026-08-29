@@ -43,9 +43,6 @@ class UsuarioAdminSerializer(serializers.ModelSerializer):
     def get_email_verificado(self, obj) -> bool:
         """Informa se a conta já confirmou o endereço de e-mail.
 
-        Args:
-            obj (User): Conta em serialização.
-
         Returns:
             bool: True se houver `ConfigUsuario` com a confirmação registrada.
         """

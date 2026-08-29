@@ -15,10 +15,6 @@
  *   não-textual, que exige 3:1 — e uma linha de gráfico é elemento não-textual.
  * - Há uma tabela alternativa dos mesmos dados, para que a informação não dependa
  *   de leitura gráfica.
- *
- * @module AdminMetricas
- * @component
- * @returns {React.JSX.Element}
  */
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -39,12 +35,10 @@ const JANELAS = [
 /**
  * Indicador numérico único.
  *
- * @param {Object} props - Propriedades do componente.
  * @param {React.ComponentType} props.icon - Ícone ilustrativo.
  * @param {string} props.rotulo - Nome do indicador.
  * @param {string|number} props.valor - Valor exibido.
  * @param {string} [props.apoio] - Linha de contexto abaixo do valor.
- * @returns {React.JSX.Element}
  */
 function Indicador({ icon: Icon, rotulo, valor, apoio }) {
   return (

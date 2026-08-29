@@ -77,7 +77,7 @@ def cor(chave: str):
     """Converte uma chave da paleta institucional em uma cor do reportlab.
 
     Args:
-        chave (str): Nome da cor em PALETA (ex.: 'marca', 'negativo').
+        chave: Nome da cor em PALETA (ex.: 'marca', 'negativo').
 
     Returns:
         Color: Instância de cor do reportlab correspondente ao hexadecimal.
@@ -87,9 +87,6 @@ def cor(chave: str):
 
 def cor_serie(indice: int):
     """Retorna a cor da série categórica na posição informada, ciclando a paleta.
-
-    Args:
-        indice (int): Posição da série (0 para a primeira).
 
     Returns:
         Color: Cor do reportlab, garantindo cor definida para qualquer quantidade de itens.
@@ -127,8 +124,7 @@ def formatar_numero(valor, casas: int = 2) -> str:
     Não depende de `locale`, que não é confiável em containers enxutos.
 
     Args:
-        valor: Valor numérico a ser formatado.
-        casas (int, optional): Quantidade de casas decimais. Defaults to 2.
+        casas: Quantidade de casas decimais. Defaults to 2.
 
     Returns:
         str: Número formatado, por exemplo "3.048,21".
@@ -141,8 +137,7 @@ def formatar_moeda(valor, simbolo: bool = True) -> str:
     """Formata um valor monetário no padrão brasileiro com sinal antes do símbolo.
 
     Args:
-        valor: Valor monetário a ser formatado.
-        simbolo (bool, optional): Inclui o prefixo "R$ ". Defaults to True.
+        simbolo: Inclui o prefixo "R$ ". Defaults to True.
 
     Returns:
         str: Valor formatado, por exemplo "R$ 3.048,21" ou "-R$ 250,00".
@@ -157,8 +152,7 @@ def formatar_percentual(valor, casas: int = 1) -> str:
     """Formata um percentual no padrão brasileiro.
 
     Args:
-        valor: Valor percentual (já em escala 0-100).
-        casas (int, optional): Casas decimais. Defaults to 1.
+        casas: Casas decimais. Defaults to 1.
 
     Returns:
         str: Percentual formatado, por exemplo "70,1%".
@@ -170,7 +164,7 @@ def formatar_mes_ano(chave: str) -> str:
     """Converte a chave de período 'YYYY-MM' na forma legível 'mmm/YYYY'.
 
     Args:
-        chave (str): Período no formato "2026-01".
+        chave: Período no formato "2026-01".
 
     Returns:
         str: Período legível, por exemplo "jan/2026". Devolve a entrada quando inválida.
@@ -184,9 +178,6 @@ def formatar_mes_ano(chave: str) -> str:
 
 def _teto_eixo(valor) -> float:
     """Arredonda um valor para cima até uma referência "redonda" para o topo do eixo.
-
-    Args:
-        valor: Maior valor da série plotada.
 
     Returns:
         float: Limite superior do eixo, sempre positivo.
@@ -214,9 +205,8 @@ def get_movimentacoes(usuario, data_inicio: date, data_fim: date):
     retornando apenas contas de caixa (sem cartão associado) e faturas de cartão consolidadas.
 
     Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Limite inferior do período de busca.
-        data_fim (date): Limite superior do período de busca.
+        data_inicio: Limite inferior do período de busca.
+        data_fim: Limite superior do período de busca.
 
     Returns:
         QuerySet: Lista de lançamentos de Conta ordenados por data prevista e id.
@@ -241,9 +231,8 @@ def get_investimentos(usuario, data_inicio: date, data_fim: date):
     """Busca os ativos do usuário que possuam posição ativa ou transações no período.
 
     Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Limite de início do período.
-        data_fim (date): Limite de fim do período.
+        data_inicio: Limite de início do período.
+        data_fim: Limite de fim do período.
 
     Returns:
         QuerySet: Filtro de ativos B3 ordenados pelo ticker alfabeticamente.
@@ -268,11 +257,6 @@ def get_investimentos(usuario, data_inicio: date, data_fim: date):
 def get_transacoes_investimento(usuario, data_inicio: date, data_fim: date):
     """Busca o histórico de ordens de compra/venda de investimentos no período.
 
-    Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Data de início do período de movimentações.
-        data_fim (date): Data final do período de movimentações.
-
     Returns:
         QuerySet: Histórico de ordens executadas ordenadas por data e id.
     """
@@ -290,11 +274,6 @@ def get_transacoes_investimento(usuario, data_inicio: date, data_fim: date):
 
 def get_proventos_data(usuario, data_inicio: date, data_fim: date):
     """Agrupa e soma o total de dividendos/juros recebidos por ativo no período.
-
-    Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Data de início da apuração.
-        data_fim (date): Data de fim da apuração.
 
     Returns:
         QuerySet: Agrupado por ticker contendo o somatório dos proventos recebidos.
@@ -320,10 +299,9 @@ def get_despesas_por_categoria(usuario, data_inicio: date, data_fim: date, limit
     categorias" para que o total continue fechando com o relatório.
 
     Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Limite inferior do período.
-        data_fim (date): Limite superior do período.
-        limite (int, optional): Quantidade máxima de categorias detalhadas. Defaults to 10.
+        data_inicio: Limite inferior do período.
+        data_fim: Limite superior do período.
+        limite: Quantidade máxima de categorias detalhadas. Defaults to 10.
 
     Returns:
         list[dict]: Dicionários com 'categoria', 'total' e 'percentual' sobre o total de despesas.
@@ -371,8 +349,7 @@ def get_alocacao_data(usuario, data_fim: date):
     as classes de Renda Fixa, Ações, FIIs, etc.
 
     Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_fim (date): Data limite para consideração de saldo na custódia.
+        data_fim: Data limite para consideração de saldo na custódia.
 
     Returns:
         list[dict]: Lista de dicionários ordenada com 'classe', 'valor' e 'percentual'.
@@ -411,9 +388,8 @@ def get_comparativo_mensal_data(usuario, data_inicio: date, data_fim: date):
     selecionado.
 
     Args:
-        usuario (User): Instância do usuário Django proprietário.
-        data_inicio (date): Limite inferior do período.
-        data_fim (date): Limite superior do período.
+        data_inicio: Limite inferior do período.
+        data_fim: Limite superior do período.
 
     Returns:
         list[dict]: Lista contendo dicionários com 'periodo', 'receitas', 'despesas' e 'saldo'.
@@ -473,8 +449,7 @@ def _largura_visual(valor, formato) -> int:
     """Estima em caracteres o espaço ocupado por uma célula depois de formatada.
 
     Args:
-        valor: Conteúdo da célula.
-        formato (str | None): Formato numérico aplicado à coluna.
+        formato: Formato numérico aplicado à coluna.
 
     Returns:
         int: Quantidade estimada de caracteres exibidos.
@@ -500,13 +475,7 @@ def _montar_aba(wb, nome, cabecalhos, linhas, formatos, cor_aba, linha_total=Non
     uma linha de totalização opcional (fora do filtro, para não ser reordenada).
 
     Args:
-        wb (Workbook): Pasta de trabalho de destino.
-        nome (str): Nome da aba.
-        cabecalhos (Sequence[str]): Títulos das colunas.
-        linhas (Sequence[Sequence]): Linhas de dados.
-        formatos (Sequence[str | None]): Formato numérico de cada coluna (None = texto).
-        cor_aba (str): Cor hexadecimal da guia da aba.
-        linha_total (Sequence | None): Linha de totalização, se houver.
+        formatos: Formato numérico de cada coluna (None = texto).
 
     Returns:
         Worksheet: A aba criada.
@@ -579,9 +548,6 @@ def _montar_aba(wb, nome, cabecalhos, linhas, formatos, cor_aba, linha_total=Non
 def _rotulo_escopo(escopo: str) -> str:
     """Descreve em português o conteúdo coberto pelo escopo informado.
 
-    Args:
-        escopo (str): 'geral', 'investimentos' ou 'completo'.
-
     Returns:
         str: Descrição legível do escopo.
     """
@@ -596,12 +562,7 @@ def _aba_resumo(wb, usuario, data_inicio, data_fim, escopo, indicadores) -> None
     """Cria a primeira aba, com a identificação do relatório e os indicadores.
 
     Args:
-        wb (Workbook): Pasta de trabalho de destino.
-        usuario (User): Usuário solicitante.
-        data_inicio (date): Início do período.
-        data_fim (date): Fim do período.
-        escopo (str): Escopo do relatório.
-        indicadores (Sequence[tuple]): Pares (rótulo, valor) já na ordem de exibição.
+        indicadores: Pares (rótulo, valor) já na ordem de exibição.
     """
     ws = wb.create_sheet("Resumo", 0)
     ws.sheet_properties.tabColor = PALETA["marca"][1:]
@@ -660,10 +621,7 @@ def _dados_do_relatorio(usuario, data_inicio: date, data_fim: date, escopo: str)
     """Reúne, em uma única passagem, tudo que os três formatos de saída consomem.
 
     Args:
-        usuario (User): Usuário solicitante.
-        data_inicio (date): Início do período.
-        data_fim (date): Fim do período.
-        escopo (str): Escopo já normalizado.
+        escopo: Escopo já normalizado.
 
     Returns:
         dict: Conjuntos de dados e totais agregados do período.
@@ -718,10 +676,6 @@ def _dados_do_relatorio(usuario, data_inicio: date, data_fim: date, escopo: str)
 def _indicadores(dados: dict, escopo: str) -> list:
     """Monta os pares rótulo/valor exibidos na aba Resumo.
 
-    Args:
-        dados (dict): Saída de `_dados_do_relatorio`.
-        escopo (str): Escopo do relatório.
-
     Returns:
         list[tuple]: Trios (rótulo, valor, formato numérico) na ordem de exibição.
     """
@@ -748,9 +702,6 @@ def _indicadores(dados: dict, escopo: str) -> list:
 def _linhas_movimentacoes(movimentacoes) -> tuple:
     """Prepara as linhas do extrato para planilha, com despesas negativas.
 
-    Args:
-        movimentacoes (Sequence[Conta]): Lançamentos do período.
-
     Returns:
         tuple: (linhas, resultado líquido) — o líquido é a soma da coluna de valor.
     """
@@ -775,10 +726,6 @@ def _linhas_movimentacoes(movimentacoes) -> tuple:
 
 def _linhas_carteira(investimentos, total_mercado: Decimal) -> list:
     """Prepara as linhas da carteira, incluindo meta, valor ideal e sugestão.
-
-    Args:
-        investimentos (Sequence[Ativo]): Ativos do usuário.
-        total_mercado (Decimal): Valor de mercado somado da carteira.
 
     Returns:
         list[list]: Linhas prontas para a planilha.
@@ -816,10 +763,7 @@ def gerar_excel(usuario, data_inicio: date, data_fim: date, escopo: str = "compl
     automático, formatos numéricos nativos (somáveis no Excel) e linha de total.
 
     Args:
-        usuario (User): Instância do usuário Django solicitante.
-        data_inicio (date): Data de início para o filtro do relatório.
-        data_fim (date): Data final para o filtro do relatório.
-        escopo (str, optional): Escopo do relatório ('geral', 'investimentos', 'completo'). Defaults to "completo".
+        escopo: Escopo do relatório ('geral', 'investimentos', 'completo'). Defaults to "completo".
 
     Returns:
         bytes: O conteúdo em bytes da planilha gerada em formato openxml (.xlsx).
@@ -991,10 +935,7 @@ def gerar_csv(usuario, data_inicio: date, data_fim: date, escopo: str = "complet
     sem passar pelo assistente de importação.
 
     Args:
-        usuario (User): Instância do usuário Django solicitante.
-        data_inicio (date): Data de início para o filtro do relatório.
-        data_fim (date): Data final para o filtro do relatório.
-        escopo (str, optional): Escopo do relatório ('geral', 'investimentos', 'completo'). Defaults to "completo".
+        escopo: Escopo do relatório ('geral', 'investimentos', 'completo'). Defaults to "completo".
 
     Returns:
         str: Conteúdo do arquivo CSV, iniciado por BOM UTF-8.
@@ -1241,10 +1182,9 @@ def _estilo_celula(
     """Obtém (com cache) o estilo de célula para o corpo de fonte e cor informados.
 
     Args:
-        fonte (float): Corpo da fonte da tabela.
-        chave_cor (str, optional): Cor da paleta aplicada ao texto. Defaults to "tinta".
-        direita (bool, optional): Alinha o conteúdo à direita. Defaults to False.
-        negrito (bool, optional): Usa a variante em negrito. Defaults to False.
+        chave_cor: Cor da paleta aplicada ao texto. Defaults to "tinta".
+        direita: Alinha o conteúdo à direita. Defaults to False.
+        negrito: Usa a variante em negrito. Defaults to False.
 
     Returns:
         ParagraphStyle: Estilo pronto para envolver o conteúdo da célula.
@@ -1262,12 +1202,11 @@ def _estilo_celula(
     return _CACHE_ESTILO_CELULA[chave]
 
 
-def _texto(conteudo, estilo) -> Paragraph:
+def _texto(conteudo, estilo: ParagraphStyle) -> Paragraph:
     """Cria um parágrafo escapando caracteres reservados de marcação.
 
     Args:
         conteudo: Texto de origem (aceita None).
-        estilo (ParagraphStyle): Estilo a ser aplicado.
 
     Returns:
         Paragraph: Flowable pronto para uso em células de tabela ou no corpo.
@@ -1281,9 +1220,8 @@ def _valor_colorido(valor, fonte: float = 7.5, negrito: bool = False) -> Paragra
     Valores nulos ficam em cor neutra para não sugerir ganho onde não houve.
 
     Args:
-        valor: Valor monetário.
-        fonte (float, optional): Corpo da fonte da tabela. Defaults to 7.5.
-        negrito (bool, optional): Usa negrito (linhas de totalização). Defaults to False.
+        fonte: Corpo da fonte da tabela. Defaults to 7.5.
+        negrito: Usa negrito (linhas de totalização). Defaults to False.
 
     Returns:
         Paragraph: Célula em verde (> 0), vermelho (< 0) ou grafite (= 0).
@@ -1304,10 +1242,6 @@ def _valor_colorido(valor, fonte: float = 7.5, negrito: bool = False) -> Paragra
 def _larguras(largura_total: float, fracoes) -> list:
     """Converte proporções de coluna em larguras absolutas normalizadas.
 
-    Args:
-        largura_total (float): Largura útil do frame (doc.width).
-        fracoes (Sequence[float]): Proporções relativas de cada coluna.
-
     Returns:
         list[float]: Larguras em pontos que somam exatamente a largura útil.
     """
@@ -1316,8 +1250,8 @@ def _larguras(largura_total: float, fracoes) -> list:
 
 
 def _tabela(
-    dados,
-    larguras,
+    dados: list[list],
+    larguras: list[float],
     *,
     numericas=(),
     total: bool = False,
@@ -1331,11 +1265,8 @@ def _tabela(
     (nada é truncado) e alinhamento vertical uniforme entre as colunas.
 
     Args:
-        dados (list[list]): Matriz de células; a primeira linha é o cabeçalho.
-        larguras (list[float]): Larguras das colunas em pontos.
-        numericas (Sequence[int], optional): Índices de colunas alinhadas à direita.
-        total (bool, optional): Destaca a última linha como totalizador. Defaults to False.
-        fonte (float, optional): Corpo da fonte das células. Defaults to 7.5.
+        total: Destaca a última linha como totalizador. Defaults to False.
+        fonte: Corpo da fonte das células. Defaults to 7.5.
 
     Returns:
         Table: Flowable estilizado, com cabeçalho repetido em quebras de página.
@@ -1394,12 +1325,6 @@ def _tabela(
 def _titulo_secao(titulo: str, largura: float, estilos: dict, nota: str = "") -> list:
     """Monta o cabeçalho de uma seção: barra de acento, título e régua da marca.
 
-    Args:
-        titulo (str): Nome da seção.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
-        nota (str, optional): Linha explicativa exibida abaixo do título.
-
     Returns:
         list: Sequência de flowables a serem estendidos na história do documento.
     """
@@ -1427,11 +1352,6 @@ def _titulo_secao(titulo: str, largura: float, estilos: dict, nota: str = "") ->
 
 def _cartoes_kpi(itens, largura: float, estilos: dict) -> Table:
     """Monta a faixa de indicadores da capa em formato de cartões.
-
-    Args:
-        itens (Sequence[tuple]): Tuplas (rótulo, valor formatado, chave de cor).
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         Table: Grade de cartões com acento colorido no topo de cada indicador.
@@ -1468,7 +1388,7 @@ def _cartoes_kpi(itens, largura: float, estilos: dict) -> Table:
 # =============================================================================
 
 
-def render_grafico_alocacao(alocacao_dados, largura: float = 440) -> Drawing:
+def render_grafico_alocacao(alocacao_dados: list[dict], largura: float = 440) -> Drawing:
     """Gera o gráfico de rosca da alocação da carteira por classe de ativo.
 
     Os rótulos ficam apenas na legenda (com valor e percentual), evitando a
@@ -1476,8 +1396,8 @@ def render_grafico_alocacao(alocacao_dados, largura: float = 440) -> Drawing:
     explícita independentemente da quantidade de classes.
 
     Args:
-        alocacao_dados (list[dict]): Itens com 'classe', 'valor' e 'percentual'.
-        largura (float, optional): Largura útil disponível em pontos. Defaults to 440.
+        alocacao_dados: Itens com 'classe', 'valor' e 'percentual'.
+        largura: Largura útil disponível em pontos. Defaults to 440.
 
     Returns:
         Drawing: Desenho vetorial dimensionado para o frame, ou None se não houver dados.
@@ -1551,14 +1471,13 @@ def render_grafico_alocacao(alocacao_dados, largura: float = 440) -> Drawing:
 
 
 def render_grafico_evolucao_mensal(
-    comparativo, largura: float = 440, meses: int = MESES_NO_GRAFICO
+    comparativo: list[dict], largura: float = 440, meses: int = MESES_NO_GRAFICO
 ) -> Drawing:
     """Gera o gráfico de barras de receitas x despesas por mês.
 
     Args:
-        comparativo (list[dict]): Saída de `get_comparativo_mensal_data`.
-        largura (float, optional): Largura útil disponível em pontos. Defaults to 440.
-        meses (int, optional): Quantidade de períodos mais recentes exibidos. Defaults to 12.
+        largura: Largura útil disponível em pontos. Defaults to 440.
+        meses: Quantidade de períodos mais recentes exibidos. Defaults to 12.
 
     Returns:
         Drawing: Desenho vetorial do gráfico, ou None se não houver dados.
@@ -1647,9 +1566,7 @@ def render_grafico_waterfall(total_receitas, total_despesas, largura: float = 44
     caso de resultado negativo (barra abaixo da linha do zero).
 
     Args:
-        total_receitas: Soma das receitas do período.
-        total_despesas: Soma das despesas do período.
-        largura (float, optional): Largura útil disponível em pontos. Defaults to 440.
+        largura: Largura útil disponível em pontos. Defaults to 440.
 
     Returns:
         Drawing: Desenho vetorial do gráfico em cascata.
@@ -1743,14 +1660,7 @@ def render_grafico_waterfall(total_receitas, total_despesas, largura: float = 44
 
 
 def _desenhar_wordmark(canv, x: float, y: float, sobre_faixa: bool = False) -> None:
-    """Desenha a marca "FreeCash" vetorialmente, sem depender de arquivo de imagem.
-
-    Args:
-        canv (Canvas): Canvas ativo do reportlab.
-        x (float): Coordenada horizontal da base da marca.
-        y (float): Linha de base do texto da marca.
-        sobre_faixa (bool, optional): Inverte as cores para uso sobre a faixa azul.
-    """
+    """Desenha a marca "FreeCash" vetorialmente, sem depender de arquivo de imagem."""
     lado = 4.6 * mm
     canv.saveState()
     canv.setFillColor(colors.white if sobre_faixa else cor("marca"))
@@ -1766,10 +1676,6 @@ def _desenhar_wordmark(canv, x: float, y: float, sobre_faixa: bool = False) -> N
 
 def _construir_moldura(periodo_texto: str, emissao_texto: str):
     """Cria os callbacks de página da capa e das páginas internas.
-
-    Args:
-        periodo_texto (str): Período do relatório exibido no cabeçalho corrido.
-        emissao_texto (str): Linha de emissão exibida no rodapé da capa.
 
     Returns:
         tuple: Par de callbacks (capa, páginas internas) para `doc.build`.
@@ -1838,12 +1744,7 @@ class CanvasNumerado(pdfcanvas.Canvas):
         super().save()
 
     def _desenhar_rodape(self, indice: int, total: int) -> None:
-        """Desenha a régua e os textos do rodapé institucional.
-
-        Args:
-            indice (int): Número da página corrente.
-            total (int): Total de páginas do documento.
-        """
+        """Desenha a régua e os textos do rodapé institucional."""
         largura, _ = A4
         y = MARGEM_BASE - 8 * mm
         self.saveState()
@@ -1864,11 +1765,6 @@ class CanvasNumerado(pdfcanvas.Canvas):
 
 def _bloco_sumario(escopo: str, largura: float, estilos: dict) -> list:
     """Monta o sumário de conteúdo exibido na capa.
-
-    Args:
-        escopo (str): Escopo do relatório, que define quais seções existem.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables do sumário.
@@ -1922,15 +1818,6 @@ def _bloco_sumario(escopo: str, largura: float, estilos: dict) -> list:
 
 def _bloco_capa(usuario, data_inicio, data_fim, escopo, contexto, largura, estilos) -> list:
     """Monta a capa com título, identificação, indicadores e gráfico em cascata.
-
-    Args:
-        usuario (User): Usuário solicitante do relatório.
-        data_inicio (date): Início do período.
-        data_fim (date): Fim do período.
-        escopo (str): Escopo do relatório.
-        contexto (dict): Totais pré-calculados do período.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables da capa.
@@ -2036,12 +1923,6 @@ def _bloco_capa(usuario, data_inicio, data_fim, escopo, contexto, largura, estil
 def _bloco_graficos(comparativo, alocacao, largura, estilos) -> list:
     """Monta a página de gráficos (evolução mensal e alocação da carteira).
 
-    Args:
-        comparativo (list[dict]): Série mensal de receitas/despesas.
-        alocacao (list[dict]): Distribuição da carteira por classe.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
-
     Returns:
         list: Flowables da seção de gráficos, ou lista vazia se não houver dados.
     """
@@ -2082,12 +1963,6 @@ def _bloco_graficos(comparativo, alocacao, largura, estilos) -> list:
 
 def _bloco_analise(comparativo, categorias, largura, estilos) -> list:
     """Monta as tabelas agregadas: resultado mês a mês e despesas por categoria.
-
-    Args:
-        comparativo (list[dict]): Série mensal de receitas/despesas.
-        categorias (list[dict]): Despesas agrupadas por categoria.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables da seção de análise.
@@ -2163,13 +2038,8 @@ def _bloco_analise(comparativo, categorias, largura, estilos) -> list:
     return elementos
 
 
-def _bloco_carteira(investimentos, largura, estilos) -> list:
+def _bloco_carteira(investimentos, largura: float, estilos: dict) -> list:
     """Monta a tabela de posições da carteira com metas e sugestão de aporte.
-
-    Args:
-        investimentos (QuerySet): Ativos do usuário no período.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables da seção da carteira.
@@ -2250,13 +2120,8 @@ def _bloco_carteira(investimentos, largura, estilos) -> list:
     return elementos
 
 
-def _bloco_proventos(proventos, largura, estilos) -> list:
+def _bloco_proventos(proventos, largura: float, estilos: dict) -> list:
     """Monta a tabela de proventos recebidos por ativo no período.
-
-    Args:
-        proventos (Iterable[dict]): Saída de `get_proventos_data`.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables da seção de proventos.
@@ -2289,16 +2154,11 @@ def _bloco_proventos(proventos, largura, estilos) -> list:
     return elementos
 
 
-def _anexo_movimentacoes(movimentacoes, largura, estilos) -> list:
+def _anexo_movimentacoes(movimentacoes, largura: float, estilos: dict) -> list:
     """Monta o anexo com o extrato detalhado de todos os lançamentos do período.
 
     Despesas aparecem com sinal negativo para que a última linha totalize o
     resultado líquido do período.
-
-    Args:
-        movimentacoes (QuerySet): Lançamentos do período.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables do anexo.
@@ -2351,13 +2211,8 @@ def _anexo_movimentacoes(movimentacoes, largura, estilos) -> list:
     return elementos
 
 
-def _anexo_transacoes(transacoes, largura, estilos) -> list:
+def _anexo_transacoes(transacoes, largura: float, estilos: dict) -> list:
     """Monta o anexo com o histórico de ordens de investimento do período.
-
-    Args:
-        transacoes (QuerySet): Ordens executadas no período.
-        largura (float): Largura útil do frame.
-        estilos (dict): Mapa de estilos retornado por `_estilos`.
 
     Returns:
         list: Flowables do anexo.
@@ -2405,22 +2260,18 @@ def _anexo_transacoes(transacoes, largura, estilos) -> list:
 
 
 def gerar_pdf(usuario, data_inicio: date, data_fim: date, escopo: str = "completo") -> bytes:
-    """Gera o relatório financeiro em PDF com capa, resumo executivo, gráficos e anexos.
+    """Gera o relatório financeiro em PDF com capa, resumo, gráficos e anexos.
 
-    A estrutura vai do agregado ao detalhe: capa com indicadores e composição do
-    resultado, panorama gráfico do período, tabelas de análise, carteira e
-    proventos, e por fim os anexos com o extrato completo. Todas as páginas
-    internas trazem cabeçalho da marca e rodapé com "Página X de Y", e os
-    cabeçalhos de tabela se repetem nas quebras de página.
+    A estrutura vai do agregado ao detalhe: capa com indicadores, panorama gráfico,
+    tabelas de análise, carteira e proventos, e os anexos com o extrato completo. Páginas
+    internas trazem cabeçalho da marca e "Página X de Y"; cabeçalhos de tabela se repetem
+    nas quebras.
 
     Args:
-        usuario (User): Instância do usuário Django solicitante.
-        data_inicio (date): Limite de início para filtragem do relatório.
-        data_fim (date): Limite final para filtragem do relatório.
-        escopo (str, optional): Escopo do relatório ('geral', 'investimentos', 'completo'). Defaults to "completo".
+        escopo: 'geral', 'investimentos' ou 'completo'. Defaults to "completo".
 
     Returns:
-        bytes: O conteúdo em bytes do arquivo PDF gerado.
+        bytes: Conteúdo do arquivo PDF.
     """
     if escopo not in ("geral", "investimentos", "completo"):
         escopo = "completo"

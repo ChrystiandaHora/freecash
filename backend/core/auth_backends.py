@@ -1,21 +1,14 @@
 """Backend de autenticação que aceita e-mail ou nome de usuário.
 
-O sistema nasceu com login por `username` e o campo `email` sem uso. Para um
-produto público, o e-mail é o identificador que as pessoas esperam usar e o único
-que permite recuperar o acesso.
+O produto nasceu com login por `username`, mas o e-mail é o identificador que as
+pessoas esperam usar e o único que permite recuperar o acesso. Trocar
+`AUTH_USER_MODEL` por um modelo com `USERNAME_FIELD = "email"` foi descartado: com
+migrations aplicadas e chave estrangeira para o usuário em quase todo modelo, o
+Django não suporta a troca — e `auth.User` sempre teve campo `email`.
 
-A alternativa seria trocar `AUTH_USER_MODEL` por um modelo com `USERNAME_FIELD =
-"email"`. Isso foi descartado: as migrations iniciais de `core` e `investimento` já
-declaram dependência *swappable* de `auth.User`, e há chave estrangeira para o
-usuário em praticamente todos os modelos. Trocar o modelo com migrations aplicadas
-exigiria copiar a tabela preservando as chaves primárias, reapontar as referências
-e reconstruir os tipos de conteúdo — um procedimento que a própria documentação do
-Django descreve como não suportado. O ganho seria nulo, já que `auth.User` sempre
-teve um campo `email`.
-
-Este backend só é seguro porque o e-mail é único: a migration
-`core/0010_email_unico_case_insensitive` cria um índice único sobre `LOWER(email)`.
-Sem essa garantia, resolver um endereço para um usuário seria ambíguo.
+Só é seguro porque o e-mail é único: `core/0002_email_unico_case_insensitive` cria
+um índice único sobre `LOWER(email)`. Sem isso, resolver um endereço para um
+usuário seria ambíguo.
 """
 
 from django.contrib.auth import get_user_model
@@ -32,12 +25,6 @@ class EmailOuUsernameBackend(ModelBackend):
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         """Resolve o identificador informado e valida a senha.
-
-        Args:
-            request (HttpRequest | None): Requisição em curso, se houver.
-            username (str | None): Identificador informado — e-mail ou nome de usuário.
-            password (str | None): Senha em texto plano.
-            **kwargs: Campos alternativos, incluindo `email`.
 
         Returns:
             User | None: O usuário autenticado, ou None se as credenciais não conferem.

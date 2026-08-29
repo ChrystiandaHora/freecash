@@ -12,7 +12,6 @@
  * contas criadas antes de o endereço passar a ser obrigatório. Na segunda
  * situação não há o que reenviar, e prometer um reenvio seria enganoso.
  *
- * @component
  * @returns {React.JSX.Element | null} O aviso, ou nada quando não há o que avisar.
  */
 import { useState } from 'react';

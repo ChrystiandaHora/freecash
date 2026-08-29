@@ -41,11 +41,7 @@ class ClasseAtivoViewSet(viewsets.ModelViewSet):
         return ClasseAtivo.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        """Atribui o usuário proprietário no momento do cadastro.
-
-        Args:
-            serializer (Serializer): Serializador com dados validados.
-        """
+        """Atribui o usuário proprietário no momento do cadastro."""
         serializer.save(usuario=self.request.user)
 
 
@@ -66,11 +62,7 @@ class CategoriaAtivoViewSet(viewsets.ModelViewSet):
         return CategoriaAtivo.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado na nova categoria de ativos.
-
-        Args:
-            serializer (Serializer): Serializador da categoria.
-        """
+        """Salva a associação do usuário logado na nova categoria de ativos."""
         serializer.save(usuario=self.request.user)
 
 
@@ -91,11 +83,7 @@ class SubcategoriaAtivoViewSet(viewsets.ModelViewSet):
         return SubcategoriaAtivo.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário autenticado na subcategoria de ativos.
-
-        Args:
-            serializer (Serializer): Serializador da subcategoria.
-        """
+        """Salva a associação do usuário autenticado na subcategoria de ativos."""
         serializer.save(usuario=self.request.user)
 
 
@@ -120,9 +108,6 @@ class AtivoViewSet(viewsets.ModelViewSet):
 
         Facilita o cadastro criando atomaticamente a primeira transação de compra
         caso 'quantidade_inicial' e 'preco_medio_inicial' sejam providos.
-
-        Args:
-            serializer (Serializer): Serializador de ativos.
         """
         # Primeiro, salva o ativo
         ativo = serializer.save(usuario=self.request.user)
@@ -153,9 +138,6 @@ class AtivoViewSet(viewsets.ModelViewSet):
     def atualizar_cotacoes(self, request) -> Response:
         """Ação global que dispara o coletor de cotações B3 atualizadas via Screener.
 
-        Args:
-            request (Request): Requisição HTTP.
-
         Returns:
             Response: Dicionário contendo estatísticas de cotações atualizadas ou falhas.
         """
@@ -172,8 +154,7 @@ class AtivoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='atualizar')
     def atualizar(self, request, pk=None) -> Response:
-        """Busca o histórico de cotações dos últimos 30 dias no Yahoo Finance para este ativo e atualiza no banco.
-        """
+        """Busca 30 dias de cotações no Yahoo Finance e grava no banco."""
         ativo = self.get_object()
         ticker = (ativo.ticker or "").strip().upper()
         if not ticker:
@@ -286,9 +267,6 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
 
         Garante o acréscimo de taxas/corretagem nas compras, abatimento de taxas
         nas vendas e limitação de quantidade unitária (1) para recebimentos de proventos.
-
-        Args:
-            serializer (Serializer): Serializador da transação.
         """
         tipo = self.request.data.get("tipo")
         qtd = Decimal(str(self.request.data.get("quantidade", 1)))
@@ -320,9 +298,6 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
 
         Garante o acréscimo de taxas/corretagem nas compras, abatimento de taxas
         nas vendas e limitação de quantidade unitária (1) para recebimentos de proventos.
-
-        Args:
-            serializer (Serializer): Serializador da transação.
         """
         tipo = self.request.data.get("tipo", serializer.instance.tipo)
         
@@ -365,10 +340,7 @@ class DashboardInvestimentoAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> Response:
-        """Processa a requisição GET retornando o payload estruturado do dashboard de investimentos.
-
-        Args:
-            request (Request): Requisição HTTP contendo 'page' na query string.
+        """Devolve o payload do dashboard de investimentos.
 
         Returns:
             Response: Dicionário completo de séries de alocação, performance e cotações.
@@ -416,7 +388,7 @@ class DashboardInvestimentoAPIView(APIView):
 
 
 class BalanceamentoAPIView(APIView):
-    """Endpoint responsável por calcular o Balanceamento e Reequilíbrio inteligente de portfólio.
+    """Calcula o balanceamento e o reequilíbrio da carteira.
 
     Compara a posição real de mercado de cada ativo custodiado em relação às metas
     percentuais cadastradas pelo usuário, apontando ordens de compra ideais de reequilíbrio.
@@ -425,9 +397,6 @@ class BalanceamentoAPIView(APIView):
 
     def get(self, request) -> Response:
         """Gera e retorna o plano de balanceamento e distribuição de aportes da carteira.
-
-        Args:
-            request (Request): Requisição HTTP.
 
         Returns:
             Response: Dicionário contendo o total de patrimônio e a distância/plano de reequilíbrio de cada ativo.
@@ -484,7 +453,7 @@ class BalanceamentoAPIView(APIView):
         """Permite a atualização rápida em lote de metas de alocação de múltiplos ativos.
 
         Args:
-            request (Request): JSON contendo 'metas' (lista de pares de ID de ativo e nova meta percentual).
+            request: JSON contendo 'metas' (lista de pares de ID de ativo e nova meta percentual).
 
         Returns:
             Response: Confirmação de sucesso ou relatório parcial de falhas/erros de atualização.

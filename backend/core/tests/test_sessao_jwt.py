@@ -1,16 +1,10 @@
 """Testes do ciclo de vida da sessão JWT: cookie, revogação no logout e throttling.
 
-Cobre o endurecimento da Fase 1 do preparo para lançamento público. Três defeitos
-concretos motivam estes testes:
-
-1. O cookie do refresh token era gravado com `secure=False` fixo no código, ou seja,
-   o token de sessão trafegaria em claro sob HTTP.
-2. `BLACKLIST_AFTER_ROTATION` estava ligado sem o app `token_blacklist` instalado,
-   então nada era revogável: o logout apenas apagava o cookie do navegador e um
-   refresh token copiado seguia válido por sete dias.
-3. O cookie usava `path="/api/token/refresh/"`, que por casamento de prefixo nunca
-   é enviado a `/api/token/clear/` — o logout não tinha como sequer ler o token que
-   deveria revogar.
+Três defeitos concretos motivaram o arquivo: o cookie do refresh era gravado com
+`secure=False` fixo, trafegando em claro sob HTTP; `BLACKLIST_AFTER_ROTATION` estava
+ligado sem o app `token_blacklist`, então nada era revogável e um refresh copiado
+valia sete dias; e o cookie usava `path="/api/token/refresh/"`, que nunca chega a
+`/api/token/clear/` — o logout não conseguia ler o token que deveria revogar.
 """
 
 from django.conf import settings

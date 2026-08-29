@@ -1,19 +1,11 @@
 """Testes das operações do usuário sobre a própria conta.
 
-O que estes testes protegem, em ordem de gravidade:
-
-**A senha atual é exigida onde importa.** Quem alcança uma sessão aberta consegue
-tudo o que a sessão consegue. Sem a exigência, bastaria um navegador destravado
-para trocar o e-mail da conta e assumi-la em definitivo, já que é o e-mail que
-recebe a recuperação de senha.
-
-**A troca de e-mail não vale antes de confirmada.** Enquanto o link não é aberto, o
-endereço antigo continua servindo para entrar e recuperar a conta. É o que protege
-contra erro de digitação e contra sequestro de sessão.
-
-**Trocar a senha encerra as outras sessões.** Se a senha vazou, mantê-las abertas
-preservaria o acesso do invasor no exato momento em que a vítima acredita ter
-resolvido o problema.
+Em ordem de gravidade: a senha atual é exigida onde importa, senão um navegador
+destravado bastaria para trocar o e-mail e assumir a conta em definitivo — é ele
+que recebe a recuperação de senha; a troca de e-mail não vale antes de confirmada,
+o que protege contra erro de digitação e sequestro de sessão; e trocar a senha
+encerra as outras sessões, senão o invasor mantém o acesso justamente quando a
+vítima acredita ter resolvido o problema.
 """
 
 from django.contrib.auth import get_user_model
@@ -159,9 +151,6 @@ class TrocaEmailAPITests(ContaBaseTestCase):
 
     def solicitar(self, **extra):
         """Dispara um pedido de troca com dados válidos por padrão.
-
-        Args:
-            **extra: Campos a sobrescrever.
 
         Returns:
             Response: Resposta da requisição.
@@ -346,9 +335,6 @@ class TrocaSenhaAPITests(ContaBaseTestCase):
     def _payload(self, **extra):
         """Monta um corpo válido de troca de senha.
 
-        Args:
-            **extra: Campos a sobrescrever.
-
         Returns:
             dict: Corpo pronto para envio.
         """
@@ -444,9 +430,6 @@ class ExclusaoContaAPITests(ContaBaseTestCase):
 
     def _payload(self, **extra):
         """Monta um corpo válido de exclusão.
-
-        Args:
-            **extra: Campos a sobrescrever.
 
         Returns:
             dict: Corpo pronto para envio.

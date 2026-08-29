@@ -1,17 +1,10 @@
 """Teste de regressão do isolamento na atualização em lote de cotações.
 
-`POST /api/investimentos/ativos/atualizar-cotacoes/` chamava
-`atualizar_cotacoes()` sem argumento, e a função percorria
-`Ativo.objects.filter(ativo=True)` — os ativos de **toda** a base. Duas
-consequências, ambas confirmadas por rastreamento do código:
-
-1. Escrita entre inquilinos: um usuário gravava cotações nos ativos de todos os
-   outros.
-2. Vazamento de informação: a lista `errors` devolvida ao chamador é montada com
-   `f"Ativo {ativo.ticker}: ..."`. Quem acionasse o endpoint recebia de volta os
-   *tickers* alheios, o que revela a composição de carteira de terceiros — num
-   sistema financeiro, exatamente o tipo de dado que o isolamento existe para
-   proteger.
+`POST /api/investimentos/ativos/atualizar-cotacoes/` chamava `atualizar_cotacoes()`
+sem argumento, percorrendo os ativos de toda a base. Daí duas consequências:
+escrita entre inquilinos, com um usuário gravando cotações nos ativos dos outros; e
+vazamento, porque a lista `errors` devolvida é montada com o ticker do ativo — quem
+acionasse o endpoint recebia a composição de carteira de terceiros.
 
 Segue o padrão de `test_security.py`: um usuário age, e verifica-se que o dado do
 outro não é alcançado.
