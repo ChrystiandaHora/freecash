@@ -117,14 +117,21 @@ class HorizonteSaldosAPITests(PlanejamentoBaseTestCase):
         self.assertEqual(sum(totais), Decimal("0.00"))
 
     def test_projecao_da_maria_reflete_os_dados_dela(self):
-        """Contraprova do teste anterior: os dados certos aparecem para quem é dono."""
+        """Contraprova do teste anterior: os dados certos aparecem para quem é dono.
+
+        A janela vai a dois meses e o total é somado ao longo dela porque o
+        aluguel vence em `hoje + 3 dias`: nos últimos dias do mês essa data cai
+        no mês seguinte, e uma janela de um mês só deixaria o teste vermelho por
+        efeito de calendário, não por regressão.
+        """
         self.client.force_authenticate(user=self.maria)
-        resposta = self.client.get(self.url, {"meses": 1})
+        resposta = self.client.get(self.url, {"meses": 2})
 
         self.assertEqual(Decimal(resposta.data["saldo_inicial"]), Decimal("9000.00"))
-        self.assertEqual(
-            Decimal(resposta.data["meses"][0]["total_despesas"]), Decimal("2500.00")
+        total = sum(
+            Decimal(mes["total_despesas"]) for mes in resposta.data["meses"]
         )
+        self.assertEqual(total, Decimal("2500.00"))
 
 
 class CalendarioAPITests(PlanejamentoBaseTestCase):
