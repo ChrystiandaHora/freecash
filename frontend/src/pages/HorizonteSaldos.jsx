@@ -23,15 +23,22 @@
  * parâmetro ao servidor, e não como série paralela: é deslocamento constante da âncora,
  * e cruzá-lo com o cenário de metas geraria quatro séries para duas perguntas. Refazendo
  * a busca, a classificação de cada dia continua vindo pronta de lá.
+ *
+ * **Os filtros nunca desmontam a grade.** Eles entram na `queryKey`, então cada mudança
+ * é uma chave nova e sem cache — o que acenderia o carregamento inicial e trocaria a
+ * tela inteira por um spinner, levando junto o scroll e o foco de quem está digitando.
+ * `keepPreviousData` segura a grade anterior enquanto a nova chega, e o limite de
+ * atenção só vira chave depois de parar de mudar.
  */
 import { useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { AlertCircle, AlertTriangle, CalendarClock, Loader2, Target, Wallet } from 'lucide-react';
 
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
+import { useDebounce } from '../hooks/useDebounce';
 import { formatarMoeda, formatarMoedaCompacta } from '../lib/moeda';
 import { buscarCalendario, buscarHorizonteSaldos } from '../services/planejamento';
 
@@ -99,14 +106,18 @@ export default function HorizonteSaldos() {
 
   const tabelaRef = useRef(null);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['planejamento', 'horizonte', limiteAtencao, considerarInvestimentos],
+  // O campo continua respondendo a cada tecla; só a busca espera o silêncio.
+  const limiteConsultado = useDebounce(limiteAtencao, 400);
+
+  const { data, isLoading, isError, isFetching } = useQuery({
+    queryKey: ['planejamento', 'horizonte', limiteConsultado, considerarInvestimentos],
     queryFn: () =>
       buscarHorizonteSaldos({
         meses: 12,
-        limiteAtencao: limiteAtencao || null,
+        limiteAtencao: limiteConsultado || null,
         considerarInvestimentos,
       }),
+    placeholderData: keepPreviousData,
   });
 
   // Detalhe do dia: só busca quando há célula selecionada, e reusa a grade do
@@ -225,6 +236,15 @@ export default function HorizonteSaldos() {
               className="h-9 w-32 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
               aria-describedby="ajuda-limite-atencao"
             />
+            {/* Visual apenas: quem usa leitor de tela já é avisado pelo saldo do
+                cabeçalho, que é `aria-live`. Dois anúncios para o mesmo evento
+                atrapalhariam mais do que ajudam. */}
+            {isFetching && !isLoading && (
+              <Loader2
+                className="h-4 w-4 animate-spin text-muted-foreground"
+                aria-hidden="true"
+              />
+            )}
           </div>
           <p id="ajuda-limite-atencao" className="text-xs text-muted-foreground">
             Dias com saldo abaixo deste valor são sinalizados.
