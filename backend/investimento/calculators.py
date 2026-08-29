@@ -68,10 +68,21 @@ def recalcular_ativo(ativo: Ativo) -> None:
     ativo.save(update_fields=["quantidade", "preco_medio"])
 
 
-def atualizar_cotacoes() -> tuple[int, list[str]]:
+def atualizar_cotacoes(usuario=None) -> tuple[int, list[str]]:
     """Busca em lote as cotações atuais de mercado (B3 via TradingView e Fundos via CVM).
 
     Atualiza ou cria o histórico diário de fechamento das cotações.
+
+    Args:
+        usuario (User | None): Restringe a atualização aos ativos deste usuário.
+            **Obrigatório quando a chamada parte de uma requisição HTTP.** `None`
+            percorre os ativos de toda a base e existe apenas para o comando de
+            linha de comando `update_quotes`, que roda em contexto de operador.
+
+            Sem esse escopo, qualquer usuário autenticado que acionasse o endpoint
+            de atualização passaria a escrever cotações dos ativos de todos os
+            demais e — pior — receberia de volta a lista de erros contendo os
+            *tickers* alheios, revelando a composição de carteira de terceiros.
 
     Returns:
         tuple[int, list[str]]: Tupla contendo o número de cotações gravadas com sucesso e a lista de erros ocorridos.
@@ -79,8 +90,12 @@ def atualizar_cotacoes() -> tuple[int, list[str]]:
     count = 0
     errors = []
 
+    base = Ativo.objects.filter(ativo=True)
+    if usuario is not None:
+        base = base.filter(usuario=usuario)
+
     # 1. Atualização de Ações / FIIs via TradingView
-    ativos_b3 = Ativo.objects.filter(ativo=True).exclude(ticker="")
+    ativos_b3 = base.exclude(ticker="")
 
     quotes_by_symbol = {}
     if ativos_b3.exists():
@@ -109,7 +124,7 @@ def atualizar_cotacoes() -> tuple[int, list[str]]:
             errors.append(f"Ativo {ativo.ticker}: Erro ao salvar cotação ({str(e)})")
 
     # 2. Atualização de Fundos de Investimento via CVM
-    ativos_cvm = Ativo.objects.filter(ativo=True).exclude(cnpj__isnull=True).exclude(cnpj="")
+    ativos_cvm = base.exclude(cnpj__isnull=True).exclude(cnpj="")
     
     # Filtra ativos para buscar apenas se não foram atualizados pelo TradingView nesta rodada
     ativos_cvm_para_buscar = []

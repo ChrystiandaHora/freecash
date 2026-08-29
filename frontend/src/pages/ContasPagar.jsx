@@ -220,17 +220,18 @@ export default function ContasPagar() {
   })
   const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
-  // "Total Geral" fica restrito ao mês atual: somar todo o histórico (anos de contas)
-  // não é uma métrica útil — o Livro-Razão completo já está disponível na tabela abaixo.
-  const hoje = new Date()
-  const contasMesAtual = (contasParaKpis || []).filter((c) => {
-    if (!c.data_vencimento || typeof c.data_vencimento !== 'string') return false
-    const parts = c.data_vencimento.split('-')
-    if (parts.length < 2) return false
-    const [year, month] = parts
-    return Number(month) === hoje.getMonth() + 1 && Number(year) === hoje.getFullYear()
-  })
-  const totalMesAtual = contasMesAtual.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
+  // Terceiro indicador: o que já foi PAGO dentro do período filtrado.
+  //
+  // Antes ele somava "o mês atual" — mas calculado sobre o conjunto já filtrado, o
+  // que o tornava a interseção entre o período escolhido e o mês corrente. Filtrando
+  // qualquer outro mês, essa interseção é vazia e o card exibia R$ 0,00 com a tabela
+  // cheia. No filtro de julho, os três indicadores mostravam zero para 15 linhas
+  // liquidadas — a tela informava nada.
+  //
+  // Agora os três descrevem o MESMO conjunto: o que está na tabela. "Pago" completa
+  // "pendente" e "atrasadas" e nunca é trivialmente zero quando há linhas.
+  const pagas = (contasParaKpis || []).filter((c) => c.pago)
+  const totalPago = pagas.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
   // ─── Dados da Tabela Memoizados ───────────────────────────────────────────
   const tableData = useMemo(() => {
@@ -468,12 +469,14 @@ export default function ContasPagar() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Total do Mês Atual
+              Pago no Período
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalMesAtual)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{contasMesAtual.length} conta(s) no mês</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPago)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {pagas.length} conta(s) liquidada(s)
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -100,17 +100,14 @@ export default function Receitas() {
 
   const totalRealizado = realizadas.reduce((a, r) => a + Number(r.valor ?? 0), 0)
 
-  // "Previsto no Mês" fica restrito ao mês atual: somar todo o histórico (anos de
-  // receitas) não é uma métrica útil — a listagem completa já está na tabela abaixo.
-  const hoje = new Date()
-  const receitasMesAtual = (receitasParaKpis || []).filter((r) => {
-    if (!r.data_recebimento || typeof r.data_recebimento !== 'string') return false
-    const parts = r.data_recebimento.split('-')
-    if (parts.length < 2) return false
-    const [year, month] = parts
-    return Number(month) === hoje.getMonth() + 1 && Number(year) === hoje.getFullYear()
-  })
-  const totalPrevistoMes = receitasMesAtual.reduce((a, r) => a + Number(r.valor ?? 0), 0)
+  // Terceiro indicador: o que ainda está PREVISTO dentro do período filtrado.
+  //
+  // Antes ele somava "o mês atual" — mas calculado sobre o conjunto já filtrado, o
+  // que o tornava a interseção entre o período escolhido e o mês corrente. Filtrando
+  // qualquer outro mês, essa interseção é vazia e o card exibia R$ 0,00 com a tabela
+  // cheia. Agora os três indicadores descrevem o MESMO conjunto: o que está na
+  // tabela.
+  const totalPrevisto = previstas.reduce((a, r) => a + Number(r.valor ?? 0), 0)
 
   // ─── Dados da Tabela Memoizados ───────────────────────────────────────────
   const tableData = useMemo(() => {
@@ -235,12 +232,14 @@ export default function Receitas() {
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Previsto no Mês
+              Previsto no Período
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPrevistoMes)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{receitasMesAtual.length} receita(s)</p>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPrevisto)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {previstas.length} receita(s) a receber
+            </p>
           </CardContent>
         </Card>
  

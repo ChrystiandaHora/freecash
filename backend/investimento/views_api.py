@@ -160,7 +160,11 @@ class AtivoViewSet(viewsets.ModelViewSet):
             Response: Dicionário contendo estatísticas de cotações atualizadas ou falhas.
         """
         from .calculators import atualizar_cotacoes as run_atualizar_cotacoes
-        count, errors = run_atualizar_cotacoes()
+        # Escopado ao usuário autenticado. Sem o argumento, a função percorre os
+        # ativos de toda a base: além de gravar cotações de terceiros, a lista de
+        # erros devolvida aqui traria os tickers dos outros usuários, expondo a
+        # composição das carteiras deles.
+        count, errors = run_atualizar_cotacoes(usuario=request.user)
         return Response({
             "count": count,
             "errors": errors

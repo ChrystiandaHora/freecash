@@ -10,6 +10,7 @@ Responsabilidades:
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.utils import timezone
 
 from core.models import Conta, Categoria, ConfigUsuario
 
@@ -19,9 +20,36 @@ from core.models import Conta, Categoria, ConfigUsuario
 # ─────────────────────────────────────────────────────────────
 
 def atualizar_config(usuario):
-    """Registra o timestamp da última modificação nas configurações do usuário."""
+    """Registra o timestamp da última modificação nas configurações do usuário.
+
+    Usada nos receivers de `post_save`, onde criar a configuração ausente é
+    aceitável — a conta acabou de ganhar um lançamento, logo existe.
+    """
     config, _ = ConfigUsuario.objects.get_or_create(usuario=usuario)
     config.save(update_fields=["atualizada_em"])
+
+
+def atualizar_config_existente(usuario):
+    """Atualiza o timestamp apenas se a configuração ainda existir.
+
+    Existe para o caminho de exclusão. `atualizar_config` usa `get_or_create`, e
+    durante o cascade de remoção de um usuário isso **recriava** a `ConfigUsuario`
+    apontando para uma linha de `auth_user` que estava sendo apagada na mesma
+    transação. O commit então falhava com violação de chave estrangeira, e o
+    efeito prático era que **nenhum usuário podia ser excluído do sistema** —
+    inclusive pelo direito de exclusão da LGPD.
+
+    `filter().update()` é no-op quando não há linha, que é exatamente o
+    comportamento desejado aqui: se a configuração já foi removida, não há
+    timestamp a registrar. `atualizada_em` é `auto_now`, e `update()` não dispara
+    `auto_now`, por isso o valor vai explícito.
+
+    Args:
+        usuario (User): Proprietário da configuração.
+    """
+    ConfigUsuario.objects.filter(usuario=usuario).update(
+        atualizada_em=timezone.now()
+    )
 
 
 def _consolidar_fatura(conta: Conta) -> None:
@@ -128,12 +156,12 @@ def monitorar_salvamento_categoria(sender, instance, **kwargs):
 def monitorar_delecao_conta(sender, instance, **kwargs):
     """Reage à exclusão de qualquer Conta.
 
-    - Atualiza o timestamp de configuração do usuário.
+    - Atualiza o timestamp de configuração do usuário, sem recriá-la.
     - Se for uma compra individual de cartão: reconsolida a fatura do período
       e a remove se ficar vazia.
     """
     if instance.usuario_id:
-        atualizar_config(instance.usuario)
+        atualizar_config_existente(instance.usuario)
 
     if not instance.eh_fatura_cartao:
         _reconsolidar_apos_exclusao(instance)
@@ -141,6 +169,6 @@ def monitorar_delecao_conta(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=Categoria)
 def monitorar_delecao_categoria(sender, instance, **kwargs):
-    """Atualiza o timestamp de configuração do usuário ao deletar uma categoria."""
+    """Atualiza o timestamp de configuração ao deletar uma categoria, sem recriá-la."""
     if instance.usuario_id:
-        atualizar_config(instance.usuario)
+        atualizar_config_existente(instance.usuario)

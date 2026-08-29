@@ -23,6 +23,8 @@ class Command(BaseCommand):
             **options: Opções do terminal.
         """
         self.stdout.write("Iniciando atualização de cotações...")
+        # Sem `usuario`: aqui a varredura global é intencional e legítima, porque o
+        # comando roda em contexto de operador, e não a pedido de um usuário.
         count, errors = atualizar_cotacoes()
 
         for err in errors:

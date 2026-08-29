@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import Conta, CartaoCredito, ExtratoImportado, LinhaExtrato, ConfigUsuario
+from core.permissions import EmailVerificadoOuCarencia
 from core.serializers import (
     CartaoCreditoSerializer,
     ContaSerializer,
@@ -41,7 +42,7 @@ class FerramentasImportarAPIView(APIView):
     Recebe um arquivo (.xlsx / .csv / .fcbk) via multipart/form-data
     e executa o processador universal de importação associado ao usuário.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
@@ -93,7 +94,7 @@ class FerramentasImportarExtratoAPIView(APIView):
 
     Recebe o arquivo PDF, o UUID do cartão e o banco, executa o parser e salva as linhas de extrato pendentes.
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
@@ -368,6 +369,18 @@ class FerramentasExportarAPIView(APIView):
     Suporta formatação de arquivo em planilha (.xlsx), formato simplificado (.csv),
     relatório visual em documento (.pdf) ou backup completo criptografado do sistema (.fcbk).
     """
+    # Exportar NÃO exige e-mail confirmado, ao contrário de importar.
+    #
+    # A exigência foi aplicada aqui por engano. O portão existe para conter ação
+    # amplificadora — custo desproporcional a partir de uma conta descartável —
+    # e exportar não é isso: `export_user_data` percorre apenas os registros do
+    # próprio usuário, então uma conta descartável, que não tem dados, exporta
+    # nada. Não há o que amplificar.
+    #
+    # Havia também uma contradição prática: a tela de exclusão de conta orienta
+    # "exporte um backup antes", e o portão bloqueava exatamente esse backup. Tirar
+    # do usuário o acesso aos seus próprios dados é o oposto da portabilidade que
+    # a funcionalidade existe para oferecer.
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> HttpResponse:
