@@ -44,7 +44,7 @@ export default function SiteFooter() {
           <div
             className={cn(
               'grid grid-cols-2 items-start gap-x-6 gap-y-8 sm:grid-cols-3',
-              gruposVisiveis.length > 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'
+              gruposVisiveis.length > 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
             )}
           >
             {gruposVisiveis.map((group) => (

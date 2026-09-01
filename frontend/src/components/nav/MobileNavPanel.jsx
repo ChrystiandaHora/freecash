@@ -11,6 +11,7 @@
  * A trava de scroll do corpo (em `useNavMenu`) é medida de reflow (SC 1.4.10),
  * não alegação de modalidade.
  */
+import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { NavLinkList } from './NavLinkList';
@@ -20,6 +21,7 @@ import { NavLinkList } from './NavLinkList';
  * @param {boolean} props.isOpen - Se o painel está visível.
  * @param {boolean} props.isDesktop - Acima do breakpoint o painel fica inert.
  * @param {Array<Object>} props.groups - Grupos de navegação.
+ * @param {Array<Object>} [props.directLinks=[]] - Links diretos de acesso rápido.
  * @param {string | null} props.openSectionId - Seção expandida (abertura única).
  * @param {(id: string) => void} props.onToggleSection - Alterna uma seção.
  * @param {string | null} props.activePath - Caminho do item de menu ativo.
@@ -31,6 +33,7 @@ export function MobileNavPanel({
   isOpen,
   isDesktop,
   groups,
+  directLinks = [],
   openSectionId,
   onToggleSection,
   activePath,
@@ -52,6 +55,40 @@ export function MobileNavPanel({
       )}
     >
       <nav aria-label="Principal" className="px-4 py-4">
+        {/* Acesso rápido mobile com os 3 links principais */}
+        {directLinks.length > 0 && (
+          <div className="mb-4 border-b border-border/50 pb-3">
+            <span className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Acesso Rápido
+            </span>
+            <ul className="mt-2 space-y-1">
+              {directLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = activePath === item.path;
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      onClick={() => onNavigate(item.path)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'flex min-h-12 items-center gap-3 rounded-lg px-3 text-base font-medium transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        isActive
+                          ? 'bg-primary/10 font-bold text-primary dark:text-primary-foreground'
+                          : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground'
+                      )}
+                    >
+                      {Icon && <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         <ul>
           {groups.map((group) => {
             const expanded = openSectionId === group.id;

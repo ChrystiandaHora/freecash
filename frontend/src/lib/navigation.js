@@ -11,17 +11,25 @@
  */
 
 /**
- * Achata os grupos num índice ordenado por especificidade (caminho mais longo primeiro).
+ * Achata os grupos e links diretos num índice ordenado por especificidade (caminho mais longo primeiro).
  *
  * A ordenação é o que resolve ambiguidade de forma determinística: para
  * `/investimentos/ativos/42`, o prefixo `/investimentos/ativos` é considerado
  * antes de `/investimentos`.
  *
  * @param {Array<{id: string, label: string, items: Array<Object>}>} groups - Grupos de navegação.
+ * @param {Array<Object>} [directLinks=[]] - Links diretos promovidos à barra.
  * @returns {Array<Object>} Índice achatado e ordenado, pronto para `findActiveNav`.
  */
-export function buildNavIndex(groups) {
-  const flat = groups.flatMap((group) =>
+export function buildNavIndex(groups, directLinks = []) {
+  const directFlat = directLinks.map((item) => ({
+    groupId: item.groupId ?? 'dashboard',
+    groupLabel: item.groupLabel ?? item.name,
+    item,
+    paths: [item.path, ...(item.aliases ?? [])],
+  }));
+
+  const groupsFlat = groups.flatMap((group) =>
     group.items.map((item) => ({
       groupId: group.id,
       groupLabel: group.label,
@@ -29,6 +37,15 @@ export function buildNavIndex(groups) {
       paths: [item.path, ...(item.aliases ?? [])],
     }))
   );
+
+  const seenPaths = new Set();
+  const flat = [];
+  for (const entry of [...directFlat, ...groupsFlat]) {
+    if (!seenPaths.has(entry.item.path)) {
+      seenPaths.add(entry.item.path);
+      flat.push(entry);
+    }
+  }
 
   const allPaths = flat.flatMap((entry) => entry.paths);
 

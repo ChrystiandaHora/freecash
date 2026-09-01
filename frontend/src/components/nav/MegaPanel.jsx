@@ -63,6 +63,7 @@ export function MegaPanel({
           items={group.items}
           activePath={activePath}
           onNavigate={onNavigate}
+          columns={group.items.length > 5 ? 2 : 1}
         />
       </div>
     </div>
