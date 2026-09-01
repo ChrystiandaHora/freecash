@@ -1,10 +1,4 @@
-/**
- * Página do Livro-Razão e Histórico de Ordens da Carteira.
- * 
- * Exibe o extrato consolidado e cronológico de todas as operações executadas
- * (compras, vendas e recebimentos de dividendos) com suporte a filtros rápidos
- * por tipo de operação e buscas por ticker/nome de ativos.
- */
+/** Página do Livro-Razão e Histórico de Ordens da Carteira de Investimentos. */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,7 +22,6 @@ import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-/* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
   if (value === undefined || value === null) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -45,16 +38,6 @@ const TIPO_CONFIG = {
   D: { label: 'Provento', icon: Gift,          color: 'text-amber-500',    bg: 'bg-amber-500/10' },
 };
 
-/* ─────────────────────────── Modal ─────────────────────────── */
-/**
- * Componente modal para registro e lançamento de novas ordens na carteira.
- * 
- * Abstrai abas separadas para registrar operações padrão de Compra/Venda (C/V)
-    </div>
-  );
-}
-
-/* ─────────────────────────── Delete Confirm ─────────────────────────── */
 function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
   return (
     <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
@@ -76,7 +59,6 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
   );
 }
 
-/* ─────────────────────────── Main Page ─────────────────────────── */
 export default function AtivosHistorico() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();

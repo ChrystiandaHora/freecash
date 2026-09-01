@@ -1,22 +1,12 @@
-/**
- * Chamadas à API das telas de planejamento.
- *
- * Horizonte de Saldos e Calendário de Pagamentos leem o mesmo acervo de
- * lançamentos por ângulos diferentes: o horizonte responde "para onde meu saldo
- * vai", o calendário responde "o que acontece nesta semana".
- */
+/** Chamadas à API das telas de planejamento (Horizonte de Saldos e Calendário). */
 import api from './api';
 
 /**
- * Busca a projeção de saldo diária.
- *
- * @param {Object} [params] - Parâmetros da projeção.
- * @param {number} [params.meses=12] - Tamanho da janela, em meses.
- * @param {string|number|null} [params.limiteAtencao] - Saldo abaixo do qual o dia
- *   é sinalizado como atenção. Nulo desliga a faixa intermediária.
- * @param {boolean} [params.considerarInvestimentos=false] - Devolve o custo da
- *   carteira ao saldo de abertura. Desligado, a projeção mostra só o líquido.
- * @returns {Promise<Object>} Projeção agrupada por mês.
+ * Busca a projeção diária de saldo no horizonte especificado.
+ * @param {Object} [params]
+ * @param {number} [params.meses=12]
+ * @param {string|number|null} [params.limiteAtencao]
+ * @param {boolean} [params.considerarInvestimentos=false]
  */
 export async function buscarHorizonteSaldos({
   meses = 12,
@@ -27,7 +17,6 @@ export async function buscarHorizonteSaldos({
   if (limiteAtencao !== null && limiteAtencao !== '') {
     params.limite_atencao = limiteAtencao;
   }
-  // Só viaja quando ligado: ausente e falso significam a mesma coisa no servidor.
   if (considerarInvestimentos) {
     params.considerar_investimentos = true;
   }
@@ -36,11 +25,9 @@ export async function buscarHorizonteSaldos({
 }
 
 /**
- * Busca a grade de um mês do calendário de pagamentos e recebimentos.
- *
- * @param {number} ano - Ano de referência.
- * @param {number} mes - Mês de referência, de 1 a 12.
- * @returns {Promise<Object>} Dias do mês com seus lançamentos e totais.
+ * Busca a grade de lançamentos do mês no calendário financeiro.
+ * @param {number} ano
+ * @param {number} mes - Mês de 1 a 12.
  */
 export async function buscarCalendario(ano, mes) {
   const { data } = await api.get('/api/planejamento/calendario/', {
@@ -50,14 +37,9 @@ export async function buscarCalendario(ano, mes) {
 }
 
 /**
- * Marca um lançamento como pago ou recebido.
- *
- * Serve tanto a despesa quanto a receita — diferente da ação do Kanban, que cobre
- * apenas despesas porque aquela tela só lista despesas.
- *
- * @param {number} id - Identificador do lançamento.
- * @param {string} [data] - Data da liquidação no formato AAAA-MM-DD. Omitida, usa hoje.
- * @returns {Promise<{id: number, realizado: boolean, data_realizacao: string|null}>}
+ * Marca um lançamento (despesa ou receita) como liquidado.
+ * @param {number} id
+ * @param {string} [data] - Data YYYY-MM-DD (padrão: hoje no servidor).
  */
 export async function liquidarLancamento(id, data) {
   const corpo = data ? { data } : {};
@@ -68,13 +50,9 @@ export async function liquidarLancamento(id, data) {
   return resposta;
 }
 
-/**
- * Devolve um lançamento liquidado ao estado pendente.
- *
- * @param {number} id - Identificador do lançamento.
- * @returns {Promise<{id: number, realizado: boolean, data_realizacao: string|null}>}
- */
+/** Devolve um lançamento liquidado ao estado pendente. */
 export async function desfazerLiquidacao(id) {
   const { data } = await api.post(`/api/planejamento/lancamentos/${id}/desfazer/`);
   return data;
 }
+

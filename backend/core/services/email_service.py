@@ -1,18 +1,4 @@
-"""Envio de e-mails transacionais do FreeCash.
-
-Três decisões mantêm o envio fora do caminho crítico da requisição:
-
-Todo envio é agendado com `transaction.on_commit`. Sem isso, um erro posterior no
-`atomic` desfaria a criação do usuário e ele receberia, ainda assim, a confirmação
-de uma conta que não existe.
-
-Falha de SMTP vai para o log, nunca para o cliente: a conta já está criada e todo
-fluxo oferece "reenviar" como recuperação.
-
-O link aponta para o SPA, nunca para a API. Clientes de e-mail e antivírus
-pré-carregam URLs das mensagens; se o link fosse o endpoint de confirmação, o token
-seria consumido antes de o usuário clicar.
-"""
+"""Envio transacional de e-mails do sistema (verificação, reset de senha e avisos)."""
 
 import logging
 import threading
@@ -30,31 +16,22 @@ logger = logging.getLogger("core")
 
 
 def normalizar_email(email: str) -> str:
-    """Reduz um endereço à forma canônica usada no banco.
-
-    Toda escrita de e-mail no sistema passa por esta função, para que o índice
-    único sobre `LOWER(email)` e as buscas por `email__iexact` concordem sempre.
-
-    Returns:
-        str: Endereço sem espaços nas bordas e em minúsculas.
-    """
+    """Normaliza o endereço de e-mail em minúsculas e sem espaços nas pontas."""
     return (email or "").strip().lower()
 
 
 def _enviar_agora(mensagem: EmailMultiAlternatives, descricao: str) -> None:
-    """Entrega a mensagem, registrando falhas sem propagá-las."""
+    """Dispara a mensagem SMTP registrando em log sem propagar exceção."""
     try:
         mensagem.send(fail_silently=False)
         logger.info("E-mail enviado: %s", descricao)
     except Exception:
-        # Deliberadamente amplo: qualquer falha de rede, autenticação ou
-        # configuração do provedor não pode transformar-se em erro para o usuário.
         logger.exception("Falha ao enviar e-mail: %s", descricao)
 
 
 def enviar_email(assunto: str, template_base: str, contexto: dict, destinatario: str,
                  descricao: str) -> None:
-    """Monta e agenda o envio de um e-mail em texto e HTML."""
+    """Renderiza templates e agenda o envio via transaction.on_commit."""
     if not destinatario:
         logger.warning("Envio ignorado, destinatário vazio: %s", descricao)
         return
@@ -71,9 +48,7 @@ def enviar_email(assunto: str, template_base: str, contexto: dict, destinatario:
     mensagem.attach_alternative(corpo_html, "text/html")
 
     def despachar():
-        """Envia agora ou em thread, conforme a configuração do ambiente."""
         if settings.EMAIL_ASYNC:
-            # daemon=False para que o processo não seja reciclado no meio do envio.
             threading.Thread(
                 target=_enviar_agora,
                 args=(mensagem, descricao),
@@ -82,22 +57,16 @@ def enviar_email(assunto: str, template_base: str, contexto: dict, destinatario:
         else:
             _enviar_agora(mensagem, descricao)
 
-    # Só envia depois que a transação em curso for confirmada. Fora de uma
-    # transação, o Django executa o callback imediatamente.
     transaction.on_commit(despachar)
 
 
 def _url_frontend(caminho: str) -> str:
-    """Compõe uma URL absoluta do SPA.
-
-    Returns:
-        str: URL absoluta baseada em `FRONTEND_BASE_URL`.
-    """
+    """Monta URL absoluta do SPA baseada em FRONTEND_BASE_URL."""
     return f"{settings.FRONTEND_BASE_URL}{caminho}"
 
 
 def enviar_verificacao_email(user) -> None:
-    """Envia o link de confirmação de endereço de e-mail."""
+    """Envia o e-mail com link de confirmação de conta."""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = email_verification_token.make_token(user)
 
@@ -116,12 +85,7 @@ def enviar_verificacao_email(user) -> None:
 
 
 def enviar_reset_senha(user, token: str) -> None:
-    """Envia o link de redefinição de senha.
-
-    O token é recebido pronto, e não gerado aqui, porque quem decide se o pedido
-    resulta em envio é a view — que precisa responder de forma idêntica exista ou
-    não uma conta com aquele endereço.
-    """
+    """Envia o e-mail com link de redefinição de senha."""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
     contexto = {
@@ -139,15 +103,7 @@ def enviar_reset_senha(user, token: str) -> None:
 
 
 def enviar_confirmacao_troca_email(user) -> None:
-    """Envia o link de confirmação para o **novo** endereço de uma troca.
-
-    O destino é `config.email_pendente`, e não `user.email`: o que precisa ser
-    provado é a posse do endereço novo. Enviar para o atual não provaria nada — o
-    usuário já tem acesso a ele.
-
-    Args:
-        user: Usuário que solicitou a troca, com `email_pendente` definido.
-    """
+    """Envia link de confirmação para o novo endereço pendente do usuário."""
     config = getattr(user, "config", None)
     pendente = getattr(config, "email_pendente", "") if config else ""
     if not pendente:
@@ -175,12 +131,7 @@ def enviar_confirmacao_troca_email(user) -> None:
 
 
 def avisar_troca_de_email(user, email_anterior: str) -> None:
-    """Avisa o endereço **antigo** de que o e-mail da conta foi alterado.
-
-    É a rede de segurança do fluxo: se a troca não partiu do dono, este é o aviso
-    que chega a ele enquanto ainda tem como reagir. Por isso vai para o endereço
-    que está sendo desativado, e não para o novo.
-    """
+    """Notifica o endereço de e-mail anterior sobre a alteração realizada."""
     if not email_anterior:
         return
 

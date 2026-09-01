@@ -1,20 +1,9 @@
-/**
- * Chamadas à API do painel administrativo.
- *
- * Todos estes endpoints exigem `is_staff` no servidor. O gate no frontend é
- * conveniência de navegação — quem tentar chamar diretamente recebe 403.
- */
+/** Chamadas à API do painel administrativo (exigem privilégio is_staff). */
 import api from './api';
 
 /**
- * Lista as contas da plataforma.
- *
- * @param {Object} [params] - Filtros da listagem.
- * @param {string} [params.busca] - Termo buscado em nome de usuário e e-mail.
- * @param {string} [params.ativo] - "true" ou "false" para filtrar por estado.
- * @param {string} [params.verificado] - "true" ou "false" para e-mail confirmado.
- * @param {number} [params.page] - Página desejada.
- * @returns {Promise<{count: number, next: string|null, previous: string|null, results: Array}>}
+ * Lista contas da plataforma com filtros e paginação.
+ * @param {Object} [params]
  */
 export async function listarUsuarios(params = {}) {
   const limpos = Object.fromEntries(
@@ -24,48 +13,27 @@ export async function listarUsuarios(params = {}) {
   return data;
 }
 
-/**
- * Suspende o acesso de uma conta e encerra as sessões abertas dela.
- *
- * @param {number} id - Identificador da conta.
- * @param {string} [detalhe] - Motivo registrado no histórico administrativo.
- * @returns {Promise<{detail: string, is_active: boolean}>}
- */
+/** Suspende o acesso de uma conta e revoga suas sessões. */
 export async function suspenderUsuario(id, detalhe = '') {
   const { data } = await api.post(`/api/admin/usuarios/${id}/suspender/`, { detalhe });
   return data;
 }
 
-/**
- * Devolve o acesso a uma conta suspensa.
- *
- * @param {number} id - Identificador da conta.
- * @param {string} [detalhe] - Motivo registrado no histórico administrativo.
- * @returns {Promise<{detail: string, is_active: boolean}>}
- */
+/** Reativa o acesso de uma conta suspensa. */
 export async function reativarUsuario(id, detalhe = '') {
   const { data } = await api.post(`/api/admin/usuarios/${id}/reativar/`, { detalhe });
   return data;
 }
 
-/**
- * Busca os indicadores de uso da plataforma.
- *
- * @param {number} [dias=30] - Janela da série de cadastros, em dias.
- * @returns {Promise<Object>}
- */
+/** Busca métricas e indicadores de uso da plataforma na janela em dias. */
 export async function buscarMetricas(dias = 30) {
   const { data } = await api.get('/api/admin/metricas/', { params: { dias } });
   return data;
 }
 
-/**
- * Lista o histórico de ações administrativas.
- *
- * @param {number} [page=1] - Página desejada.
- * @returns {Promise<{count: number, results: Array}>}
- */
+/** Lista o histórico de auditoria de ações administrativas. */
 export async function listarLogsAdmin(page = 1) {
   const { data } = await api.get('/api/admin/logs/', { params: { page } });
   return data;
 }
+

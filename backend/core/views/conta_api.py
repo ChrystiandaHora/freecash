@@ -1,20 +1,4 @@
-"""Endpoints das operações do usuário sobre a própria conta.
-
-Perfil, troca de e-mail, troca de senha e exclusão. Separados de `auth_api.py`
-— que trata de *entrar* no sistema — porque aqui o usuário já está autenticado.
-
-Três princípios atravessam o arquivo:
-
-**A senha atual é exigida no que redireciona ou destrói acesso**, mas não em
-preferências: pedi-la a cada ajuste treinaria o usuário a digitá-la sem pensar.
-
-**A troca de e-mail só vale depois de confirmada** no endereço novo, que fica em
-`email_pendente`. Um erro de digitação não deixa a conta sem endereço para
-recuperação, e quem tomasse uma sessão não trancaria o dono para fora.
-
-**Trocar a senha encerra as outras sessões** — senão o invasor mantém o acesso
-justamente quando a vítima acredita ter resolvido o problema.
-"""
+"""Endpoints de gestão da própria conta (perfil, e-mail, senha, sessões e exclusão)."""
 
 import logging
 
@@ -50,11 +34,7 @@ User = get_user_model()
 
 
 def _dados_da_conta(user) -> dict:
-    """Monta a representação da conta para as telas de perfil.
-
-    Returns:
-        dict: Identidade, estado de verificação e preferências.
-    """
+    """Monta a representação da conta para o perfil."""
     config = getattr(user, "config", None)
     return {
         "username": user.get_username(),
@@ -68,24 +48,14 @@ def _dados_da_conta(user) -> dict:
 
 
 class PerfilAPIView(APIView):
-    """Lê e edita os dados não sensíveis da conta autenticada."""
+    """Lê e atualiza dados não sensíveis da conta autenticada."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> Response:
-        """Devolve os dados da conta.
-
-        Returns:
-            Response: 200 com os dados da conta.
-        """
         return Response(_dados_da_conta(request.user), status=status.HTTP_200_OK)
 
     def patch(self, request) -> Response:
-        """Atualiza nome de usuário e preferências.
-
-        Returns:
-            Response: 200 com os dados atualizados, ou 400 com os erros por campo.
-        """
         serializer = PerfilUpdateSerializer(
             data=request.data, context={"request": request}
         )
@@ -109,19 +79,13 @@ class PerfilAPIView(APIView):
 
 
 class TrocaEmailSolicitarAPIView(APIView):
-    """Inicia a troca de endereço de e-mail da conta."""
+    """Inicia a troca de e-mail enviando link de confirmação para o novo endereço."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "email_verify_resend"
 
     def post(self, request) -> Response:
-        """Registra o novo endereço como pendente e envia o link de confirmação.
-
-        Returns:
-            Response: 202 informando que a confirmação foi enviada, ou 400 com os
-                erros por campo.
-        """
         serializer = TrocaEmailSerializer(
             data=request.data, context={"request": request}
         )
@@ -138,7 +102,6 @@ class TrocaEmailSolicitarAPIView(APIView):
         with transaction.atomic():
             config.email_pendente = serializer.validated_data["novo_email"]
             config.save(update_fields=["email_pendente", "atualizada_em"])
-            # Recarrega para que o gerador de token assine o endereço recém-gravado.
             usuario.refresh_from_db()
             enviar_confirmacao_troca_email(usuario)
 
@@ -154,16 +117,11 @@ class TrocaEmailSolicitarAPIView(APIView):
 
 
 class TrocaEmailCancelarAPIView(APIView):
-    """Descarta uma troca de e-mail ainda não confirmada."""
+    """Descarta a solicitação de troca de e-mail pendente."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request) -> Response:
-        """Limpa o endereço pendente, invalidando o link já enviado.
-
-        Returns:
-            Response: 200 com os dados da conta.
-        """
         config = getattr(request.user, "config", None)
         if config is not None and config.email_pendente:
             config.email_pendente = ""
@@ -174,24 +132,13 @@ class TrocaEmailCancelarAPIView(APIView):
 
 
 class TrocaEmailConfirmarAPIView(APIView):
-    """Efetiva a troca de e-mail a partir do link enviado ao novo endereço.
-
-    Aberta a anônimos de propósito: o link chega num e-mail e costuma ser aberto em
-    outro navegador, sem sessão. A autorização vem do próprio token, que só pôde ser
-    gerado por quem já provou a senha atual.
-    """
+    """Efetiva a troca de e-mail a partir do link de confirmação."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "email_verify"
 
     def post(self, request) -> Response:
-        """Valida o token e promove o endereço pendente a endereço da conta.
-
-        Returns:
-            Response: 200 quando a troca é concluída, ou 400 se o link for
-                inválido, expirado ou já utilizado.
-        """
         uid = request.data.get("uid")
         token = request.data.get("token")
         if not uid or not token:
@@ -231,7 +178,6 @@ class TrocaEmailConfirmarAPIView(APIView):
             usuario.save(update_fields=["email"])
 
             config.email_pendente = ""
-            # Quem abriu o link provou ter acesso à caixa de entrada do endereço.
             config.email_verificado = True
             config.email_verificado_em = timezone.now()
             config.save(update_fields=[
@@ -239,8 +185,6 @@ class TrocaEmailConfirmarAPIView(APIView):
                 "atualizada_em",
             ])
 
-            # Vai para o endereço ANTIGO: é a rede de segurança de quem não pediu
-            # a troca, e o único canal que ainda o alcança.
             avisar_troca_de_email(usuario, email_anterior)
 
         logger.info("E-mail alterado para o usuário %s.", usuario.pk)
@@ -251,22 +195,13 @@ class TrocaEmailConfirmarAPIView(APIView):
 
 
 class TrocaSenhaAPIView(APIView):
-    """Troca a senha de um usuário já autenticado."""
+    """Atualiza a senha do usuário, revogando outras sessões ativas."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "senha_reset_confirm"
 
     def post(self, request) -> Response:
-        """Valida a senha atual, aplica a nova e renova a sessão em curso.
-
-        As demais sessões são revogadas. A atual é preservada por um cookie novo:
-        deslogar quem acabou de trocar a própria senha, no exato momento em que
-        demonstrou ser o dono, seria hostil sem ganho de segurança.
-
-        Returns:
-            Response: 200 com um token de acesso novo, ou 400 com os erros por campo.
-        """
         serializer = TrocaSenhaSerializer(
             data=request.data, context={"request": request}
         )
@@ -276,9 +211,7 @@ class TrocaSenhaAPIView(APIView):
         usuario.set_password(serializer.validated_data["nova_senha"])
         usuario.save(update_fields=["password"])
 
-        # Revoga tudo o que existia antes, inclusive a sessão atual...
         revogar_tokens_do_usuario(usuario)
-        # ...e devolve uma sessão nova só para quem fez a troca.
         refresh = RefreshToken.for_user(usuario)
         refresh["username"] = usuario.username
 
@@ -295,22 +228,13 @@ class TrocaSenhaAPIView(APIView):
 
 
 class ExcluirContaAPIView(APIView):
-    """Apaga definitivamente a conta do usuário e todos os seus dados."""
+    """Exclui definitivamente a conta e todos os dados financeiros vinculados."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "senha_reset_confirm"
 
     def post(self, request) -> Response:
-        """Remove a conta após dupla confirmação.
-
-        Exige a senha atual e o nome de usuário digitado por extenso. A ação é
-        irreversível e leva junto todo o histórico financeiro, então um clique
-        acidental não pode bastar.
-
-        Returns:
-            Response: 200 com o cookie de sessão removido, ou 400 com os erros.
-        """
         serializer = ExclusaoContaSerializer(
             data=request.data, context={"request": request}
         )
@@ -333,19 +257,7 @@ class ExcluirContaAPIView(APIView):
 
 
 def _contar_sessoes_ativas(usuario) -> int:
-    """Conta os refresh tokens vivos de um usuário.
-
-    Uma sessão existe enquanto seu refresh token não expirou nem foi revogado; os dados
-    vêm do app de blacklist do SimpleJWT, sem modelo novo.
-
-    **A contagem superestima:** uma sessão em uso contribui com um token, mas uma sessão
-    abandonada sem logout deixa o último token pendente até expirar. Por isso a interface
-    fala em "dispositivos conectados nos últimos 7 dias", sem afirmar precisão que o dado
-    não tem.
-
-    Returns:
-        int: Quantidade de refresh tokens ainda válidos.
-    """
+    """Retorna o total de refresh tokens válidos do usuário."""
     return (
         OutstandingToken.objects.filter(
             user=usuario,
@@ -356,16 +268,11 @@ def _contar_sessoes_ativas(usuario) -> int:
 
 
 class SessoesAPIView(APIView):
-    """Informa quantas sessões da conta estão ativas."""
+    """Retorna a contagem de sessões ativas do usuário."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> Response:
-        """Devolve a contagem de sessões ativas.
-
-        Returns:
-            Response: 200 com a contagem e a janela a que ela se refere.
-        """
         return Response(
             {
                 "ativas": _contar_sessoes_ativas(request.user),
@@ -378,29 +285,13 @@ class SessoesAPIView(APIView):
 
 
 class EncerrarOutrasSessoesAPIView(APIView):
-    """Encerra as demais sessões da conta, mantendo a de quem pediu."""
+    """Revoga todas as sessões anteriores e renova a sessão atual do chamador."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "senha_reset_confirm"
 
     def post(self, request) -> Response:
-        """Revoga todas as sessões e devolve uma nova ao chamador.
-
-        **Por que revogar todas, inclusive a atual:** o cookie do refresh token é
-        gravado com `path=/api/token/`, então ele não é enviado a esta rota — não há
-        como identificar qual dos tokens pendentes pertence a quem está pedindo, e
-        portanto não há como poupá-lo seletivamente.
-
-        Alargar o path do cookie resolveria a identificação, mas ao custo de expor o
-        refresh token a todas as rotas de dados. Revogar tudo e emitir uma sessão
-        nova para o chamador chega ao mesmo resultado observável — só a sessão atual
-        sobrevive — sem ampliar essa superfície. É o mesmo mecanismo que a troca de
-        senha já usa.
-
-        Returns:
-            Response: 200 com um token de acesso novo e o cookie renovado.
-        """
         usuario = request.user
         encerradas = revogar_tokens_do_usuario(usuario)
 
@@ -421,3 +312,4 @@ class EncerrarOutrasSessoesAPIView(APIView):
             status=status.HTTP_200_OK,
         )
         return set_refresh_cookie(resposta, refresh)
+

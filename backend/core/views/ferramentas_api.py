@@ -1,79 +1,39 @@
-"""
-REST API Views para Bloco B — Ferramentas & Ajustes.
+"""REST API Views para Ferramentas & Ajustes (importação, conciliação, exportação e contas)."""
 
-Endpoints expostos:
-  POST   /api/ferramentas/importar/                 — upload de extrato (.xlsx, .csv, .fcbk)
-  GET    /api/ferramentas/conciliacao/               — lista extratos + linhas pendentes
-  POST   /api/ferramentas/conciliacao/processar/     — importa / ignora linhas selecionadas
-  GET    /api/ferramentas/exportar/                  — download backup criptografado (.fcbk)
-  GET    /api/ferramentas/exportar/csv/              — download CSV das movimentações
-  CRUD   /api/configuracoes/contas-bancarias/        — gestão de cartões/contas (CartaoCredito)
-"""
-
+import os
 import re
 import tempfile
-import os
 from datetime import date
 
-from django.utils import timezone
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Conta, CartaoCredito, ExtratoImportado, LinhaExtrato, ConfigUsuario
+from core.models import CartaoCredito, ConfigUsuario, Conta, ExtratoImportado, LinhaExtrato
 from core.permissions import EmailVerificadoOuCarencia
 from core.serializers import (
     CartaoCreditoSerializer,
-    ContaSerializer,
     ExtratoImportadoSerializer,
     LinhaExtratoSerializer,
 )
 
 
 def _ja_ocorreu(data_movimento: date) -> bool:
-    """Decide se a linha importada pode nascer liquidada.
-
-    O extrato descreve o que aconteceu, mas nem toda linha já aconteceu: fatura e
-    agendamento trazem parcela e provento datados à frente. Marcar essas como
-    realizadas inventa dinheiro que já teria entrado, e o estrago não para aí — o
-    lançamento ainda escapa das duas metades da projeção, porque a âncora leva
-    `data_realizacao <= ontem` e o fluxo de pendentes leva
-    `transacao_realizada=False`. Ver `core.services.projecao_service`.
-
-    Args:
-        data_movimento: Data que o extrato atribui à linha.
-
-    Returns:
-        bool: True se a data já passou ou é hoje.
-    """
+    """Verifica se a linha de extrato já ocorreu (evita marcar agendamento futuro como realizado)."""
     return data_movimento <= timezone.localdate()
 
 
-# ─────────────────────────────────────────────────────────────
-# 2.1  IMPORTAR — POST /api/ferramentas/importar/
-# ─────────────────────────────────────────────────────────────
-
 class FerramentasImportarAPIView(APIView):
-    """View para upload de arquivo e importação de movimentações financeiras.
+    """Upload de arquivos de backup (.fcbk)."""
 
-    Recebe um arquivo (.xlsx / .csv / .fcbk) via multipart/form-data
-    e executa o processador universal de importação associado ao usuário.
-    """
     permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
-        """Processa a requisição POST realizando o parse e gravação do arquivo importado.
-
-        Args:
-            request: Requisição multipart contendo a chave 'arquivo' e opcional 'password'.
-
-        Returns:
-            Response: Dicionário contendo estatísticas de registros criados, atualizados ou ignorados.
-        """
         arquivo = request.FILES.get('arquivo')
         if not arquivo:
             return Response(
@@ -110,10 +70,8 @@ class FerramentasImportarAPIView(APIView):
 
 
 class FerramentasImportarExtratoAPIView(APIView):
-    """View para upload de faturas de cartão de crédito (PDF).
+    """Upload e extração de lançamentos de faturas de cartão de crédito (PDF)."""
 
-    Recebe o arquivo PDF, o UUID do cartão e o banco, executa o parser e salva as linhas de extrato pendentes.
-    """
     permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -159,12 +117,9 @@ class FerramentasImportarExtratoAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Detectar data de vencimento da fatura
             data_vencimento_fatura = detectar_vencimento_fatura(linhas_extraidas, cartao_obj)
 
             from core.services.fatura_service import obter_categoria_cartao
-            # Caracteriza automaticamente as compras importadas como gasto de cartão;
-            # o usuário pode reclassificar cada compra depois em Compras Cartão.
             categoria_cartao = obter_categoria_cartao(request.user)
 
             count = 0
@@ -185,11 +140,9 @@ class FerramentasImportarExtratoAPIView(APIView):
                         cartao_obj.dia_fechamento,
                         cartao_obj.dia_vencimento
                     )
-                    # Ajustar data_prevista para a data da fatura atual caso seja uma parcela antiga
                     if data_vencimento_fatura and data_prevista < data_vencimento_fatura:
                         data_prevista = data_vencimento_fatura
 
-                # Verificar se já existe a transação no banco
                 exists = Conta.objects.filter(
                     usuario=request.user,
                     tipo=tipo_conta,
@@ -235,24 +188,12 @@ class FerramentasImportarExtratoAPIView(APIView):
                 os.remove(temp_path)
 
 
-# ─────────────────────────────────────────────────────────────
-# 2.2  CONCILIAÇÃO — GET + POST /api/ferramentas/conciliacao/
-# ─────────────────────────────────────────────────────────────
-
 class FerramentasConciliacaoListAPIView(APIView):
-    """Endpoint responsável por listar os últimos extratos importados do usuário.
+    """Lista os últimos extratos importados e suas linhas pendentes de conciliação."""
 
-    Facilita a visualização rápida e acompanhamento do número de linhas pendentes
-    de conciliação no sistema.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> Response:
-        """Retorna a lista dos 20 extratos importados mais recentes e suas linhas pendentes.
-
-        Returns:
-            Response: Payload JSON contendo extratos aninhados com suas linhas de status 'pendente'.
-        """
         extratos = ExtratoImportado.objects.filter(
             usuario=request.user
         ).prefetch_related('linhas').order_by('-criada_em')[:20]
@@ -268,23 +209,12 @@ class FerramentasConciliacaoListAPIView(APIView):
 
 
 class FerramentasConciliacaoProcessarAPIView(APIView):
-    """View para processar a conciliação manual/assistida de linhas de extratos importadas.
+    """Aprova ou ignora em lote linhas de extrato pendentes."""
 
-    Permite a aprovação e conversão de linhas de extrato brutas em Contas reais,
-    ou a marcação das linhas para serem sumariamente ignoradas.
-    """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser]
 
     def post(self, request) -> Response:
-        """Processa a importação ou rejeição em lote de linhas de extrato selecionadas.
-
-        Args:
-            request: JSON contendo 'acao' ("importar"/"ignorar"), 'extrato_id' e 'linha_ids'.
-
-        Returns:
-            Response: Confirmação do número de linhas alteradas com sucesso.
-        """
         acao = request.data.get('acao')
         extrato_id = request.data.get('extrato_id')
         linha_ids = request.data.get('linha_ids', [])
@@ -329,14 +259,12 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                         )
                         transacao_realizada = False
                         data_compra = linha.data
-                        # Gasto de cartão nasce caracterizado como tal
                         categoria = obter_categoria_cartao(request.user)
                         data_prevista = calcular_vencimento_fatura(
                             data_compra,
                             extrato.cartao.dia_fechamento,
                             extrato.cartao.dia_vencimento
                         )
-                        # Ajustar data_prevista para a data da fatura atual caso seja uma parcela antiga
                         if extrato.data_vencimento and data_prevista < extrato.data_vencimento:
                             data_prevista = extrato.data_vencimento
 
@@ -376,51 +304,24 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
             )
 
 
-# ─────────────────────────────────────────────────────────────
-# 2.3  EXPORTAR (BACKUP) — GET /api/ferramentas/exportar/
-# ─────────────────────────────────────────────────────────────
-
 class FerramentasExportarAPIView(APIView):
-    """Endpoint responsável pela exportação agregada de relatórios e backups do usuário.
+    """Exportação de relatórios (xlsx, csv, pdf) e backups (.fcbk)."""
 
-    Suporta formatação de arquivo em planilha (.xlsx), formato simplificado (.csv),
-    relatório visual em documento (.pdf) ou backup completo criptografado do sistema (.fcbk).
-    """
-    # Exportar não exige e-mail confirmado, ao contrário de importar: o portão
-    # contém ação amplificadora, e exportar percorre só os registros do próprio
-    # usuário — conta descartável não tem dados para exportar. Havia ainda uma
-    # contradição prática: a tela de exclusão orienta "exporte um backup antes", e o
-    # portão bloqueava justamente esse backup.
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> HttpResponse:
-        """Exporta os dados do usuário e devolve o arquivo para download.
-
-        Query Params suportados:
-            formato (str): 'fcbk', 'excel', 'csv' ou 'pdf'. Defaults to 'excel'.
-            escopo (str): 'geral', 'investimentos' ou 'completo'. Defaults to 'completo'.
-            senha (str, optional): Senha de criptografia obrigatória para o formato '.fcbk'.
-            data_inicio (str, optional): Data no formato YYYY-MM-DD para limite inferior do período.
-            data_fim (str, optional): Data no formato YYYY-MM-DD para limite superior do período.
-
-        Returns:
-            HttpResponse: Arquivo binário ou de texto configurado com cabeçalho de download attachment.
-        """
         formato = request.query_params.get('formato', 'excel')
         escopo = request.query_params.get('escopo', 'completo')
         if escopo not in ('geral', 'investimentos', 'completo'):
             escopo = 'completo'
         usuario = request.user
-        # Nome de arquivo legível para quem consome a API direto (curl, Postman):
-        # sem timestamp epoch e sem caracteres inválidos vindos do username.
         apelido = re.sub(r'[^A-Za-z0-9._-]+', '-', usuario.username or 'usuario').strip('-')
         emitido = timezone.localtime().strftime('%Y-%m-%d_%H%M')
 
-        # Parse de datas
-        from datetime import datetime, date
         data_inicio_str = request.query_params.get('data_inicio')
         data_fim_str = request.query_params.get('data_fim')
 
+        from datetime import datetime
         if data_inicio_str:
             try:
                 data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
@@ -486,40 +387,21 @@ class FerramentasExportarAPIView(APIView):
             )
 
 
-# ─────────────────────────────────────────────────────────────
-# 2.4  CONTAS BANCÁRIAS — CRUD /api/configuracoes/contas-bancarias/
-#      Reutiliza o model CartaoCredito (representa contas/cartões)
-# ─────────────────────────────────────────────────────────────
-
 class ContasBancariasViewSet(viewsets.ModelViewSet):
-    """ViewSet REST completo para gestão de Cartões de Crédito e Contas Bancárias do usuário.
+    """CRUD de contas bancárias e cartões de crédito do usuário."""
 
-    Utiliza o modelo subjacente CartaoCredito para gerenciar limites, estados de
-    ativação e dados essenciais.
-    """
     serializer_class = CartaoCreditoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Lista as contas e cartões do usuário, ativos e inativos.
-
-        Returns:
-            QuerySet: Contas e cartões ordenados por nome.
-        """
-        # Inclui todos (ativos e inativos) para que o usuário possa reativar
         return CartaoCredito.objects.filter(usuario=self.request.user).order_by('nome')
 
     def perform_create(self, serializer):
-        """Atribui o usuário autenticado da requisição como proprietário ao criar a conta."""
         serializer.save(usuario=self.request.user)
 
     @action(detail=True, methods=['post'])
     def toggle_ativo(self, request, pk=None) -> Response:
-        """Inverte o estado de ativação da conta ou cartão selecionado sem deletar.
-
-        Returns:
-            Response: Dicionário contendo o novo estado da flag 'ativo'.
-        """
+        """Inverte o status ativo/inativo da conta ou cartão."""
         conta = self.get_object()
         conta.ativo = not conta.ativo
         conta.save(update_fields=['ativo'])
@@ -527,3 +409,4 @@ class ContasBancariasViewSet(viewsets.ModelViewSet):
             {'ok': True, 'ativo': conta.ativo},
             status=status.HTTP_200_OK
         )
+

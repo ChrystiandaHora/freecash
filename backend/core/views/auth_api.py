@@ -1,19 +1,4 @@
-"""Endpoints de identidade: registro, confirmação de e-mail e redefinição de senha.
-
-Separados de `core/views/api.py`, que concentra o domínio financeiro e já passa de
-1900 linhas. Três princípios atravessam o arquivo:
-
-**Não revelar quem tem conta.** O pedido de redefinição responde a mesma coisa
-exista ou não o cadastro: num sistema financeiro, confirmar que um endereço tem
-conta já é informação sensível.
-
-**Idempotência onde o usuário pode repetir a ação.** Confirmar um e-mail já
-confirmado responde sucesso: clicar duas vezes no link é normal, não é falha.
-
-**Nada de estado em claim de JWT.** Com `ROTATE_REFRESH_TOKENS`, o payload é
-reaproveitado na rotação, e uma claim como `email_verificado` ficaria
-desatualizada por até sete dias. Estado mutável vem de `GET /api/auth/me/`.
-"""
+"""Endpoints de identidade: registro, confirmação de e-mail e redefinição de senha."""
 
 import logging
 
@@ -49,8 +34,7 @@ from core.views.cookies import clear_refresh_cookie, set_refresh_cookie
 logger = logging.getLogger("core")
 User = get_user_model()
 
-# Resposta única do pedido de redefinição de senha. Vale para endereço cadastrado,
-# não cadastrado ou de conta inativa — é o que impede a enumeração de contas.
+# Resposta genérica para evitar enumeração de contas cadastradas
 RESPOSTA_RESET_GENERICA = {
     "detail": "Se existir uma conta com esse e-mail, enviamos as instruções de "
               "redefinição de senha."
@@ -58,13 +42,7 @@ RESPOSTA_RESET_GENERICA = {
 
 
 def _resolver_usuario(uid: str):
-    """Recupera o usuário a partir do identificador codificado no link.
-
-    Returns:
-        User | None: O usuário correspondente, ou None se o identificador for
-            inválido, malformado ou não existir. Nunca levanta exceção: um `uid`
-            corrompido é entrada do usuário, e deve resultar em 400, não em 500.
-    """
+    """Recupera o usuário pelo uid codificado em base64, ou None se inválido."""
     try:
         pk = force_str(urlsafe_base64_decode(uid))
         return User.objects.select_related("config").get(pk=pk)
@@ -73,11 +51,7 @@ def _resolver_usuario(uid: str):
 
 
 def _dados_do_usuario(user) -> dict:
-    """Monta a representação pública do usuário autenticado.
-
-    Returns:
-        dict: Identidade e estado de verificação, além do papel administrativo.
-    """
+    """Monta a representação pública do perfil do usuário autenticado."""
     config = getattr(user, "config", None)
     return {
         "username": user.get_username(),
@@ -88,25 +62,13 @@ def _dados_do_usuario(user) -> dict:
 
 
 class RegistrationAPIView(APIView):
-    """Cria uma nova conta e inicia a confirmação do endereço de e-mail.
-
-    A conta é criada com o ecossistema financeiro básico (configurações e categorias
-    padrão) numa única transação, e o usuário já recebe os tokens de sessão: exigir
-    a confirmação do e-mail antes do primeiro acesso criaria contas órfãs, com todo
-    o ecossistema provisionado e sem ninguém capaz de entrar para pedir o reenvio.
-    """
+    """Cria uma nova conta e agenda o e-mail de confirmação."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "register"
 
     def post(self, request) -> Response:
-        """Registra o usuário e devolve os tokens iniciais de sessão.
-
-        Returns:
-            Response: 201 com o token de acesso e o cookie do refresh token, ou 400
-                com os erros por campo.
-        """
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         dados = serializer.validated_data
@@ -115,8 +77,6 @@ class RegistrationAPIView(APIView):
             usuario = criar_usuario_com_ecosistema(
                 dados["username"], dados["password"], dados["email"]
             )
-            # Agendado para depois do commit: se a transação for desfeita, o e-mail
-            # não sai, e o usuário não recebe confirmação de uma conta inexistente.
             enviar_verificacao_email(usuario)
 
         refresh = RefreshToken.for_user(usuario)
@@ -129,46 +89,22 @@ class RegistrationAPIView(APIView):
 
 
 class MeAPIView(APIView):
-    """Informa a identidade e o estado da conta autenticada.
-
-    Existe porque o frontend não pode confiar no conteúdo do JWT para estado
-    mutável: a rotação de refresh token preserva o payload original, então um valor
-    embutido no token ficaria obsoleto por até sete dias. Um administrador
-    rebaixado, por exemplo, continuaria com o papel antigo por uma semana.
-    """
+    """Retorna a identidade e o estado atualizado da conta autenticada."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request) -> Response:
-        """Devolve os dados da conta autenticada, lidos do banco.
-
-        Returns:
-            Response: 200 com identidade, e-mail e estado de verificação.
-        """
         return Response(_dados_do_usuario(request.user), status=status.HTTP_200_OK)
 
 
 class EmailVerifyConfirmAPIView(APIView):
-    """Confirma a posse do endereço de e-mail a partir do link recebido.
-
-    É `POST`, e o link do e-mail aponta para o SPA em vez de para esta rota, por um
-    motivo prático: clientes de e-mail e filtros corporativos pré-carregam as URLs
-    das mensagens. Se o link fosse um `GET` neste endpoint, o token seria consumido
-    antes de o usuário clicar.
-    """
+    """Confirma o e-mail do usuário a partir do token recebido."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "email_verify"
 
     def post(self, request) -> Response:
-        """Valida o token e marca o e-mail como verificado.
-
-        Returns:
-            Response: 200 quando o e-mail está confirmado — inclusive se já
-                estivesse, para que um segundo clique no link não pareça erro — ou
-                400 se o token for inválido, expirado ou já utilizado.
-        """
         serializer = EmailVerificacaoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -213,24 +149,13 @@ class EmailVerifyConfirmAPIView(APIView):
 
 
 class EmailVerifyResendAPIView(APIView):
-    """Reenvia o link de confirmação para a conta autenticada.
-
-    Exige autenticação de propósito. Um endpoint aberto que aceitasse um e-mail
-    qualquer serviria para descobrir quem tem conta no sistema e para usar o
-    servidor como disparador de mensagens contra terceiros.
-    """
+    """Reenvia link de confirmação para o e-mail cadastrado da conta autenticada."""
 
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "email_verify_resend"
 
     def post(self, request) -> Response:
-        """Dispara um novo e-mail de confirmação, se ainda for necessário.
-
-        Returns:
-            Response: 200 sempre que a situação já é a desejada ou o envio foi
-                agendado; 400 se a conta não tem endereço cadastrado.
-        """
         usuario = request.user
         config = getattr(usuario, "config", None)
 
@@ -255,20 +180,13 @@ class EmailVerifyResendAPIView(APIView):
 
 
 class PasswordResetRequestAPIView(APIView):
-    """Recebe o pedido de redefinição de senha e envia o link, se couber."""
+    """Recebe pedido de redefinição de senha com resposta genérica anti-enumeração."""
 
     permission_classes = [permissions.AllowAny]
-    # Dois limites somados: por IP, para conter varredura; e por endereço de destino,
-    # para que o sistema não seja usado como disparador de mensagens contra alguém.
     throttle_classes = [AuthScopedRateThrottle, PasswordResetEmailThrottle]
     throttle_scope = "senha_reset"
 
     def post(self, request) -> Response:
-        """Envia o link de redefinição sem revelar se a conta existe.
-
-        Returns:
-            Response: 202 com a mesma mensagem em todos os casos.
-        """
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
@@ -282,30 +200,19 @@ class PasswordResetRequestAPIView(APIView):
         if usuario is not None:
             enviar_reset_senha(usuario, default_token_generator.make_token(usuario))
         else:
-            # Registrado apenas no log: a resposta ao cliente não muda.
             logger.info("Pedido de redefinição para endereço sem conta ativa.")
 
         return Response(RESPOSTA_RESET_GENERICA, status=status.HTTP_202_ACCEPTED)
 
 
 class PasswordResetConfirmAPIView(APIView):
-    """Efetiva a troca de senha a partir do link recebido por e-mail."""
+    """Valida token e efetiva a redefinição de senha, revogando sessões ativas."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthScopedRateThrottle]
     throttle_scope = "senha_reset_confirm"
 
     def post(self, request) -> Response:
-        """Valida o token, troca a senha e encerra as sessões existentes.
-
-        O `default_token_generator` do Django inclui o hash da senha e o
-        `last_login` no valor assinado, então a troca de senha invalida o próprio
-        token — uso único, sem tabela de controle.
-
-        Returns:
-            Response: 200 com o cookie de sessão removido, ou 400 se o token for
-                inválido ou a senha reprovada pelos validadores.
-        """
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         dados = serializer.validated_data
@@ -333,7 +240,6 @@ class PasswordResetConfirmAPIView(APIView):
         usuario.set_password(dados["nova_senha"])
         usuario.save(update_fields=["password"])
 
-        # Quem chegou até aqui provou ter acesso à caixa de entrada do endereço.
         config = getattr(usuario, "config", None)
         if config is not None and not config.email_verificado:
             config.email_verificado = True
@@ -343,10 +249,7 @@ class PasswordResetConfirmAPIView(APIView):
                                "atualizada_em"]
             )
 
-        # Se a senha foi trocada porque a anterior vazou, as sessões abertas com ela
-        # precisam morrer — inclusive as do atacante.
         revogar_tokens_do_usuario(usuario)
-
         logger.info("Senha redefinida para o usuário %s.", usuario.pk)
 
         resposta = Response(
@@ -354,3 +257,4 @@ class PasswordResetConfirmAPIView(APIView):
             status=status.HTTP_200_OK,
         )
         return clear_refresh_cookie(resposta)
+

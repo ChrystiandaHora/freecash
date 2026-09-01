@@ -1,19 +1,4 @@
-/**
- * Provedor de Contexto de Autenticação JWT (AuthProvider).
- *
- * Gerencia a sessão com JWT e refresh token em cookie HTTP-only: na inicialização tenta
- * renovar o access token silenciosamente por `/api/token/refresh/`, expõe `login`,
- * `register` e `logout`, e guarda o access token **em memória**, não no localStorage,
- * para mitigar XSS. O perfil vem de `/api/auth/me/`, não do payload do JWT, porque a
- * rotação preserva o payload original.
- *
- * Contexto exportado: `{ user, perfil, loading, login, register, logout,
- * recarregarPerfil, isAuthenticated }`.
- *
- * @param {object} props - Props do componente.
- * @param {React.ReactNode} props.children - Árvore que terá acesso ao contexto.
- * @returns {JSX.Element} Provider do contexto de autenticação.
- */
+/** Provedor de contexto de autenticação JWT e gerenciamento de sessão do usuário. */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';
 import { buscarPerfil } from '../services/auth';
@@ -45,17 +30,7 @@ export const AuthProvider = ({ children }) => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  /**
-   * Carrega do servidor o estado mutável da conta (e-mail confirmado, papel).
-   *
-   * Esse estado NÃO pode sair do JWT. Com `ROTATE_REFRESH_TOKENS` ativo, o
-   * SimpleJWT reaproveita o payload do refresh na rotação e troca apenas `jti` e
-   * `exp`: uma claim de estado ficaria congelada por até sete dias, e um
-   * administrador rebaixado seguiria com o papel antigo por uma semana.
-   *
-   * A falha é tolerada de propósito: perder o perfil não deve deslogar quem já
-   * tem sessão válida — apenas esconde o aviso de confirmação de e-mail.
-   */
+  /** Carrega os dados mais recentes do perfil diretamente da API (/api/auth/me/). */
   const recarregarPerfil = useCallback(async () => {
     try {
       const dados = await buscarPerfil();
@@ -70,7 +45,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Tenta renovar silenciosamente na inicialização
         const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
         const { access } = response.data;
         setAccessToken(access);
@@ -89,11 +63,7 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, [API_URL, recarregarPerfil]);
 
-  /**
-   * Autentica o usuário. O identificador pode ser o e-mail ou o nome de usuário:
-   * o backend `EmailOuUsernameBackend` resolve os dois, o que mantém as contas
-   * criadas antes da adoção do e-mail — inclusive o superusuário — funcionando.
-   */
+  /** Autentica o usuário por e-mail ou username e atualiza o estado da sessão. */
   const login = async (identificador, password) => {
     const response = await api.post('/api/token/', { username: identificador, password });
     const { access } = response.data;

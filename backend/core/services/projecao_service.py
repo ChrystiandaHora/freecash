@@ -1,30 +1,7 @@
-"""Projeção de saldo diário e agenda de pagamentos e recebimentos.
+"""Projeção de saldo diário e agenda de pagamentos e recebimentos (Horizonte e Calendário).
 
-O saldo projetado de um dia soma três partes: a âncora (o caixa de hoje, vindo de
-`dashboard_helper.saldo_liquidez_ate`), a pendência acumulada (vencidos e não
-liquidados, que entram no primeiro dia em vez de serem descartados) e o fluxo
-futuro acumulado.
-
-Três invariantes:
-
-**A âncora e o fluxo precisam particionar o universo.** A âncora leva
-`data_realizacao <= ontem`; o fluxo leva os pendentes por `data_prevista` e os
-liquidados por `data_realizacao` de hoje em diante. Se o fluxo olhasse apenas
-`transacao_realizada=False`, o liquidado com data de hoje ou do futuro cairia
-fora das duas metades e sumiria do saldo.
-
-**O filtro de cartão** `Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)` em toda
-consulta de valor. A compra individual e a fatura consolidada são o mesmo dinheiro;
-contar as duas encolhe o saldo. `saldo_liquidez_ate` usa o mesmo filtro — se as
-duas metades divergirem, âncora e fluxo medem universos diferentes.
-
-**A recorrência precisa estar materializada.** `horizonte_saldos` chama
-`garantir_horizonte` antes de ler, senão os últimos meses da janela apareceriam sem
-receita nem despesa fixa.
-
-O cenário de metas vai numa **série separada**: o aporte necessário — (alvo −
-acumulado) ÷ meses até o prazo — é intenção de poupar, não compromisso assumido.
-Somá-lo à curva principal faria o usuário ler como dívida algo que ele decidiu.
+Calcula a evolução do saldo diário somando caixa inicial realizado (âncora), pendências
+anteriores e fluxo futuro, respeitando consolidação de faturas de cartão e recorrências.
 """
 
 from calendar import monthrange
@@ -39,8 +16,7 @@ from core.models import Conta, MetaFinanceira
 from core.services.dashboard_helper import saldo_liquidez_ate
 from core.services.recorrencia_service import garantir_horizonte
 
-# Reproduz a regra de `saldo_liquidez_ate`: a compra individual de cartão é
-# ignorada, porque o dinheiro sai na fatura consolidada.
+# Ignora compras individuais de cartão no saldo (o desembolso ocorre na fatura consolidada)
 FILTRO_CARTAO = Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
 
 MESES_PADRAO = 12
@@ -48,31 +24,12 @@ MESES_MAXIMO = 24
 
 
 def _centavos(valor) -> Decimal:
-    """Normaliza um valor monetário para duas casas decimais.
-
-    A soma é feita em `Decimal` do início ao fim: acumular saldo diário por 365
-    dias em ponto flutuante acumula erro visível na tela.
-
-    Returns:
-        Decimal: Valor com duas casas decimais.
-    """
+    """Normaliza valor monetário para Decimal com 2 casas decimais."""
     return Decimal(valor or 0).quantize(Decimal("0.01"))
 
 
 def _valor_investido(usuario) -> Decimal:
-    """Soma o custo de aquisição das posições que o usuário ainda mantém.
-
-    É `quantidade × preço médio`, e não valor de mercado, porque o que saiu do
-    caixa para comprar foi o custo. Cotação faria a linha de corte oscilar todo
-    dia e misturaria lucro não realizado — que ainda não é dinheiro — ao saldo.
-
-    O import fica local: `investimento.models` importa `core.models`, e amarrar a
-    volta no topo deste módulo fecharia o ciclo em tempo de importação. É o mesmo
-    caminho que `metas_service` e `export_service` já usam.
-
-    Returns:
-        Decimal: Custo de aquisição total da carteira, com duas casas.
-    """
+    """Soma o custo de aquisição da carteira (quantidade × preço médio)."""
     from investimento.models import Ativo
 
     total = Ativo.objects.filter(usuario=usuario).aggregate(
@@ -87,36 +44,10 @@ def _valor_investido(usuario) -> Decimal:
 
 
 def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
-    """Agrupa por dia o que ainda vai mexer no caixa dentro da janela.
-
-    São duas populações, e cada uma é datada pelo campo que a governa:
-
-    - **Pendente**, pelo `data_prevista`: ainda não liquidou, então a data que
-      importa é a que se espera.
-    - **Liquidado dentro da janela**, pelo `data_realizacao`: a âncora corta em
-      *ontem*, então o que foi liquidado de hoje em diante ainda não está nela.
-
-    Sem a segunda metade sobra um ponto cego. A âncora só enxerga
-    `data_realizacao <= ontem` e a primeira metade só enxerga
-    `transacao_realizada=False`; um lançamento liquidado com data de hoje ou do
-    futuro escapa das duas e some da projeção. O importador de extrato produz
-    exatamente esse registro — ele marca a linha como realizada usando a data do
-    extrato, sem checar se ela já passou.
-
-    As duas consultas não se sobrepõem: `transacao_realizada` separa as
-    populações, e nenhum lançamento satisfaz as duas ao mesmo tempo.
-
-    Args:
-        inicio: Primeiro dia da janela, inclusive.
-        fim: Último dia da janela, inclusive.
-
-    Returns:
-        dict[date, dict]: Mapa de data para `{"receitas": Decimal, "despesas": Decimal}`.
-    """
+    """Agrupa por dia receitas e despesas pendentes (data_prevista) e liquidadas na janela."""
     movimentos = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
 
     def _acumular(linhas, campo_data: str) -> None:
-        """Soma cada linha agregada no dia que o campo de data indica."""
         for linha in linhas:
             chave = "receitas" if linha["tipo"] == Conta.TIPO_RECEITA else "despesas"
             movimentos[linha[campo_data]][chave] += _centavos(linha["total"])
@@ -151,18 +82,7 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
 
 
 def _pendencias_atrasadas(usuario, antes_de: date) -> dict:
-    """Soma os lançamentos vencidos e não liquidados até a véspera da janela.
-
-    Eles não podem ser descartados: são dinheiro que ainda vai entrar ou sair. E
-    não podem ser distribuídos ao longo da projeção, porque já venceram — o lugar
-    honesto é o primeiro dia, onde ficam visíveis como o buraco que já existe.
-
-    Args:
-        antes_de: Data de corte, exclusiva.
-
-    Returns:
-        dict: Totais de receitas e despesas atrasadas.
-    """
+    """Soma lançamentos vencidos e não liquidados anteriores à data de corte."""
     qs = (
         Conta.objects.filter(
             usuario=usuario,
@@ -180,19 +100,7 @@ def _pendencias_atrasadas(usuario, antes_de: date) -> dict:
 
 
 def _aportes_mensais_de_metas(usuario, inicio: date, fim: date) -> dict[date, Decimal]:
-    """Deriva o aporte mensal necessário para cumprir cada meta no prazo.
-
-    Só entram metas não concluídas, com prazo definido e com valor faltante. Uma
-    meta sem prazo não tem cronograma dedutível: distribuir o valor faltante numa
-    janela arbitrária inventaria um compromisso que o usuário não assumiu.
-
-    Metas cujo prazo já passou e que seguem em aberto são cobradas integralmente no
-    primeiro mês da janela — represar o valor num prazo vencido apenas esconderia
-    que a meta está atrasada.
-
-    Returns:
-        dict[date, Decimal]: Aporte a debitar no primeiro dia de cada mês.
-    """
+    """Calcula o aporte mensal necessário para atingir metas ativas no prazo."""
     metas = MetaFinanceira.objects.filter(
         usuario=usuario, concluida=False, prazo__isnull=False
     )
@@ -209,7 +117,6 @@ def _aportes_mensais_de_metas(usuario, inicio: date, fim: date) -> dict[date, De
             aportes[primeiro_mes] += faltante
             continue
 
-        # Número de meses entre a janela e o prazo, no mínimo 1.
         delta = relativedelta(meta.prazo, inicio)
         meses_restantes = max(1, delta.years * 12 + delta.months)
         parcela = (faltante / Decimal(meses_restantes)).quantize(Decimal("0.01"))
@@ -225,36 +132,17 @@ def _aportes_mensais_de_metas(usuario, inicio: date, fim: date) -> dict[date, De
 def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
                      limite_atencao: Decimal | None = None,
                      considerar_investimentos: bool = False) -> dict:
-    """Projeta o saldo acumulado dia a dia para os próximos meses.
-
-    Args:
-        meses: Tamanho da janela, em meses.
-        considerar_investimentos: Devolve ao saldo de abertura o custo da
-            carteira. Desligado — o padrão — a projeção mostra só o dinheiro
-            líquido. É um deslocamento constante: a forma da curva não muda,
-            o patamar sobe.
-
-    Returns:
-        dict: Janela projetada, agrupada por mês, com o saldo de cada dia, os
-            totais mensais, o cenário de metas e o primeiro dia negativo.
-    """
+    """Projeta a curva diária de saldos para os próximos meses."""
     meses = max(1, min(meses, MESES_MAXIMO))
     fim = (hoje.replace(day=1) + relativedelta(months=meses)) - timedelta(days=1)
 
-    # Materializa a recorrência antes de ler: as ocorrências futuras só existem
-    # como `Conta` depois de geradas.
     garantir_horizonte(usuario, fim)
 
-    # A âncora é o realizado até ontem: o que for previsto para hoje ainda entra
-    # como movimento do dia, e contar as duas coisas duplicaria o valor.
+    # Âncora: saldo realizado até ontem + pendências vencidas
     saldo_inicial = _centavos(saldo_liquidez_ate(usuario, hoje - timedelta(days=1)))
     atrasados = _pendencias_atrasadas(usuario, hoje)
     saldo_inicial += atrasados["receitas"] - atrasados["despesas"]
 
-    # O padrão é a leitura conservadora: dinheiro aplicado não é dinheiro
-    # disponível para pagar conta, e deixá-lo no saldo esconde o aperto de caixa.
-    # Quem quer o patrimônio inteiro pede explicitamente. O valor vai na resposta
-    # nos dois casos, porque a interface precisa dele para rotular o botão.
     valor_investido = _valor_investido(usuario)
     if not considerar_investimentos:
         saldo_inicial -= valor_investido
@@ -281,8 +169,6 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
         for numero_dia in range(1, ultimo_dia + 1):
             dia = date(cursor.year, cursor.month, numero_dia)
 
-            # Dias anteriores a hoje no primeiro mês não fazem parte da projeção:
-            # já estão refletidos na âncora.
             if dia < hoje:
                 continue
 
@@ -293,7 +179,6 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
             saldo += receitas - despesas
             saldo_com_metas += receitas - despesas
 
-            # O aporte das metas é debitado no primeiro dia projetado do mês.
             if not dias_saida:
                 saldo_com_metas -= aporte_do_mes
 
@@ -313,8 +198,6 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
                 "receitas": str(receitas),
                 "despesas": str(despesas),
                 "tem_lancamentos": bool(movimento),
-                # As duas situações vêm do servidor para que a regra de limite não
-                # fique duplicada no cliente e possa divergir dela.
                 "situacao": _situacao(saldo, limite_atencao),
                 "situacao_com_metas": _situacao(saldo_com_metas, limite_atencao),
             })
@@ -350,17 +233,7 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
 
 
 def _situacao(saldo: Decimal, limite_atencao: Decimal | None) -> str:
-    """Classifica o saldo de um dia para sinalização na interface.
-
-    A interface precisa comunicar as três situações sem depender só de cor — o
-    rótulo textual é o que permite ícone, texto e leitor de tela concordarem.
-
-    Args:
-        limite_atencao: Piso de conforto configurado.
-
-    Returns:
-        str: "negativo", "atencao" ou "confortavel".
-    """
+    """Classifica a situação do saldo: 'negativo', 'atencao' ou 'confortavel'."""
     if saldo < 0:
         return "negativo"
     if limite_atencao is not None and saldo < limite_atencao:
@@ -369,16 +242,7 @@ def _situacao(saldo: Decimal, limite_atencao: Decimal | None) -> str:
 
 
 def calendario_mes(usuario, ano: int, mes: int) -> dict:
-    """Lista, dia a dia, os pagamentos e recebimentos previstos de um mês.
-
-    Diferente da projeção, aqui **não** se aplica o filtro de cartão: quem abre um
-    calendário de pagamentos quer ver a compra individual que fez, e não apenas a
-    fatura consolidada. Somar valores entre os dois níveis é que seria errado, e
-    por isso os totais do dia separam o que é fatura do que é compra avulsa.
-
-    Returns:
-        dict: Dias do mês com seus lançamentos e totais.
-    """
+    """Lista os lançamentos previstos do mês dia a dia para visualização em calendário."""
     inicio = date(ano, mes, 1)
     ultimo_dia = monthrange(ano, mes)[1]
     fim = date(ano, mes, ultimo_dia)
@@ -415,8 +279,6 @@ def calendario_mes(usuario, ano: int, mes: int) -> dict:
         itens = por_dia.get(numero_dia, [])
         dia = date(ano, mes, numero_dia)
 
-        # Os totais desconsideram a compra individual de cartão, cujo desembolso
-        # acontece na fatura — somar as duas contaria o mesmo dinheiro duas vezes.
         para_totais = [
             i for i in itens if i["cartao"] is None or i["eh_fatura_cartao"]
         ]
@@ -443,8 +305,8 @@ def calendario_mes(usuario, ano: int, mes: int) -> dict:
     return {
         "ano": ano,
         "mes": mes,
-        # Segunda-feira = 0, para que o cliente monte a grade sem recalcular.
         "dia_semana_do_primeiro": inicio.weekday(),
         "dias_no_mes": ultimo_dia,
         "dias": dias_saida,
     }
+

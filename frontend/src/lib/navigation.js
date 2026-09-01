@@ -1,25 +1,13 @@
 /**
- * Matchers puros de navegação.
- *
- * Módulo deliberadamente SEM imports: nada de React, react-router ou lucide.
- * É o que permite testar a resolução de rota → { grupo, item, título } sem DOM
- * e sem carregar 18 componentes de ícone.
- *
- * Regra única: **prefixo mais longo vence, com fronteira de segmento**.
- * Substitui a lista chumbada de casos especiais que vivia no DashboardLayout
- * (`path !== '/dashboard' && path !== '/investimentos'`).
+ * Matchers puros de navegação (sem dependências de DOM ou React).
+ * Regra: prefixo mais longo vence, respeitando fronteiras de segmento.
  */
 
 /**
- * Achata os grupos e links diretos num índice ordenado por especificidade (caminho mais longo primeiro).
- *
- * A ordenação é o que resolve ambiguidade de forma determinística: para
- * `/investimentos/ativos/42`, o prefixo `/investimentos/ativos` é considerado
- * antes de `/investimentos`.
- *
- * @param {Array<{id: string, label: string, items: Array<Object>}>} groups - Grupos de navegação.
- * @param {Array<Object>} [directLinks=[]] - Links diretos promovidos à barra.
- * @returns {Array<Object>} Índice achatado e ordenado, pronto para `findActiveNav`.
+ * Achata grupos e links diretos num índice ordenado por especificidade.
+ * @param {Array<{id: string, label: string, items: Array<Object>}>} groups
+ * @param {Array<Object>} [directLinks=[]]
+ * @returns {Array<Object>} Índice ordenado para busca rápida.
  */
 export function buildNavIndex(groups, directLinks = []) {
   const directFlat = directLinks.map((item) => ({
@@ -52,11 +40,7 @@ export function buildNavIndex(groups, directLinks = []) {
   return flat
     .map((entry) => ({
       ...entry,
-      // `exact` é DERIVADO: um item casa exatamente quando outro item vive
-      // abaixo dele. Ex.: `/investimentos` tem 4 filhos no menu, então casar por
-      // prefixo faria o item "Dashboard" de investimentos acender em todas as
-      // subtelas. Auto-mantido quando rotas novas entram na config; a flag
-      // explícita `exact` na config fica como escape hatch.
+      // Se houver sub-rotas filhas, casa exato por padrão para não sobrepor telas
       exact:
         entry.item.exact ??
         allPaths.some((p) => p !== entry.item.path && p.startsWith(entry.item.path + '/')),
@@ -65,14 +49,10 @@ export function buildNavIndex(groups, directLinks = []) {
 }
 
 /**
- * Resolve o caminho atual para a entrada de navegação correspondente.
- *
- * A fronteira de segmento (`p + '/'`) é o que impede `/contas-pagar` de casar
- * `/contas-pagarolho` — bug que a versão anterior com `startsWith(item.path)` tinha.
- *
- * @param {string} pathname - `location.pathname` atual.
- * @param {Array<Object>} index - Índice devolvido por `buildNavIndex`.
- * @returns {Object | null} Entrada ativa, ou `null` se nenhuma casar.
+ * Resolve o pathname para a entrada de navegação correspondente.
+ * @param {string} pathname
+ * @param {Array<Object>} index
+ * @returns {Object | null}
  */
 export function findActiveNav(pathname, index) {
   return (
@@ -85,13 +65,13 @@ export function findActiveNav(pathname, index) {
 }
 
 /**
- * Título legível da rota, para `document.title` (WCAG 2.4.2).
- *
- * @param {string} pathname - `location.pathname` atual.
- * @param {Array<Object>} index - Índice devolvido por `buildNavIndex`.
- * @returns {string} Título da rota, ou 'FreeCash' se desconhecida.
+ * Retorna o título legível da rota para o cabeçalho/document.title.
+ * @param {string} pathname
+ * @param {Array<Object>} index
+ * @returns {string}
  */
 export function getRouteTitle(pathname, index) {
   const hit = findActiveNav(pathname, index);
   return hit ? (hit.item.docTitle ?? hit.item.name) : 'FreeCash';
 }
+

@@ -1,15 +1,4 @@
-"""Serviço de Metas Financeiras.
-
-Deriva quatro alvos a partir de dois números-base, renda e custo de vida mensais:
-
-    * Patrimônio para viver de renda ....... renda mensal x 200
-    * Meta mensal (aporte) ................. renda mensal x 0,1  (por mês)
-    * Reserva de emergência ................ custo de vida mensal x 6
-    * Limite de gastos essenciais .......... renda mensal x 0,6 (teto mensal)
-
-Também sugere médias mensais a partir dos lançamentos, reaproveitando as agregações
-do dashboard para herdar o tratamento de faturas de cartão.
-"""
+"""Serviço de cálculo e gerenciamento de metas financeiras baseadas em renda e custo de vida."""
 
 from decimal import Decimal
 
@@ -25,9 +14,6 @@ from core.services.dashboard_helper import (
     totals_for_range_competencia,
 )
 
-
-# Definição declarativa das metas padrão. É a única fonte dos multiplicadores:
-# alterar um número aqui reflete no cálculo, na API e na tela.
 METAS_PADRAO = (
     {
         "tipo": MetaFinanceira.TIPO_PATRIMONIO_RENDA,
@@ -80,19 +66,8 @@ METAS_PADRAO = (
 
 
 def medias_mensais(usuario, meses: int = 3) -> tuple[float, float]:
-    """Calcula a média mensal de receitas e despesas dos últimos meses fechados.
-
-    A janela termina no mês corrente (inclusive) e recua `meses` competências.
-    Cada mês é somado por `totals_for_range_competencia`, que já descarta as
-    compras individuais de cartão quando existe fatura consolidada — sem isso o
-    gasto no cartão seria contado duas vezes.
-
-    Returns:
-        tuple[float, float]: Média de (receitas, despesas) por mês.
-    """
+    """Calcula a média de receitas e despesas por mês na janela especificada."""
     meses = max(int(meses or 1), 1)
-
-    # Recua até o primeiro mês da janela para depois percorrer no sentido cronológico.
     inicio_janela = month_start(timezone.localdate()) - relativedelta(months=meses - 1)
 
     total_receitas = 0.0
@@ -109,32 +84,14 @@ def medias_mensais(usuario, meses: int = 3) -> tuple[float, float]:
 
 
 def gasto_essencial_do_mes(usuario) -> float:
-    """Soma as despesas com competência no mês corrente.
-
-    Alimenta o acompanhamento da meta de teto: é o valor comparado contra o
-    limite de gastos essenciais.
-
-    Returns:
-        float: Total de despesas previstas para o mês corrente.
-    """
+    """Retorna o total de despesas da competência corrente."""
     inicio = month_start(timezone.localdate())
     _, despesas = totals_for_range_competencia(usuario, inicio, next_month_start(inicio))
     return despesas
 
 
 def patrimonio_carteira(usuario) -> Decimal:
-    """Soma o valor de mercado atual da carteira de investimentos do usuário.
-
-    Cada posição é avaliada pela cotação mais recente, caindo para o preço médio
-    quando o ativo ainda não tem cotação — o mesmo critério de
-    `Ativo.valor_total_atual` e do dashboard de investimentos. A cotação entra
-    por `Subquery` para que uma carteira grande não gere uma consulta por ativo.
-
-    Returns:
-        Decimal: Valor de mercado da carteira, com duas casas decimais.
-    """
-    # Import local: `investimento.models` já importa `core.models`, então um
-    # import no topo deste módulo fecharia um ciclo.
+    """Calcula o valor total de mercado da carteira de investimentos ativa do usuário."""
     from investimento.models import Ativo, Cotacao
 
     ultima_cotacao = Cotacao.objects.filter(ativo_id=OuterRef("pk")).order_by(
@@ -156,16 +113,7 @@ def patrimonio_carteira(usuario) -> Decimal:
 
 
 def aportes_do_mes(usuario) -> Decimal:
-    """Soma quanto foi aportado na carteira de investimentos no mês corrente.
-
-    Considera as ordens de compra (`Transacao` do tipo 'C') com data dentro da
-    competência atual. Vendas não abatem: rebalancear a carteira não desfaz o
-    dinheiro que entrou. Proventos também ficam de fora, por não serem aporte.
-
-    Returns:
-        Decimal: Total aportado no mês, com duas casas decimais.
-    """
-    # Import local: `investimento.models` já importa `core.models`.
+    """Soma as compras de ativos executadas no mês corrente."""
     from investimento.models import Transacao
 
     inicio = month_start(timezone.localdate())
@@ -180,14 +128,7 @@ def aportes_do_mes(usuario) -> Decimal:
 
 
 def valores_externos(usuario) -> dict:
-    """Resolve, de uma vez, todas as origens automáticas de progresso.
-
-    Serve para que a serialização de uma lista de metas leia estes números do
-    contexto em vez de consultar o banco meta a meta.
-
-    Returns:
-        dict: Mapa de `MetaFinanceira.origem_acumulado` para o valor calculado.
-    """
+    """Retorna mapa de origens automáticas de progresso acumulado."""
     return {
         MetaFinanceira.ORIGEM_CARTEIRA: patrimonio_carteira(usuario),
         MetaFinanceira.ORIGEM_APORTES_MES: aportes_do_mes(usuario),
@@ -195,11 +136,7 @@ def valores_externos(usuario) -> dict:
 
 
 def calcular_valor_alvo(definicao: dict, renda: Decimal | None, custo_vida: Decimal | None) -> Decimal:
-    """Aplica o multiplicador de uma meta padrão sobre a base correspondente.
-
-    Returns:
-        Decimal: Valor-alvo com duas casas decimais; zero se a base estiver vazia.
-    """
+    """Aplica o multiplicador da meta sobre a base correspondente."""
     base_map = {
         MetaFinanceira.BASE_RENDA: renda,
         MetaFinanceira.BASE_CUSTO_VIDA: custo_vida,
@@ -215,19 +152,7 @@ def calcular_valor_alvo(definicao: dict, renda: Decimal | None, custo_vida: Deci
 
 @transaction.atomic
 def gerar_metas_padrao(usuario, plano) -> list[MetaFinanceira]:
-    """Cria ou recalcula as quatro metas padrão do usuário.
-
-    Cria o que faltar e recalcula os valores-alvo conforme a base atual do plano.
-
-    O que é do usuário não é tocado num recálculo: nome, multiplicador,
-    observação, natureza, origem do progresso, valor acumulado, prazo e
-    conclusão. O alvo é recomputado a partir do multiplicador **armazenado** —
-    quem trocou o ×200 por ×150 continua com ×150 depois de clicar em recalcular.
-    Só a criação usa os valores de `METAS_PADRAO`.
-
-    Returns:
-        list[MetaFinanceira]: As metas padrão criadas ou atualizadas, em ordem.
-    """
+    """Gera ou recalcula as metas padrão do usuário a partir do plano."""
     existentes = {
         meta.tipo: meta
         for meta in MetaFinanceira.objects.filter(
@@ -273,13 +198,6 @@ def gerar_metas_padrao(usuario, plano) -> list[MetaFinanceira]:
 
 
 def multiplicadores_padrao() -> dict:
-    """
-    Multiplicadores de fábrica de cada meta padrão.
-
-    Alimenta o botão "restaurar padrões" da tela sem que o frontend precise
-    repetir os números — `METAS_PADRAO` segue sendo a fonte única.
-
-    Returns:
-        dict: Mapa de tipo da meta para o multiplicador padrão, como string.
-    """
+    """Retorna os multiplicadores originais de fábrica de cada meta padrão."""
     return {d["tipo"]: str(d["multiplicador"]) for d in METAS_PADRAO}
+

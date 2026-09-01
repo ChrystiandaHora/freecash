@@ -52,14 +52,7 @@ services:
         postgres:
           condition: service_healthy
 
-      # Sobrescreve apenas o CMD da imagem (gunicorn) para manter o auto-reload em
-      # desenvolvimento. `migrate` e `createcachetable` não aparecem aqui: rodam no
-      # entrypoint.sh, uma vez para os dois ambientes.
-      #
-      # `makemigrations` também não roda no boot: as migrations são versionadas, e
-      # gerar arquivo dentro do container criaria migration não revisada, divergente
-      # do que o servidor vai aplicar. Ao alterar um modelo, rode
-      # `docker compose exec backend python manage.py makemigrations` e commite.
+      # Auto-reload em desenvolvimento (entrypoint.sh executa as migrações)
       command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
   frontend:

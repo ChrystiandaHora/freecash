@@ -1,14 +1,5 @@
-# Composição de produção do FreeCash.
-#
-#   docker compose -f docker-compose.prod.yml up -d --build
-#
-# Diferenças em relação ao compose de desenvolvimento: sem bind mount do código
-# (o contêiner roda o que foi construído na imagem), gunicorn em vez de
-# `runserver`, SPA servido pelo nginx a partir do build estático, e Postgres sem
-# porta publicada no host.
-#
-# Requer um .env de produção — DJANGO_DEBUG=False, SECRET_KEY real, credenciais e
-# origens. O settings.py falha no boot se algo faltar. Ver DEPLOY.md.
+# Composição de produção do FreeCash (ver DEPLOY.md para detalhes).
+# Uso: docker compose -f docker-compose.prod.yml up -d --build
 
 services:
   postgres:
