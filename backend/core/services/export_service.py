@@ -75,10 +75,13 @@ def get_backupable_models():
         "ClasseAtivo": 4,
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
+        # A carteira precede o ativo porque transações e posições apontam para ela.
+        "Carteira": 6.5,
         "Ativo": 7,
         "LancamentoRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
+        "PosicaoCarteira": 9.5,
         "CarteiraHistorico": 10,
         # MetaFinanceira não referencia outros modelos; os aportes dependem dela
         # e são exportados à parte, por não terem FK direta para o usuário.

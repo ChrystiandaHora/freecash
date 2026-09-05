@@ -116,10 +116,13 @@ def get_backupable_models():
         "ClasseAtivo": 4,
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
+        # A carteira precede o ativo porque transações e posições apontam para ela.
+        "Carteira": 6.5,
         "Ativo": 7,
         "LancamentoRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
+        "PosicaoCarteira": 9.5,
         "CarteiraHistorico": 10,
         # MetaFinanceira não referencia outros modelos; os aportes dependem dela
         # e são restaurados à parte, por não terem FK direta para o usuário.
@@ -144,6 +147,25 @@ NOMES_LEGADOS_DE_MODELO = {
 CAMPOS_RENOMEADOS_POR_MODELO = {
     "Conta": {"receita_recorrente_uuid": "recorrencia_uuid"},
 }
+
+# FKs que viraram obrigatórias depois do backup existir. Sem isto, restaurar um
+# `.fcbk` anterior às carteiras descarta as transações em silêncio (ver docs/carteiras.md).
+FKS_LEGADAS_COM_PADRAO = {
+    "Transacao": ("carteira",),
+    "CarteiraHistorico": ("carteira",),
+    "PosicaoCarteira": ("carteira",),
+}
+
+
+def _carteira_padrao(user):
+    """Devolve (criando se preciso) a carteira que recebe dados de backups antigos.
+
+    Returns:
+        Carteira: A primeira carteira do usuário, ou uma Carteira Padrão nova.
+    """
+    from investimento.models import Carteira
+
+    return Carteira.padrao_de(user)
 
 
 def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
@@ -257,6 +279,9 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 # Compatibilidade retroativa: manter também pela chave simples de nome
                 uuid_to_id[model.__name__] = uuid_to_id[f"{model._meta.app_label}.{model.__name__}"]
 
+            # Resolvido uma vez só, e apenas se algum registro legado precisar dele.
+            carteira_padrao_cache: dict[str, int] = {}
+
             # 2. IMPORT NEW
             for model in backup_models:
                 app_label = model._meta.app_label
@@ -342,6 +367,13 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                                 row[f"{field.name}_id"] = local_id
                             else:
                                 row[f"{field.name}_id"] = None
+
+                    # Backup antigo não traz `carteira_uuid`; sem o padrão, o NOT NULL descarta a ordem
+                    for campo in FKS_LEGADAS_COM_PADRAO.get(model_name, ()):
+                        if row.get(f"{campo}_id") is None:
+                            if "id" not in carteira_padrao_cache:
+                                carteira_padrao_cache["id"] = _carteira_padrao(user).id
+                            row[f"{campo}_id"] = carteira_padrao_cache["id"]
 
                     # Filtrar campos que não existem mais no modelo
                     row = filter_valid_fields(model, row)
@@ -496,13 +528,18 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 
             # 4. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
             # Necessário porque os signals foram desconectados durante a importação.
+            # Reconstrói também a posição por carteira: é cache, e o backup antigo nem a tem
             if ativos_restaurados:
                 try:
-                    from investimento.calculators import recalcular_ativo
+                    from investimento.calculators import (
+                        recalcular_ativo,
+                        recalcular_posicoes_do_ativo,
+                    )
                     for ativo in ativos_restaurados:
                         try:
                             ativo.refresh_from_db()  # Garante estado fresco do DB
                             recalcular_ativo(ativo)
+                            recalcular_posicoes_do_ativo(ativo)
                         except Exception as recalc_err:
                             logger.warning(
                                 "Erro ao recalcular ativo %s: %s", ativo, recalc_err

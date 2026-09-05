@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from core.services.export_service import export_user_data
 from core.services.import_service import restore_user_data_fcbk, decrypt_data_fcbk
 from investimento.models import (
+    Carteira,
     ClasseAtivo,
     CategoriaAtivo,
     SubcategoriaAtivo,
@@ -93,6 +94,7 @@ class RestoreUserDataFcbkTests(TestCase):
         """
         t1 = Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_COMPRA,
             data="2024-01-10",
@@ -102,6 +104,7 @@ class RestoreUserDataFcbkTests(TestCase):
         )
         t2 = Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_COMPRA,
             data="2024-03-15",
@@ -111,6 +114,7 @@ class RestoreUserDataFcbkTests(TestCase):
         )
         t3 = Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_VENDA,
             data="2024-06-20",
@@ -213,6 +217,7 @@ class RestoreUserDataFcbkTests(TestCase):
         )
         Transacao.objects.create(
             usuario=outro_user,
+            carteira=Carteira.padrao_de(outro_user),
             ativo=ativo_outro,
             tipo=Transacao.TIPO_COMPRA,
             data="2024-01-01",
