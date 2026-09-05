@@ -184,6 +184,12 @@ export default function HorizonteSaldos() {
             ? `, já sem os ${formatarMoeda(data.valor_investido)} aplicados na carteira`
             : ''}
           .
+          {data.carteiras_consideradas?.length > 1 && (
+            <span className="block text-xs">
+              Carteiras contadas como dinheiro disponível:{' '}
+              {data.carteiras_consideradas.join(', ')}.
+            </span>
+          )}
         </p>
       </header>
 
@@ -285,6 +291,8 @@ export default function HorizonteSaldos() {
           Soma {formatarMoeda(data.valor_investido)}, o custo de aquisição da sua
           carteira, ao saldo de abertura da projeção. Por padrão esse valor fica de
           fora, porque dinheiro aplicado não está disponível para pagar contas.
+          {data.carteiras_consideradas?.length > 0 &&
+            ` Entram no cálculo as carteiras ${data.carteiras_consideradas.join(', ')}; as demais foram marcadas para ficar de fora.`}
         </p>
       )}
 

@@ -29,18 +29,45 @@ def _centavos(valor) -> Decimal:
 
 
 def _valor_investido(usuario) -> Decimal:
-    """Soma o custo de aquisição da carteira (quantidade × preço médio)."""
-    from investimento.models import Ativo
+    """Soma o custo de aquisição da carteira, menos as custódias marcadas para ficar fora.
 
-    total = Ativo.objects.filter(usuario=usuario).aggregate(
-        total=Sum(
-            ExpressionWrapper(
-                F("quantidade") * F("preco_medio"),
-                output_field=DecimalField(max_digits=19, decimal_places=4),
-            )
-        )
-    )["total"]
-    return _centavos(total)
+    Parte do consolidado em `Ativo` e **desconta** as posições das carteiras com
+    `considerar_no_saldo=False`, em vez de somar as posições das que ficam. As duas
+    contas dão o mesmo número quando todo ativo tem posição materializada — mas só
+    esta continua correta para um ativo que não tem, e é ela que garante que quem
+    nunca mexeu na configuração veja exatamente o valor de antes.
+
+    O critério é de liquidez: uma reserva de emergência em Tesouro Selic é dinheiro
+    com que o usuário conta; uma posição em ações, normalmente não.
+    """
+    from investimento.models import Ativo, PosicaoCarteira
+
+    custo = ExpressionWrapper(
+        F("quantidade") * F("preco_medio"),
+        output_field=DecimalField(max_digits=19, decimal_places=4),
+    )
+
+    total = Ativo.objects.filter(usuario=usuario).aggregate(total=Sum(custo))["total"]
+    fora = PosicaoCarteira.objects.filter(
+        usuario=usuario, carteira__considerar_no_saldo=False
+    ).aggregate(total=Sum(custo))["total"]
+
+    return _centavos(total) - _centavos(fora)
+
+
+def _carteiras_consideradas(usuario) -> list[str]:
+    """Nomes das carteiras que entram no saldo, para a tela poder dizer quais.
+
+    Returns:
+        list[str]: Nomes em ordem de exibição.
+    """
+    from investimento.models import Carteira
+
+    return list(
+        Carteira.objects.filter(usuario=usuario, considerar_no_saldo=True)
+        .order_by("ordem", "nome")
+        .values_list("nome", flat=True)
+    )
 
 
 def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
@@ -225,6 +252,7 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
         },
         "valor_investido": str(valor_investido),
         "investimentos_considerados": considerar_investimentos,
+        "carteiras_consideradas": _carteiras_consideradas(usuario),
         "limite_atencao": str(limite_atencao) if limite_atencao is not None else None,
         "primeiro_dia_negativo": primeiro_negativo,
         "primeiro_dia_negativo_com_metas": primeiro_negativo_com_metas,

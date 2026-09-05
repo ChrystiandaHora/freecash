@@ -405,6 +405,42 @@ class ValorInvestidoNoHorizonteTests(ProjecaoBaseTestCase):
 
         self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("350.00"))
 
+    def test_carteira_fora_do_saldo_nao_entra_no_valor_investido(self):
+        """O critério é liquidez: ações não são dinheiro em caixa; a reserva é."""
+        from investimento.models import Carteira, PosicaoCarteira
+
+        reserva = Carteira.objects.get(usuario=self.user)
+        reserva.nome = "Reserva"
+        reserva.save(update_fields=["nome"])
+        acoes = Carteira.objects.create(
+            usuario=self.user, nome="Ações", considerar_no_saldo=False
+        )
+
+        selic = self._ativo("SELIC11", "10", "15.00")
+        petr = self._ativo("PETR4", "5", "40.00")
+        PosicaoCarteira.objects.create(
+            usuario=self.user, carteira=reserva, ativo=selic,
+            quantidade=Decimal("10"), preco_medio=Decimal("15.00"),
+        )
+        PosicaoCarteira.objects.create(
+            usuario=self.user, carteira=acoes, ativo=petr,
+            quantidade=Decimal("5"), preco_medio=Decimal("40.00"),
+        )
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        # 150 da reserva + 200 das ações = 350; as ações ficam de fora.
+        self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("150.00"))
+        self.assertEqual(projecao["carteiras_consideradas"], ["Reserva"])
+
+    def test_todas_as_carteiras_contam_por_padrao(self):
+        """Quem nunca mexeu na configuração precisa ver o valor de sempre."""
+        self._ativo("AAAA11", "10", "15.00")
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["valor_investido"]), Decimal("150.00"))
+
     def test_carteira_de_outro_usuario_nao_entra(self):
         """Vazamento aqui apareceria como saldo a menos, sem explicação na tela."""
         outro = User.objects.create_user(
