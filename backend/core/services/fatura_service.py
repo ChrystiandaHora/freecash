@@ -70,27 +70,35 @@ def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
     mes = data_vencimento.month
     ano = data_vencimento.year
 
-    # Buscar fatura existente para este cartão/mês/ano.
-    # Ordenamos por id para que a escolha seja determinística caso a base já
-    # contenha faturas duplicadas do mesmo período (ver comando
-    # `corrigir_faturas_duplicadas`), evitando que o sistema alterne entre elas.
+    # Casa por data exata, a mesma chave que `compras_da_fatura`, `atualizar_valor_fatura`
+    # e `pagar_fatura` usam. Buscar por mês aqui e por data exata lá deixava a compra de
+    # outro dia do mesmo mês consolidada na busca e invisível na soma (ver docs/fatura-cartao.md).
     existentes = list(
         Conta.objects.filter(
             usuario=usuario,
             cartao=cartao,
             eh_fatura_cartao=True,
-            data_prevista__year=ano,
-            data_prevista__month=mes,
+            data_prevista=data_vencimento,
         ).order_by("id")
     )
 
+    # O aviso continua por mês: mais de uma fatura no período é sinal para o operador,
+    # ainda que não defina mais qual delas recebe a compra.
+    no_mes = Conta.objects.filter(
+        usuario=usuario,
+        cartao=cartao,
+        eh_fatura_cartao=True,
+        data_prevista__year=ano,
+        data_prevista__month=mes,
+    ).count()
+    if no_mes > 1:
+        logger.warning(
+            "Encontradas %d faturas para o cartão %s em %02d/%d. "
+            "Execute `manage.py corrigir_faturas_duplicadas`.",
+            no_mes, cartao, mes, ano,
+        )
+
     if existentes:
-        if len(existentes) > 1:
-            logger.warning(
-                "Encontradas %d faturas duplicadas para o cartão %s em %02d/%d "
-                "(ids=%s). Execute `manage.py corrigir_faturas_duplicadas`.",
-                len(existentes), cartao, mes, ano, [f.id for f in existentes],
-            )
         # Prioriza uma fatura já liquidada, que carrega o histórico de pagamento
         for fatura in existentes:
             if fatura.transacao_realizada:
@@ -199,15 +207,17 @@ def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
     faturas fantasma no import.
 
     Em cada grupo preserva a fatura liquidada, que carrega a data de pagamento real, ou a
-    mais antiga. As compras individuais não são tocadas: vinculam-se por `data_prevista`,
-    então seguem associadas à fatura preservada.
+    mais antiga. As compras das faturas removidas são **reatribuídas** à mantida: o vínculo
+    é por `data_prevista`, então apagar uma fatura de outro dia do mesmo mês deixaria as
+    compras dela sem fatura nenhuma — órfãs no extrato e fora de qualquer soma.
 
     Args:
         usuario: Restringe a limpeza a um usuário. None varre todos.
 
     Returns:
         list[dict]: Um registro por período duplicado, com `cartao_id`, `usuario_id`,
-            `ano`, `mes`, `mantida` (Conta) e `removidas` (list[Conta]).
+            `ano`, `mes`, `mantida` (Conta), `removidas` (list[Conta]) e
+            `datas_reatribuidas` (list[date]) — as datas cujas compras mudaram de fatura.
     """
     from collections import defaultdict
 
@@ -238,6 +248,10 @@ def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
         )
         removidas = [f for f in lista if f.id != mantida.id]
 
+        datas_orfas = [
+            f.data_prevista for f in removidas if f.data_prevista != mantida.data_prevista
+        ]
+
         relatorio.append({
             "usuario_id": usuario_id,
             "cartao_id": cartao_id,
@@ -245,8 +259,21 @@ def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
             "mes": mes,
             "mantida": mantida,
             "removidas": removidas,
+            "datas_reatribuidas": datas_orfas,
         })
         ids_para_remover.extend(f.id for f in removidas)
+        if datas_orfas and not dry_run:
+            movidas = Conta.objects.filter(
+                usuario_id=usuario_id,
+                cartao_id=cartao_id,
+                eh_fatura_cartao=False,
+                data_prevista__in=datas_orfas,
+            ).update(data_prevista=mantida.data_prevista)
+            if movidas:
+                logger.info(
+                    "Deduplicação: %d compra(s) reatribuída(s) à fatura %s.",
+                    movidas, mantida.id,
+                )
 
     if ids_para_remover and not dry_run:
         with transaction.atomic():
