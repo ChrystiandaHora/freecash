@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useId } from 'react';
-import { ArrowLeft, Loader2, Save, Calendar, TrendingUp, RefreshCw, Archive } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Calendar, TrendingUp, RefreshCw, Archive, Wallet } from 'lucide-react';
 
 import { fetchAtivo, createAtivo, updateAtivo, fetchSubcategoriasAtivos } from '../../services/investimentos';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { useCarteira } from '../../context/CarteiraProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
 const initialFormState = {
@@ -24,7 +25,7 @@ const initialFormState = {
   taxa: '',
   moeda: 'BRL',
   ativo: true,
-  meta_porcentagem: 0,
+  carteira: '',
 };
 
 export default function AtivoForm() {
@@ -33,6 +34,7 @@ export default function AtivoForm() {
   const queryClient = useQueryClient();
   const isEdit = !!id;
 
+  const { carteirasAtivas, carteiraId } = useCarteira();
   const [formData, setFormData] = useState(initialFormState);
   const [showPosicaoInicial, setShowPosicaoInicial] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -68,12 +70,15 @@ export default function AtivoForm() {
         taxa: assetData.taxa || '',
         moeda: assetData.moeda || 'BRL',
         ativo: assetData.ativo ?? true,
-        meta_porcentagem: parseFloat(assetData.meta_porcentagem || 0),
+        carteira: '',
       });
     } else if (!isEdit) {
-      setFormData(initialFormState);
+      setFormData((prev) => ({
+        ...initialFormState,
+        carteira: prev.carteira || (carteiraId ? String(carteiraId) : (carteirasAtivas[0]?.id ? String(carteirasAtivas[0].id) : '')),
+      }));
     }
-  }, [assetData, isEdit]);
+  }, [assetData, isEdit, carteiraId, carteirasAtivas]);
 
   // Compute if selected subcategory is fixed income / alternative
   const selectedSub = subcategorias.find(sc => sc.id === parseInt(formData.subcategoria));
@@ -86,6 +91,8 @@ export default function AtivoForm() {
     mutationFn: (payload) => createAtivo(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
       navigate('/investimentos/ativos');
     },
     onError: (err) => {
@@ -98,6 +105,8 @@ export default function AtivoForm() {
     mutationFn: (payload) => updateAtivo(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
       navigate('/investimentos/ativos');
     },
     onError: (err) => {
@@ -118,6 +127,10 @@ export default function AtivoForm() {
       setErrorMessage('Selecione uma Subclasse para o ativo.');
       return;
     }
+    if (!isEdit && !formData.carteira && carteirasAtivas.length > 0) {
+      setErrorMessage('Selecione uma Carteira para vincular o ativo.');
+      return;
+    }
 
     const payload = {
       ticker: formData.ticker.trim().toUpperCase(),
@@ -130,13 +143,15 @@ export default function AtivoForm() {
       taxa: formData.taxa ? formData.taxa.trim() : null,
       moeda: formData.moeda,
       ativo: formData.ativo,
-      meta_porcentagem: parseFloat(formData.meta_porcentagem || 0),
     };
 
     if (isEdit) {
       payload.id = formData.id;
       updateMutation.mutate(payload);
     } else {
+      if (formData.carteira) {
+        payload.carteira = parseInt(formData.carteira);
+      }
       if (showPosicaoInicial && formData.quantidade_inicial && formData.preco_medio_inicial) {
         payload.quantidade_inicial = parseFloat(formData.quantidade_inicial);
         payload.preco_medio_inicial = parseFloat(formData.preco_medio_inicial);
@@ -253,6 +268,39 @@ export default function AtivoForm() {
                 )}
               </div>
 
+              {/* Input de Seleção de Carteira vinculada (só no cadastro novo) */}
+              {!isEdit && (
+                <div className="space-y-1.5">
+                  <label htmlFor="ativo-carteira-principal" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Wallet className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                    Carteira de Custódia *
+                  </label>
+                  {carteirasAtivas.length > 0 ? (
+                    <Select
+                      id="ativo-carteira-principal"
+                      value={formData.carteira}
+                      onChange={(e) => setFormData({ ...formData, carteira: e.target.value })}
+                      required
+                      className="font-semibold"
+                    >
+                      <option value="">Selecione a carteira...</option>
+                      {carteirasAtivas.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome} {c.instituicao ? `(${c.instituicao})` : ''}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-3 border border-amber-500/20 bg-amber-500/5 text-amber-600 rounded-xl text-xs flex flex-col gap-1.5">
+                      <span className="font-semibold">Nenhuma carteira ativa encontrada!</span>
+                      <a href="/investimentos/carteiras" className="text-primary hover:underline font-bold">
+                        Cadastrar Carteira de Custódia →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label htmlFor="ativo-taxa" className="text-sm font-medium text-foreground">Taxa / Taxa de Adm. (%)</label>
                 <Input
@@ -266,20 +314,6 @@ export default function AtivoForm() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="ativo-meta" className="text-sm font-medium text-foreground">Meta de Alocação (%)</label>
-                <Input
-                  id="ativo-meta"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  placeholder="Ex: 15.0"
-                  value={formData.meta_porcentagem || ''}
-                  onChange={(e) => setFormData({ ...formData, meta_porcentagem: e.target.value })}
-                  className="font-semibold"
-                />
-              </div>
             </div>
 
             {/* Dados Opcionais de Renda Fixa */}
@@ -344,9 +378,9 @@ export default function AtivoForm() {
                 {showPosicaoInicial && (
                   <div id={posicaoInicialId} className="p-4 space-y-4 border-t border-border/60 bg-card">
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Informe suas cotas iniciais para preencher o saldo inicial. Isso registrará automaticamente uma transação de compra inicial no histórico.
+                      Informe suas cotas iniciais para preencher o saldo inicial. Isso registrará automaticamente uma transação de compra inaugural na carteira selecionada acima.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
                         <label htmlFor="ativo-quantidade-inicial" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantidade</label>
                         <Input

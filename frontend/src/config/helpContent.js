@@ -132,48 +132,73 @@ export const helpContent = {
 
   "/investimentos/ativos": {
     title: "Meus Ativos",
-    overview: "Tabela de custódia dos ativos em carteira com quantidades, preços médios e retornos.",
+    overview: "Tabela de custódia dos ativos em carteira com quantidades, preços médios e retornos. Ao filtrar por uma carteira específica, a tabela exibe as cotas e custos relativos àquela custódia.",
     features: [
       "Cálculo de Preço Médio e Valor Total a mercado por ativo.",
-      "Indicador colorido de ganho ou perda de capital (retorno %)."
+      "Indicador colorido de ganho ou perda de capital (retorno %).",
+      "Filtro por Carteira de custódia para visualizar o patrimônio por instituição.",
+      "Atalho de transferência de custódia para portabilidade entre corretoras sem afetar o preço médio fiscal."
     ],
     actions: {
-      "Cadastrar Ativo": "Adicione novos papéis de renda fixa, variável ou cripto ativos à carteira."
+      "Cadastrar Ativo": "Adicione novos papéis de renda fixa, variável ou cripto ativos à carteira.",
+      "Transferir Custódia": "Mova posições de uma corretora para outra sem registrar compra nem venda."
     }
   },
 
   "/investimentos/ativos/:id": {
     title: "Detalhe do Ativo",
-    overview: "Análise individualizada de performance e histórico de transações de um ativo específico.",
+    overview: "Análise individualizada de performance, dados cadastrais consolidados e histórico de transações de um ativo específico.",
     features: [
       "Páginas em abas: Dados Gerais, Desempenho Histórico e Extrato de Operações.",
-      "Histórico de rentabilidade contra o Ibovespa e CDI."
+      "Detalhamento de custódia por corretora e histórico de rentabilidade.",
+      "Atalho direto para portabilidade de custódia entre carteiras."
     ],
     actions: {
-      "Registrar Operação": "Adicione transações de Compra (C), Venda (V) ou recebimento de Provento (D)."
+      "Atualizar Ativo": "Sincroniza as cotações mais recentes do papel.",
+      "Transferir Custódia": "Transfere cotas deste ativo entre carteiras cadastradas."
     }
   },
 
   "/investimentos/balanceamento": {
-    title: "Balanceador Ideal",
-    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas.",
+    title: "Balanceamento de Carteira",
+    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas. As metas somam 100% dentro de cada carteira selecionada no filtro superior.",
     features: [
-      "Sliders interativos para definir o percentual ideal de alocação de cada ativo.",
-      "Cálculo do aporte sugerido para reequilibrar a alocação sem vender ativos."
+      "Sliders interativos para definir o percentual ideal de cada ativo na carteira em foco.",
+      "Cálculo de Aporte Mágico automático priorizando ativos mais distantes da meta ideal.",
+      "Visão de metas de distribuição de patrimônio entre carteiras no consolidado."
     ],
     actions: {
-      "Simular Aporte": "Insira o valor que deseja investir e veja quais ativos comprar."
+      "Ajustar Metas": "Defina o percentual alvo de cada papel dentro da carteira selecionada.",
+      "Aporte Mágico": "Informe quanto deseja investir hoje para receber a distribuição de compras ideal."
     }
   },
 
   "/investimentos/historico": {
-    title: "Histórico da Carteira",
-    overview: "Evolução histórica mensal da carteira de investimentos consolidada.",
+    title: "Histórico de Ordens",
+    overview: "Livro-razão completo de compras, vendas, proventos e transferências de custódia.",
     features: [
-      "Gráfico comparativo de rentabilidade contra indexadores de referência (CDI e Ibovespa)."
+      "Filtro por tipo de lançamento (Compra, Venda, Proventos, Transferência de Saída e Entrada).",
+      "Filtro por carteira de execução da ordem.",
+      "Histórico de portabilidade rastreável de ponta a ponta."
     ],
     actions: {
-      "Filtro de Janela": "Escolha o período histórico para plotagem no gráfico de rentabilidade."
+      "Nova Ordem": "Lance uma operação de compra, venda ou provento.",
+      "Transferir entre Carteiras": "Registre a mudança de custódia de cotas entre duas carteiras."
+    }
+  },
+
+  "/investimentos/carteiras": {
+    title: "Carteiras",
+    overview: "Suas custódias: uma carteira para cada corretora ou banco onde você tem investimentos. O ativo continua único — o que a carteira diz é onde cada posição está guardada, e por isso transferir entre elas não mexe no seu preço médio.",
+    features: [
+      "Cadastro de carteiras com instituição e cor de identificação.",
+      "Marcação de quais carteiras contam como dinheiro disponível no Horizonte de Saldos.",
+      "Arquivamento, que tira a carteira dos filtros sem apagar o histórico de ordens."
+    ],
+    actions: {
+      "Nova Carteira": "Cadastre a corretora ou banco onde você mantém parte dos investimentos.",
+      "Arquivar": "Some dos filtros preservando as ordens já lançadas. É o caminho para uma corretora que você deixou de usar.",
+      "Contar como dinheiro disponível": "Ligue para reserva de emergência e renda fixa de liquidez diária; desligue para posições que você não pretende resgatar."
     }
   },
 

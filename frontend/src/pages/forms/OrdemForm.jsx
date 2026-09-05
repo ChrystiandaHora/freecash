@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
+import { useCarteira } from '../../context/CarteiraProvider';
 
 const formatCurrency = (value) => {
   if (value === undefined || value === null) return 'R$ 0,00';
@@ -22,8 +23,11 @@ export default function OrdemForm() {
   const isEditing = !!id;
 
   const [tab, setTab] = useState('cv');
+  const { carteirasAtivas, carteiras = [], carteiraId } = useCarteira();
+
   const [form, setForm] = useState({
     ativo: '',
+    carteira: '',
     tipo: 'C',
     data: new Date().toISOString().split('T')[0],
     quantidade: '',
@@ -57,6 +61,7 @@ export default function OrdemForm() {
       setTab(transacao.tipo === 'D' ? 'proventos' : 'cv');
       setForm({
         ativo: transacao.ativo ?? '',
+        carteira: transacao.carteira ? String(transacao.carteira) : '',
         tipo: transacao.tipo ?? 'C',
         data: transacao.data ?? '',
         quantidade: transacao.quantidade ?? '',
@@ -66,6 +71,10 @@ export default function OrdemForm() {
       });
     }
   }, [transacao, isEditing]);
+
+  // Derivado, não sincronizado por efeito: sem escolha, vale o filtro em vigor
+  const carteiraEscolhida =
+    form.carteira || String(carteiraId ?? carteirasAtivas[0]?.id ?? '');
 
   const mutation = useMutation({
     mutationFn: async (payload) => {
@@ -103,6 +112,7 @@ export default function OrdemForm() {
     setError('');
 
     if (!form.ativo) { setError('Selecione um ativo.'); return; }
+    if (!carteiraEscolhida) { setError('Selecione a carteira de custódia.'); return; }
     if (!form.data) { setError('Selecione a data da operação.'); return; }
 
     let payload;
@@ -112,6 +122,7 @@ export default function OrdemForm() {
       }
       payload = {
         ativo: parseInt(form.ativo),
+        carteira: parseInt(carteiraEscolhida),
         tipo: 'D',
         data: form.data,
         quantidade: 1,
@@ -124,6 +135,7 @@ export default function OrdemForm() {
       }
       payload = {
         ativo: parseInt(form.ativo),
+        carteira: parseInt(carteiraEscolhida),
         tipo: form.tipo,
         data: form.data,
         quantidade: parseFloat(form.quantidade),
@@ -214,10 +226,42 @@ export default function OrdemForm() {
               )}
             </div>
 
+            {/* Carteira */}
+            {carteirasAtivas.length > 1 && (
+              <div className="space-y-1.5">
+                <label htmlFor="ordem-carteira" className="text-sm font-semibold text-foreground">
+                  Carteira de custódia <span className="text-red-500" aria-hidden="true">*</span>
+                </label>
+                <Select
+                  id="ordem-carteira"
+                  value={form.carteira || (carteiraId ? String(carteiraId) : '')}
+                  onChange={handleChange('carteira')}
+                  required
+                  aria-required="true"
+                  aria-describedby="ordem-carteira-hint"
+                >
+                  <option value="">Selecione a carteira…</option>
+                  {carteiras
+                    .filter((c) => c.ativa || String(c.id) === String(form.carteira || transacao?.carteira))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome} {!c.ativa ? '(arquivada)' : ''}
+                      </option>
+                    ))}
+                </Select>
+                <p id="ordem-carteira-hint" className="text-xs text-muted-foreground">
+                  Onde a ordem foi executada. Para mudar um ativo de corretora, use
+                  Transferir no histórico.
+                </p>
+              </div>
+            )}
+
             {/* Data */}
             <div className="space-y-1.5">
-              <label htmlFor="ordem-data" className="text-sm font-semibold text-foreground">Data da Operação *</label>
-              <Input id="ordem-data" type="date" value={form.data} onChange={handleChange('data')} required />
+              <label htmlFor="ordem-data" className="text-sm font-semibold text-foreground">
+                Data da Operação <span className="text-red-500" aria-hidden="true">*</span>
+              </label>
+              <Input id="ordem-data" type="date" value={form.data} onChange={handleChange('data')} required aria-required="true" />
             </div>
 
             {tab === 'cv' ? (
@@ -226,21 +270,32 @@ export default function OrdemForm() {
                 <div className="space-y-1.5">
                   <span id="tipo-operacao-label" className="text-sm font-semibold text-foreground">Tipo de Operação</span>
                   <div role="radiogroup" aria-labelledby="tipo-operacao-label" className="flex gap-3">
-                    {[{ v: 'C', l: 'Compra', color: 'emerald' }, { v: 'V', l: 'Venda', color: 'rose' }].map(({ v, l, color }) => (
-                      <button
-                        key={v}
-                        type="button"
-                        role="radio"
-                        aria-checked={form.tipo === v}
-                        onClick={() => setForm((f) => ({ ...f, tipo: v }))}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all
-                          ${form.tipo === v
-                            ? `border-${color}-500 bg-${color}-500/10 text-${color}-600 dark:text-${color}-400`
-                            : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'}`}
-                      >
-                        {l}
-                      </button>
-                    ))}
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={form.tipo === 'C'}
+                      onClick={() => setForm((f) => ({ ...f, tipo: 'C' }))}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                        form.tipo === 'C'
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      Compra
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={form.tipo === 'V'}
+                      onClick={() => setForm((f) => ({ ...f, tipo: 'V' }))}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                        form.tipo === 'V'
+                          ? 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      Venda
+                    </button>
                   </div>
                 </div>
 

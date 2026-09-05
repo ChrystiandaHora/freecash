@@ -13,6 +13,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+import { CarteiraProvider } from './context/CarteiraProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
 
@@ -43,6 +44,7 @@ import Metas from './pages/Metas';
 import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
+import AtivosCarteiras from './pages/AtivosCarteiras';
 import MeusAtivos from './pages/MeusAtivos';
 import AtivoDetalhes from './pages/AtivoDetalhes';
 import FerramentasImportar from './pages/FerramentasImportar';
@@ -154,6 +156,7 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <ThemeProvider>
+            <CarteiraProvider>
             <Router>
             <Routes>
               {/* Public Auth Routes */}
@@ -221,6 +224,7 @@ function App() {
                 <Route path="investimentos/ativos/:id" element={<AtivoDetalhes />} />
                 <Route path="investimentos/balanceamento" element={<AtivosBalanceamento />} />
                 <Route path="investimentos/historico" element={<AtivosHistorico />} />
+                <Route path="investimentos/carteiras" element={<AtivosCarteiras />} />
                 <Route path="investimentos/classes" element={<AtivosClasses />} />
 
                 <Route path="importar" element={<FerramentasImportar />} />
@@ -267,6 +271,7 @@ function App() {
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
             </Router>
+            </CarteiraProvider>
           </ThemeProvider>
         </AuthProvider>
       </ToastProvider>

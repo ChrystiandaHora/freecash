@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
   Pencil, 
@@ -22,7 +22,8 @@ import {
   RefreshCw, 
   Gem, 
   Eye, 
-  EyeOff
+  EyeOff,
+  ArrowRightLeft
 } from 'lucide-react';
 
 import { 
@@ -38,6 +39,9 @@ import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
+import SeletorCarteira from '../components/SeletorCarteira';
+import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
+import { useCarteira } from '../context/CarteiraProvider';
 
 // Helper de formatação de moedas
 const formatCurrency = (value) => {
@@ -116,7 +120,22 @@ export default function MeusAtivos() {
       className: 'px-5 py-3.5 text-center',
       cellClassName: 'px-5 py-3.5 text-center',
       render: (_, row) => (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1.5">
+          {carteirasAtivas.length > 1 && parseFloat(row.quantidade || 0) > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setTransferenciaAtivo(row);
+                setTransferenciaAberta(true);
+              }}
+              className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary"
+              title="Transferir Custódia"
+              aria-label={`Transferir custódia de ${row.ticker}`}
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="icon"
@@ -165,12 +184,16 @@ export default function MeusAtivos() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [globalError, setGlobalError] = useState('');
+  const { carteiraId, carteiraSelecionada, carteirasAtivas = [] } = useCarteira();
 
   /* ── Queries ── */
   const { data: ativos = [], isLoading: loadingAtivos, isError: errorAtivos } = useQuery({
-    queryKey: ['ativos'],
-    queryFn: () => fetchAtivos(),
+    // Sob filtro, a API devolve os mesmos campos com os números da carteira em
+    // foco. `keepPreviousData` evita que a tabela pisque a cada troca de filtro.
+    queryKey: ['ativos', carteiraId],
+    queryFn: () => fetchAtivos(carteiraId),
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
   
   const { data: subcategorias = [], isLoading: loadingSubs } = useQuery({
@@ -236,6 +259,9 @@ export default function MeusAtivos() {
   const openEditModal = (ativo) => {
     navigate(`/investimentos/ativos/editar/${ativo.id}`);
   };
+
+  const [transferenciaAberta, setTransferenciaAberta] = useState(false);
+  const [transferenciaAtivo, setTransferenciaAtivo] = useState(null);
 
   const openDeleteModal = (ativo) => {
     setActiveAtivo(ativo);
@@ -314,12 +340,15 @@ export default function MeusAtivos() {
             <Gem className="h-6 w-6 text-primary" />
             Meus Ativos
           </h1>
-          <p className="text-xs text-muted-foreground">
-            Gerencie seu portfólio de ações, renda fixa, fundos e criptoativos.
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {carteiraSelecionada
+              ? `Exibindo apenas ativos custodiados em «${carteiraSelecionada.nome}»`
+              : 'Gerencie seu portfólio consolidado de ações, renda fixa, fundos e criptoativos.'}
           </p>
         </div>
         
         <div className="flex items-center gap-3 self-start sm:self-auto">
+          <SeletorCarteira />
           <Button 
             onClick={() => updateQuotesMutation.mutate()}
             disabled={updateQuotesMutation.isPending}
@@ -387,21 +416,36 @@ export default function MeusAtivos() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Percent className="h-full w-full" />
           </div>
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Metas Configuradas</p>
-          <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            {totalMeta.toFixed(1).replace('.', ',')}%
-          </h3>
-          <div className="mt-1">
-            {Math.abs(totalMeta - 100) > 0.01 ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-500">
-                <AlertCircle className="h-3.5 w-3.5" /> A soma ideal das metas é 100%
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Distribuição ideal alinhada (100%)
-              </span>
-            )}
-          </div>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            {carteiraId ? `Metas (${carteiraSelecionada?.nome || 'Carteira'})` : 'Custódia & Metas'}
+          </p>
+          {carteiraId ? (
+            <>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+                {totalMeta.toFixed(1).replace('.', ',')}%
+              </h3>
+              <div className="mt-1">
+                {Math.abs(totalMeta - 100) > 0.01 ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-500">
+                    <AlertCircle className="h-3.5 w-3.5" /> A soma ideal das metas é 100%
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Distribuição ideal alinhada (100%)
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+                {carteirasAtivas.length} {carteirasAtivas.length === 1 ? 'carteira' : 'carteiras'}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Filtre por carteira para acompanhar e balancear metas
+              </p>
+            </>
+          )}
         </div>
 
       </div>
@@ -449,6 +493,8 @@ export default function MeusAtivos() {
                 className="pl-9 h-10 text-xs rounded-xl"
               />
             </div>
+
+            <SeletorCarteira id="ativos-filtro-carteira" />
 
             <div className="w-full sm:w-56">
               <label htmlFor="ativos-filtro-classe" className="sr-only">Filtrar por classe de ativo</label>
@@ -528,6 +574,23 @@ export default function MeusAtivos() {
           </div>
         </div>
       </Modal>
+
+      {/* MODAL 4: TRANSFERÊNCIA DE CUSTÓDIA */}
+      <TransferenciaCarteiraModal
+        isOpen={transferenciaAberta}
+        onClose={() => {
+          setTransferenciaAberta(false);
+          setTransferenciaAtivo(null);
+        }}
+        ativoInicial={transferenciaAtivo?.id}
+        origemInicial={carteiraId || ''}
+        onSaved={() => {
+          queryClient.invalidateQueries(['ativos']);
+          queryClient.invalidateQueries(['investimentosDashboard']);
+          setSuccessMessage('Transferência de custódia realizada com sucesso!');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        }}
+      />
 
 
 

@@ -93,10 +93,12 @@ describe('getRouteTitle', () => {
 describe('integridade da config', () => {
   const items = navGroups.flatMap((g) => g.items);
 
-  it('tem os 4 grupos e os 21 itens esperados em navGroups, mais 3 directNavLinks', () => {
+  it('tem os 4 grupos e os 22 itens esperados em navGroups, mais 3 directNavLinks', () => {
     // O quarto grupo é Administração, marcado com `adminOnly`.
+    // 22 itens desde que Investimentos ganhou "Carteiras" — o grupo foi a 6 itens,
+    // dentro do teto de 7 por painel registrado no A11Y-DECISIONS.
     expect(navGroups).toHaveLength(4);
-    expect(items).toHaveLength(21);
+    expect(items).toHaveLength(22);
     expect(directNavLinks).toHaveLength(3);
   });
 

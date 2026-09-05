@@ -22,6 +22,7 @@ import {
   Target,
   Activity,
   Gem,
+  Wallet,
   Scale,
   History,
   Layers,
@@ -78,6 +79,7 @@ export const navGroups = [
     items: [
       { name: 'Dashboard', path: '/investimentos', icon: Activity, docTitle: 'Investimentos' },
       { name: 'Meus Ativos', path: '/investimentos/ativos', icon: Gem },
+      { name: 'Carteiras', path: '/investimentos/carteiras', icon: Wallet },
       { name: 'Balanceamento', path: '/investimentos/balanceamento', icon: Scale },
       { name: 'Histórico', path: '/investimentos/historico', icon: History, docTitle: 'Histórico de Ordens' },
       { name: 'Classes', path: '/investimentos/classes', icon: Layers, docTitle: 'Classes de Ativos' },

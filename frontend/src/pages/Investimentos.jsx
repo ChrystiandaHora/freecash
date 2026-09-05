@@ -12,7 +12,7 @@
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
 import {
@@ -22,6 +22,8 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../context/ToastContext';
+import { useCarteira } from '../context/CarteiraProvider';
+import SeletorCarteira from '../components/SeletorCarteira';
 
 
 const formatCurrency = (value) => {
@@ -34,6 +36,7 @@ const formatCurrency = (value) => {
 
 export default function Investimentos() {
   const { addToast } = useToast();
+  const { carteiraId, carteiraSelecionada } = useCarteira();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [patrimonioMonthsFilter, setPatrimonioMonthsFilter] = useState(12);
@@ -46,11 +49,14 @@ export default function Investimentos() {
     isError: isDashError, 
     refetch: refetchDash 
   } = useQuery({
-    queryKey: ['investimentosDashboard'],
+    // A carteira entra na chave, senão trocar de filtro serve o cache da anterior
+    queryKey: ['investimentosDashboard', carteiraId],
     queryFn: async () => {
-      const response = await api.get('/api/investimentos/dashboard/');
+      const params = carteiraId ? { carteira: carteiraId } : {};
+      const response = await api.get('/api/investimentos/dashboard/', { params });
       return response.data;
-    }
+    },
+    placeholderData: keepPreviousData,
   });
 
   const handleRefreshAll = async () => {
@@ -102,6 +108,8 @@ export default function Investimentos() {
     total_rentabilidade_percentual = 0,
     total_dividendos = 0,
     alocacao_categorias = { labels: [], valores: [] },
+    alocacao_carteiras = { labels: [], valores: [] },
+    carteira_filtrada = null,
     rentabilidade_mensal = {},
   } = dashboardData;
 
@@ -189,6 +197,9 @@ export default function Investimentos() {
     chart: {
       type: 'bar',
       height: 320,
+      // `runMaskReveal` do ApexCharts estoura em contêiner estreito; o donut já
+      // desligava a animação, e área e barra ficaram de fora por descuido.
+      animations: { enabled: false },
       toolbar: { show: false },
       fontFamily: 'Outfit, Inter, sans-serif',
       foreColor: isDarkTheme ? '#888888' : '#666666',
@@ -256,6 +267,7 @@ export default function Investimentos() {
   const patrimonioChartOptions = {
     chart: {
       type: 'area',
+      animations: { enabled: false },
       height: 320,
       toolbar: { show: false },
       fontFamily: 'Outfit, Inter, sans-serif',
@@ -298,7 +310,7 @@ export default function Investimentos() {
     },
     tooltip: {
       theme: isDarkTheme ? 'dark' : 'light',
-      custom: ({ series, seriesIndex, dataPointIndex }) => {
+      custom: ({ series, dataPointIndex }) => {
         const patrimonio = series[0]?.[dataPointIndex] ?? 0;
         const investido = series[1]?.[dataPointIndex] ?? 0;
         const delta = patrimonio - investido;
@@ -312,6 +324,57 @@ export default function Investimentos() {
           `<div style="border-top:1px solid rgba(128,128,128,0.2);margin-top:6px;padding-top:6px;color:${deltaColor};"><strong>Ganho/Perda:</strong> ${deltaSign}${fmt(delta)}</div>`,
           '</div>',
         ].join('');
+      },
+    },
+  };
+
+  // Acima de 6 fatias as adjacentes se confundem; o excedente vira "Outras"
+  const MAX_FATIAS_CARTEIRA = 6;
+  const carteirasOrdenadas = (alocacao_carteiras.labels || [])
+    .map((label, idx) => ({ label, valor: (alocacao_carteiras.valores || [])[idx] || 0 }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const carteiraPairs =
+    carteirasOrdenadas.length > MAX_FATIAS_CARTEIRA
+      ? [
+          ...carteirasOrdenadas.slice(0, MAX_FATIAS_CARTEIRA - 1),
+          {
+            label: 'Outras',
+            valor: carteirasOrdenadas
+              .slice(MAX_FATIAS_CARTEIRA - 1)
+              .reduce((acc, item) => acc + item.valor, 0),
+          },
+        ]
+      : carteirasOrdenadas;
+
+  const totalEmCarteiras = carteiraPairs.reduce((acc, item) => acc + item.valor, 0);
+
+  const carteiraItens = carteiraPairs.map((item, idx) => ({
+    ...item,
+    pct: totalEmCarteiras > 0 ? (item.valor / totalEmCarteiras) * 100 : 0,
+    color: donutColors[idx % donutColors.length],
+  }));
+
+  const carteiraDonutSeries = carteiraItens.map((item) => item.valor);
+
+  const carteiraDonutOptions = {
+    ...donutChartOptions,
+    labels: carteiraItens.map((item) => item.label),
+    plotOptions: {
+      ...donutChartOptions.plotOptions,
+      pie: {
+        ...donutChartOptions.plotOptions.pie,
+        donut: {
+          ...donutChartOptions.plotOptions.pie.donut,
+          labels: {
+            ...donutChartOptions.plotOptions.pie.donut.labels,
+            total: {
+              ...donutChartOptions.plotOptions.pie.donut.labels.total,
+              label: 'Custodiado',
+              formatter: () => formatCurrency(totalEmCarteiras),
+            },
+          },
+        },
       },
     },
   };
@@ -342,13 +405,17 @@ export default function Investimentos() {
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Painel de Investimentos
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Gestão de carteiras e árvore ANBIMA
+          {/* `aria-live`: o escopo muda sem que o foco saia do seletor */}
+          <p className="text-muted-foreground mt-1" aria-live="polite">
+            {carteiraSelecionada
+              ? `Carteira ${carteiraSelecionada.nome}`
+              : 'Consolidado de todas as carteiras'}
           </p>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <SeletorCarteira id="investimentos-filtro-carteira" />
           <Button
             variant="outline"
             onClick={handleRefreshAll}
@@ -512,7 +579,7 @@ export default function Investimentos() {
             </div>
             
             <CardContent className="p-0">
-              <div className="h-[320px] w-full">
+              <div className="h-[320px] w-full" aria-hidden="true">
                 {patrimonioSeriesData.length > 0 ? (
                   <Chart
                     key={`patrimonio-area-${isDarkTheme}`}
@@ -531,13 +598,67 @@ export default function Investimentos() {
             </CardContent>
           </Card>
 
+          {/* Alocação por carteira: some abaixo de duas, porque aí não há o que distribuir */}
+          {carteiraPairs.length > 1 && (
+            <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+              <CardHeader className="p-0 mb-6">
+                <CardTitle className="text-base font-bold text-foreground">Onde está custodiado</CardTitle>
+                <CardDescription className="text-xs">
+                  Distribuição do patrimônio entre suas carteiras.
+                  {/* Sempre consolidado: sob filtro discorda dos KPIs acima, então avisa */}
+                  {carteira_filtrada ? (
+                    <span className="mt-1 block font-medium text-foreground">
+                      Consolidado — não segue o filtro de carteira aplicado acima.
+                    </span>
+                  ) : null}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 flex flex-col sm:flex-row items-center gap-6 justify-between flex-1">
+                <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0" aria-hidden="true">
+                  {carteiraDonutSeries.length > 0 ? (
+                    <Chart
+                      options={carteiraDonutOptions}
+                      series={carteiraDonutSeries}
+                      type="donut"
+                      width="100%"
+                      height="100%"
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                      Sem posições em carteira.
+                    </div>
+                  )}
+                </div>
+
+                {/* A legenda carrega a identidade em texto e o valor que a rosca não mostra */}
+                <ul className="flex-1 w-full space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {carteiraItens.map((item) => (
+                    <li key={item.label} className="flex items-center justify-between gap-3 text-xs font-semibold">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          aria-hidden="true"
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-muted-foreground truncate">{item.label}</span>
+                      </div>
+                      <span className="text-foreground shrink-0 pl-2 tabular-nums">
+                        {formatCurrency(item.valor)} · {item.pct.toFixed(1).replace('.', ',')}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Ativos na Carteira (Donut) */}
           <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
             <CardHeader className="p-0 mb-6">
               <CardTitle className="text-base font-bold text-foreground">Ativos na Carteira</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex flex-col sm:flex-row items-center gap-6 justify-between flex-1">
-              <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0">
+              <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0" aria-hidden="true">
                 {donutChartSeries.length > 0 ? (
                   <Chart
                     options={donutChartOptions}
@@ -664,7 +785,7 @@ export default function Investimentos() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[280px] w-full">
+              <div className="h-[280px] w-full" aria-hidden="true">
                 <Chart
                   key={`snowball-${isDarkTheme}`}
                   options={snowballChartOptions}

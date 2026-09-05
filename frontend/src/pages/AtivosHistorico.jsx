@@ -1,7 +1,7 @@
 /** Página do Livro-Razão e Histórico de Ordens da Carteira de Investimentos. */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
   History,
@@ -11,6 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   Gift,
+  ArrowRightLeft,
   CheckCircle2,
   Pencil,
   Trash2
@@ -21,6 +22,9 @@ import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
+import { useCarteira } from '../context/CarteiraProvider';
+import SeletorCarteira from '../components/SeletorCarteira';
+import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 
 const formatCurrency = (value) => {
   if (value === undefined || value === null) return 'R$ 0,00';
@@ -33,12 +37,16 @@ const formatDate = (dateStr) => {
 };
 
 const TIPO_CONFIG = {
-  C: { label: 'Compra',   icon: TrendingUp,   color: 'text-emerald-500',  bg: 'bg-emerald-500/10' },
-  V: { label: 'Venda',    icon: TrendingDown,  color: 'text-rose-500',     bg: 'bg-rose-500/10' },
-  D: { label: 'Provento', icon: Gift,          color: 'text-amber-500',    bg: 'bg-amber-500/10' },
+  C:  { label: 'Compra',       icon: TrendingUp,     color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  V:  { label: 'Venda',        icon: TrendingDown,   color: 'text-rose-500',    bg: 'bg-rose-500/10' },
+  D:  { label: 'Provento',     icon: Gift,           color: 'text-amber-500',   bg: 'bg-amber-500/10' },
+  // As duas pernas da portabilidade. Ficam visíveis no extrato porque explicam
+  // por que a posição mudou de lugar sem que nada tenha sido comprado ou vendido.
+  TS: { label: 'Transf. saída',   icon: ArrowRightLeft, color: 'text-sky-500', bg: 'bg-sky-500/10' },
+  TE: { label: 'Transf. entrada', icon: ArrowRightLeft, color: 'text-sky-500', bg: 'bg-sky-500/10' },
 };
 
-function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
+function DeleteConfirmModal({ label, isTransferencia, onConfirm, onClose, isPending }) {
   return (
     <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
       <div className="flex flex-col items-center text-center gap-4">
@@ -46,7 +54,14 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
           <Trash2 className="h-6 w-6 text-destructive" aria-hidden="true" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Tem certeza que deseja excluir a ordem de <span className="font-semibold text-foreground">{label}</span>? Esta ação não pode ser desfeita.
+          Tem certeza que deseja excluir a ordem de <span className="font-semibold text-foreground">{label}</span>?
+          {isTransferencia ? (
+            <span className="text-xs text-amber-500 font-semibold block mt-2">
+              Esta é uma transferência. A exclusão removerá tanto a saída quanto a entrada correspondente, desfazendo a transferência por completo.
+            </span>
+          ) : (
+            <span className="block mt-1">Esta ação não pode ser desfeita.</span>
+          )}
         </p>
         <div className="flex gap-3 w-full">
           <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl h-10 text-xs">Cancelar</Button>
@@ -67,6 +82,8 @@ export default function AtivosHistorico() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [filteredTransacoes, setFilteredTransacoes] = useState(null);
+  const [transferenciaAberta, setTransferenciaAberta] = useState(false);
+  const { carteiraId, carteiraSelecionada, carteirasAtivas } = useCarteira();
 
   const handleEdit = (transacao) => {
     navigate(`/investimentos/historico/editar/${transacao.id}`);
@@ -142,6 +159,18 @@ export default function AtivosHistorico() {
       ),
     },
     {
+      key: 'carteira',
+      header: 'Carteira',
+      filterType: 'text',
+      filterPlaceholder: 'Corretora...',
+      filterAccessor: (row) => row.carteira_detalhe?.nome ?? '',
+      render: (_, row) => (
+        <span className="text-xs font-medium text-muted-foreground">
+          {row.carteira_detalhe?.nome ?? '—'}
+        </span>
+      ),
+    },
+    {
       key: 'quantidade',
       header: 'Qtd',
       className: 'text-left',
@@ -182,30 +211,43 @@ export default function AtivosHistorico() {
       className: 'w-[100px] text-center',
       cellClassName: 'text-center',
       sortable: false,
-      render: (_, row) => (
-        <div className="flex items-center justify-center gap-1.5">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => handleEdit(row)}
-            className="h-8 w-8 rounded-lg"
-            title="Editar"
-            aria-label="Editar ordem"
-          >
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" aria-hidden="true" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setDeletingTransacao(row)}
-            className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:border-destructive/30 group"
-            title="Excluir"
-            aria-label="Excluir ordem"
-          >
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" aria-hidden="true" />
-          </Button>
-        </div>
-      ),
+      render: (_, row) => {
+        const isTransf = row.tipo === 'TS' || row.tipo === 'TE' || Boolean(row.grupo_transferencia);
+        return (
+          <div className="flex items-center justify-center gap-1.5">
+            {isTransf ? (
+              <span
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border/40 opacity-40 cursor-not-allowed"
+                title="Transferências não podem ser editadas diretamente — exclua e refaça a transferência."
+                aria-label="Edição desabilitada para transferências"
+              >
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              </span>
+            ) : (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleEdit(row)}
+                className="h-8 w-8 rounded-lg"
+                title="Editar"
+                aria-label="Editar ordem"
+              >
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" aria-hidden="true" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setDeletingTransacao(row)}
+              className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:border-destructive/30 group"
+              title="Excluir"
+              aria-label="Excluir ordem"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -216,11 +258,13 @@ export default function AtivosHistorico() {
     isFetching: isFetchingT,
     refetch: refetchT,
   } = useQuery({
-    queryKey: ['transacoesInvestimento'],
+    queryKey: ['transacoesInvestimento', carteiraId],
     queryFn: async () => {
-      const res = await api.get('/api/investimentos/transacoes/');
+      const params = carteiraId ? { carteira: carteiraId } : {};
+      const res = await api.get('/api/investimentos/transacoes/', { params });
       return res.data;
     },
+    placeholderData: keepPreviousData,
   });
 
   const isLoading = isLoadingT;
@@ -258,11 +302,24 @@ export default function AtivosHistorico() {
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Histórico de Ordens
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Livro-razão de compras, vendas e proventos da carteira de ativos
+          <p className="text-muted-foreground mt-1" aria-live="polite">
+            {carteiraSelecionada
+              ? `Ordens da carteira ${carteiraSelecionada.nome}`
+              : 'Livro-razão de compras, vendas, proventos e transferências'}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          <SeletorCarteira id="historico-filtro-carteira" />
+          {carteirasAtivas.length > 1 && (
+            <Button
+              variant="outline"
+              onClick={() => setTransferenciaAberta(true)}
+              className="h-9 px-4 rounded-xl text-xs font-semibold flex items-center gap-1.5"
+            >
+              <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
+              Transferir
+            </Button>
+          )}
           <Button
             onClick={() => navigate('/investimentos/historico/novo')}
             className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground border-0 flex items-center gap-1.5"
@@ -337,10 +394,17 @@ export default function AtivosHistorico() {
 
 
 
+      <TransferenciaCarteiraModal
+        isOpen={transferenciaAberta}
+        onClose={() => setTransferenciaAberta(false)}
+        onSaved={() => addToast('Transferência registrada. O preço médio não mudou.', 'success')}
+      />
+
       {/* ── Delete Confirmation ── */}
       {deletingTransacao && (
         <DeleteConfirmModal
           label={getDeleteLabel(deletingTransacao)}
+          isTransferencia={Boolean(deletingTransacao.grupo_transferencia || deletingTransacao.tipo === 'TS' || deletingTransacao.tipo === 'TE')}
           onConfirm={() => deleteMutation.mutate(deletingTransacao.id)}
           onClose={() => setDeletingTransacao(null)}
           isPending={deleteMutation.isPending}

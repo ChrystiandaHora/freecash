@@ -6,7 +6,7 @@
  * as posições mais deficitárias sem necessidade de realizar vendas.
  */
 import { useState, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
   Scale,
@@ -26,6 +26,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { useToast } from '../context/ToastContext';
+import { useCarteira } from '../context/CarteiraProvider';
+import SeletorCarteira from '../components/SeletorCarteira';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatCurrency = (value) => {
@@ -105,6 +107,7 @@ function MetaSlider({ id, label, value, onChange, disabled }) {
 export default function AtivosBalanceamento() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { carteiraId } = useCarteira();
 
   // Metas locais: { [id]: porcentagem }
   const [editingMetas, setEditingMetas] = useState({});
@@ -134,11 +137,14 @@ export default function AtivosBalanceamento() {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ['investimentosBalanceamento'],
+    // Metas por ativo somam 100% dentro de UMA carteira; por isso o plano é sempre de uma só
+    queryKey: ['investimentosBalanceamento', carteiraId],
     queryFn: async () => {
-      const res = await api.get('/api/investimentos/balanceamento/');
+      const params = carteiraId ? { carteira: carteiraId } : {};
+      const res = await api.get('/api/investimentos/balanceamento/', { params });
       return res.data;
     },
+    placeholderData: keepPreviousData,
   });
 
   const handleAtualizar = async () => {
@@ -150,10 +156,58 @@ export default function AtivosBalanceamento() {
     }
   };
 
+  /* ── Metas por carteira ── */
+  const [editandoCarteiras, setEditandoCarteiras] = useState(false);
+  const [metasCarteiras, setMetasCarteiras] = useState({});
+  const [erroCarteiras, setErroCarteiras] = useState('');
+
+  const salvarMetasCarteirasMutation = useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.post('/api/investimentos/balanceamento/', { carteiras: payload });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
+      queryClient.invalidateQueries({ queryKey: ['carteiras'] });
+      setEditandoCarteiras(false);
+      setMetasCarteiras({});
+      setErroCarteiras('');
+      addToast('Metas por carteira salvas.', 'success');
+    },
+    onError: () => setErroCarteiras('Não foi possível salvar as metas por carteira.'),
+  });
+
+  const iniciarEdicaoCarteiras = () => {
+    const inicial = {};
+    (balanceData?.carteiras ?? []).forEach((c) => {
+      inicial[c.id] = Number(c.meta_porcentagem) || 0;
+    });
+    setMetasCarteiras(inicial);
+    setEditandoCarteiras(true);
+    setErroCarteiras('');
+  };
+
+  const salvarMetasCarteiras = () => {
+    const total = Object.values(metasCarteiras).reduce((a, b) => a + b, 0);
+    if (total > 0 && Math.abs(total - 100) > 0.01) {
+      setErroCarteiras(
+        `A soma das metas entre carteiras deve ser 100%. Atual: ${total.toFixed(1).replace('.', ',')}%`
+      );
+      return;
+    }
+    salvarMetasCarteirasMutation.mutate(
+      Object.entries(metasCarteiras).map(([id, meta]) => ({ id: parseInt(id), meta }))
+    );
+  };
+
   /* ── Mutation ── */
   const saveMetasMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await api.post('/api/investimentos/balanceamento/', { metas: payload });
+      const res = await api.post(
+        '/api/investimentos/balanceamento/',
+        { metas: payload },
+        { params: carteiraId ? { carteira: carteiraId } : {} }
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -185,14 +239,16 @@ export default function AtivosBalanceamento() {
       setMetaError(`A soma das metas deve ser 100%. Atual: ${total.toFixed(1).replace('.', ',')}%`);
       return;
     }
-    const payload = Object.entries(editingMetas).map(([id, meta]) => ({ id: parseInt(id), meta }));
+    // `ativo` explícito: a meta é gravada na posição daquele ativo na carteira em foco.
+    const payload = Object.entries(editingMetas).map(([id, meta]) => ({ ativo: parseInt(id), meta }));
     saveMetasMutation.mutate(payload);
   };
 
   /* ── Computed: "Aporte Mágico" ── */
   const aporteNum = parseFloat(aporteValue.replace(',', '.')) || 0;
   const totalPatrimonio = balanceData?.total_patrimonio ?? 0;
-  const allAtivos = (balanceData?.classes ?? []).flatMap((c) => c.ativos);
+  const classes = balanceData?.classes ?? [];
+  const allAtivos = classes.flatMap((c) => c.ativos);
 
   // Initialize simulated state for greedy allocation
   const allocationState = allAtivos.map((at) => {
@@ -324,11 +380,16 @@ export default function AtivosBalanceamento() {
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Balanceamento de Ativos
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Configure metas percentuais e calcule o aporte ideal para reequilibrar sua carteira
+          <p className="text-muted-foreground mt-1" aria-live="polite">
+            {balanceData?.carteira
+              ? `Metas da carteira ${balanceData.carteira.nome} — somam 100% dentro dela`
+              : 'Configure metas percentuais e calcule o aporte ideal'}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          <div className={isEditing ? 'opacity-50 pointer-events-none' : ''}>
+            <SeletorCarteira id="balanceamento-filtro-carteira" />
+          </div>
           {isEditing ? (
             <>
               <Button
@@ -351,6 +412,8 @@ export default function AtivosBalanceamento() {
           ) : (
             <Button
               onClick={handleStartEditing}
+              disabled={!balanceData?.carteira || classes.length === 0}
+              title={!balanceData?.carteira ? 'Selecione uma carteira para definir metas' : undefined}
               className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground border-0 flex items-center gap-1.5"
             >
               <Sliders className="h-3.5 w-3.5" />
@@ -370,18 +433,188 @@ export default function AtivosBalanceamento() {
         </div>
       </div>
 
-      {/* ── Aporte Mágico Calculator ── */}
-      <Card className="border border-primary/20 bg-card shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-            <Coins className="h-4 w-4 text-amber-500" />
-            Calculadora de Aporte Mágico
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Informe quanto deseja aportar e veja a distribuição automática baseada nos déficits da carteira
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      {/* ── Empty States: Consolidado ou Carteira sem Ativos ── */}
+      {!balanceData?.carteira ? (
+        <div className="space-y-6">
+          <Card className="border border-border/40 bg-card shadow-sm p-8 text-center">
+            <div className="max-w-lg mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
+                <Sliders className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-foreground">
+                  Selecione uma carteira para balancear
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                  As metas de alocação de ativos são calculadas por carteira de custódia e somam 100% dentro de cada corretora.
+                  Use o seletor no topo da página para escolher a carteira que deseja calibrar e calcular o Aporte Mágico.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Visão de Metas por Carteira */}
+          {balanceData?.carteiras?.length > 0 && (
+            <Card className="border border-border/40 bg-card shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" aria-hidden="true" />
+                    Metas de Distribuição entre Carteiras
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Proporção do patrimônio total alocada em cada instituição. Estas metas
+                    somam 100% <strong>entre</strong> as carteiras — as da tabela acima somam
+                    100% <strong>dentro</strong> da carteira em foco.
+                  </CardDescription>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {editandoCarteiras ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => { setEditandoCarteiras(false); setErroCarteiras(''); }}
+                        disabled={salvarMetasCarteirasMutation.isPending}
+                        className="h-8 rounded-xl px-3 text-xs"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={salvarMetasCarteiras}
+                        disabled={salvarMetasCarteirasMutation.isPending}
+                        className="h-8 rounded-xl px-3 text-xs"
+                      >
+                        Salvar metas
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={iniciarEdicaoCarteiras}
+                      className="h-8 rounded-xl px-3 text-xs"
+                    >
+                      Editar metas
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="px-0">
+                {erroCarteiras && (
+                  <p role="alert" className="px-5 pb-3 text-xs text-red-500">{erroCarteiras}</p>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-border/40 text-muted-foreground font-semibold bg-muted/40">
+                        <th scope="col" className="py-3 px-5">Carteira</th>
+                        <th scope="col" className="py-3 px-5 text-right">Patrimônio Atual</th>
+                        <th scope="col" className="py-3 px-5 text-right">Participação</th>
+                        <th scope="col" className="py-3 px-5 text-right">Meta Alvo</th>
+                        <th scope="col" className="py-3 px-5 text-right">Valor Ideal</th>
+                        <th scope="col" className="py-3 px-5 text-right">Falta Aportar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20">
+                      {balanceData.carteiras.map((c) => {
+                        // `diferenca` e `valor_ideal` vêm do backend; recalcular criaria segunda fonte
+                        const falta = Number(c.diferenca) || 0;
+                        return (
+                          <tr key={c.id} className="hover:bg-muted/30">
+                            <td className="py-3 px-5 font-bold text-foreground">
+                              {c.nome} {c.instituicao && <span className="text-muted-foreground font-normal">({c.instituicao})</span>}
+                            </td>
+                            <td className="py-3 px-5 text-right font-semibold text-foreground">
+                              {formatCurrency(c.valor_atual)}
+                            </td>
+                            <td className="py-3 px-5 text-right font-semibold text-muted-foreground">
+                              {formatPct(c.perc_atual)}
+                            </td>
+                            <td className="py-3 px-5 text-right font-extrabold text-primary">
+                              {editandoCarteiras ? (
+                                <>
+                                  <label htmlFor={`meta-carteira-${c.id}`} className="sr-only">
+                                    Meta da carteira {c.nome}, em porcentagem
+                                  </label>
+                                  <Input
+                                    id={`meta-carteira-${c.id}`}
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="100"
+                                    value={metasCarteiras[c.id] ?? 0}
+                                    onChange={(e) =>
+                                      setMetasCarteiras((prev) => ({
+                                        ...prev,
+                                        [c.id]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                                      }))
+                                    }
+                                    className="h-8 w-20 text-right text-xs"
+                                  />
+                                </>
+                              ) : (
+                                formatPct(c.meta_porcentagem)
+                              )}
+                            </td>
+                            <td className="py-3 px-5 text-right font-semibold text-muted-foreground">
+                              {formatCurrency(c.valor_ideal)}
+                            </td>
+                            {/* O sinal não é comunicado só por cor: o texto traz o
+                                verbo, e o valor vem com o sinal explícito. */}
+                            <td className={`py-3 px-5 text-right font-semibold ${falta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                              {Math.abs(falta) < 0.01
+                                ? '—'
+                                : falta > 0
+                                  ? `aportar ${formatCurrency(falta)}`
+                                  : `acima em ${formatCurrency(-falta)}`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : classes.length === 0 ? (
+        <Card className="border border-border/40 bg-card shadow-sm p-8 text-center">
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500">
+              <AlertCircle className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">
+                Nenhum ativo custodiado em «{balanceData.carteira.nome}»
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                Esta carteira ainda não possui posições ativas. Lance ordens no Histórico ou cadastre um ativo para começar a balancear.
+              </p>
+            </div>
+            <div className="pt-2 flex justify-center gap-3">
+              <a
+                href="/investimentos/historico"
+                className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground text-xs font-semibold px-4 h-9 hover:bg-primary/90 transition-colors"
+              >
+                Lançar Ordem de Compra
+              </a>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <>
+          {/* ── Aporte Mágico Calculator ── */}
+          <Card className="border border-primary/20 bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                <Coins className="h-4 w-4 text-amber-500" />
+                Calculadora de Aporte Mágico
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Informe quanto deseja aportar e veja a distribuição automática baseada nos déficits da carteira
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
           <div className="flex items-center gap-4 flex-col sm:flex-row">
             <div className="flex-1">
               <label htmlFor="aporte-valor" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
@@ -645,8 +878,8 @@ export default function AtivosBalanceamento() {
           </CardContent>
         </Card>
       ))}
-
-
+      </>
+      )}
 
     </div>
   );
