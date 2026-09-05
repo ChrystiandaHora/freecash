@@ -70,6 +70,23 @@ class ExclusaoDeUsuarioTests(TestCase):
             valor_alvo=Decimal("10000.00"), valor_acumulado=Decimal("0.00"),
         )
 
+        # Investimentos no cenário porque a FK da custódia já quebrou a exclusão de conta (LGPD)
+        from investimento.models import Ativo, Carteira, Transacao
+
+        ativo = Ativo.objects.create(
+            usuario=self.user, ticker="PETR4", nome="Petrobras"
+        )
+        Transacao.objects.create(
+            usuario=self.user,
+            ativo=ativo,
+            carteira=Carteira.padrao_de(self.user),
+            tipo=Transacao.TIPO_COMPRA,
+            data=date(2026, 4, 10),
+            quantidade=Decimal("100"),
+            preco_unitario=Decimal("30.00"),
+            valor_total=Decimal("3000.00"),
+        )
+
     def test_usuario_com_dados_pode_ser_excluido(self):
         """O caso que falhava: cascade com signals de post_delete ativos."""
         pk = self.user.pk
@@ -139,3 +156,49 @@ class ExclusaoDeUsuarioTests(TestCase):
         self.assertGreaterEqual(config.atualizada_em, antes)
         # E a configuração continua existindo: só o usuário inteiro a leva embora.
         self.assertTrue(ConfigUsuario.objects.filter(usuario=self.user).exists())
+
+
+class ExclusaoComInvestimentosTests(TestCase):
+    """O PROTECT da custódia não pode impedir o usuário de apagar a própria conta."""
+
+    def test_usuario_com_ordens_de_investimento_pode_ser_excluido(self):
+        """Sem o gancho de limpeza, isto estoura ProtectedError."""
+        from investimento.models import Ativo, Carteira, Transacao
+
+        usuario = User.objects.create_user(
+            username="investidor-lgpd", password="senha-bem-comprida-123"
+        )
+        ativo = Ativo.objects.create(usuario=usuario, ticker="VALE3", nome="Vale")
+        Transacao.objects.create(
+            usuario=usuario,
+            ativo=ativo,
+            carteira=Carteira.padrao_de(usuario),
+            tipo=Transacao.TIPO_COMPRA,
+            data=date(2026, 4, 10),
+            quantidade=Decimal("10"),
+            preco_unitario=Decimal("60.00"),
+            valor_total=Decimal("600.00"),
+        )
+        pk = usuario.pk
+
+        usuario.delete()
+
+        self.assertFalse(User.objects.filter(pk=pk).exists())
+        self.assertFalse(Carteira.objects.filter(usuario_id=pk).exists())
+        self.assertFalse(Transacao.objects.filter(usuario_id=pk).exists())
+
+    def test_exclusao_em_lote_com_investimentos_tambem_funciona(self):
+        """`filter().delete()` é outro caminho que o gancho por chamador não cobriria."""
+        from investimento.models import Carteira
+
+        User.objects.create_user(
+            username="lote-a", password="senha-bem-comprida-123"
+        )
+        User.objects.create_user(
+            username="lote-b", password="senha-bem-comprida-123"
+        )
+
+        User.objects.filter(username__startswith="lote-").delete()
+
+        self.assertFalse(User.objects.filter(username__startswith="lote-").exists())
+        self.assertFalse(Carteira.objects.filter(usuario__username__startswith="lote-").exists())

@@ -110,12 +110,97 @@ class SubcategoriaAtivo(AuditoriaModel):
         return f"{self.categoria.classe.nome} > {self.categoria.nome} > {self.nome}"
 
 
+class Carteira(AuditoriaModel):
+    """Uma custódia do usuário — tipicamente a conta numa corretora ou banco.
+
+    A carteira é a **custódia**, não a definição do papel: ela fica na `Transacao`,
+    e não no `Ativo`. Pendurá-la no ativo duplicaria o mesmo papel por corretora,
+    e com ele a série de `Cotacao` (duas chamadas ao TradingView pelo mesmo ticker)
+    e o preço médio — que no Brasil é apurado por CPF, não por instituição. Aqui, o
+    ativo continua único e a posição por carteira é derivada em `PosicaoCarteira`.
+
+    Atributos:
+        considerar_no_saldo: Se o valor custodiado aqui conta como dinheiro
+            disponível na projeção do Horizonte de Saldos. Uma reserva de
+            emergência conta; uma posição em ações, provavelmente não.
+        meta_porcentagem: Peso alvo desta carteira no patrimônio total. A meta por
+            ativo mora em `PosicaoCarteira` e soma 100% *dentro* de cada carteira.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="carteiras",
+    )
+    nome = models.CharField(max_length=80)
+    instituicao = models.CharField(
+        max_length=80,
+        blank=True,
+        verbose_name="Instituição",
+        help_text="Corretora ou banco onde os ativos estão custodiados",
+    )
+    cor = models.CharField(max_length=7, blank=True, help_text="Cor em hexadecimal")
+
+    meta_porcentagem = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Meta (%)",
+        help_text="Porcentagem alvo desta carteira no patrimônio total",
+    )
+    considerar_no_saldo = models.BooleanField(
+        default=True,
+        verbose_name="Considerar no saldo",
+        help_text="Somar o valor desta carteira ao saldo projetado no Horizonte",
+    )
+    ativa = models.BooleanField(default=True)
+    ordem = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ("usuario", "nome")
+        ordering = ["ordem", "nome"]
+        verbose_name = "Carteira"
+        verbose_name_plural = "Carteiras"
+
+    NOME_PADRAO = "Carteira Padrão"
+
+    @classmethod
+    def padrao_de(cls, usuario):
+        """Devolve a custódia default do usuário, criando-a se ainda não existir.
+
+        Toda transação precisa de carteira, então este é o ponto único que responde
+        "e quando o usuário não escolheu nenhuma?" — usado pelo cadastro de ativo, e
+        pela restauração de backups anteriores às carteiras.
+
+        Returns:
+            Carteira: A primeira carteira do usuário, ou uma Carteira Padrão nova.
+        """
+        carteira = cls.objects.filter(usuario=usuario).order_by("ordem", "id").first()
+        if carteira:
+            return carteira
+        return cls.objects.create(
+            usuario=usuario, nome=cls.NOME_PADRAO, considerar_no_saldo=True
+        )
+
+    def __str__(self):
+        """Retorna o nome da carteira, com a instituição quando houver.
+
+        Returns:
+            str: Identificação da custódia.
+        """
+        if self.instituicao:
+            return f"{self.nome} ({self.instituicao})"
+        return self.nome
+
+
 class Ativo(AuditoriaModel):
     """Representa um ativo financeiro específico de Renda Fixa ou Renda Variável.
 
-    Controla metas percentuais de balanceamento de carteira B3, além de caches
-    calculados de quantidade e preço médio acumulados. Atributos exclusivos de
-    Renda Fixa (emissor, indexador, taxa, vencimento) ficam em `DetalheRendaFixa`.
+    Guarda caches calculados de quantidade e preço médio **consolidados** — a soma
+    de todas as carteiras, que é como o preço médio é apurado fiscalmente. A posição
+    e a meta de balanceamento por carteira ficam em `PosicaoCarteira`. Atributos
+    exclusivos de Renda Fixa (emissor, indexador, taxa, vencimento) ficam em
+    `DetalheRendaFixa`.
 
     Atributos:
         preco_medio: Preço médio de aquisição por cota/título.
@@ -147,15 +232,8 @@ class Ativo(AuditoriaModel):
 
     moeda = models.CharField(max_length=10, default="BRL")
     ativo = models.BooleanField(default=True)
-    meta_porcentagem = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        verbose_name="Meta (%)",
-        help_text="Porcentagem alvo deste ativo na carteira",
-    )
 
-    # Campos calculados / Cache
+    # Campos calculados / Cache (consolidado de todas as carteiras)
     quantidade = models.DecimalField(max_digits=19, decimal_places=8, default=0)
     preco_medio = models.DecimalField(max_digits=19, decimal_places=4, default=0)
 
@@ -315,23 +393,37 @@ class Cotacao(AuditoriaModel):
 
 
 class Transacao(AuditoriaModel):
-    """Representa uma ordem executada de Compra, Venda ou recebimento de Provento.
+    """Representa uma ordem executada de Compra, Venda, Provento ou Transferência.
+
+    A transferência entre carteiras existe como tipo próprio, em duas pernas ligadas
+    por `grupo_transferencia`, porque registrá-la como venda + compra falsearia o
+    preço médio, a rentabilidade e o histórico de proventos: mudar de corretora não
+    é realizar lucro.
 
     Atributos:
         usuario: O investidor proprietário da ordem.
-        tipo: Tipo da operação ('C' para Compra, 'V' para Venda, 'D' para Proventos/Dividendos).
+        tipo: Tipo da operação ('C' Compra, 'V' Venda, 'D' Provento,
+            'TS'/'TE' saída e entrada de transferência entre carteiras).
+        carteira: A custódia em que a ordem foi executada.
         data: Data física de execução da ordem.
         preco_unitario: Preço pago ou recebido por cota/título.
     """
     TIPO_COMPRA = "C"
     TIPO_VENDA = "V"
     TIPO_DIVIDENDO = "D"  # Dividendo, JCP, Rendimento
+    TIPO_TRANSF_SAIDA = "TS"
+    TIPO_TRANSF_ENTRADA = "TE"
 
     TIPO_CHOICES = (
         (TIPO_COMPRA, "Compra"),
         (TIPO_VENDA, "Venda"),
         (TIPO_DIVIDENDO, "Provento (Dividendo/JCP)"),
+        (TIPO_TRANSF_SAIDA, "Transferência (saída)"),
+        (TIPO_TRANSF_ENTRADA, "Transferência (entrada)"),
     )
+
+    # Tipos que movem custódia sem alterar a posição consolidada do usuário.
+    TIPOS_TRANSFERENCIA = (TIPO_TRANSF_SAIDA, TIPO_TRANSF_ENTRADA)
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -343,8 +435,19 @@ class Transacao(AuditoriaModel):
         on_delete=models.CASCADE,
         related_name="transacoes",
     )
+    # CASCADE, não PROTECT: a guarda é de negócio e vive em `CarteiraViewSet.destroy`.
+    # No schema, o PROTECT quebrava a exclusão de conta (ver docs/carteiras.md).
+    carteira = models.ForeignKey(
+        Carteira,
+        on_delete=models.CASCADE,
+        related_name="transacoes",
+    )
 
-    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES)
+    # As duas pernas de uma transferência compartilham este identificador, para que
+    # apagar uma apague a outra — meia transferência inventaria ou sumiria com cotas.
+    grupo_transferencia = models.UUIDField(null=True, blank=True, db_index=True)
+
+    tipo = models.CharField(max_length=2, choices=TIPO_CHOICES)
     data = models.DateField()
 
     # Quantidade negociada (positivo para compra, negativo para venda interna, mas aqui armazenamos absoluto e o tipo define)
@@ -361,6 +464,11 @@ class Transacao(AuditoriaModel):
 
     class Meta:
         ordering = ["-data", "-criada_em"]
+        indexes = [
+            models.Index(
+                fields=["usuario", "carteira"], name="idx_transacao_usuario_carteira"
+            ),
+        ]
 
     def __str__(self):
         """Retorna uma string com o tipo, ticker e a data de negociação.
@@ -371,20 +479,115 @@ class Transacao(AuditoriaModel):
         return f"{self.get_tipo_display()} {self.ativo.ticker} - {self.data}"
 
 
+class PosicaoCarteira(AuditoriaModel):
+    """Posição de um ativo dentro de uma carteira, e a meta de alocação nela.
+
+    Os campos de quantidade e custo são **cache**, recalculados a partir das
+    transações — o mesmo padrão de `Ativo.quantidade`/`preco_medio`, replicado por
+    carteira. `meta_porcentagem`, ao contrário, é intenção declarada pelo usuário.
+
+    As duas coisas moram na mesma linha, e por isso a linha **nunca é apagada**: se
+    zerar a posição a removesse, a meta configurada sumiria em silêncio junto. O
+    recálculo escreve apenas os campos de cache, com `update_fields`.
+
+    Atributos:
+        custo_total: Custo de aquisição remanescente nesta custódia.
+        meta_porcentagem: Alvo deste ativo *dentro* desta carteira; soma 100% por carteira.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="posicoes_carteira",
+    )
+    carteira = models.ForeignKey(
+        Carteira,
+        on_delete=models.CASCADE,
+        related_name="posicoes",
+    )
+    ativo = models.ForeignKey(
+        Ativo,
+        on_delete=models.CASCADE,
+        related_name="posicoes",
+    )
+
+    # Cache recalculado por `recalcular_posicoes_do_ativo`
+    quantidade = models.DecimalField(max_digits=19, decimal_places=8, default=0)
+    custo_total = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+    preco_medio = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
+    # Intenção do usuário — nunca tocada pelo recálculo
+    meta_porcentagem = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Meta (%)",
+        help_text="Porcentagem alvo deste ativo dentro desta carteira",
+    )
+
+    class Meta:
+        unique_together = ("carteira", "ativo")
+        ordering = ["carteira__ordem", "carteira__nome", "ativo__ticker"]
+        verbose_name = "Posição em Carteira"
+        verbose_name_plural = "Posições em Carteira"
+
+    @property
+    def valor_investido(self) -> Decimal:
+        """Retorna o custo de aquisição da posição nesta carteira.
+
+        Returns:
+            Decimal: Custo remanescente em custódia.
+        """
+        return self.quantidade * self.preco_medio
+
+    @property
+    def valor_total_atual(self) -> Decimal:
+        """Calcula o valor de mercado da posição nesta carteira.
+
+        Usa a cotação do ativo, que é única por ticker — a carteira não muda o preço
+        de mercado do papel, só onde ele está guardado.
+
+        Returns:
+            Decimal: Valor a mercado, caindo para o custo quando não há cotação.
+        """
+        cotacao = self.ativo.cotacao_atual
+        if cotacao is not None:
+            return self.quantidade * cotacao
+        return self.valor_investido
+
+    def __str__(self):
+        """Retorna o ativo, a carteira e a quantidade custodiada.
+
+        Returns:
+            str: Resumo textual da posição.
+        """
+        return f"{self.ativo.ticker} em {self.carteira.nome} ({self.quantidade})"
+
+
 class CarteiraHistorico(AuditoriaModel):
-    """Snapshot histórico diário consolidado da carteira do investidor.
+    """Snapshot histórico diário do patrimônio, por carteira.
 
     Salva agregados de patrimônio a mercado, total de ordens e proventos,
     alimentando de forma instantânea gráficos e séries evolutivas anuais do frontend.
 
+    O snapshot é **sempre de uma carteira**; o consolidado é agregação SQL sobre estas
+    linhas, e não uma linha com `carteira` nulo. Uma linha "consolidada" seria uma
+    segunda fonte de verdade para o mesmo número — e, como o Postgres trata NULLs como
+    distintos entre si, a `unique_together` não impediria duplicá-la.
+
     Atributos:
-        rentabilidade: Lucro/Prejuízo total consolidado na data.
+        rentabilidade: Lucro/Prejuízo consolidado da carteira na data.
     """
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="carteira_historico",
+    )
+    carteira = models.ForeignKey(
+        Carteira,
+        on_delete=models.CASCADE,
+        related_name="historico",
     )
     data = models.DateField()
 
@@ -400,12 +603,12 @@ class CarteiraHistorico(AuditoriaModel):
 
     class Meta:
         ordering = ["-data", "-criada_em"]
-        unique_together = ("usuario", "data")
+        unique_together = ("usuario", "carteira", "data")
 
     def __str__(self):
-        """Retorna string amigável com ID do usuário, data e valor patrimonial.
+        """Retorna string amigável com a carteira, data e valor patrimonial.
 
         Returns:
             str: Representação descritiva do snapshot.
         """
-        return f"{self.usuario_id} - {self.data} - {self.patrimonio}"
+        return f"{self.carteira_id} - {self.data} - {self.patrimonio}"

@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from core.models import AporteMeta, CartaoCredito, Conta, MetaFinanceira, PlanoMetas
 from core.services import metas_service
-from investimento.models import Ativo, Cotacao, Transacao
+from investimento.models import Ativo, Carteira, Cotacao, Transacao
 
 User = get_user_model()
 
@@ -465,6 +465,7 @@ class MetaMensalAPITests(MetasBaseAPITestCase):
         )
         return Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=ativo,
             tipo=tipo or Transacao.TIPO_COMPRA,
             data=data or timezone.localdate(),
@@ -528,7 +529,8 @@ class MetaMensalAPITests(MetasBaseAPITestCase):
             quantidade=Decimal("1"), preco_medio=Decimal("1"),
         )
         Transacao.objects.create(
-            usuario=outro, ativo=ativo, tipo=Transacao.TIPO_COMPRA,
+            usuario=outro, carteira=Carteira.padrao_de(outro),
+            ativo=ativo, tipo=Transacao.TIPO_COMPRA,
             data=timezone.localdate(), quantidade=Decimal("1"),
             preco_unitario=Decimal("5000.00"), valor_total=Decimal("5000.00"),
         )

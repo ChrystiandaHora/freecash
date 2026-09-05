@@ -8,20 +8,32 @@ de investimentos padrão e o recálculo automático de saldos e preços médios 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
-from .models import ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo, Transacao
-from .calculators import recalcular_ativo
+from .models import (
+    Carteira,
+    ClasseAtivo,
+    CategoriaAtivo,
+    SubcategoriaAtivo,
+    Transacao,
+)
+from .calculators import recalcular_ativo, recalcular_posicoes_do_ativo
 from django.db.models.signals import post_delete
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def criar_classificacao_padrao(sender, instance, created: bool, **kwargs):
-    """Cria a árvore padrão de classes, categorias e subcategorias de ativos.
+    """Cria a carteira padrão e a árvore de classes, categorias e subcategorias.
 
     Executado logo após a criação de um novo usuário Django, garantindo que ele tenha uma árvore
     de decisão padrão populada (Renda Fixa, Renda Variável, Multimercado, Cambial, Criptoativos)
     para classificar seus investimentos na B3.
+
+    A carteira padrão vem junto porque a custódia é obrigatória em toda transação: sem ela,
+    o usuário não conseguiria cadastrar o primeiro ativo.
     """
     if created:
+        # 0. Custódia padrão — quem não separa por corretora usa só esta.
+        Carteira.padrao_de(instance)
+
         # 1. Renda Fixa
         rf = ClasseAtivo.objects.create(usuario=instance, nome="Renda Fixa")
 
@@ -168,7 +180,11 @@ def atualizar_ativo_apos_transacao(sender, instance: Transacao, **kwargs):
     Escuta inserções, atualizações ou deleções de transações financeiras (compras/vendas),
     disparando a rotina matemática de PM fiscal ponderado para manter os dados de custódia
     atualizados.
+
+    Recalcula os dois níveis: a posição consolidada do ativo (o preço médio fiscal, que
+    ignora transferências) e a posição por carteira. Manter os dois num gatilho só evita
+    que um caminho de escrita atualize um e esqueça o outro.
     """
     if instance.ativo:
         recalcular_ativo(instance.ativo)
-
+        recalcular_posicoes_do_ativo(instance.ativo)

@@ -14,6 +14,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Sum
 
 from investimento.models import Ativo, CarteiraHistorico, Cotacao, Transacao
 
@@ -31,17 +32,24 @@ class CarteiraHistoricoService:
     """Serviço especializado na geração e emissão de snapshots diários de patrimônio.
 
     Coordena o processamento incremental e consolida balanços de compras, vendas e proventos.
+
+    O snapshot é gravado **por carteira**. Na leitura, `carteira_id` restringe a série a
+    uma custódia; sem ele, as séries somam as carteiras dia a dia. Guardar também uma
+    linha "consolidada" seria uma segunda fonte de verdade para o mesmo número, que
+    poderia divergir das partes sem que nada acusasse.
     """
 
-    def __init__(self, user):
-        """Inicializa o serviço de histórico atribuindo o investidor correspondente."""
+    def __init__(self, user, carteira_id: int | None = None):
+        """Inicializa o serviço de histórico atribuindo o investidor e a carteira em foco."""
         self.user = user
+        self.carteira_id = carteira_id
 
     def atualizar(self, *, ate_data: date | None = None) -> HistoricoUpdateResult:
         """Gera e grava snapshots diários na base de dados de forma incremental.
 
         Calcula de forma atômica e linear o patrimônio a mercado, o somatório de custos
-        de aquisição (compras), resgates (vendas), proventos e rentabilidade diária.
+        de aquisição (compras), resgates (vendas), proventos e rentabilidade diária,
+        uma série por carteira.
 
         Args:
             ate_data: Data limite de encerramento. Defaults to date.today().
@@ -64,11 +72,6 @@ class CarteiraHistoricoService:
         ativos = list(Ativo.objects.filter(usuario=self.user))
         preco_medio_by_ativo = {a.id: (a.preco_medio or Decimal(0)) for a in ativos}
 
-        # Indexa eventos por data para processar em ordem
-        transacoes_by_date: dict[date, list[Transacao]] = {}
-        for t in transacoes:
-            transacoes_by_date.setdefault(t.data, []).append(t)
-
         cotacoes_by_date: dict[date, list[tuple[int, Decimal]]] = {}
         cotacoes_qs = (
             Cotacao.objects.filter(ativo__usuario=self.user, data__gte=start_date, data__lte=end_date)
@@ -79,73 +82,32 @@ class CarteiraHistoricoService:
             cotacoes_by_date.setdefault(d, []).append((ativo_id, valor))
 
         existing = {
-            row["data"]: row["id"]
+            (row["carteira_id"], row["data"]): row["id"]
             for row in CarteiraHistorico.objects.filter(
                 usuario=self.user, data__gte=start_date, data__lte=end_date
-            ).values("id", "data")
+            ).values("id", "carteira_id", "data")
         }
 
-        quantities: dict[int, Decimal] = {}
-        last_price: dict[int, Decimal] = {}
-
-        total_compras = Decimal(0)
-        total_vendas = Decimal(0)
-        total_dividendos = Decimal(0)
+        # Indexa por carteira e, dentro dela, por data.
+        por_carteira: dict[int, dict[date, list[Transacao]]] = {}
+        for t in transacoes:
+            por_carteira.setdefault(t.carteira_id, {}).setdefault(t.data, []).append(t)
 
         to_create: list[CarteiraHistorico] = []
         to_update: list[CarteiraHistorico] = []
 
-        cur = start_date
-        one_day = timedelta(days=1)
-
-        while cur <= end_date:
-            for ativo_id, valor in cotacoes_by_date.get(cur, []):
-                if valor is not None:
-                    last_price[ativo_id] = Decimal(valor)
-
-            for t in transacoes_by_date.get(cur, []):
-                if t.tipo == Transacao.TIPO_COMPRA:
-                    quantities[t.ativo_id] = quantities.get(t.ativo_id, Decimal(0)) + t.quantidade
-                    total_compras += t.valor_total or Decimal(0)
-                elif t.tipo == Transacao.TIPO_VENDA:
-                    quantities[t.ativo_id] = quantities.get(t.ativo_id, Decimal(0)) - t.quantidade
-                    total_vendas += t.valor_total or Decimal(0)
-                elif t.tipo == Transacao.TIPO_DIVIDENDO:
-                    total_dividendos += t.valor_total or Decimal(0)
-
-            patrimonio = Decimal(0)
-            for ativo_id, qtd in quantities.items():
-                if not qtd:
-                    continue
-                price = last_price.get(ativo_id)
-                if price is None:
-                    price = preco_medio_by_ativo.get(ativo_id, Decimal(0))
-                patrimonio += qtd * price
-
-            rentabilidade = (patrimonio + total_vendas + total_dividendos) - total_compras
-            rentabilidade_percentual = Decimal(0)
-            if total_compras > 0:
-                rentabilidade_percentual = (rentabilidade / total_compras) * Decimal(100)
-
-            obj = CarteiraHistorico(
-                usuario=self.user,
-                data=cur,
-                patrimonio=patrimonio,
-                total_compras=total_compras,
-                total_vendas=total_vendas,
-                total_dividendos=total_dividendos,
-                rentabilidade=rentabilidade,
-                rentabilidade_percentual=rentabilidade_percentual,
+        for carteira_id, transacoes_by_date in por_carteira.items():
+            self._processar_carteira(
+                carteira_id=carteira_id,
+                transacoes_by_date=transacoes_by_date,
+                cotacoes_by_date=cotacoes_by_date,
+                preco_medio_by_ativo=preco_medio_by_ativo,
+                start_date=start_date,
+                end_date=end_date,
+                existing=existing,
+                to_create=to_create,
+                to_update=to_update,
             )
-
-            existing_id = existing.get(cur)
-            if existing_id:
-                obj.id = existing_id
-                to_update.append(obj)
-            else:
-                to_create.append(obj)
-
-            cur += one_day
 
         with transaction.atomic():
             if to_create:
@@ -171,6 +133,147 @@ class CarteiraHistoricoService:
             end_date=end_date,
         )
 
+    def _processar_carteira(
+        self,
+        *,
+        carteira_id: int,
+        transacoes_by_date: dict[date, list[Transacao]],
+        cotacoes_by_date: dict[date, list[tuple[int, Decimal]]],
+        preco_medio_by_ativo: dict[int, Decimal],
+        start_date: date,
+        end_date: date,
+        existing: dict[tuple[int, date], int],
+        to_create: list[CarteiraHistorico],
+        to_update: list[CarteiraHistorico],
+    ) -> None:
+        """Percorre a janela dia a dia montando os snapshots de uma carteira.
+
+        As pernas de transferência entram como aquisição (entrada) e alienação a custo
+        (saída). Dentro da carteira isso mantém o custo coerente com a quantidade —
+        um papel que chegou por portabilidade não é lucro. Somando as carteiras, a
+        entrada e a saída se anulam, então o consolidado continua igual ao de antes de
+        a transferência existir.
+        """
+        quantities: dict[int, Decimal] = {}
+        # Custo por ativo nesta carteira: é o preço de fallback sem cotação. O PM
+        # consolidado atribuiria à custódia um custo que não é o dela.
+        custos: dict[int, Decimal] = {}
+        last_price: dict[int, Decimal] = {}
+
+        total_compras = Decimal(0)
+        total_vendas = Decimal(0)
+        total_dividendos = Decimal(0)
+
+        cur = start_date
+        one_day = timedelta(days=1)
+
+        while cur <= end_date:
+            for ativo_id, valor in cotacoes_by_date.get(cur, []):
+                if valor is not None:
+                    last_price[ativo_id] = Decimal(valor)
+
+            for t in transacoes_by_date.get(cur, []):
+                quantidade_atual = quantities.get(t.ativo_id, Decimal(0))
+                custo_atual = custos.get(t.ativo_id, Decimal(0))
+
+                if t.tipo in (Transacao.TIPO_COMPRA, Transacao.TIPO_TRANSF_ENTRADA):
+                    quantities[t.ativo_id] = quantidade_atual + t.quantidade
+                    custos[t.ativo_id] = custo_atual + (t.valor_total or Decimal(0))
+                    total_compras += t.valor_total or Decimal(0)
+                elif t.tipo in (Transacao.TIPO_VENDA, Transacao.TIPO_TRANSF_SAIDA):
+                    quantities[t.ativo_id] = quantidade_atual - t.quantidade
+                    if quantidade_atual > 0:
+                        # Abate o custo na proporção vendida, como no preço médio.
+                        custos[t.ativo_id] = custo_atual - (
+                            t.quantidade * (custo_atual / quantidade_atual)
+                        )
+                    total_vendas += t.valor_total or Decimal(0)
+                elif t.tipo == Transacao.TIPO_DIVIDENDO:
+                    total_dividendos += t.valor_total or Decimal(0)
+
+            patrimonio = Decimal(0)
+            for ativo_id, qtd in quantities.items():
+                if not qtd:
+                    continue
+                price = last_price.get(ativo_id)
+                if price is None:
+                    custo = custos.get(ativo_id)
+                    price = (custo / qtd) if custo else preco_medio_by_ativo.get(ativo_id, Decimal(0))
+                patrimonio += qtd * price
+
+            rentabilidade = (patrimonio + total_vendas + total_dividendos) - total_compras
+            rentabilidade_percentual = Decimal(0)
+            if total_compras > 0:
+                rentabilidade_percentual = (rentabilidade / total_compras) * Decimal(100)
+
+            obj = CarteiraHistorico(
+                usuario=self.user,
+                carteira_id=carteira_id,
+                data=cur,
+                patrimonio=patrimonio,
+                total_compras=total_compras,
+                total_vendas=total_vendas,
+                total_dividendos=total_dividendos,
+                rentabilidade=rentabilidade,
+                rentabilidade_percentual=rentabilidade_percentual,
+            )
+
+            existing_id = existing.get((carteira_id, cur))
+            if existing_id:
+                obj.id = existing_id
+                to_update.append(obj)
+            else:
+                to_create.append(obj)
+
+            cur += one_day
+
+    def _linhas_diarias(self) -> list[dict]:
+        """Devolve a série diária já no recorte pedido — uma carteira, ou a soma delas.
+
+        Sem filtro, soma as carteiras por dia e **recalcula** a rentabilidade a partir
+        dos totais somados. Somar a coluna `rentabilidade` das partes daria o mesmo
+        número por acaso, mas o percentual não sobrevive a uma soma — ele precisa da
+        base consolidada.
+
+        Returns:
+            list[dict]: Linhas ordenadas por data, com patrimônio, custos e rentabilidade.
+        """
+        qs = CarteiraHistorico.objects.filter(usuario=self.user)
+        if self.carteira_id:
+            return list(
+                qs.filter(carteira_id=self.carteira_id)
+                .order_by("data")
+                .values(
+                    "data", "patrimonio", "total_compras", "total_vendas",
+                    "total_dividendos", "rentabilidade", "rentabilidade_percentual",
+                )
+            )
+
+        agregado = (
+            qs.values("data")
+            .annotate(
+                patrimonio=Sum("patrimonio"),
+                total_compras=Sum("total_compras"),
+                total_vendas=Sum("total_vendas"),
+                total_dividendos=Sum("total_dividendos"),
+            )
+            .order_by("data")
+        )
+
+        linhas = []
+        for row in agregado:
+            compras = row["total_compras"] or Decimal(0)
+            vendas = row["total_vendas"] or Decimal(0)
+            dividendos = row["total_dividendos"] or Decimal(0)
+            patrimonio = row["patrimonio"] or Decimal(0)
+            rentabilidade = (patrimonio + vendas + dividendos) - compras
+            row["rentabilidade"] = rentabilidade
+            row["rentabilidade_percentual"] = (
+                (rentabilidade / compras) * Decimal(100) if compras > 0 else Decimal(0)
+            )
+            linhas.append(row)
+        return linhas
+
     def series_mensal(self, *, meses: int | None = 36) -> list[dict]:
         """Gera a série mensal consolidada em formato OHLC de patrimônio e investimentos.
 
@@ -182,9 +285,7 @@ class CarteiraHistoricoService:
         Returns:
             list[dict]: Lista de dicionários contendo patrimônio, custo investido, dividendos acumulados e dividendos mensais.
         """
-        qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "total_compras", "total_vendas", "total_dividendos"
-        )
+        qs = self._linhas_diarias()
 
         # Agrupar por (ano, mês)
         groups: dict[tuple[int, int], list[dict]] = {}
@@ -245,9 +346,7 @@ class CarteiraHistoricoService:
         Returns:
             list[dict]: Lista contendo dicionários com a evolução anual.
         """
-        qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "total_compras", "total_vendas"
-        )
+        qs = self._linhas_diarias()
 
         groups: dict[int, list[dict]] = {}
         for row in qs:
@@ -284,9 +383,7 @@ class CarteiraHistoricoService:
         Calculado com base na variação de rentabilidade absoluta em relação à base de capital
         do início do mês ajustado pelas contribuições líquidas do próprio mês.
         """
-        qs = CarteiraHistorico.objects.filter(usuario=self.user).order_by("data").values(
-            "data", "patrimonio", "total_compras", "total_vendas", "rentabilidade", "rentabilidade_percentual"
-        )
+        qs = self._linhas_diarias()
 
         # Agrupar por (ano, mês) e pegar o último registro de cada mês (fim do mês)
         groups = {}

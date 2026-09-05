@@ -48,8 +48,9 @@ from core.views.auth_api import (
     RegistrationAPIView,
 )
 from investimento.views_api import (
-    ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet, 
-    AtivoViewSet, TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView, BalanceamentoAPIView
+    ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet,
+    AtivoViewSet, CarteiraViewSet, PosicaoCarteiraViewSet,
+    TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView, BalanceamentoAPIView
 )
 from core.views.health import HealthCheckAPIView
 from core.views.conta_api import (
@@ -99,6 +100,8 @@ router.register(r'financeiro/transacoes', TransacoesViewSet, basename='api-finan
 router.register(r'financeiro/compras-cartao', ComprasCartaoViewSet, basename='api-financeiro-compras-cartao')
 router.register(r'financeiro/metas', MetaFinanceiraViewSet, basename='api-financeiro-metas')
 
+router.register(r'investimentos/carteiras', CarteiraViewSet, basename='api-carteira')
+router.register(r'investimentos/posicoes', PosicaoCarteiraViewSet, basename='api-posicao-carteira')
 router.register(r'investimentos/classes', ClasseAtivoViewSet, basename='api-classe')
 router.register(r'investimentos/categorias', CategoriaAtivoViewSet, basename='api-categoria-ativo')
 router.register(r'investimentos/subcategorias', SubcategoriaAtivoViewSet, basename='api-subcategoria')

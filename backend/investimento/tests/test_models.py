@@ -1,7 +1,9 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
-from investimento.models import Ativo, Transacao, Cotacao, ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo
+from investimento.models import (
+    Ativo, Carteira, Transacao, Cotacao, ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo,
+)
 from decimal import Decimal
 
 class InvestimentoModelsTestCase(TestCase):
@@ -23,6 +25,7 @@ class InvestimentoModelsTestCase(TestCase):
         # Create a purchase transaction
         Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_COMPRA,
             data=timezone.localdate(),
@@ -39,6 +42,7 @@ class InvestimentoModelsTestCase(TestCase):
         # Purchase first
         Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_COMPRA,
             data=timezone.localdate(),
@@ -49,6 +53,7 @@ class InvestimentoModelsTestCase(TestCase):
         # Sale 50
         Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_VENDA,
             data=timezone.localdate(),
@@ -79,6 +84,7 @@ class InvestimentoModelsTestCase(TestCase):
         # 1. Create a purchase of 100 units at 30.00
         transacao = Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=self.ativo,
             tipo=Transacao.TIPO_COMPRA,
             data=timezone.localdate(),

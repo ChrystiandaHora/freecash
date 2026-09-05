@@ -6,7 +6,7 @@ de cotações a mercado integrando com coletores remotos.
 """
 
 from decimal import Decimal
-from investimento.models import Ativo, Transacao, Cotacao
+from investimento.models import Ativo, PosicaoCarteira, Transacao, Cotacao
 from investimento.services.tradingview_screener import (
     fetch_quotes_brazil,
     _normalize_to_tradingview_symbol,
@@ -15,13 +15,20 @@ from investimento.services.cvm_service import fetch_cvm_quotes
 
 
 def recalcular_ativo(ativo: Ativo) -> None:
-    """Recalcula o preço médio ponderado fiscal e a quantidade em custódia do ativo.
+    """Recalcula o preço médio ponderado fiscal e a quantidade consolidada do ativo.
 
-    Varre de forma ordenada o histórico completo de transações do ativo na carteira,
-    acrescendo quantidades nas compras e computando PM proporcional, e amortizando
-    quantidades nas vendas sem alterar o preço médio.
+    Varre de forma ordenada o histórico completo de transações do ativo, acrescendo
+    quantidades nas compras e computando PM proporcional, e amortizando quantidades
+    nas vendas sem alterar o preço médio.
+
+    Transferências entre carteiras são ignoradas: elas mudam onde o papel está
+    custodiado, não quanto o investidor tem nem por quanto comprou. Considerá-las
+    aqui alteraria o preço médio — que no Brasil é apurado por CPF, e é o número que
+    o investidor declara.
     """
-    transacoes = ativo.transacoes.order_by("data", "criada_em")
+    transacoes = ativo.transacoes.exclude(
+        tipo__in=Transacao.TIPOS_TRANSFERENCIA
+    ).order_by("data", "criada_em")
 
     quantidade_total = Decimal(0)
     custo_total = Decimal(0)
@@ -63,6 +70,73 @@ def recalcular_ativo(ativo: Ativo) -> None:
 
     ativo.quantidade = quantidade_total
     ativo.save(update_fields=["quantidade", "preco_medio"])
+
+
+def recalcular_posicoes_do_ativo(ativo: Ativo) -> None:
+    """Recalcula a posição do ativo em **todas** as carteiras onde ele aparece.
+
+    Recalcula todas, e não apenas a carteira da transação que disparou o cálculo,
+    porque editar uma transação pode mover custódia: o gatilho só enxerga a carteira
+    nova, e a antiga ficaria com uma posição obsoleta, sem nada que a corrigisse.
+
+    A transferência de saída abate custo na proporção do preço médio da carteira de
+    origem — a mesma regra da venda — e a de entrada acrescenta o custo carregado na
+    perna. Assim o custo total do usuário fecha igual antes e depois de transferir.
+
+    Escreve apenas os campos de cache: `meta_porcentagem` é intenção do usuário, e a
+    linha não é apagada quando a posição zera, para que essa intenção sobreviva.
+    """
+    transacoes = ativo.transacoes.exclude(carteira__isnull=True).order_by(
+        "data", "criada_em"
+    )
+
+    acumulado: dict[int, list[Decimal]] = {}  # carteira_id -> [quantidade, custo]
+
+    for t in transacoes:
+        quantidade, custo = acumulado.setdefault(
+            t.carteira_id, [Decimal(0), Decimal(0)]
+        )
+        qtd = t.quantidade
+
+        if t.tipo in (Transacao.TIPO_COMPRA, Transacao.TIPO_TRANSF_ENTRADA):
+            custo += t.valor_total
+            quantidade += qtd
+
+        elif t.tipo in (Transacao.TIPO_VENDA, Transacao.TIPO_TRANSF_SAIDA):
+            if quantidade > 0:
+                preco_medio_atual = custo / quantidade
+                custo -= qtd * preco_medio_atual
+                quantidade -= qtd
+            else:
+                quantidade -= qtd
+
+        # Proventos não alteram quantidade nem custo em custódia.
+
+        acumulado[t.carteira_id] = [quantidade, custo]
+
+    for carteira_id, (quantidade, custo) in acumulado.items():
+        if quantidade > 0:
+            preco_medio = custo / quantidade
+        else:
+            quantidade = Decimal(0)
+            custo = Decimal(0)
+            preco_medio = Decimal(0)
+
+        posicao, _ = PosicaoCarteira.objects.get_or_create(
+            carteira_id=carteira_id,
+            ativo=ativo,
+            defaults={"usuario_id": ativo.usuario_id},
+        )
+        posicao.quantidade = quantidade
+        posicao.custo_total = custo
+        posicao.preco_medio = preco_medio
+        posicao.save(update_fields=["quantidade", "custo_total", "preco_medio"])
+
+    # Carteiras que já tiveram o ativo e não têm mais: zera o cache em vez de apagar
+    # a linha, senão a meta configurada para elas sumiria junto.
+    PosicaoCarteira.objects.filter(ativo=ativo).exclude(
+        carteira_id__in=acumulado.keys()
+    ).update(quantidade=Decimal(0), custo_total=Decimal(0), preco_medio=Decimal(0))
 
 
 def atualizar_cotacoes(usuario=None) -> tuple[int, list[str]]:
