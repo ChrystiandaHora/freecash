@@ -31,6 +31,7 @@ from core.services.export_report_service import (
 )
 from investimento.models import (
     Ativo,
+    Carteira,
     ClasseAtivo,
     CategoriaAtivo,
     SubcategoriaAtivo,
@@ -155,15 +156,16 @@ class BaseRelatorioTestCase(TestCase):
             subcategoria=subcategoria,
             quantidade=Decimal("6"),
             preco_medio=Decimal("106.60"),
-            meta_porcentagem=Decimal("5"),
         )
         Transacao.objects.create(
-            usuario=self.user, ativo=ativo, tipo=Transacao.TIPO_COMPRA,
+            usuario=self.user, carteira=Carteira.padrao_de(self.user),
+            ativo=ativo, tipo=Transacao.TIPO_COMPRA,
             data=date(2026, 2, 13), quantidade=Decimal("1"),
             preco_unitario=Decimal("110.86"), valor_total=Decimal("110.86"),
         )
         Transacao.objects.create(
-            usuario=self.user, ativo=ativo, tipo=Transacao.TIPO_DIVIDENDO,
+            usuario=self.user, carteira=Carteira.padrao_de(self.user),
+            ativo=ativo, tipo=Transacao.TIPO_DIVIDENDO,
             data=date(2026, 3, 24), quantidade=Decimal("1"),
             preco_unitario=Decimal("4.60"), valor_total=Decimal("4.60"),
         )

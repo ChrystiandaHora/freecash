@@ -724,6 +724,46 @@ def _linhas_movimentacoes(movimentacoes) -> tuple:
     return linhas, liquido
 
 
+def _meta_consolidada(ativo) -> Decimal:
+    """Consolida em um só número a meta que o ativo tem em cada carteira.
+
+    A meta é declarada por carteira e soma 100% dentro de cada uma, então somá-las
+    direto daria 100% vezes o número de custódias. Aqui cada meta entra ponderada
+    pelo peso da sua carteira no total investido — o alvo do ativo no patrimônio.
+
+    Com uma carteira só, o peso é 1 e o resultado é a própria meta declarada, que é
+    o caso de todo mundo que nunca separou por corretora.
+
+    Returns:
+        Decimal: Percentual alvo do ativo no patrimônio consolidado.
+    """
+    from investimento.models import PosicaoCarteira
+
+    posicoes = list(
+        PosicaoCarteira.objects.filter(ativo=ativo).select_related("carteira")
+    )
+    if not posicoes:
+        return Decimal("0.00")
+
+    totais_por_carteira = {}
+    for linha in PosicaoCarteira.objects.filter(
+        usuario_id=ativo.usuario_id
+    ).values("carteira_id", "quantidade", "preco_medio"):
+        valor = _dec(linha["quantidade"]) * _dec(linha["preco_medio"])
+        totais_por_carteira[linha["carteira_id"]] = (
+            totais_por_carteira.get(linha["carteira_id"], Decimal("0.00")) + valor
+        )
+    total_geral = sum(totais_por_carteira.values(), Decimal("0.00"))
+    if total_geral <= 0:
+        return _dec(posicoes[0].meta_porcentagem)
+
+    meta = Decimal("0.00")
+    for posicao in posicoes:
+        peso = totais_por_carteira.get(posicao.carteira_id, Decimal("0.00")) / total_geral
+        meta += _dec(posicao.meta_porcentagem) * peso
+    return meta
+
+
 def _linhas_carteira(investimentos, total_mercado: Decimal) -> list:
     """Prepara as linhas da carteira, incluindo meta, valor ideal e sugestão.
 
@@ -734,7 +774,7 @@ def _linhas_carteira(investimentos, total_mercado: Decimal) -> list:
     for ativo in investimentos:
         valor_mercado = ativo.valor_total_atual
         valor_investido = ativo.valor_investido
-        meta = _dec(ativo.meta_porcentagem)
+        meta = _meta_consolidada(ativo)
         valor_ideal = (meta / 100) * total_mercado if total_mercado > 0 else Decimal("0.00")
         linhas.append(
             [
@@ -2072,7 +2112,7 @@ def _bloco_carteira(investimentos, largura: float, estilos: dict) -> list:
     for ativo in ativos:
         valor_mercado = ativo.valor_total_atual
         valor_investido = ativo.valor_investido
-        meta = _dec(ativo.meta_porcentagem)
+        meta = _meta_consolidada(ativo)
         valor_ideal = (meta / 100) * total_mercado if total_mercado > 0 else Decimal("0.00")
         total_investido += valor_investido
         total_ideal += valor_ideal
