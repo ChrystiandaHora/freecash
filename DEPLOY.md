@@ -415,7 +415,6 @@ de duas camadas ao mesmo tempo.
 
 ## Referências no repositório
 
-- [docs/testes.md](docs/testes.md) — rodar a suíte e o CI
 - [.env_example](.env_example) — todas as variáveis, com os três cenários
 - [docker-compose.prod.yml](docker-compose.prod.yml) — a composição de produção
 - [deploy/Caddyfile](deploy/Caddyfile) — proxy com TLS automático

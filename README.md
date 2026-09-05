@@ -156,6 +156,16 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - Gerenciador visual interativo de classes (`/investimentos/classes`) com suporte a criação, edição e remoção de categorias e subcategorias
 - Estrutura inicial populada automaticamente via Django Signals
 
+**Carteiras por corretora** (`/investimentos/carteiras`)
+- Uma carteira para cada corretora ou banco onde você tem investimentos
+- Filtro em todas as telas de investimento: uma custódia por vez, ou o consolidado
+- Transferência entre carteiras que **não** mexe no preço médio — mudar de corretora não é realizar lucro
+- Marcação de quais carteiras contam como dinheiro disponível no Horizonte de Saldos
+- Arquivamento, que tira a carteira dos filtros sem apagar o histórico de ordens
+- O ativo continua único: PETR4 na XP e no Inter é um papel só, com uma série de cotações e o preço médio consolidado que se declara no IR
+
+Detalhes de arquitetura e limites conhecidos em [docs/carteiras.md](docs/carteiras.md).
+
 **Meus Ativos & Detalhe de Posição**
 - Tabela com Ticker, Quantidade, Preço Médio, Cotação Atual, Valor Total e Retorno (% colorido)
 - Busca e filtro por classe de ativo
@@ -163,18 +173,19 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - Tela de detalhamento do ativo (`/investimentos/ativos/:id`) com abas de Dados Gerais, Rentabilidade e Histórico de Transações
 
 **Balanceamento de Carteira**
-- Sliders de meta percentual por ativo (botões +/−)
-- Validador em tempo real: soma das metas deve ser exatamente 100%
+- Sliders de meta percentual por ativo (botões +/−), dentro da carteira em foco
+- Validador em tempo real: soma das metas deve ser exatamente 100% na carteira
+- Meta de peso por carteira, respondendo quanto aportar em cada corretora
 - Cálculo do aporte ideal: quanto comprar de cada ativo para atingir a alocação alvo
 - Scatter plot: rentabilidade vs. desvio da meta (Balanceador Ideal)
 
 **Histórico de Transações (Ledger)**
-- Ledger cronológico de todas as operações: Compra (C), Venda (V), Provento (D)
+- Ledger cronológico de todas as operações: Compra (C), Venda (V), Provento (D) e Transferência entre carteiras (TS/TE)
 - Filtros por tipo de transação e busca por ticker
 - CRUD: adicionar, editar e excluir transações com recálculo automático de preço médio
 
 **Cálculo Automático de Posição**
-- Django Signal `atualizar_ativo_apos_transacao` recalcula Preço Médio e Quantidade sempre que uma transação é criada, editada ou removida
+- Django Signal `atualizar_ativo_apos_transacao` recalcula, a cada transação criada, editada ou removida, o preço médio consolidado do ativo **e** a posição em cada carteira
 
 ---
 
@@ -183,6 +194,7 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 **Horizonte de Saldos** (`/horizonte-saldos`)
 - Saldo acumulado projetado dia a dia para os próximos 12 meses, em grade de dias x meses
 - Parte do dinheiro real em caixa; contas vencidas e não pagas entram no saldo de abertura
+- O botão "Considerar valor investido" soma apenas as carteiras marcadas como disponíveis — reserva de emergência conta, ações não
 - Inclui as ocorrências futuras das regras de recorrência, de receita **e de despesa**
 - Aviso destacado com o primeiro dia em que o saldo fica negativo
 - Cenário alternativo que desconta o aporte mensal necessário para cumprir cada meta no prazo
@@ -197,7 +209,26 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 - Regras de recorrência passaram a cobrir despesas, não só receitas (mensal, quinzenal, semanal, anual)
 - Cadastradas pelo formulário de Contas a Pagar, marcando "É uma despesa fixa"
 
-Detalhes de arquitetura e limites conhecidos em [docs/planejamento.md](docs/planejamento.md).
+
+
+---
+
+## Documentação de arquitetura
+
+Os documentos abaixo registram **por que** cada domínio é como é — as decisões, os modos
+de falha conhecidos e o que ficou deliberadamente de fora. Leia o do domínio antes de
+mexer nele.
+
+| Documento | Cobre |
+|---|---|
+| [docs/contas.md](docs/contas.md) | Lançamentos, previsto × realizado, recorrência |
+| [docs/fatura-cartao.md](docs/fatura-cartao.md) | Consolidação de fatura e a invariante do filtro de cartão |
+| [docs/ativos.md](docs/ativos.md) | Cadastro de ativo e a árvore ANBIMA |
+| [docs/carteiras.md](docs/carteiras.md) | Custódia por corretora e posição por carteira |
+| [docs/cotacoes-e-preco-medio.md](docs/cotacoes-e-preco-medio.md) | Preço médio fiscal e as três fontes de cotação |
+| [docs/importacao-extrato.md](docs/importacao-extrato.md) | Leitura de PDF bancário e conciliação |
+| [docs/backup.md](docs/backup.md) | Formato `.fcbk` e compatibilidade entre versões |
+| [docs/autenticacao.md](docs/autenticacao.md) | Identidade, tokens e recuperação de acesso |
 
 ---
 
@@ -433,9 +464,9 @@ docker compose exec backend python manage.py test investimento.tests
 cd frontend && npm run test
 ```
 
-Rodar fora do Docker, medir cobertura, as convenções que os testes deste projeto
-exigem (envio de e-mail, callbacks de commit, cache do throttle) e como o CI está
-configurado: **[docs/testes.md](docs/testes.md)**.
+As convenções que os testes deste projeto exigem — `EMAIL_ASYNC=False`,
+`captureOnCommitCallbacks`, limpar o cache do throttle e provar isolamento entre
+usuários — estão nos próprios testes, em `backend/*/tests/`.
 
 ---
 
