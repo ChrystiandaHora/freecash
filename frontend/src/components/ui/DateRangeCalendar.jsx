@@ -255,7 +255,8 @@ export function DateRangeCalendar({ value, onChange, inputClass }) {
                       data-dia={celula.iso}
                       // Roving tabindex: só o dia focado entra na ordem de tabulação.
                       tabIndex={celula.iso === diaFocado ? 0 : -1}
-                      aria-selected={extremo || dentro}
+                      // `aria-pressed`: `aria-selected` não vale em role="button" e era ignorado
+                      aria-pressed={extremo || dentro}
                       aria-current={ehHoje ? 'date' : undefined}
                       onClick={() => {
                         setDiaFocado(celula.iso);
