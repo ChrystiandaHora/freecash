@@ -68,7 +68,9 @@ services:
     environment:
       - VITE_API_URL=http://localhost:${BACKEND_PORT:-8000}
     volumes:
-      - ./frontend:/app
+      # O Vite em dev só escreve em node_modules/.vite, que é o volume nomeado abaixo:
+      # o fonte read-only impede um pacote hostil de alterar o código que você vai rodar.
+      - ./frontend:/app:ro
       - frontend_node_modules:/app/node_modules
     depends_on:
       - backend

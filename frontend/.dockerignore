@@ -1,0 +1,16 @@
+# O COPY . . mesclaria o node_modules do host sobre o que o npm ci instalou. Como o
+# host é darwin-arm64 e a imagem é linux-musl, os bindings nativos (@rolldown) não são
+# intercambiáveis, e os arquivos de mesmo caminho vencem os da imagem.
+node_modules
+
+# Gerado pelo npm run build dentro da própria imagem.
+dist
+
+.git
+.gitignore
+*.log
+npm-debug.log*
+.env
+.env.*
+.DS_Store
+coverage

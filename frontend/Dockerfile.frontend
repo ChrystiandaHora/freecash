@@ -1,18 +1,28 @@
 # Stage 1: Development
 FROM node:20-alpine AS development
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
+# O WORKDIR nasce root:root, e o volume nomeado frontend_node_modules herda a dona que
+# /app/node_modules tiver na imagem: sem este chown o Vite, como node, não escreveria o
+# cache em node_modules/.vite.
+RUN chown node:node /app
+USER node
+# O glob package*.json não casa com .npmrc — daí o nome explícito.
+COPY --chown=node:node package*.json .npmrc ./
+RUN npm ci
+COPY --chown=node:node . .
 EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host"]
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
+# Não roda como contêiner, mas é aqui que o npm ci e os plugins do Vite executam código
+# de terceiros: o custo de tirar o root é zero.
+RUN chown node:node /app
+USER node
+COPY --chown=node:node package*.json .npmrc ./
+RUN npm ci
+COPY --chown=node:node . .
 # O Vite embute as variáveis VITE_* no bundle em tempo de build, e não em tempo de
 # execução: definir VITE_API_URL no ambiente do contêiner de produção não teria
 # efeito algum. Por isso ela precisa entrar como argumento de build.
@@ -21,6 +31,8 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Stage 3: Production
+# Segue como root no master, que é quem faz o bind na 80. Os workers, que atendem as
+# requisições, o nginx oficial já roda como o usuário nginx.
 FROM nginx:stable-alpine AS production
 COPY --from=builder /app/dist /usr/share/nginx/html
 # Substitui a configuração padrão: sem o fallback do SPA, qualquer rota interna
