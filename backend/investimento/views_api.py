@@ -646,9 +646,10 @@ class BalanceamentoAPIView(APIView):
     respostas: quanto aportar **em cada corretora** (metas de `Carteira`) e quanto
     comprar de cada ativo **dentro de uma** (metas de `PosicaoCarteira`).
 
-    O plano por ativo é sempre de uma carteira só — sem `?carteira=`, usa a primeira
-    ativa. Somar as metas de todas daria 100% vezes o número de carteiras, e a soma
-    que a tela valida deixaria de significar alguma coisa.
+    O plano por ativo é sempre de uma carteira só — sem `?carteira=`, vem vazio com
+    `carteira: None`, e a tela pede uma seleção. Somar as metas de todas daria 100%
+    vezes o número de carteiras, e a soma que a tela valida deixaria de significar
+    alguma coisa.
     """
     permission_classes = [permissions.IsAuthenticated]
 
