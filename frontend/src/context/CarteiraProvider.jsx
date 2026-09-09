@@ -12,7 +12,10 @@
  * ir para o servidor.
  *
  * `carteiraId` nulo significa **consolidado** (todas as carteiras), que é o estado
- * inicial e o comportamento que o sistema sempre teve.
+ * inicial e o comportamento que o sistema sempre teve. Quem precisa separar "o usuário
+ * pediu o consolidado" de "ainda não escolheu" lê `consolidadoExplicito`: o
+ * balanceamento abre numa carteira concreta, porque metas por ativo somam 100% dentro
+ * de uma só, e não teria o que mostrar no consolidado (ver docs/carteiras.md).
  */
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -24,10 +27,18 @@ const CarteiraContext = createContext(null);
 
 const CHAVE_STORAGE = 'freecash-carteira-selecionada';
 
+// Gravado quando o usuário pede o consolidado de propósito. Sem esta sentinela,
+// "escolheu todas as carteiras" e "ainda não escolheu nada" viram o mesmo `null`,
+// e uma tela que precisa abrir numa carteira concreta não sabe qual dos dois é.
+const VALOR_CONSOLIDADO = 'consolidado';
+
 const lerSelecaoSalva = () => {
   try {
     const salvo = localStorage.getItem(CHAVE_STORAGE);
-    return salvo ? Number(salvo) : null;
+    if (!salvo) return null;
+    if (salvo === VALOR_CONSOLIDADO) return VALOR_CONSOLIDADO;
+    const id = Number(salvo);
+    return Number.isFinite(id) && id > 0 ? id : null;
   } catch {
     return null;
   }
@@ -49,16 +60,20 @@ export function CarteiraProvider({ children }) {
 
   // Seleção derivada: carteira arquivada volta ao consolidado sem gastar um render num efeito
   const carteiraId = useMemo(() => {
+    if (carteiraSalva === VALOR_CONSOLIDADO) return null;
     if (carteiraSalva === null || isLoading) return carteiraSalva;
     return carteiras.some((c) => c.id === carteiraSalva && c.ativa) ? carteiraSalva : null;
   }, [carteiraSalva, carteiras, isLoading]);
 
+  // Distingue-se de `carteiraId === null`, que também cobre "nunca escolheu" e
+  // "a carteira salva foi arquivada" — casos em que abrir no consolidado é palpite
+  const consolidadoExplicito = carteiraSalva === VALOR_CONSOLIDADO;
+
   const setCarteiraId = useCallback((proximo) => {
-    const valor = proximo ? Number(proximo) : null;
+    const valor = proximo ? Number(proximo) : VALOR_CONSOLIDADO;
     setCarteiraIdState(valor);
     try {
-      if (valor) localStorage.setItem(CHAVE_STORAGE, String(valor));
-      else localStorage.removeItem(CHAVE_STORAGE);
+      localStorage.setItem(CHAVE_STORAGE, String(valor));
     } catch {
       // Janela privada ou storage bloqueado: o filtro ainda funciona nesta sessão.
     }
@@ -78,9 +93,18 @@ export function CarteiraProvider({ children }) {
       carteiras,
       carteirasAtivas,
       carteiraSelecionada,
+      consolidadoExplicito,
       carregandoCarteiras: isLoading,
     }),
-    [carteiraId, setCarteiraId, carteiras, carteirasAtivas, carteiraSelecionada, isLoading]
+    [
+      carteiraId,
+      setCarteiraId,
+      carteiras,
+      carteirasAtivas,
+      carteiraSelecionada,
+      consolidadoExplicito,
+      isLoading,
+    ]
   );
 
   return <CarteiraContext.Provider value={value}>{children}</CarteiraContext.Provider>;
@@ -88,7 +112,8 @@ export function CarteiraProvider({ children }) {
 
 /**
  * @returns {{carteiraId: number|null, setCarteiraId: Function, carteiras: Array,
- *   carteirasAtivas: Array, carteiraSelecionada: object|null, carregandoCarteiras: boolean}}
+ *   carteirasAtivas: Array, carteiraSelecionada: object|null,
+ *   consolidadoExplicito: boolean, carregandoCarteiras: boolean}}
  */
 export function useCarteira() {
   const ctx = useContext(CarteiraContext);

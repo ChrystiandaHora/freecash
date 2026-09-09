@@ -6,6 +6,7 @@
  * as posições mais deficitárias sem necessidade de realizar vendas.
  */
 import { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import {
@@ -27,6 +28,7 @@ import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
+import { resolverCarteiraEmFoco } from '../lib/balanceamento';
 import SeletorCarteira from '../components/SeletorCarteira';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
@@ -107,7 +109,14 @@ function MetaSlider({ id, label, value, onChange, disabled }) {
 export default function AtivosBalanceamento() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
-  const { carteiraId } = useCarteira();
+  const { carteiraId, setCarteiraId, carteirasAtivas, consolidadoExplicito } = useCarteira();
+
+  // Regra e seus casos de borda em lib/balanceamento.js, com teste tabelado
+  const carteiraEmFoco = resolverCarteiraEmFoco({
+    carteiraId,
+    consolidadoExplicito,
+    carteirasAtivas,
+  });
 
   // Metas locais: { [id]: porcentagem }
   const [editingMetas, setEditingMetas] = useState({});
@@ -138,9 +147,9 @@ export default function AtivosBalanceamento() {
     refetch,
   } = useQuery({
     // Metas por ativo somam 100% dentro de UMA carteira; por isso o plano é sempre de uma só
-    queryKey: ['investimentosBalanceamento', carteiraId],
+    queryKey: ['investimentosBalanceamento', carteiraEmFoco],
     queryFn: async () => {
-      const params = carteiraId ? { carteira: carteiraId } : {};
+      const params = carteiraEmFoco ? { carteira: carteiraEmFoco } : {};
       const res = await api.get('/api/investimentos/balanceamento/', { params });
       return res.data;
     },
@@ -206,7 +215,7 @@ export default function AtivosBalanceamento() {
       const res = await api.post(
         '/api/investimentos/balanceamento/',
         { metas: payload },
-        { params: carteiraId ? { carteira: carteiraId } : {} }
+        { params: carteiraEmFoco ? { carteira: carteiraEmFoco } : {} }
       );
       return res.data;
     },
@@ -352,6 +361,7 @@ export default function AtivosBalanceamento() {
   const finalSalesCash = magicAllocation.reduce((s, a) => s + (a.aporte < 0 ? -a.aporte : 0), 0);
   const netContribution = totalBuysCash - finalSalesCash;
   const futuroPatrimonio = totalPatrimonio + netContribution;
+  const semMetasDefinidas = (balanceData?.soma_metas ?? 0) < 0.01;
   const somaEditingMetas = Object.values(editingMetas).reduce((a, b) => a + b, 0);
   const pctSumOk = Math.abs(somaEditingMetas - 100) < 0.01;
 
@@ -385,6 +395,17 @@ export default function AtivosBalanceamento() {
               ? `Metas da carteira ${balanceData.carteira.nome} — somam 100% dentro dela`
               : 'Configure metas percentuais e calcule o aporte ideal'}
           </p>
+          {/* Fora da região live acima: um botão ali seria reanunciado a cada troca */}
+          {balanceData?.carteira && carteirasAtivas.length > 1 && (
+            <Button
+              variant="link"
+              onClick={() => setCarteiraId(null)}
+              disabled={isEditing}
+              className="h-auto min-h-6 p-0 mt-1 text-xs font-semibold underline hover:no-underline"
+            >
+              Definir metas entre carteiras
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className={isEditing ? 'opacity-50 pointer-events-none' : ''}>
@@ -441,15 +462,33 @@ export default function AtivosBalanceamento() {
               <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
                 <Sliders className="h-7 w-7" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-foreground">
-                  Selecione uma carteira para balancear
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed mt-2">
-                  As metas de alocação de ativos são calculadas por carteira de custódia e somam 100% dentro de cada corretora.
-                  Use o seletor no topo da página para escolher a carteira que deseja calibrar e calcular o Aporte Mágico.
-                </p>
-              </div>
+              {carteirasAtivas.length === 0 ? (
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    Cadastre uma carteira para balancear
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                    As metas de alocação são calculadas por carteira de custódia e somam 100%
+                    dentro de cada corretora. Ainda não há nenhuma carteira ativa para calibrar.
+                  </p>
+                  <Link
+                    to="/investimentos/carteiras"
+                    className="inline-block mt-4 text-xs font-semibold text-primary underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+                  >
+                    Gerenciar carteiras
+                  </Link>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    Selecione uma carteira para balancear
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-2">
+                    As metas de alocação de ativos são calculadas por carteira de custódia e somam 100% dentro de cada corretora.
+                    Use o seletor no topo da página para escolher a carteira que deseja calibrar e calcular o Aporte Mágico.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -615,6 +654,13 @@ export default function AtivosBalanceamento() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+          {semMetasDefinidas && (
+            <Alert variant="warning" icon={AlertCircle} title="Defina as metas antes de simular" className="p-3.5 text-xs">
+              Todas as metas desta carteira estão em 0%. Sem um alvo por ativo não há déficit
+              a perseguir, e o plano viraria uma ordem de venda de tudo em vez de um aporte.
+              Use <strong>Ajustar Metas</strong> para distribuir 100% entre os ativos e então simule o aporte.
+            </Alert>
+          )}
           <div className="flex items-center gap-4 flex-col sm:flex-row">
             <div className="flex-1">
               <label htmlFor="aporte-valor" className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">

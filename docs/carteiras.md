@@ -215,10 +215,27 @@ Com N carteiras, "quanto comprar" tem duas respostas:
 
 - **`PosicaoCarteira.meta_porcentagem`** — o alvo do ativo *dentro* de uma carteira.
   Soma 100% por carteira. O plano por ativo é sempre de uma carteira só; sem
-  `?carteira=`, o balanceador usa a primeira ativa. Somar as metas de todas daria
-  100% vezes o número de custódias, e a validação da tela deixaria de significar algo.
+  `?carteira=` o endpoint responde `carteira: None` e plano vazio. Somar as metas de
+  todas daria 100% vezes o número de custódias, e a validação da tela deixaria de
+  significar algo.
 - **`Carteira.meta_porcentagem`** — o peso alvo da carteira no patrimônio total.
   Responde "quanto aportar em cada corretora".
+
+### Em qual carteira a tela abre
+
+Como o consolidado não tem plano por ativo, a tela de balanceamento **abre sempre numa
+carteira concreta**: a escolhida, ou a primeira ativa. O consolidado só aparece quando
+o usuário o pede no seletor — e é lá que ficam as metas *entre* carteiras, com a coluna
+"Falta Aportar" que reparte o aporte entre as corretoras.
+
+Para isso, `CarteiraProvider` grava a sentinela `'consolidado'` em `localStorage`:
+sem ela, "pedi todas as carteiras" e "ainda não escolhi nada" são o mesmo `null`, e a
+tela não sabe se deve focar uma carteira ou respeitar a escolha. Um `null` que venha de
+carteira arquivada também cai na primeira ativa, em vez de virar estado vazio.
+
+A regra é pura, em `frontend/src/lib/balanceamento.js`, com teste tabelado por estado.
+O motivo de estar isolada: com **uma** carteira ativa o seletor não é renderizado (não
+há escolha a oferecer), e a tela chegou a pedir uma seleção que não havia como fazer.
 
 No relatório consolidado (PDF/Excel), `_meta_consolidada` pondera a meta de cada
 posição pelo peso da sua carteira no total investido. Com uma carteira só o peso é 1
