@@ -148,6 +148,13 @@ CAMPOS_RENOMEADOS_POR_MODELO = {
     "Conta": {"receita_recorrente_uuid": "recorrencia_uuid"},
 }
 
+# Campos que mudaram de modelo. `filter_valid_fields` descarta o que não existe mais,
+# então sem isto a meta de alocação de um `.fcbk` anterior às carteiras some calada e o
+# balanceamento volta com tudo em 0% (ver docs/backup.md).
+CAMPOS_MOVIDOS_DE_MODELO = {
+    "Ativo": {"meta_porcentagem": "PosicaoCarteira"},
+}
+
 # FKs que viraram obrigatórias depois do backup existir. Sem isto, restaurar um
 # `.fcbk` anterior às carteiras descarta as transações em silêncio (ver docs/carteiras.md).
 FKS_LEGADAS_COM_PADRAO = {
@@ -237,6 +244,8 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     total_ignorados = 0
     faturas_removidas = 0  # faturas de cartão duplicadas descartadas na normalização
     ativos_restaurados = []  # rastreia ativos para recálculo posterior
+    # {ativo_id: meta} lida do `Ativo` de backups anteriores às carteiras
+    metas_legadas_por_ativo: dict[int, str] = {}
 
     def get_model_field_names(model):
         """Retorna os nomes de campos válidos do modelo."""
@@ -334,6 +343,13 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         total_ignorados += 1
                         continue
 
+                    # Guardado antes da filtragem: o campo não existe mais neste modelo
+                    meta_legada = None
+                    if model_name in CAMPOS_MOVIDOS_DE_MODELO:
+                        for campo in CAMPOS_MOVIDOS_DE_MODELO[model_name]:
+                            if row.get(campo) is not None:
+                                meta_legada = row[campo]
+
                     # Parse date/datetime fields from string to actual python objects
                     from django.db.models import DateField, DateTimeField
                     from django.utils.dateparse import parse_date, parse_datetime
@@ -426,6 +442,8 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         # Rastrear ativos restaurados para recálculo posterior
                         if model_name == "Ativo":
                             ativos_restaurados.append(obj)
+                            if meta_legada is not None:
+                                metas_legadas_por_ativo[obj.id] = meta_legada
 
             # 2b. Restaurar o histórico de aportes das metas
             # Não passa pelo laço genérico porque `AporteMeta` não tem FK para o
@@ -546,6 +564,46 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                             )
                 except ImportError:
                     logger.debug("Módulo de investimentos não disponível para recálculo.")
+
+            # 4b. Reconduzir a meta de alocação que vinha no `Ativo`
+            # Só entra em backup anterior às carteiras: o export atual grava a meta na
+            # `PosicaoCarteira`, e aí o laço acima já a restaurou. Roda depois do
+            # recálculo porque é ele que cria as posições que recebem o valor.
+            if metas_legadas_por_ativo:
+                from decimal import Decimal as DecimalMeta
+
+                from investimento.models import PosicaoCarteira
+
+                recuperadas = 0
+                for ativo_id, meta in metas_legadas_por_ativo.items():
+                    posicoes = list(
+                        PosicaoCarteira.objects.filter(usuario=user, ativo_id=ativo_id)
+                    )
+                    # A meta era global por ativo; dividi-la entre custódias exigiria um
+                    # critério que o arquivo não tem. Com uma posição só não há dúvida.
+                    if len(posicoes) != 1:
+                        if len(posicoes) > 1:
+                            logger.warning(
+                                "Meta legada do ativo %s não aplicada: %d posições, "
+                                "e o backup não diz como dividir entre elas.",
+                                ativo_id, len(posicoes),
+                            )
+                        continue
+                    try:
+                        PosicaoCarteira.objects.filter(pk=posicoes[0].pk).update(
+                            meta_porcentagem=DecimalMeta(str(meta))
+                        )
+                        recuperadas += 1
+                    except (ArithmeticError, TypeError, ValueError) as meta_err:
+                        logger.warning(
+                            "Meta legada inválida no ativo %s (%r): %s",
+                            ativo_id, meta, meta_err,
+                        )
+                if recuperadas:
+                    logger.info(
+                        "Backup anterior às carteiras: %d meta(s) de alocação movida(s) "
+                        "do ativo para a posição na carteira.", recuperadas,
+                    )
 
             # 5. DEDUPLICAR FATURAS DE CARTÃO
             # Rede de segurança na fronteira do import: backups gerados por versões

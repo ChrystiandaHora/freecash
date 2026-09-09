@@ -55,7 +55,7 @@ que o filho saia antes do pai.
 
 ---
 
-## Os três mapas de compatibilidade
+## Os quatro mapas de compatibilidade
 
 O arquivo guarda **nomes de classe** (`data[app][NomeDoModelo]`) e **nomes de campo**.
 Qualquer renomeação no código é, portanto, uma quebra de formato: o backup que o usuário
@@ -66,17 +66,27 @@ gerou ontem continua trazendo os nomes de ontem.
 | `NOMES_LEGADOS_DE_MODELO` | Modelo renomeado | `ReceitaRecorrente` → `LancamentoRecorrente` |
 | `CAMPOS_RENOMEADOS_POR_MODELO` | Campo renomeado | `Conta.receita_recorrente_uuid` → `recorrencia_uuid` |
 | `FKS_LEGADAS_COM_PADRAO` | FK que virou obrigatória | `Transacao.carteira`, que não existia antes das carteiras |
+| `CAMPOS_MOVIDOS_DE_MODELO` | Campo que trocou de modelo | `Ativo.meta_porcentagem` → `PosicaoCarteira.meta_porcentagem` |
 
 O terceiro é o mais traiçoeiro. O laço genérico grava `None` em toda FK cujo
 `<campo>_uuid` não esteja no arquivo; com a coluna `NOT NULL`, o insert é rejeitado, o
 fallback por nome também falha, e o registro entra em `total_ignorados` — **as ordens do
 usuário somem sem erro nenhum**. Ver [carteiras.md](carteiras.md) para o caso concreto.
 
-**A próxima renomeação, ou a próxima FK obrigatória, precisa da entrada correspondente.**
-`core/tests/test_backup_compatibilidade.py` cobre os três casos.
+O quarto é o contra-exemplo do "remover campo é seguro". Quando a meta de alocação
+saiu de `Ativo` para `PosicaoCarteira`, `filter_valid_fields` passou a descartá-la de
+todo backup anterior — sem erro — e o balanceamento reabria com todos os ativos em 0%.
+O valor é lido antes da filtragem e aplicado **depois** do recálculo, que é quem cria a
+posição que vai recebê-lo. Só é aplicado quando o ativo tem exatamente uma posição: a
+meta era global por ativo, e dividi-la entre custódias exigiria um critério que o
+arquivo não tem.
 
-Remover campo é seguro no sentido inverso: `filter_valid_fields` descarta o que não
-existe mais no modelo.
+**A próxima renomeação, a próxima FK obrigatória ou o próximo campo que muda de modelo
+precisa da entrada correspondente.** `core/tests/test_backup_compatibilidade.py` cobre
+os quatro casos.
+
+Remover campo é seguro só quando o dado morreu de fato; se ele foi para outro modelo,
+`filter_valid_fields` o descarta em silêncio e é preciso a entrada acima.
 
 ---
 
