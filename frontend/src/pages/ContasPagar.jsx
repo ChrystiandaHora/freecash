@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
   CalendarDays, Tag, RefreshCw, Pencil, CreditCard, ExternalLink,
-  Trash2, RotateCcw
+  Trash2, RotateCcw, KanbanSquare, Table2
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
@@ -25,6 +25,27 @@ import { Modal } from '../components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { getCurrentMonthDateRange } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
+import QuadroContasPagar from '../components/contas/QuadroContasPagar';
+
+// ─── Visões ───────────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'kanban', label: 'Kanban', Icon: KanbanSquare },
+  { id: 'tabela', label: 'Tabela', Icon: Table2 },
+]
+
+const CHAVE_VISTA = 'freecash-contas-pagar-vista'
+
+// Preferência de exibição de um dispositivo, no mesmo padrão do tema e da carteira:
+// atravessa o F5 e não tem por que ir para o servidor.
+const lerVistaSalva = () => {
+  try {
+    const salva = localStorage.getItem(CHAVE_VISTA)
+    return TABS.some((t) => t.id === salva) ? salva : 'kanban'
+  } catch {
+    return 'kanban'
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +109,32 @@ export default function ContasPagar() {
   const [fadingIds, setFadingIds] = useState(new Set())
   const [filteredContas, setFilteredContas] = useState(null)
   const [actionError, setActionError] = useState('')
+  const [vista, setVista] = useState(lerVistaSalva)
+
+  const trocarVista = (proxima) => {
+    setVista(proxima)
+    try {
+      localStorage.setItem(CHAVE_VISTA, proxima)
+    } catch {
+      // Janela privada ou storage bloqueado: a escolha ainda vale nesta sessão.
+    }
+  }
+
+  const handleTabKeyDown = (event, index) => {
+    const keyToIndex = {
+      ArrowRight: (index + 1) % TABS.length,
+      ArrowLeft: (index - 1 + TABS.length) % TABS.length,
+      Home: 0,
+      End: TABS.length - 1,
+    }
+    const nextIndex = keyToIndex[event.key]
+    if (nextIndex === undefined) return
+
+    event.preventDefault()
+    const nextTab = TABS[nextIndex]
+    trocarVista(nextTab.id)
+    document.getElementById(`tab-${nextTab.id}`)?.focus()
+  }
 
   /**
    * Reverte o fade otimista da linha e informa o erro.
@@ -201,8 +248,20 @@ export default function ContasPagar() {
     })
   }, [contas])
 
-  // ─── KPIs (calculados dinamicamente com base nos filtros da tabela) ────────
-  const contasParaKpis = filteredContas ?? contasOrdenadas
+  // O quadro mostra o mês corrente, o mesmo recorte que /contas-kanban pede ao
+  // servidor. Sem data de vencimento a conta fica fora, como no filtro de lá.
+  const contasDoMes = useMemo(() => {
+    const { from, to } = getCurrentMonthDateRange()
+    return (contasOrdenadas || []).filter(
+      (c) => typeof c.data_vencimento === 'string' && c.data_vencimento >= from && c.data_vencimento <= to
+    )
+  }, [contasOrdenadas])
+
+  // ─── KPIs ──────────────────────────────────────────────────────────────────
+  // Os três indicadores descrevem o conjunto que está à vista: sob a tabela, o que o
+  // filtro dela deixou; sob o quadro, o mês que o quadro mostra. Deixá-los presos ao
+  // filtro da tabela faria o kanban exibir números de um recorte invisível.
+  const contasParaKpis = vista === 'kanban' ? contasDoMes : (filteredContas ?? contasOrdenadas)
   const pendentes = (contasParaKpis || []).filter((c) => !c.pago)
   const atrasadas = (contasParaKpis || []).filter((c) => {
     if (c.pago || !c.data_vencimento || typeof c.data_vencimento !== 'string') return false
@@ -491,21 +550,68 @@ export default function ContasPagar() {
         </Alert>
       )}
 
-      {/* Tabela */}
-      <div>
-        <DataTable
-          columns={columns}
-          data={tableData}
-          isLoading={isLoading}
-          pageSize={10}
-          defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
-          emptyMessage="Nenhuma conta cadastrada."
-          onFilteredDataChange={setFilteredContas}
-          rowClassName={(row) =>
-            row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
-          }
-        />
+      {/* Abas — padrão WAI-ARIA de tabs: troca a região visível, navegável por setas */}
+      <div role="tablist" aria-label="Visão das contas a pagar" className="flex border-b border-border/40 self-start">
+        {TABS.map((tab, index) => {
+          const { Icon } = tab
+          const ativa = vista === tab.id
+          return (
+            <button
+              key={tab.id}
+              id={`tab-${tab.id}`}
+              role="tab"
+              type="button"
+              aria-selected={ativa}
+              aria-controls={`painel-${tab.id}`}
+              // Só a aba ativa fica na ordem de tabulação; as demais vêm pelas setas.
+              tabIndex={ativa ? 0 : -1}
+              onClick={() => trocarVista(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, index)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wider border-b-2 transition-all ${ativa ? 'border-primary text-primary font-extrabold' : 'border-transparent text-muted-foreground hover:text-foreground font-bold'}`}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {tab.label}
+            </button>
+          )
+        })}
       </div>
+
+      {/* Painel: Kanban */}
+      {vista === 'kanban' && (
+        <div id="painel-kanban" role="tabpanel" aria-labelledby="tab-kanban" tabIndex={0} className="space-y-4">
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>
+              Mostrando o mês corrente. Arraste um card para <strong>"Pagas"</strong> para
+              registrar o pagamento, ou clique no card para editá-lo. Para filtrar outros
+              períodos e excluir contas, use a <strong>Tabela</strong>.
+            </p>
+          </div>
+          {isLoading ? (
+            <p role="status" className="text-sm text-muted-foreground">Carregando contas a pagar...</p>
+          ) : (
+            <QuadroContasPagar contas={contasDoMes} />
+          )}
+        </div>
+      )}
+
+      {/* Painel: Tabela */}
+      {vista === 'tabela' && (
+        <div id="painel-tabela" role="tabpanel" aria-labelledby="tab-tabela" tabIndex={0}>
+          <DataTable
+            columns={columns}
+            data={tableData}
+            isLoading={isLoading}
+            pageSize={10}
+            defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
+            emptyMessage="Nenhuma conta cadastrada."
+            onFilteredDataChange={setFilteredContas}
+            rowClassName={(row) =>
+              row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
+            }
+          />
+        </div>
+      )}
 
       {/* ─── Modal: Confirmar Pagamento ────────────────────────────────────────── */}
       <Modal
