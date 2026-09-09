@@ -131,12 +131,7 @@ function Rotulo({ htmlFor, children }) {
  */
 function Indicador({ icon: Icon, rotulo, valor, apoio, acao }) {
   return (
-    <Card className="relative overflow-hidden border-border/40 shadow-sm">
-      {/* Marca d'água decorativa, mesmo gesto dos indicadores do Dashboard. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-primary/5 blur-2xl"
-      />
+    <Card className="border-border/40 shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
