@@ -39,6 +39,65 @@ de redefinição esperam encontrá-lo.
 
 ---
 
+## Política de senha
+
+Definida em `core/validacao_senha.py` e ligada por `AUTH_PASSWORD_VALIDATORS`. Vale
+igual nos três fluxos que definem senha — registro, redefinição por link e troca com o
+usuário autenticado —, porque os três chamam `validate_password`.
+
+| Regra | Onde |
+| --- | --- |
+| De 12 a 128 caracteres | `TamanhoSenhaValidator` |
+| Não estar entre as ~20 mil senhas mais comuns | `CommonPasswordValidator` (Django) |
+| Não ser só dígitos | `NumericPasswordValidator` (Django) |
+| Não conter o nome de usuário, o local-part do e-mail nem `freecash` | `TermoDeContextoValidator` |
+
+**Não há regra de composição**, e isso é deliberado. O NIST SP 800-63B rev. 4 (julho de
+2025) desaconselha exigir maiúscula, dígito ou símbolo: a exigência produz `Senha123!`,
+ganho de entropia quase nulo, e afasta a frase longa que seria mais forte. O que
+sustenta a senha é tamanho e comparação contra listas. Uma frase como
+`roda gigante de terça` passa; `Senha12!` não, por tamanho.
+
+### Por que contenção e não similaridade
+
+Até setembro de 2026 o contexto era conferido pelo `UserAttributeSimilarityValidator`
+do Django, que compara senha e atributos do usuário por razão do `SequenceMatcher`
+contra um limiar de 0,7. Ele funcionava, mas tinha um defeito de **produto**: esse
+número não é reproduzível no navegador, então a tela não conseguia dizer de antemão se
+a senha passaria. A recusa só aparecia depois do POST — o usuário escolhia a senha,
+confirmava, clicava em avançar e só então descobria.
+
+A contenção protege do mesmo ataque — quem vai atrás desta conta já conhece o nome de
+usuário, e `<usuário>+sufixo` é a primeira derivação tentada; o segredo real é só o
+sufixo — e é reproduzível caractere a caractere. Por isso existe
+`frontend/src/lib/politicaSenha.js`, que espelha esta regra e alimenta o checklist ao
+vivo do cadastro, da redefinição e de Minha Conta.
+
+Duas consequências de tamanho conhecido:
+
+- **O espelho é parcial, e a tela precisa continuar tratando o erro do servidor.** A
+  lista das 20 mil senhas comuns não vai para o navegador, então uma senha pode passar
+  no checklist e ser recusada no POST. `avaliarSenha().atendida` significa «passou no
+  que dá para conferir aqui», nunca «o servidor vai aceitar».
+- **A redefinição por link não conhece o usuário.** Ali chegam só `uid` e `token`, e a
+  página não sabe o nome de usuário nem o e-mail para conferir o contexto. O requisito
+  aparece como «conferido ao salvar» em vez de verde — prometer o que não foi
+  verificado seria pior que não prometer.
+
+As tabelas de casos em `core/tests/test_politica_senha.py` e
+`frontend/src/lib/politicaSenha.test.js` são deliberadamente as mesmas: um caso que
+mude de lado em um só dos dois faz a tela prometer o que o servidor recusa.
+
+### O que a mudança não faz
+
+Os validadores rodam ao **definir** a senha, nunca ao conferi-la no login. Contas
+criadas sob a política anterior continuam entrando normalmente com a senha que têm,
+inclusive senhas de 8 caracteres. A política nova só as alcança na próxima troca. Não
+há expiração periódica de senha, também por recomendação do NIST: forçar troca sem
+evidência de comprometimento empurra o usuário para variações previsíveis.
+
+---
+
 ## Sessão
 
 | Item | Valor | Onde |
@@ -186,7 +245,7 @@ já enviado** — porque o valor pendente entra no hash do token.
 ### Troca de senha
 
 Exige a senha atual, recusa uma nova senha igual à atual, e aplica os
-`AUTH_PASSWORD_VALIDATORS`.
+`AUTH_PASSWORD_VALIDATORS` (ver «Política de senha»).
 
 Ao concluir, **todas as sessões são revogadas** e uma sessão nova é devolvida a
 quem fez a troca. Revogar é o ponto: se a senha vazou, manter as sessões abertas
