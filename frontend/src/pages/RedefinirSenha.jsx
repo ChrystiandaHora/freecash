@@ -14,10 +14,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import { AuthPageShell } from '../components/auth/AuthPageShell';
+import { ChecklistSenha } from '../components/auth/ChecklistSenha';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { extrairErros } from '../lib/apiErros';
+import { avaliarSenha, primeiroPendente } from '../lib/politicaSenha';
 import { confirmarResetSenha } from '../services/auth';
 
 export default function RedefinirSenha() {
@@ -48,16 +50,18 @@ export default function RedefinirSenha() {
       return;
     }
 
-    // Espelha o MinimumLengthValidator do servidor para dar retorno imediato; os
-    // demais validadores (senha comum, numérica, parecida com o usuário) rodam lá.
-    if (senha.length < 8) {
-      setErrosCampo({ nova_senha: 'A senha deve ter no mínimo 8 caracteres.' });
-      setErro('Verifique os campos destacados.');
-      return;
-    }
-
-    if (senha !== confirmar) {
-      setErrosCampo({ confirmar: 'As senhas não coincidem.' });
+    // Mesma avaliação do checklist, menos o requisito de contexto: esta página recebe
+    // só `uid` e `token`, e não sabe o usuário nem o e-mail para conferi-lo.
+    const pendente = primeiroPendente(
+      avaliarSenha(senha, { contextoConhecido: false, confirmacao: confirmar })
+    );
+    if (pendente) {
+      const ehConfirmacao = pendente.id === 'confirmacao';
+      setErrosCampo({
+        [ehConfirmacao ? 'confirmar' : 'nova_senha']: ehConfirmacao
+          ? 'As senhas não coincidem.'
+          : `${pendente.rotulo}.`,
+      });
       setErro('Verifique os campos destacados.');
       return;
     }
@@ -140,18 +144,23 @@ export default function RedefinirSenha() {
             disabled={carregando}
             aria-invalid={!!errosCampo.nova_senha}
             aria-describedby={
-              errosCampo.nova_senha ? 'erro-nova-senha' : 'ajuda-nova-senha'
+              [errosCampo.nova_senha && 'erro-nova-senha', 'ajuda-nova-senha']
+                .filter(Boolean)
+                .join(' ')
             }
           />
-          {errosCampo.nova_senha ? (
+          {errosCampo.nova_senha && (
             <p id="erro-nova-senha" className="text-xs text-red-700 dark:text-red-400">
               {errosCampo.nova_senha}
             </p>
-          ) : (
-            <p id="ajuda-nova-senha" className="text-xs text-muted-foreground">
-              No mínimo 8 caracteres. Evite senhas comuns e parecidas com seu nome de usuário.
-            </p>
           )}
+          <ChecklistSenha
+            id="ajuda-nova-senha"
+            senha={senha}
+            confirmacao={confirmar}
+            contextoConhecido={false}
+            className="pt-1"
+          />
         </div>
 
         <div className="space-y-1.5">

@@ -39,6 +39,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 
+import { ChecklistSenha } from '../components/auth/ChecklistSenha';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -51,6 +52,7 @@ import { Select } from '../components/ui/Select';
 import { useAuth } from '../context/AuthProvider';
 import { useToast } from '../context/ToastContext';
 import { extrairErros } from '../lib/apiErros';
+import { avaliarSenha, primeiroPendente, termosDeContexto } from '../lib/politicaSenha';
 import { setAccessToken } from '../services/api';
 import {
   alterarSenha,
@@ -657,6 +659,27 @@ export default function MinhaConta() {
             className="flex flex-1 flex-col gap-4"
             onSubmit={(e) => {
               e.preventDefault();
+
+              // Mesma avaliação do checklist; a lista de senhas comuns só o servidor tem
+              const pendente = primeiroPendente(
+                avaliarSenha(novaSenha, {
+                  termos: termosDeContexto({
+                    usuario: conta?.username,
+                    email: conta?.email,
+                  }),
+                  confirmacao: confirmarSenha,
+                })
+              );
+              if (pendente) {
+                const ehConfirmacao = pendente.id === 'confirmacao';
+                setErrosSenha({
+                  [ehConfirmacao ? 'confirmar' : 'nova_senha']: ehConfirmacao
+                    ? 'As senhas não coincidem.'
+                    : `${pendente.rotulo}.`,
+                });
+                return;
+              }
+
               mutSenha.mutate({
                 senha_atual: senhaAtual,
                 nova_senha: novaSenha,
@@ -697,7 +720,12 @@ export default function MinhaConta() {
                   onChange={(e) => setNovaSenha(e.target.value)}
                   aria-invalid={!!errosSenha.nova_senha}
                   aria-describedby={
-                    errosSenha.nova_senha ? 'erro-conta-nova-senha' : 'ajuda-conta-nova-senha'
+                    [
+                      errosSenha.nova_senha && 'erro-conta-nova-senha',
+                      'ajuda-conta-nova-senha',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')
                   }
                 />
                 <ErroCampo id="erro-conta-nova-senha" mensagem={errosSenha.nova_senha} />
@@ -723,11 +751,12 @@ export default function MinhaConta() {
               </div>
             </div>
 
-            {!errosSenha.nova_senha && (
-              <p id="ajuda-conta-nova-senha" className="text-xs text-muted-foreground">
-                No mínimo 8 caracteres. Evite senhas comuns e parecidas com seu nome de usuário.
-              </p>
-            )}
+            <ChecklistSenha
+              id="ajuda-conta-nova-senha"
+              senha={novaSenha}
+              confirmacao={confirmarSenha}
+              contexto={{ usuario: conta?.username, email: conta?.email }}
+            />
 
             <BarraAcoes>
               <Button type="submit" disabled={mutSenha.isPending} className="gap-2">

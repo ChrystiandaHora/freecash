@@ -23,8 +23,10 @@ import { PasswordInput } from '../components/ui/PasswordInput';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
+import { ChecklistSenha } from '../components/auth/ChecklistSenha';
 import { cn } from '../lib/utils';
 import { extrairErros } from '../lib/apiErros';
+import { avaliarSenha, primeiroPendente, termosDeContexto } from '../lib/politicaSenha';
 import { Wallet, Loader2, AlertCircle, ShieldCheck, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
 import { ThemeToggle } from '../components/nav/ThemeToggle';
 
@@ -103,17 +105,22 @@ export default function Login() {
       return;
     }
 
-    // Espelha o MinimumLengthValidator do servidor para dar retorno imediato. A
-    // validação que vale é a de lá: o servidor também aplica os validadores de
-    // senha comum, senha numérica e semelhança com o nome de usuário.
+    // Mesma avaliação que alimenta o checklist. A palavra final continua sendo a do
+    // servidor, que ainda confere a lista de senhas comuns (ver lib/politicaSenha).
     if (isRegister) {
-      if (password.length < 8) {
-        setFieldErrors({ password: 'A senha deve ter no mínimo 8 caracteres.' });
-        setError('Verifique os campos destacados.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setFieldErrors({ confirm: 'As senhas não coincidem.' });
+      const pendente = primeiroPendente(
+        avaliarSenha(password, {
+          termos: termosDeContexto({ usuario: username, email }),
+          confirmacao: confirmPassword,
+        })
+      );
+      if (pendente) {
+        const ehConfirmacao = pendente.id === 'confirmacao';
+        setFieldErrors({
+          [ehConfirmacao ? 'confirm' : 'password']: ehConfirmacao
+            ? 'As senhas não coincidem.'
+            : `${pendente.rotulo}.`,
+        });
         setError('Verifique os campos destacados.');
         return;
       }
@@ -320,24 +327,30 @@ export default function Login() {
                     className="rounded-xl"
                     disabled={loading}
                     aria-invalid={!!fieldErrors.password}
+                    // Os requisitos continuam descrevendo o campo mesmo com erro: é
+                    // deles que sai o que fazer a seguir.
                     aria-describedby={
-                      fieldErrors.password
-                        ? 'erro-login-senha'
-                        : isRegister
-                          ? 'ajuda-login-senha'
-                          : undefined
+                      [
+                        fieldErrors.password && 'erro-login-senha',
+                        isRegister && 'ajuda-login-senha',
+                      ]
+                        .filter(Boolean)
+                        .join(' ') || undefined
                     }
                   />
-                  {fieldErrors.password ? (
+                  {fieldErrors.password && (
                     <p id="erro-login-senha" className="text-xs text-red-700 dark:text-red-400">
                       {fieldErrors.password}
                     </p>
-                  ) : (
-                    isRegister && (
-                      <p id="ajuda-login-senha" className="text-xs text-muted-foreground">
-                        No mínimo 8 caracteres. Evite senhas comuns e parecidas com seu nome de usuário.
-                      </p>
-                    )
+                  )}
+                  {isRegister && (
+                    <ChecklistSenha
+                      id="ajuda-login-senha"
+                      senha={password}
+                      confirmacao={confirmPassword}
+                      contexto={{ usuario: username, email }}
+                      className="pt-1"
+                    />
                   )}
                 </div>
 
