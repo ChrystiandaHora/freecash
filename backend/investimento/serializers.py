@@ -165,9 +165,15 @@ class AtivoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uuid', 'quantidade', 'preco_medio', 'criada_em', 'atualizada_em']
 
+    # Dois meses de pregão. O corte é por quantidade, e não por data, para a série não
+    # encolher quando o coletor fica dias sem rodar — ver `JANELA_COTACOES_DIAS` na view.
+    LIMITE_HISTORICO_COTACOES = 45
+
     def get_historico_cotacoes(self, obj) -> list[dict]:
-        """Retorna a série histórica das últimas 30 cotações ordenadas cronologicamente."""
-        recent_cotacoes = list(obj.cotacoes.all().order_by('-data')[:30])
+        """Retorna a série histórica das últimas cotações ordenadas cronologicamente."""
+        recent_cotacoes = list(
+            obj.cotacoes.all().order_by('-data')[:self.LIMITE_HISTORICO_COTACOES]
+        )
         recent_cotacoes.reverse()
         return [
             {"data": str(c.data), "valor": float(c.valor)}

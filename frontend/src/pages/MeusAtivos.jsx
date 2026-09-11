@@ -7,7 +7,7 @@
  *
  * @returns {React.JSX.Element} Visualização em tabela com modais flutuantes de cadastro operacional.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -30,7 +30,8 @@ import {
   fetchAtivos, 
   deleteAtivo, 
   fetchSubcategoriasAtivos,
-  atualizarCotacoes
+  atualizarCotacoes,
+  fetchHistoricoCotacoes
 } from '../services/investimentos';
 
 import { Button } from '../components/ui/Button';
@@ -39,6 +40,7 @@ import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
+import GraficoCotacoesAtivos from '../components/GraficoCotacoesAtivos';
 import SeletorCarteira from '../components/SeletorCarteira';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 import { useCarteira } from '../context/CarteiraProvider';
@@ -187,7 +189,12 @@ export default function MeusAtivos() {
   const { carteiraId, carteiraSelecionada, carteirasAtivas = [] } = useCarteira();
 
   /* ── Queries ── */
-  const { data: ativos = [], isLoading: loadingAtivos, isError: errorAtivos } = useQuery({
+  const {
+    data: ativos = [],
+    isLoading: loadingAtivos,
+    isError: errorAtivos,
+    isPlaceholderData: ativosDesatualizados,
+  } = useQuery({
     // Sob filtro, a API devolve os mesmos campos com os números da carteira em
     // foco. `keepPreviousData` evita que a tabela pisque a cada troca de filtro.
     queryKey: ['ativos', carteiraId],
@@ -199,6 +206,23 @@ export default function MeusAtivos() {
   const { data: subcategorias = [], isLoading: loadingSubs } = useQuery({
     queryKey: ['subcategoriasAtivos'],
     queryFn: () => fetchSubcategoriasAtivos()
+  });
+
+  // Série de cotações do gráfico. Query própria, e não um campo da listagem: a tabela
+  // re-renderiza a cada tecla no filtro, e carregar ~40 pregões por ativo junto dela
+  // pesaria em toda renderização.
+  const [janelaDias, setJanelaDias] = useState(60);
+  const [escalaGrafico, setEscalaGrafico] = useState('retorno');
+  const {
+    data: historico,
+    isLoading: loadingHistorico,
+    isError: errorHistorico,
+    isPlaceholderData: historicoDesatualizado,
+  } = useQuery({
+    queryKey: ['historicoCotacoes', carteiraId, janelaDias],
+    queryFn: () => fetchHistoricoCotacoes({ carteiraId, dias: janelaDias }),
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 
   /* ── Mutations ── */
@@ -231,19 +255,26 @@ export default function MeusAtivos() {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['historicoCotacoes']);
       
       const count = data?.count || 0;
       const errors = data?.errors || [];
+      // O completamento de histórico tem teto por rodada: o que sobrou volta aqui,
+      // e clicar de novo continua de onde parou (ver `completar_historico`).
+      const pendentes = data?.historico_pendente || 0;
+      const restam = pendentes > 0
+        ? ` Ainda faltam ${pendentes} ${pendentes === 1 ? 'ativo' : 'ativos'} com histórico incompleto — clique de novo para continuar.`
+        : '';
       
       if (count > 0 && errors.length === 0) {
-        handleShowSuccess(`${count} cotações atualizadas com sucesso!`);
+        handleShowSuccess(`${count} cotações atualizadas com sucesso!${restam}`);
       } else if (count > 0 && errors.length > 0) {
-        handleShowSuccess(`${count} cotações atualizadas com sucesso!`);
+        handleShowSuccess(`${count} cotações atualizadas com sucesso!${restam}`);
         setGlobalError(`Falha em alguns ativos: ${errors.slice(0, 3).join(' | ')}${errors.length > 3 ? '...' : ''}`);
       } else if (errors.length > 0) {
         setGlobalError(`Falha ao atualizar cotações: ${errors.slice(0, 3).join(' | ')}${errors.length > 3 ? '...' : ''}`);
       } else {
-        handleShowSuccess('Nenhuma cotação nova encontrada ou nenhum ativo com ticker.');
+        handleShowSuccess(`Nenhuma cotação nova encontrada ou nenhum ativo com ticker.${restam}`);
       }
     },
     onError: () => {
@@ -281,17 +312,20 @@ export default function MeusAtivos() {
 
   const [tableFilteredAtivos, setTableFilteredAtivos] = useState(null);
 
-  // Lista Filtrada por Busca e Subcategoria
-  const filteredAtivos = ativos.filter(ativo => {
-    // Filtragem de Aba (Ativos x Arquivados)
-    const matchesTab = activeTab === 'ativos' ? ativo.ativo : !ativo.ativo;
-    if (!matchesTab) return false;
+  // Universo da aba (Ativos x Arquivados). Fica separado dos demais filtros porque é
+  // o escopo que o gráfico também usa — ele não segue busca nem classe.
+  const ativosDaAba = useMemo(
+    () => ativos.filter((ativo) => (activeTab === 'ativos' ? ativo.ativo : !ativo.ativo)),
+    [ativos, activeTab]
+  );
 
+  // Lista Filtrada por Busca e Subcategoria
+  const filteredAtivos = ativosDaAba.filter(ativo => {
     // Busca por Texto (Ticker ou Nome)
-    const matchesSearch = 
+    const matchesSearch =
       ativo.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ativo.nome.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Filtro por Subcategoria
     const matchesSub = filterSubcategoria === '' || ativo.subcategoria === parseInt(filterSubcategoria);
 
@@ -303,6 +337,26 @@ export default function MeusAtivos() {
   const totalPatrimonio = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.valor_total_atual || 0), 0);
   const totalMeta = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.meta_porcentagem || 0), 0);
   const totalInvestido = ativosParaKpis.reduce((sum, item) => sum + (parseFloat(item.quantidade || 0) * parseFloat(item.preco_medio || 0)), 0);
+
+  // O universo do gráfico é a aba e a carteira — deliberadamente NÃO a busca nem o
+  // filtro de classe: ele tem seleção própria, e reagir ao filtro repintaria as linhas
+  // a cada tecla. Quem escolhe o que aparece é o seletor dentro do gráfico.
+  const seriesDoUniverso = useMemo(() => {
+    const idsDaAba = new Set(ativosDaAba.map((a) => a.id));
+    return (historico?.series ?? []).filter((s) => idsDaAba.has(s.id));
+  }, [historico, ativosDaAba]);
+
+  // Da listagem, e não recalculado: sob filtro de carteira o serializador já
+  // sobrescreve preço médio e retorno com os daquela custódia, e o gráfico precisa
+  // mostrar o mesmo número que a coluna «Retorno» ao lado.
+  // Memoizado porque é dependência de `useMemo` no gráfico: um Map novo a cada
+  // render invalidaria o cálculo das séries a cada tecla digitada no filtro.
+  const ativosPorId = useMemo(() => new Map(ativos.map((a) => [a.id, a])), [ativos]);
+
+  // Trocar de carteira ou de aba troca a identidade do universo, e a seleção do
+  // gráfico tem de ser semeada de novo. Remontar é o mecanismo do React para isso —
+  // e, ao contrário de um efeito de reset, é incapaz de pisar na edição do usuário.
+  const universoGrafico = `${carteiraId ?? 'consolidado'}:${activeTab}`;
 
   if (loadingAtivos || loadingSubs) {
     return (
@@ -449,6 +503,21 @@ export default function MeusAtivos() {
         </div>
 
       </div>
+
+      <GraficoCotacoesAtivos
+        key={universoGrafico}
+        series={seriesDoUniverso}
+        ativosPorId={ativosPorId}
+        escala={escalaGrafico}
+        onEscalaChange={setEscalaGrafico}
+        dias={janelaDias}
+        onDiasChange={setJanelaDias}
+        // Dado de placeholder vira carregamento aqui: o cabeçalho já diz o nome da
+        // carteira nova, e mostrar as linhas da anterior sob ele é indistinguível de
+        // mostrar um número errado.
+        isLoading={loadingHistorico || historicoDesatualizado || ativosDesatualizados}
+        isError={errorHistorico}
+      />
 
       {/* Caixa de Visualização Principal */}
       <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">

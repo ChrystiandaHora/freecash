@@ -69,6 +69,23 @@ export const fetchAtivo = async (id) => {
   return data;
 };
 
+/**
+ * Série de fechamento de todos os ativos do usuário, para o gráfico comparativo.
+ *
+ * Endpoint separado da listagem de propósito: a tabela de Meus Ativos renderiza a cada
+ * digitação no filtro, e carregar ~40 pregões por ativo junto dela pesaria em toda
+ * renderização (ver `historico_cotacoes` no AtivoViewSet).
+ *
+ * @param {{carteiraId?: number|string|null, dias?: number}} [opcoes]
+ * @returns {Promise<{dias: number, series: Array<{id: number, ticker: string, nome: string, pontos: Array<{data: string, valor: number}>}>}>}
+ */
+export const fetchHistoricoCotacoes = async ({ carteiraId = null, dias = 60 } = {}) => {
+  const { data } = await api.get('/api/investimentos/ativos/historico-cotacoes/', {
+    params: { dias, ...(carteiraId ? { carteira: carteiraId } : {}) },
+  });
+  return data;
+};
+
 export const createAtivo = async (payload) => {
   const { data } = await api.post('/api/investimentos/ativos/', payload);
   return data;

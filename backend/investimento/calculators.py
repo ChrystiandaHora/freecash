@@ -5,13 +5,38 @@ ponderado fiscal de aquisições de ativos, além de gerenciar a sincronização
 de cotações a mercado integrando com coletores remotos.
 """
 
+import datetime
 from decimal import Decimal
+
+from django.db.models import Min, Q
+from django.utils import timezone
+
 from investimento.models import Ativo, PosicaoCarteira, Transacao, Cotacao
 from investimento.services.tradingview_screener import (
     fetch_quotes_brazil,
     _normalize_to_tradingview_symbol,
 )
 from investimento.services.cvm_service import fetch_cvm_quotes
+from investimento.services.yahoo_service import YahooIndisponivel, fetch_historico_yahoo
+
+# Janela de histórico que a atualização em lote garante para cada ticker. Casa com o
+# padrão do gráfico comparativo de Meus Ativos (`JANELA_COTACOES_DIAS` em views_api).
+JANELA_HISTORICO_DIAS = 60
+
+# O início da janela quase nunca é pregão: 60 dias atrás cai em fim de semana ou
+# feriado com frequência, e o `2mo` do Yahoo também não começa exatamente ali. Sem
+# folga, todo ativo pareceria descoberto para sempre.
+TOLERANCIA_INICIO_DIAS = 5
+
+# Um ticker que o Yahoo não conhece (renda fixa, papel de fora) nunca vai ficar
+# coberto. Sem esta espera ele repetiria a mesma requisição e o mesmo erro a cada
+# clique em «Atualizar Cotações».
+REVERIFICAR_APOS_DIAS = 7
+
+# Cada completamento é um GET separado no Yahoo, e o endpoint responde de forma
+# síncrona. O teto mantém o tempo de resposta limitado; o que sobra fica para o
+# próximo clique, e o número de pendentes volta na resposta.
+LIMITE_HISTORICO_POR_RODADA = 12
 
 
 def recalcular_ativo(ativo: Ativo) -> None:
@@ -139,13 +164,109 @@ def recalcular_posicoes_do_ativo(ativo: Ativo) -> None:
     ).update(quantidade=Decimal(0), custo_total=Decimal(0), preco_medio=Decimal(0))
 
 
-def atualizar_cotacoes(usuario=None) -> tuple[int, list[str]]:
-    """Busca em lote as cotações atuais de mercado (B3 via TradingView e Fundos via CVM).
+def gravar_serie_cotacoes(ativo: Ativo, serie) -> int:
+    """Grava uma série de fechamentos, sobrescrevendo o que já houver naquelas datas.
 
-    Atualiza ou cria o histórico diário de fechamento das cotações.
+    Uma escrita só para a série inteira: com `update_or_create` num laço, completar
+    dois meses de um ativo custava ~45 idas ao banco, e um lote de doze ativos passava
+    de quinhentas.
+
+    Args:
+        ativo: Ativo dono das cotações.
+        serie: Iterável de pares `(date, Decimal)`.
 
     Returns:
-        tuple[int, list[str]]: Tupla contendo o número de cotações gravadas com sucesso e a lista de erros ocorridos.
+        int: Quantidade de pregões gravados.
+    """
+    cotacoes = [Cotacao(ativo=ativo, data=data, valor=valor) for data, valor in serie]
+    if not cotacoes:
+        return 0
+
+    Cotacao.objects.bulk_create(
+        cotacoes,
+        update_conflicts=True,
+        unique_fields=["ativo", "data"],
+        update_fields=["valor", "atualizada_em"],
+    )
+    return len(cotacoes)
+
+
+def completar_historico(base, errors: list[str]) -> tuple[int, int]:
+    """Preenche no Yahoo a série dos ativos que não cobrem a janela de dois meses.
+
+    O coletor de cotação atual (TradingView/CVM) grava um pregão por rodada, então um
+    ativo recém-cadastrado leva dois meses de cliques diários até ter gráfico. Esta
+    etapa fecha essa lacuna: confere quem está descoberto e busca a série de uma vez.
+
+    A conferência é uma agregação só para todos os candidatos — a data da cotação mais
+    antiga dentro da janela —, e não um `SELECT` por ativo. Quem já cobre o período
+    não gera requisição nenhuma, que é o caso comum a partir da segunda rodada.
+
+    Ativos são carimbados em `historico_verificado_em` **inclusive quando a busca
+    falha**: sem isso um ticker que o Yahoo não conhece repetiria a requisição e o
+    mesmo erro a cada clique, para sempre.
+
+    Args:
+        base: QuerySet de ativos já recortado por usuário.
+        errors: Lista de erros da rodada, acrescida no lugar (um item por ativo que falhou).
+
+    Returns:
+        tuple[int, int]: Pregões gravados e quantos ativos ficaram para a próxima
+            rodada por causa de `LIMITE_HISTORICO_POR_RODADA`.
+    """
+    hoje = timezone.localdate()
+    inicio = hoje - datetime.timedelta(days=JANELA_HISTORICO_DIAS)
+    corte_cobertura = inicio + datetime.timedelta(days=TOLERANCIA_INICIO_DIAS)
+    reverificar_antes_de = hoje - datetime.timedelta(days=REVERIFICAR_APOS_DIAS)
+
+    candidatos = list(
+        base.exclude(ticker="").filter(
+            Q(historico_verificado_em__isnull=True)
+            | Q(historico_verificado_em__lt=reverificar_antes_de)
+        )
+    )
+    if not candidatos:
+        return 0, 0
+
+    mais_antiga_por_ativo = {
+        linha["ativo_id"]: linha["mais_antiga"]
+        for linha in Cotacao.objects.filter(ativo__in=candidatos, data__gte=inicio)
+        .values("ativo_id")
+        .annotate(mais_antiga=Min("data"))
+    }
+
+    # Sem cotação nenhuma na janela conta como descoberto, daí o `hoje` como padrão
+    descobertos = [
+        ativo
+        for ativo in candidatos
+        if mais_antiga_por_ativo.get(ativo.id, hoje) > corte_cobertura
+    ]
+
+    count = 0
+    for ativo in descobertos[:LIMITE_HISTORICO_POR_RODADA]:
+        try:
+            serie = fetch_historico_yahoo(ativo.ticker)
+        except YahooIndisponivel as erro:
+            errors.append(f"Ativo {ativo.ticker}: {erro}")
+        else:
+            count += gravar_serie_cotacoes(ativo, serie)
+        Ativo.objects.filter(pk=ativo.pk).update(historico_verificado_em=hoje)
+
+    return count, max(0, len(descobertos) - LIMITE_HISTORICO_POR_RODADA)
+
+
+def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
+    """Sincroniza as cotações a mercado: o fechamento do dia e a série que faltar.
+
+    São duas fontes com papéis distintos. TradingView (ações e FIIs) e CVM (fundos por
+    CNPJ) devolvem o fechamento **de hoje** em requisições em lote, baratas o bastante
+    para rodar a cada clique. O Yahoo devolve a **série**, ao custo de uma requisição
+    por ticker, e por isso só é acionado para quem ainda não cobre a janela de dois
+    meses (ver `completar_historico`).
+
+    Returns:
+        tuple[int, list[str], int]: Pregões gravados, erros ocorridos e quantos ativos
+            ficaram com o histórico pendente para a próxima rodada.
     """
     count = 0
     errors = []
@@ -212,6 +333,10 @@ def atualizar_cotacoes(usuario=None) -> tuple[int, list[str]]:
         except Exception as e:
             errors.append(f"Erro ao buscar cotações na CVM: {str(e)}")
 
-    return count, errors
+    # 3. Completamento do histórico de quem não cobre a janela do gráfico
+    completados, historico_pendente = completar_historico(base, errors)
+    count += completados
+
+    return count, errors, historico_pendente
 
 

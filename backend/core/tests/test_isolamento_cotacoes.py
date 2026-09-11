@@ -22,6 +22,19 @@ from investimento.models import Ativo
 User = get_user_model()
 
 
+def sem_rede():
+    """Neutraliza as duas fontes remotas do lote, deixando só o recorte sob teste.
+
+    O completamento de histórico faz um GET por ticker descoberto — sem este mock a
+    suíte sairia para a internet, e o que está em teste aqui é a fronteira de
+    usuário, não a integração.
+    """
+    return (
+        mock.patch("investimento.calculators.fetch_quotes_brazil", return_value={}),
+        mock.patch("investimento.calculators.fetch_historico_yahoo", return_value=[]),
+    )
+
+
 class AtualizarCotacoesIsolamentoTests(APITestCase):
     """Verifica que a atualização em lote não atravessa a fronteira de usuário."""
 
@@ -53,9 +66,8 @@ class AtualizarCotacoesIsolamentoTests(APITestCase):
         """A varredura precisa parar na fronteira do usuário autenticado."""
         self.client.force_authenticate(user=self.joao)
 
-        with mock.patch(
-            "investimento.calculators.fetch_quotes_brazil", return_value={}
-        ) as fetch:
+        patch_tv, patch_yahoo = sem_rede()
+        with patch_tv as fetch, patch_yahoo:
             self.client.post(self.url)
 
         self.assertEqual(fetch.call_count, 1)
@@ -72,9 +84,8 @@ class AtualizarCotacoesIsolamentoTests(APITestCase):
         """A lista de erros é devolvida ao cliente e não pode citar terceiros."""
         self.client.force_authenticate(user=self.joao)
 
-        with mock.patch(
-            "investimento.calculators.fetch_quotes_brazil", return_value={}
-        ):
+        patch_tv, patch_yahoo = sem_rede()
+        with patch_tv, patch_yahoo:
             resposta = self.client.post(self.url)
 
         self.assertEqual(resposta.status_code, status.HTTP_200_OK)
@@ -91,9 +102,8 @@ class AtualizarCotacoesIsolamentoTests(APITestCase):
 
         self.client.force_authenticate(user=self.joao)
 
-        with mock.patch(
-            "investimento.calculators.fetch_quotes_brazil", return_value={}
-        ):
+        patch_tv, patch_yahoo = sem_rede()
+        with patch_tv, patch_yahoo:
             self.client.post(self.url)
 
         self.assertFalse(

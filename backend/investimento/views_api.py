@@ -6,6 +6,7 @@ controle de ordens (compras, vendas e proventos), emissão do painel de controle
 e cálculos em tempo real de reequilíbrio e balanceamento inteligente de aportes.
 """
 
+import datetime
 import uuid as uuid_lib
 from decimal import Decimal
 from rest_framework import viewsets, permissions, status
@@ -23,6 +24,7 @@ from django.utils import timezone
 from .models import (
     Ativo,
     Carteira,
+    Cotacao,
     PosicaoCarteira,
     Transacao,
     ClasseAtivo,
@@ -39,7 +41,13 @@ from .serializers import (
     TransacaoInvestimentoSerializer,
     TransferenciaSerializer,
 )
+from .calculators import gravar_serie_cotacoes
 from .services.dashboard_service import DashboardInvestimentoService
+from .services.yahoo_service import YahooIndisponivel, fetch_historico_yahoo
+
+# Janela padrão do gráfico comparativo de cotações em Meus Ativos.
+JANELA_COTACOES_DIAS = 60
+JANELA_COTACOES_DIAS_MAX = 365
 
 
 def carteira_do_request(request) -> int | None:
@@ -332,109 +340,117 @@ class AtivoViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='atualizar-cotacoes')
     def atualizar_cotacoes(self, request) -> Response:
-        """Ação global que dispara o coletor de cotações B3 atualizadas via Screener.
+        """Ação global que sincroniza o fechamento do dia e completa históricos curtos.
 
         Returns:
-            Response: Dicionário contendo estatísticas de cotações atualizadas ou falhas.
+            Response: Pregões gravados, erros por ativo e quantos ativos ficaram com o
+                histórico pendente para a próxima chamada.
         """
         from .calculators import atualizar_cotacoes as run_atualizar_cotacoes
         # Escopado ao usuário autenticado. Sem o argumento, a função percorre os
         # ativos de toda a base: além de gravar cotações de terceiros, a lista de
         # erros devolvida aqui traria os tickers dos outros usuários, expondo a
         # composição das carteiras deles.
-        count, errors = run_atualizar_cotacoes(usuario=request.user)
+        count, errors, historico_pendente = run_atualizar_cotacoes(usuario=request.user)
         return Response({
             "count": count,
-            "errors": errors
+            "errors": errors,
+            "historico_pendente": historico_pendente,
         }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='historico-cotacoes')
+    def historico_cotacoes(self, request) -> Response:
+        """Devolve a série de fechamento de todos os ativos do usuário num período.
+
+        O gráfico comparativo de Meus Ativos precisa de N ativos × ~40 pregões. Servir
+        isso pelo `historico_cotacoes` do `AtivoSerializer` obrigaria a listagem inteira
+        a carregar a série de todo mundo em toda renderização da tabela — por isso a
+        série mora aqui, num endpoint próprio que a tela busca em paralelo.
+
+        Aceita `?dias=` (padrão `JANELA_COTACOES_DIAS`, teto de um ano) e o mesmo
+        `?carteira=` da listagem.
+
+        Returns:
+            Response: `{"dias": int, "series": [{"id", "ticker", "nome", "pontos": [...]}]}`,
+                com os pontos em ordem cronológica e apenas ativos que têm cotação no período.
+        """
+        dias = self._dias_do_request(request)
+        inicio = timezone.localdate() - datetime.timedelta(days=dias)
+
+        ativos = self.get_queryset().prefetch_related(
+            Prefetch(
+                "cotacoes",
+                queryset=Cotacao.objects.filter(data__gte=inicio).order_by("data"),
+                to_attr="cotacoes_periodo",
+            )
+        )
+
+        series = [
+            {
+                "id": ativo.id,
+                "ticker": ativo.ticker,
+                "nome": ativo.nome,
+                "pontos": [
+                    {"data": str(c.data), "valor": float(c.valor)}
+                    for c in ativo.cotacoes_periodo
+                ],
+            }
+            for ativo in ativos
+            if ativo.cotacoes_periodo
+        ]
+        return Response({"dias": dias, "series": series}, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def _dias_do_request(request) -> int:
+        """Lê `?dias=` com um teto, para o gráfico não pedir a base inteira.
+
+        Returns:
+            int: Tamanho da janela em dias, limitado a `JANELA_COTACOES_DIAS_MAX`.
+
+        Raises:
+            ValidationError: Quando `?dias=` não é um inteiro.
+        """
+        valor = request.query_params.get("dias")
+        if not valor:
+            return JANELA_COTACOES_DIAS
+        try:
+            dias = int(valor)
+        except (TypeError, ValueError):
+            raise ValidationError({"dias": "Informe um número inteiro de dias."})
+        return max(1, min(dias, JANELA_COTACOES_DIAS_MAX))
 
     @action(detail=True, methods=['post'], url_path='atualizar')
     def atualizar(self, request, pk=None) -> Response:
-        """Busca 30 dias de cotações no Yahoo Finance e grava no banco."""
+        """Busca 2 meses de cotações no Yahoo Finance e grava no banco.
+
+        Diferente da atualização em lote, aqui a busca é incondicional: o usuário
+        clicou neste ativo pedindo a série, então a cobertura não é conferida antes.
+
+        Returns:
+            Response: Quantidade de pregões gravados, ou 400 quando o Yahoo não
+                respondeu pelo ticker.
+        """
         ativo = self.get_object()
-        ticker = (ativo.ticker or "").strip().upper()
-        if not ticker:
+        if not (ativo.ticker or "").strip():
             return Response(
                 {"error": "Este ativo não possui um ticker cadastrado para atualização de cotações."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Heurística para formatar o ticker do Yahoo Finance
-        # Se for um ticker fracionário da B3 (ex: PETR4F, PRIO3F), removemos o 'F' final
-        # para consultar a cotação do lote padrão no Yahoo Finance (que é idêntica).
-        normalized_ticker = ticker
-        if len(normalized_ticker) >= 2 and normalized_ticker[-1] == "F" and normalized_ticker[-2].isdigit():
-            normalized_ticker = normalized_ticker[:-1]
-
-        # Se terminar com número (dígito), e não tiver "." nem ":"
-        if normalized_ticker[-1].isdigit() and "." not in normalized_ticker and ":" not in normalized_ticker:
-            normalized_ticker = f"{normalized_ticker}.SA"
-
-        import urllib.request
-        import json
-        from decimal import Decimal
-        import datetime
-
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{normalized_ticker}?range=30d&interval=1d"
-        req = urllib.request.Request(
-            url,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-            }
-        )
-
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_data = json.loads(response.read().decode('utf-8'))
-        except Exception as e:
-            return Response(
-                {"error": f"Erro de comunicação com Yahoo Finance: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            serie = fetch_historico_yahoo(ativo.ticker)
+        except YahooIndisponivel as erro:
+            return Response({"error": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
 
-        chart_data = res_data.get("chart", {})
-        result_list = chart_data.get("result")
-        if not result_list:
-            error_description = chart_data.get("error", {}).get("description", "Ticker não encontrado ou sem cotações disponíveis.")
-            return Response(
-                {"error": f"Erro retornado pelo Yahoo Finance: {error_description}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        result = result_list[0]
-        timestamps = result.get("timestamp", [])
-        indicators = result.get("indicators", {})
-        quote_list = indicators.get("quote", [{}])
-        close_prices = quote_list[0].get("close", [])
-
-        if not timestamps or not close_prices:
-            return Response(
-                {"error": "Nenhuma cotação encontrada no histórico do Yahoo Finance para o período."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        count = 0
-        from .models import Cotacao
-        for ts, close in zip(timestamps, close_prices):
-            if close is None:
-                continue
-            try:
-                # Converte o timestamp UTC para date local
-                dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).date()
-                Cotacao.objects.update_or_create(
-                    ativo=ativo,
-                    data=dt,
-                    defaults={"valor": Decimal(str(close))}
-                )
-                count += 1
-            except Exception:
-                pass
+        count = gravar_serie_cotacoes(ativo, serie)
+        Ativo.objects.filter(pk=ativo.pk).update(
+            historico_verificado_em=timezone.localdate()
+        )
 
         return Response({
             "count": count,
             "message": f"Histórico de {count} cotações atualizado com sucesso."
         }, status=status.HTTP_200_OK)
-
 
 
 class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):

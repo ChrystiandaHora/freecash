@@ -122,6 +122,7 @@ export default function AtivoDetalhes() {
       queryClient.invalidateQueries(['ativoDetalhe', id]);
       queryClient.invalidateQueries(['transacoesAtivo', id]);
       queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['historicoCotacoes']);
 
       const count = data?.count || 0;
       if (count > 0) {
@@ -437,7 +438,7 @@ export default function AtivoDetalhes() {
             {/* Coluna da direita: gráfico de tendência de cotação */}
             <div className="lg:col-span-2 space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20 flex flex-col">
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
-                Histórico de Cotações (Últimos 30 Dias)
+                Histórico de Cotações (Últimos 2 Meses)
               </h3>
               {ativo.historico_cotacoes && ativo.historico_cotacoes.length > 0 ? (
                 <div className="flex-1 min-h-[220px]">

@@ -95,13 +95,49 @@ quando a posição zera.
 
 ## `historico_cotacoes` custa caro
 
-`AtivoSerializer.get_historico_cotacoes` busca **30 cotações por ativo**, em toda
-serialização. Numa lista de 20 ativos são 20 consultas extras.
+`AtivoSerializer.get_historico_cotacoes` busca **`LIMITE_HISTORICO_COTACOES` cotações por
+ativo** (hoje 45, ~2 meses de pregão), em toda serialização. Numa lista de 20 ativos são
+20 consultas extras.
 
 Foi o que motivou enxugar o payload do dashboard, que serializava quatro conjuntos de
 ativos — lista completa, top 5 por valor, top rentabilidade e próximos vencimentos — sem
 que nenhuma tela os lesse. Antes de acrescentar `AtivoSerializer(many=True)` em qualquer
 endpoint, confira se a tela realmente consome.
+
+É também a razão de o gráfico comparativo de Meus Ativos ter endpoint próprio
+(`GET /api/investimentos/ativos/historico-cotacoes/`) em vez de ler este campo: a tabela
+re-renderiza a cada tecla digitada no filtro, e carregar a série de todo mundo junto dela
+pesaria em toda renderização.
+
+---
+
+## O gráfico de Meus Ativos não segue os filtros da tabela
+
+Deliberado, e a fonte de confusão mais provável da tela. A busca por texto e o filtro de
+classe mexem **só na tabela**. O gráfico tem seleção própria: abre com os 2 maiores e os 2
+menores retornos e o usuário acrescenta ou remove ativos pelo campo de busca dele.
+
+O que escopa o gráfico é a **aba** (Ativos/Arquivados) e a **carteira** — trocar qualquer
+uma das duas refaz a seleção do zero, porque muda a identidade do universo.
+
+Duas restrições explicam o desenho, e ambas são regra, não gosto:
+
+- **Teto de 8 séries.** A paleta categórica validada tem 8 tons e 4 tracejados. Como 8 e 4
+  não são coprimos, a nona linha repetiria cor **e** traço da primeira — sem canal nenhum
+  que as separasse, o que reprova na SC 1.4.1. Acima da paleta não há par distinto a
+  oferecer, então a saída é escolher o que ver.
+- **Ativo liquidado fica fora do ranking.** `recalcular_ativo` zera o preço médio quando a
+  quantidade zera, e `rentabilidade_percentual` devolve 0 como guarda quando não há valor
+  investido — indistinguível de um papel que empatou. O critério do ranking é
+  `preco_medio > 0`; sem ele, um ativo vendido ganharia a ponta de baixo e sumiria na hora
+  de desenhar. Quando ninguém é rankeável (a aba Arquivados costuma ser assim), a seleção
+  cai nos primeiros por ticker e a leitura útil ali passa a ser «Preço (R$)».
+
+O eixo do Retorno é a cotação medida contra o preço médio, então o último ponto de cada
+linha é o mesmo número da coluna «Retorno» da tabela — há teste travando essa igualdade em
+`frontend/src/lib/cotacoesSerie.test.js`. O preço médio aplicado é o de **hoje**, inclusive
+nos pregões passados: uma compra no meio do período mudou o preço médio de verdade, e a
+linha não reflete isso. Só o último ponto é exato.
 
 ---
 

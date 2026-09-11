@@ -204,6 +204,9 @@ class Ativo(AuditoriaModel):
 
     Atributos:
         preco_medio: Preço médio de aquisição por cota/título.
+        historico_verificado_em: Carimbo da última conferência de cobertura da série
+            de cotações, usado para não reconsultar o Yahoo a cada clique em
+            «Atualizar Cotações» (ver `calculators.completar_historico`).
     """
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -236,6 +239,16 @@ class Ativo(AuditoriaModel):
     # Campos calculados / Cache (consolidado de todas as carteiras)
     quantidade = models.DecimalField(max_digits=19, decimal_places=8, default=0)
     preco_medio = models.DecimalField(max_digits=19, decimal_places=4, default=0)
+
+    historico_verificado_em = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Histórico verificado em",
+        help_text=(
+            "Última vez que a atualização em lote conferiu a cobertura da série de "
+            "cotações deste ativo no Yahoo Finance."
+        ),
+    )
 
     class Meta:
         unique_together = ("usuario", "ticker")

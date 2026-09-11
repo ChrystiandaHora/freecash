@@ -5,7 +5,7 @@ atuais de todos os ativos de renda variável custodiados no sistema.
 """
 
 from django.core.management.base import BaseCommand
-from investimento.services import atualizar_cotacoes
+from investimento.calculators import atualizar_cotacoes
 
 
 class Command(BaseCommand):
@@ -21,7 +21,7 @@ class Command(BaseCommand):
         self.stdout.write("Iniciando atualização de cotações...")
         # Sem `usuario`: aqui a varredura global é intencional e legítima, porque o
         # comando roda em contexto de operador, e não a pedido de um usuário.
-        count, errors = atualizar_cotacoes()
+        count, errors, historico_pendente = atualizar_cotacoes()
 
         for err in errors:
             self.stdout.write(self.style.ERROR(err))
@@ -29,4 +29,11 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Atualização concluída. {count} cotações salvas.")
         )
+        if historico_pendente:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"{historico_pendente} ativo(s) ainda sem histórico completo — "
+                    "rode o comando de novo para continuar."
+                )
+            )
 
