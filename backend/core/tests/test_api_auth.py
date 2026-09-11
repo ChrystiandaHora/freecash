@@ -146,7 +146,7 @@ class UserRegistrationAPITestCase(APITestCase):
         self.assertIn("confirm", response.data)
 
     def test_registration_senha_curta_reprovada_pelos_validators(self):
-        """O mínimo passou a ser o do MinimumLengthValidator (8), não os 6 antigos."""
+        """O mínimo é o do `TamanhoSenhaValidator` (12) — ver core/validacao_senha.py."""
         payload = {**self.payload, "password": "abc123", "confirm": "abc123"}
         response = self.client.post(self.url, payload, format="json")
 
@@ -161,23 +161,26 @@ class UserRegistrationAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("password", response.data)
 
-    def test_registration_senha_parecida_com_usuario_reprovada(self):
-        """Prova que o UserAttributeSimilarityValidator recebe o usuário para comparar.
+    def test_registration_senha_com_o_usuario_reprovada(self):
+        """Prova que o `TermoDeContextoValidator` recebe o usuário para comparar.
 
         Sem passar `user=` a `validate_password`, este validador está configurado
         mas não tem nada com que comparar — foi o caso durante todo o período em que
-        a view validava a senha à mão.
+        a view validava a senha à mão. O segundo caso é o que a contenção protege e a
+        similaridade difusa também pegava: usuário inteiro com um sufixo curto colado.
         """
-        payload = {
-            "username": "mariaoliveira",
-            "email": "maria@exemplo.com",
-            "password": "mariaoliveira",
-            "confirm": "mariaoliveira",
-        }
-        response = self.client.post(self.url, payload, format="json")
+        for senha in ("mariaoliveira", "MariaOliveira18!"):
+            with self.subTest(senha=senha):
+                payload = {
+                    "username": "mariaoliveira",
+                    "email": "maria@exemplo.com",
+                    "password": senha,
+                    "confirm": senha,
+                }
+                response = self.client.post(self.url, payload, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("password", response.data)
 
     def test_registration_password_mismatch(self):
         """Senha e confirmação divergentes são recusadas no campo de confirmação."""

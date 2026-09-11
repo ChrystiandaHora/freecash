@@ -109,19 +109,21 @@ DATABASES = {
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+# Política alinhada ao NIST SP 800-63B rev. 4 — tamanho e listas, sem regra de
+# composição. O porquê de cada validador está em `core/validacao_senha.py`.
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "NAME": "core.validacao_senha.TamanhoSenhaValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+    {
+        "NAME": "core.validacao_senha.TermoDeContextoValidator",
     },
 ]
 
