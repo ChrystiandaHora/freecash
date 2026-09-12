@@ -4,13 +4,9 @@
  * Um input customizável construído sobre o elemento nativo HTML `<input>` com suporte a
  * múltiplos tipos (text, email, password, number) e estilização baseada em estados (focado, desabilitado).
  *
- * @component
  * @param {Object} props - Propriedades de configuração do input.
- * @param {string} [props.className] - Classes CSS adicionais do Tailwind.
  * @param {string} props.type - O tipo do input (ex: "text", "password", "number", "date").
  * @param {React.InputHTMLAttributes<HTMLInputElement>} props - Demais propriedades nativas de `<input>`.
- * @param {React.Ref<HTMLInputElement>} ref - Referência DOM encaminhada.
- * @returns {React.JSX.Element}
  */
 import * as React from "react"
 import { cn } from "../../lib/utils"

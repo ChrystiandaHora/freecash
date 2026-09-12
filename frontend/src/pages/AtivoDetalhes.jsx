@@ -4,7 +4,6 @@
  * Centraliza e exibe informações cadastrais, parâmetros de renda fixa,
  * métricas de rentabilidade a mercado e o histórico completo de transações do ativo.
  *
- * @component
  * @returns {React.JSX.Element} Tela widescreen SaaS Flat Premium.
  */
 import { useState } from 'react';
@@ -17,14 +16,17 @@ import {
   Calendar,
   Gem,
   Coins,
-  Percent
+  Percent,
+  ArrowRightLeft
 } from 'lucide-react';
 
 import api from '../services/api';
 import Chart from 'react-apexcharts';
-import { fetchAtivo, atualizarAtivo } from '../services/investimentos';
+import { fetchAtivo, atualizarAtivo, fetchPosicoes } from '../services/investimentos';
+import { useCarteira } from '../context/CarteiraProvider';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/ui/Button';
+import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 
 // Helpers de formatação
 const formatCurrency = (value) => {
@@ -58,7 +60,8 @@ export default function AtivoDetalhes() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState('geral'); // 'geral' | 'rentabilidade' | 'transacoes'
+  const [activeTab, setActiveTab] = useState('geral');
+  const [transferenciaAberta, setTransferenciaAberta] = useState(false); // 'geral' | 'rentabilidade' | 'transacoes'
 
   /**
    * Navegação por setas entre as abas (padrão WAI-ARIA APG): Left/Right e Home/End
@@ -81,10 +84,24 @@ export default function AtivoDetalhes() {
   };
 
   /* ── Queries ── */
+  const { carteiraSelecionada } = useCarteira();
+
   const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo } = useQuery({
     queryKey: ['ativoDetalhe', id],
     queryFn: () => fetchAtivo(id),
     enabled: !!id
+  });
+
+  // Onde este papel está custodiado. A meta de alocação deixou de ser do ativo:
+  // ela é declarada por carteira, e vive na tela de Balanceamento.
+  const { data: posicoes = [] } = useQuery({
+    // Filtra no servidor com `?ativo=`, em vez de baixar as posições de todos os
+    // ativos do usuário para descartar quase tudo no navegador.
+    queryKey: ['posicoesAtivo', id],
+    queryFn: async () => {
+      const doAtivo = await fetchPosicoes(null, id);
+      return doAtivo.filter((p) => Number(p.quantidade) > 0);
+    },
   });
 
   const { data: transacoes = [], isLoading: loadingTransacoes } = useQuery({
@@ -105,6 +122,7 @@ export default function AtivoDetalhes() {
       queryClient.invalidateQueries(['ativoDetalhe', id]);
       queryClient.invalidateQueries(['transacoesAtivo', id]);
       queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['historicoCotacoes']);
 
       const count = data?.count || 0;
       if (count > 0) {
@@ -184,11 +202,30 @@ export default function AtivoDetalhes() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {ativo.nome || 'Visualização estruturada do ativo'}
               </p>
+              {/* Números consolidados: o selo ao lado some abaixo de `md`, então o aviso fica aqui */}
+              <p className="text-xs mt-1 font-medium text-amber-600 dark:text-amber-400" aria-live="polite">
+                {carteiraSelecionada
+                  ? `Números consolidados de todas as carteiras — não seguem o filtro «${carteiraSelecionada.nome}». A divisão por custódia está em Dados Gerais.`
+                  : ''}
+              </p>
             </div>
           </div>
 
           {ativo.ticker && (
             <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+              <span className="hidden md:inline-flex items-center rounded-lg bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground border border-border/40">
+                Visão Consolidada
+              </span>
+              {posicoes.length > 0 && (
+                <Button
+                  onClick={() => setTransferenciaAberta(true)}
+                  variant="outline"
+                  className="rounded-xl h-10 px-3.5 gap-1.5 font-semibold transition-all border-border/60 hover:bg-accent active:scale-98 text-xs"
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                  Transferir Custódia
+                </Button>
+              )}
               <Button 
                 onClick={handleRefresh}
                 disabled={updateAssetMutation.isPending}
@@ -303,9 +340,13 @@ export default function AtivoDetalhes() {
                   {ativo.subcategoria_detalhe?.categoria_detalhe?.nome || '—'} — {ativo.subcategoria_detalhe?.nome || '—'}
                 </span>
 
-                <span className="font-semibold text-muted-foreground">Alocação Alvo / Meta:</span>
+                <span className="font-semibold text-muted-foreground">Custódia:</span>
                 <span className="font-bold text-foreground">
-                  {parseFloat(ativo.meta_porcentagem || 0).toFixed(1).replace('.', ',')}%
+                  {posicoes.length > 0
+                    ? posicoes
+                        .map((p) => `${p.carteira_detalhe?.nome} (${Number(p.quantidade)})`)
+                        .join(' · ')
+                    : '—'}
                 </span>
 
                 <span className="font-semibold text-muted-foreground">Status Operacional:</span>
@@ -397,7 +438,7 @@ export default function AtivoDetalhes() {
             {/* Coluna da direita: gráfico de tendência de cotação */}
             <div className="lg:col-span-2 space-y-4 bg-muted/10 p-5 rounded-xl border border-border/20 flex flex-col">
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider border-b border-border/20 pb-3">
-                Histórico de Cotações (Últimos 30 Dias)
+                Histórico de Cotações (Últimos 2 Meses)
               </h3>
               {ativo.historico_cotacoes && ativo.historico_cotacoes.length > 0 ? (
                 <div className="flex-1 min-h-[220px]">
@@ -572,6 +613,18 @@ export default function AtivoDetalhes() {
 
       </div>
 
+      <TransferenciaCarteiraModal
+        isOpen={transferenciaAberta}
+        onClose={() => setTransferenciaAberta(false)}
+        ativoInicial={ativo.id}
+        origemInicial={posicoes[0]?.carteira}
+        onSaved={() => {
+          queryClient.invalidateQueries(['posicoesAtivo', id]);
+          queryClient.invalidateQueries(['transacoesAtivo', id]);
+          queryClient.invalidateQueries(['ativoDetalhe', id]);
+          addToast('Transferência registrada com sucesso.', 'success');
+        }}
+      />
     </div>
   );
 }

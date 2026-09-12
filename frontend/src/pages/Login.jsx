@@ -1,39 +1,32 @@
 /**
  * Tela de Autenticação e Cadastro de Usuário (Login / Register).
  *
- * Página pública da aplicação que opera em dois modos alternáveis:
- * - **Login:** autentica o usuário via `useAuth().login()` e redireciona para `/dashboard`.
- * - **Cadastro:** registra um novo usuário via `useAuth().register()` com validação
- *   de senha mínima (6 caracteres) e confirmação de senha.
+ * Página pública em dois modos: **login**, via `useAuth().login()`, e **cadastro**, via
+ * `useAuth().register()`, que exige e-mail — necessário para confirmar a conta e
+ * recuperar a senha — e senha validada pelos `AUTH_PASSWORD_VALIDATORS` do servidor.
  *
- * Funcionalidades:
- * - Layout split-screen: painel de branding (desktop, `lg:` e acima) + formulário.
- * - Toggle de tema claro/escuro persistido no `localStorage`.
- * - Toggle de mostrar/ocultar senha nos campos de senha.
- * - Feedback de erros HTTP granular (400 → dados inválidos, 401 → credenciais erradas).
- * - Estado de carregamento com spinner (`Loader2`) durante chamadas à API.
- * - Orbs de gradiente decorativos para identidade visual premium.
+ * O campo de identificação aceita **e-mail ou nome de usuário**, e por isso é
+ * `type="text"`. Um `type="email"` bloquearia, na validação do navegador, as contas
+ * criadas antes da adoção do e-mail — inclusive o superusuário.
  *
- * Proteção de rota: usuários já autenticados são redirecionados para `/dashboard`
- * pelo componente `PublicRoute` definido em `App.jsx`.
+ * Traz layout split-screen (painel de branding em `lg:` e acima), toggle de tema e de
+ * visibilidade da senha, erro por código HTTP (400 dados inválidos, 401 credenciais) e
+ * estado de carregamento. Usuário já autenticado é redirecionado por `PublicRoute`.
  *
- * @module Login
- * @component
  * @returns {JSX.Element} Tela de login/cadastro responsiva e acessível.
- *
- * @example
- * // Rota pública configurada em App.jsx:
- * <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
  */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { Input } from '../components/ui/Input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
+import { ChecklistSenha } from '../components/auth/ChecklistSenha';
 import { cn } from '../lib/utils';
+import { extrairErros } from '../lib/apiErros';
+import { avaliarSenha, primeiroPendente, termosDeContexto } from '../lib/politicaSenha';
 import { Wallet, Loader2, AlertCircle, ShieldCheck, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
 import { ThemeToggle } from '../components/nav/ThemeToggle';
 
@@ -81,49 +74,86 @@ export default function Login() {
 
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // O resumo de erro recebe o foco quando aparece: sem isso, quem navega por
+  // teclado ou leitor de tela continua no botão de envio e não encontra o motivo
+  // da recusa. O Alert já carrega role="alert"/"status" conforme a variante.
+  const errorRef = useRef(null);
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+    }
+  }, [error]);
+
+  const limparErros = () => {
+    setError('');
+    setFieldErrors({});
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password || (isRegister && !confirmPassword)) {
+    limparErros();
+
+    if (!username || !password || (isRegister && (!email || !confirmPassword))) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
 
+    // Mesma avaliação que alimenta o checklist. A palavra final continua sendo a do
+    // servidor, que ainda confere a lista de senhas comuns (ver lib/politicaSenha).
     if (isRegister) {
-      if (password.length < 6) {
-        setError('A senha deve ter no mínimo 6 caracteres.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('As senhas não coincidem.');
+      const pendente = primeiroPendente(
+        avaliarSenha(password, {
+          termos: termosDeContexto({ usuario: username, email }),
+          confirmacao: confirmPassword,
+        })
+      );
+      if (pendente) {
+        const ehConfirmacao = pendente.id === 'confirmacao';
+        setFieldErrors({
+          [ehConfirmacao ? 'confirm' : 'password']: ehConfirmacao
+            ? 'As senhas não coincidem.'
+            : `${pendente.rotulo}.`,
+        });
+        setError('Verifique os campos destacados.');
         return;
       }
     }
 
-    setError('');
     setLoading(true);
 
     try {
       if (isRegister) {
-        await register(username, password, confirmPassword);
+        await register(username, email, password, confirmPassword);
       } else {
         await login(username, password);
       }
       navigate('/dashboard');
     } catch (err) {
       console.error('Authentication error:', err);
-      if (err.response?.status === 400) {
-        setError(err.response?.data?.detail || 'Erro ao processar dados. Verifique suas informações.');
-      } else if (err.response?.status === 401) {
-        setError('Usuário ou senha incorretos.');
-      } else {
-        setError('Ocorreu um erro ao tentar processar. Tente novamente mais tarde.');
+
+      if (err.response?.status === 401) {
+        setError(
+          isRegister
+            ? 'Não foi possível concluir o cadastro.'
+            : 'E-mail, usuário ou senha incorretos.'
+        );
+        setLoading(false);
+        return;
       }
+
+      const { porCampo, geral } = extrairErros(
+        err,
+        'Ocorreu um erro ao tentar processar. Tente novamente mais tarde.'
+      );
+      setFieldErrors(porCampo);
+      setError(geral || 'Verifique os campos destacados.');
     } finally {
       setLoading(false);
     }
@@ -204,35 +234,89 @@ export default function Login() {
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
 
-                {/* Error Toast */}
+                {/* Resumo de erro. tabIndex={-1} permite receber foco por script
+                    sem entrar na ordem de tabulação. */}
                 {error && (
-                  <Alert variant="error" icon={AlertCircle} className="text-xs animate-shake">
+                  <Alert
+                    ref={errorRef}
+                    tabIndex={-1}
+                    variant="error"
+                    icon={AlertCircle}
+                    className="text-xs animate-shake"
+                  >
                     <span className="font-medium leading-relaxed">{error}</span>
                   </Alert>
                 )}
 
                 <div className="space-y-1.5">
                   <label htmlFor="login-usuario" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                    Usuário
+                    {isRegister ? 'Usuário' : 'E-mail ou usuário'}
                   </label>
                   <Input
                     id="login-usuario"
                     type="text"
                     autoComplete="username"
-                    placeholder="Seu nome de usuário"
+                    placeholder={isRegister ? 'Como quer ser chamado' : 'seu@email.com'}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="rounded-xl"
                     disabled={loading}
-                    aria-invalid={!!error}
+                    aria-invalid={!!fieldErrors.username}
+                    aria-describedby={fieldErrors.username ? 'erro-login-usuario' : undefined}
                   />
+                  {fieldErrors.username && (
+                    <p id="erro-login-usuario" className="text-xs text-red-700 dark:text-red-400">
+                      {fieldErrors.username}
+                    </p>
+                  )}
                 </div>
 
+                {/* E-mail (apenas no cadastro). Obrigatório: é o que permite
+                    confirmar a conta e recuperar o acesso a ela. */}
+                {isRegister && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="login-email" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+                      E-mail
+                    </label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="rounded-xl"
+                      disabled={loading}
+                      aria-invalid={!!fieldErrors.email}
+                      aria-describedby={
+                        fieldErrors.email ? 'erro-login-email' : 'ajuda-login-email'
+                      }
+                    />
+                    {fieldErrors.email ? (
+                      <p id="erro-login-email" className="text-xs text-red-700 dark:text-red-400">
+                        {fieldErrors.email}
+                      </p>
+                    ) : (
+                      <p id="ajuda-login-email" className="text-xs text-muted-foreground">
+                        Usaremos para confirmar sua conta e recuperar sua senha.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <label htmlFor="login-senha" className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
                       Senha
                     </label>
+                    {!isRegister && (
+                      <Link
+                        to="/esqueci-senha"
+                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Esqueci minha senha
+                      </Link>
+                    )}
                   </div>
                   <PasswordInput
                     id="login-senha"
@@ -242,8 +326,32 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="rounded-xl"
                     disabled={loading}
-                    aria-invalid={!!error}
+                    aria-invalid={!!fieldErrors.password}
+                    // Os requisitos continuam descrevendo o campo mesmo com erro: é
+                    // deles que sai o que fazer a seguir.
+                    aria-describedby={
+                      [
+                        fieldErrors.password && 'erro-login-senha',
+                        isRegister && 'ajuda-login-senha',
+                      ]
+                        .filter(Boolean)
+                        .join(' ') || undefined
+                    }
                   />
+                  {fieldErrors.password && (
+                    <p id="erro-login-senha" className="text-xs text-red-700 dark:text-red-400">
+                      {fieldErrors.password}
+                    </p>
+                  )}
+                  {isRegister && (
+                    <ChecklistSenha
+                      id="ajuda-login-senha"
+                      senha={password}
+                      confirmacao={confirmPassword}
+                      contexto={{ usuario: username, email }}
+                      className="pt-1"
+                    />
+                  )}
                 </div>
 
                 {/* Confirm Password (Registration Only) */}
@@ -260,7 +368,14 @@ export default function Login() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="rounded-xl"
                       disabled={loading}
+                      aria-invalid={!!fieldErrors.confirm}
+                      aria-describedby={fieldErrors.confirm ? 'erro-login-confirmar' : undefined}
                     />
+                    {fieldErrors.confirm && (
+                      <p id="erro-login-confirmar" className="text-xs text-red-700 dark:text-red-400">
+                        {fieldErrors.confirm}
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -285,7 +400,7 @@ export default function Login() {
                   type="button"
                   onClick={() => {
                     setIsRegister(!isRegister);
-                    setError('');
+                    limparErros();
                     setPassword('');
                     setConfirmPassword('');
                   }}

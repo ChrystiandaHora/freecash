@@ -1,31 +1,16 @@
 /**
  * Tela de Importação Segura de Backup (Ferramentas — Importar).
  *
- * Interface para restauração de dados a partir de arquivos de backup
- * criptografados no formato proprietário `.fcbk`. Permite ao usuário
- * carregar o arquivo via drag-and-drop ou seleção manual, e opcionalmente
- * informar uma senha de proteção antes de submeter ao backend.
+ * Restaura dados a partir de arquivos `.fcbk` criptografados, carregados por
+ * drag-and-drop ou seleção manual, com senha de proteção opcional.
  *
- * Fluxo de Importação:
- * 1. Usuário arrasta ou seleciona um arquivo `.fcbk` na zona de upload.
- * 2. O arquivo é validado por tipo MIME e exibido com nome/tamanho.
- * 3. (Opcional) Usuário informa a senha de proteção do backup.
- * 4. Ao confirmar, o arquivo é enviado via `multipart/form-data` para
- *    `POST /api/ferramentas/importar/` com rastreamento de progresso.
- * 5. Em caso de sucesso, exibe um resumo dos registros importados por
- *    categoria (transações, receitas, contas, etc.) e oferece navegação
- *    para o Dashboard.
+ * Fluxo: o arquivo é validado por tipo MIME e exibido com nome e tamanho; ao confirmar,
+ * sobe via `multipart/form-data` para `POST /api/ferramentas/importar/` com progresso; em
+ * caso de sucesso, mostra o resumo dos registros importados por categoria.
  *
- * Segurança: a senha é enviada somente se preenchida e é limpa da memória
- * imediatamente após a conclusão da importação.
+ * Segurança: a senha só é enviada se preenchida e é limpa da memória ao concluir.
  *
- * @module FerramentasImportar
- * @component
  * @returns {JSX.Element} Tela de importação de backup com drag-and-drop e progresso.
- *
- * @example
- * // Rota configurada em App.jsx:
- * <Route path="importar" element={<FerramentasImportar />} />
  */
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';

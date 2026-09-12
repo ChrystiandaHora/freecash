@@ -1,32 +1,17 @@
 /**
  * Tela de Relatórios Financeiros (DRE e Fluxo de Caixa).
  *
- * Página de análise financeira consolidada que apresenta:
+ * Apresenta o DRE — receita bruta, deduções, despesas fixas e variáveis, EBITDA,
+ * resultado financeiro e lucro líquido, com margem calculada — e o fluxo de caixa
+ * resumido, com entradas e saídas operacionais e financeiras.
  *
- * 1. **DRE (Demonstração do Resultado do Exercício):** exibe receita bruta,
- *    deduções, despesas operacionais fixas e variáveis, EBITDA, resultado
- *    financeiro (dividendos + rentabilidade de carteira) e lucro líquido.
- *    Inclui cálculo automático da margem líquida.
+ * Dados com fallback gracioso: tenta `/api/relatorios/dre/?ano={ano}` e, se
+ * indisponível, compõe o DRE a partir de `/api/dashboard/` e
+ * `/api/investimentos/dashboard/`, exibindo skeleton enquanto carrega.
  *
- * 2. **Fluxo de Caixa Resumido:** apresenta entradas e saídas operacionais
- *    e financeiras com totais líquidos por categoria.
+ * Traz seletor de ano (atual − 3), impressão via `window.print()` e acordeão de seções.
  *
- * Estratégia de Dados (Fallback Gracioso):
- * - Tenta buscar dados do endpoint `/api/relatorios/dre/?ano={ano}`.
- * - Caso indisponível, constrói um DRE composto a partir de dados das APIs
- *   existentes (`/api/dashboard/` e `/api/investimentos/dashboard/`).
- * - Exibe skeleton animado (`FallbackDRETable`) enquanto carrega ou em erro.
- *
- * Funcionalidades: seletor de ano (atual − 3 anos), impressão/exportação PDF
- * nativa (`window.print()`), atualização manual, acordeão de seções.
- *
- * @module Relatorios
- * @component
- * @returns {JSX.Element} Painel de relatórios financeiros com DRE e fluxo de caixa.
- *
- * @example
- * // Rota configurada em App.jsx:
- * <Route path="relatorios" element={<Relatorios />} />
+ * @returns {JSX.Element} Painel de relatórios com DRE e fluxo de caixa.
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

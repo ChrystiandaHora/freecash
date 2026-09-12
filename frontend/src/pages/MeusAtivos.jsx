@@ -5,12 +5,11 @@
  * Disponibiliza interfaces interativas para criar, ler, atualizar e deletar (CRUD) ativos,
  * bem como iniciar ordens de compra/venda vinculadas a cada ticker.
  *
- * @component
  * @returns {React.JSX.Element} Visualização em tabela com modais flutuantes de cadastro operacional.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
   Pencil, 
@@ -23,14 +22,16 @@ import {
   RefreshCw, 
   Gem, 
   Eye, 
-  EyeOff
+  EyeOff,
+  ArrowRightLeft
 } from 'lucide-react';
 
 import { 
   fetchAtivos, 
   deleteAtivo, 
   fetchSubcategoriasAtivos,
-  atualizarCotacoes
+  atualizarCotacoes,
+  fetchHistoricoCotacoes
 } from '../services/investimentos';
 
 import { Button } from '../components/ui/Button';
@@ -39,6 +40,10 @@ import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { Alert } from '../components/ui/Alert';
+import GraficoCotacoesAtivos from '../components/GraficoCotacoesAtivos';
+import SeletorCarteira from '../components/SeletorCarteira';
+import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
+import { useCarteira } from '../context/CarteiraProvider';
 
 // Helper de formatação de moedas
 const formatCurrency = (value) => {
@@ -117,7 +122,22 @@ export default function MeusAtivos() {
       className: 'px-5 py-3.5 text-center',
       cellClassName: 'px-5 py-3.5 text-center',
       render: (_, row) => (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1.5">
+          {carteirasAtivas.length > 1 && parseFloat(row.quantidade || 0) > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setTransferenciaAtivo(row);
+                setTransferenciaAberta(true);
+              }}
+              className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary"
+              title="Transferir Custódia"
+              aria-label={`Transferir custódia de ${row.ticker}`}
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="icon"
@@ -166,17 +186,43 @@ export default function MeusAtivos() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [globalError, setGlobalError] = useState('');
+  const { carteiraId, carteiraSelecionada, carteirasAtivas = [] } = useCarteira();
 
   /* ── Queries ── */
-  const { data: ativos = [], isLoading: loadingAtivos, isError: errorAtivos } = useQuery({
-    queryKey: ['ativos'],
-    queryFn: () => fetchAtivos(),
+  const {
+    data: ativos = [],
+    isLoading: loadingAtivos,
+    isError: errorAtivos,
+    isPlaceholderData: ativosDesatualizados,
+  } = useQuery({
+    // Sob filtro, a API devolve os mesmos campos com os números da carteira em
+    // foco. `keepPreviousData` evita que a tabela pisque a cada troca de filtro.
+    queryKey: ['ativos', carteiraId],
+    queryFn: () => fetchAtivos(carteiraId),
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
   
   const { data: subcategorias = [], isLoading: loadingSubs } = useQuery({
     queryKey: ['subcategoriasAtivos'],
     queryFn: () => fetchSubcategoriasAtivos()
+  });
+
+  // Série de cotações do gráfico. Query própria, e não um campo da listagem: a tabela
+  // re-renderiza a cada tecla no filtro, e carregar ~40 pregões por ativo junto dela
+  // pesaria em toda renderização.
+  const [janelaDias, setJanelaDias] = useState(60);
+  const [escalaGrafico, setEscalaGrafico] = useState('retorno');
+  const {
+    data: historico,
+    isLoading: loadingHistorico,
+    isError: errorHistorico,
+    isPlaceholderData: historicoDesatualizado,
+  } = useQuery({
+    queryKey: ['historicoCotacoes', carteiraId, janelaDias],
+    queryFn: () => fetchHistoricoCotacoes({ carteiraId, dias: janelaDias }),
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 
   /* ── Mutations ── */
@@ -209,19 +255,26 @@ export default function MeusAtivos() {
     onSuccess: (data) => {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
+      queryClient.invalidateQueries(['historicoCotacoes']);
       
       const count = data?.count || 0;
       const errors = data?.errors || [];
+      // O completamento de histórico tem teto por rodada: o que sobrou volta aqui,
+      // e clicar de novo continua de onde parou (ver `completar_historico`).
+      const pendentes = data?.historico_pendente || 0;
+      const restam = pendentes > 0
+        ? ` Ainda faltam ${pendentes} ${pendentes === 1 ? 'ativo' : 'ativos'} com histórico incompleto — clique de novo para continuar.`
+        : '';
       
       if (count > 0 && errors.length === 0) {
-        handleShowSuccess(`${count} cotações atualizadas com sucesso!`);
+        handleShowSuccess(`${count} cotações atualizadas com sucesso!${restam}`);
       } else if (count > 0 && errors.length > 0) {
-        handleShowSuccess(`${count} cotações atualizadas com sucesso!`);
+        handleShowSuccess(`${count} cotações atualizadas com sucesso!${restam}`);
         setGlobalError(`Falha em alguns ativos: ${errors.slice(0, 3).join(' | ')}${errors.length > 3 ? '...' : ''}`);
       } else if (errors.length > 0) {
         setGlobalError(`Falha ao atualizar cotações: ${errors.slice(0, 3).join(' | ')}${errors.length > 3 ? '...' : ''}`);
       } else {
-        handleShowSuccess('Nenhuma cotação nova encontrada ou nenhum ativo com ticker.');
+        handleShowSuccess(`Nenhuma cotação nova encontrada ou nenhum ativo com ticker.${restam}`);
       }
     },
     onError: () => {
@@ -237,6 +290,9 @@ export default function MeusAtivos() {
   const openEditModal = (ativo) => {
     navigate(`/investimentos/ativos/editar/${ativo.id}`);
   };
+
+  const [transferenciaAberta, setTransferenciaAberta] = useState(false);
+  const [transferenciaAtivo, setTransferenciaAtivo] = useState(null);
 
   const openDeleteModal = (ativo) => {
     setActiveAtivo(ativo);
@@ -256,17 +312,20 @@ export default function MeusAtivos() {
 
   const [tableFilteredAtivos, setTableFilteredAtivos] = useState(null);
 
-  // Lista Filtrada por Busca e Subcategoria
-  const filteredAtivos = ativos.filter(ativo => {
-    // Filtragem de Aba (Ativos x Arquivados)
-    const matchesTab = activeTab === 'ativos' ? ativo.ativo : !ativo.ativo;
-    if (!matchesTab) return false;
+  // Universo da aba (Ativos x Arquivados). Fica separado dos demais filtros porque é
+  // o escopo que o gráfico também usa — ele não segue busca nem classe.
+  const ativosDaAba = useMemo(
+    () => ativos.filter((ativo) => (activeTab === 'ativos' ? ativo.ativo : !ativo.ativo)),
+    [ativos, activeTab]
+  );
 
+  // Lista Filtrada por Busca e Subcategoria
+  const filteredAtivos = ativosDaAba.filter(ativo => {
     // Busca por Texto (Ticker ou Nome)
-    const matchesSearch = 
+    const matchesSearch =
       ativo.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ativo.nome.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Filtro por Subcategoria
     const matchesSub = filterSubcategoria === '' || ativo.subcategoria === parseInt(filterSubcategoria);
 
@@ -278,6 +337,26 @@ export default function MeusAtivos() {
   const totalPatrimonio = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.valor_total_atual || 0), 0);
   const totalMeta = ativosParaKpis.reduce((sum, item) => sum + parseFloat(item.meta_porcentagem || 0), 0);
   const totalInvestido = ativosParaKpis.reduce((sum, item) => sum + (parseFloat(item.quantidade || 0) * parseFloat(item.preco_medio || 0)), 0);
+
+  // O universo do gráfico é a aba e a carteira — deliberadamente NÃO a busca nem o
+  // filtro de classe: ele tem seleção própria, e reagir ao filtro repintaria as linhas
+  // a cada tecla. Quem escolhe o que aparece é o seletor dentro do gráfico.
+  const seriesDoUniverso = useMemo(() => {
+    const idsDaAba = new Set(ativosDaAba.map((a) => a.id));
+    return (historico?.series ?? []).filter((s) => idsDaAba.has(s.id));
+  }, [historico, ativosDaAba]);
+
+  // Da listagem, e não recalculado: sob filtro de carteira o serializador já
+  // sobrescreve preço médio e retorno com os daquela custódia, e o gráfico precisa
+  // mostrar o mesmo número que a coluna «Retorno» ao lado.
+  // Memoizado porque é dependência de `useMemo` no gráfico: um Map novo a cada
+  // render invalidaria o cálculo das séries a cada tecla digitada no filtro.
+  const ativosPorId = useMemo(() => new Map(ativos.map((a) => [a.id, a])), [ativos]);
+
+  // Trocar de carteira ou de aba troca a identidade do universo, e a seleção do
+  // gráfico tem de ser semeada de novo. Remontar é o mecanismo do React para isso —
+  // e, ao contrário de um efeito de reset, é incapaz de pisar na edição do usuário.
+  const universoGrafico = `${carteiraId ?? 'consolidado'}:${activeTab}`;
 
   if (loadingAtivos || loadingSubs) {
     return (
@@ -315,12 +394,15 @@ export default function MeusAtivos() {
             <Gem className="h-6 w-6 text-primary" />
             Meus Ativos
           </h1>
-          <p className="text-xs text-muted-foreground">
-            Gerencie seu portfólio de ações, renda fixa, fundos e criptoativos.
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {carteiraSelecionada
+              ? `Exibindo apenas ativos custodiados em «${carteiraSelecionada.nome}»`
+              : 'Gerencie seu portfólio consolidado de ações, renda fixa, fundos e criptoativos.'}
           </p>
         </div>
         
         <div className="flex items-center gap-3 self-start sm:self-auto">
+          <SeletorCarteira />
           <Button 
             onClick={() => updateQuotesMutation.mutate()}
             disabled={updateQuotesMutation.isPending}
@@ -388,24 +470,54 @@ export default function MeusAtivos() {
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
             <Percent className="h-full w-full" />
           </div>
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Metas Configuradas</p>
-          <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            {totalMeta.toFixed(1).replace('.', ',')}%
-          </h3>
-          <div className="mt-1">
-            {Math.abs(totalMeta - 100) > 0.01 ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-500">
-                <AlertCircle className="h-3.5 w-3.5" /> A soma ideal das metas é 100%
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Distribuição ideal alinhada (100%)
-              </span>
-            )}
-          </div>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            {carteiraId ? `Metas (${carteiraSelecionada?.nome || 'Carteira'})` : 'Custódia & Metas'}
+          </p>
+          {carteiraId ? (
+            <>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+                {totalMeta.toFixed(1).replace('.', ',')}%
+              </h3>
+              <div className="mt-1">
+                {Math.abs(totalMeta - 100) > 0.01 ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-500">
+                    <AlertCircle className="h-3.5 w-3.5" /> A soma ideal das metas é 100%
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Distribuição ideal alinhada (100%)
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
+                {carteirasAtivas.length} {carteirasAtivas.length === 1 ? 'carteira' : 'carteiras'}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Filtre por carteira para acompanhar e balancear metas
+              </p>
+            </>
+          )}
         </div>
 
       </div>
+
+      <GraficoCotacoesAtivos
+        key={universoGrafico}
+        series={seriesDoUniverso}
+        ativosPorId={ativosPorId}
+        escala={escalaGrafico}
+        onEscalaChange={setEscalaGrafico}
+        dias={janelaDias}
+        onDiasChange={setJanelaDias}
+        // Dado de placeholder vira carregamento aqui: o cabeçalho já diz o nome da
+        // carteira nova, e mostrar as linhas da anterior sob ele é indistinguível de
+        // mostrar um número errado.
+        isLoading={loadingHistorico || historicoDesatualizado || ativosDesatualizados}
+        isError={errorHistorico}
+      />
 
       {/* Caixa de Visualização Principal */}
       <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
@@ -450,6 +562,8 @@ export default function MeusAtivos() {
                 className="pl-9 h-10 text-xs rounded-xl"
               />
             </div>
+
+            <SeletorCarteira id="ativos-filtro-carteira" />
 
             <div className="w-full sm:w-56">
               <label htmlFor="ativos-filtro-classe" className="sr-only">Filtrar por classe de ativo</label>
@@ -529,6 +643,23 @@ export default function MeusAtivos() {
           </div>
         </div>
       </Modal>
+
+      {/* MODAL 4: TRANSFERÊNCIA DE CUSTÓDIA */}
+      <TransferenciaCarteiraModal
+        isOpen={transferenciaAberta}
+        onClose={() => {
+          setTransferenciaAberta(false);
+          setTransferenciaAtivo(null);
+        }}
+        ativoInicial={transferenciaAtivo?.id}
+        origemInicial={carteiraId || ''}
+        onSaved={() => {
+          queryClient.invalidateQueries(['ativos']);
+          queryClient.invalidateQueries(['investimentosDashboard']);
+          setSuccessMessage('Transferência de custódia realizada com sucesso!');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        }}
+      />
 
 
 

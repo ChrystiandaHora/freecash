@@ -1,0 +1,29 @@
+{% extends "emails/base_email.html" %}
+{% block conteudo %}
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Olá, {{ nome }}.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;">
+  Recebemos um pedido para redefinir a senha da sua conta. Use o botão abaixo para
+  escolher uma senha nova.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+  <tr>
+    <td style="background-color:#0b5fa5;border-radius:6px;">
+      <a href="{{ link }}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Redefinir minha senha</a>
+    </td>
+  </tr>
+</table>
+<p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#3e4c59;">
+  Se o botão não funcionar, copie e cole este endereço no navegador:
+</p>
+<p style="margin:0 0 24px;font-size:13px;line-height:1.6;word-break:break-all;">
+  <a href="{{ link }}" style="color:#0b5fa5;">{{ link }}</a>
+</p>
+<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#616e7c;">
+  Este link vale por {{ validade_horas }} hora{{ validade_horas|pluralize }} e deixa de
+  funcionar assim que a senha for alterada.
+</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#616e7c;">
+  Se você não pediu para redefinir a senha, ignore esta mensagem: sua senha atual
+  continua valendo.
+</p>
+{% endblock %}

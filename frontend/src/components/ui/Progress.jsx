@@ -1,24 +1,17 @@
 /**
  * Componente de Barra de Progresso Acessível.
  *
- * Expõe `role="progressbar"` com os atributos `aria-valuenow/min/max` e um nome
- * acessível obrigatório, de modo que leitores de tela anunciem o progresso sem
- * depender da cor. O percentual também é renderizado como texto (WCAG 1.4.1 —
- * estado nunca sinalizado apenas por cor).
+ * Expõe `role="progressbar"` com `aria-valuenow/min/max` e nome acessível obrigatório, e
+ * renderiza o percentual como texto (WCAG 1.4.1 — estado nunca só por cor). A barra
+ * visual para em 100%, mas `aria-valuenow` reporta o valor real: uma meta de teto
+ * estourada precisa ser anunciada como tal.
  *
- * A barra visual é limitada a 100%, mas `aria-valuenow` reporta o valor real:
- * uma meta de teto estourada precisa ser anunciada como tal.
- *
- * @component
- * @param {Object} props - Propriedades do componente.
  * @param {number} props.value - Valor atual do progresso.
  * @param {number} [props.max=100] - Valor que representa 100%.
- * @param {string} props.label - Nome acessível da barra (ex: "Reserva de emergência").
+ * @param {string} props.label - Nome acessível (ex.: "Reserva de emergência").
  * @param {"default" | "success" | "warning" | "danger"} [props.variant="default"] - Tom da barra.
- * @param {boolean} [props.showValue=true] - Exibe o percentual em texto ao lado do rótulo.
- * @param {string} [props.valueLabel] - Texto alternativo ao percentual (ex: "R$ 800 de R$ 1.200").
- * @param {string} [props.className] - Estilos CSS extras do Tailwind.
- * @returns {React.JSX.Element} Barra de progresso renderizada.
+ * @param {boolean} [props.showValue=true] - Exibe o percentual em texto.
+ * @param {string} [props.valueLabel] - Texto alternativo ao percentual.
  */
 import * as React from "react"
 import { cn } from "../../lib/utils"

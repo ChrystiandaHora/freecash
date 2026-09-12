@@ -99,13 +99,20 @@ ClasseAtivo (Renda Fixa, Renda Variável, Criptoativos...)
               └── Ativo (ticker, preço médio, quantidade acumulada)
 ```
 
-**Modelos principais:**
-- `Ativo` — Ativo individual com ticker, subcategoria ANBIMA, meta de alocação, preço médio e quantidade (mantidos por Signal)
-- `Transacao` — Operação de Compra (C), Venda (V) ou Provento (D) com quantidade, preço unitário e taxas (serializada como "TransacaoInvestimento")
-- `Cotacao` — Histórico de preços diários por ativo
-- `CarteiraHistorico` — Snapshot patrimonial periódico, usado no dashboard executivo
+**Duas dimensões independentes.** A hierarquia acima diz *o que* o ativo é; a
+`Carteira` diz *onde ele está guardado*. A carteira fica na `Transacao`, não no
+`Ativo` — ver [docs/carteiras.md](../docs/carteiras.md) para o porquê e para os
+efeitos disso no preço médio, na cotação e no backup.
 
-**Signals (`signals.py`):** popula a árvore ANBIMA para usuários novos e recalcula preço médio/quantidade do `Ativo` a cada criação, edição ou remoção de `Transacao`.
+**Modelos principais:**
+- `Carteira` — Custódia numa corretora ou banco. `considerar_no_saldo` decide se o valor entra no Horizonte de Saldos
+- `Ativo` — Ativo individual com ticker, subcategoria ANBIMA, preço médio e quantidade **consolidados** de todas as carteiras (mantidos por Signal)
+- `PosicaoCarteira` — Posição do ativo dentro de uma carteira, e a meta de alocação nela. Quantidade e custo são cache; `meta_porcentagem` é intenção do usuário e nunca é sobrescrita pelo recálculo
+- `Transacao` — Operação de Compra (C), Venda (V), Provento (D) ou Transferência entre carteiras (TS/TE, duas pernas com o mesmo `grupo_transferencia`), sempre com `carteira` (serializada como "TransacaoInvestimento")
+- `Cotacao` — Histórico de preços diários por ativo. Uma série por ticker, independente de quantas carteiras o guardam
+- `CarteiraHistorico` — Snapshot patrimonial diário **por carteira**; o consolidado é agregação SQL sobre essas linhas
+
+**Signals (`signals.py`):** cria a Carteira Padrão e popula a árvore ANBIMA para usuários novos, e recalcula os dois níveis — preço médio/quantidade consolidados do `Ativo` e a `PosicaoCarteira` de **todas** as carteiras do ativo — a cada criação, edição ou remoção de `Transacao`.
 
 **Endpoints principais:**
 ```
@@ -113,10 +120,20 @@ GET/POST/PATCH/DELETE  /api/investimentos/ativos/
 POST   /api/investimentos/ativos/atualizar-cotacoes/       Sincroniza cotações de todos os ativos
 POST   /api/investimentos/ativos/{id}/atualizar/           Sincroniza histórico (30 dias) de um ativo
 
+GET/POST/PATCH/DELETE  /api/investimentos/carteiras/
+GET/PATCH              /api/investimentos/posicoes/               Posição e meta por carteira
+
 GET/POST/PATCH/DELETE  /api/investimentos/transacoes/
+POST   /api/investimentos/transacoes/transferir/           Move custódia sem alterar o preço médio
 
 GET    /api/investimentos/dashboard/           Patrimônio, rentabilidade, alocação, snowball
-GET/POST   /api/investimentos/balanceamento/   Cálculo de aporte ideal por ativo
+GET/POST   /api/investimentos/balanceamento/   Aporte ideal por ativo (na carteira em foco) e entre carteiras
+```
+
+Ativos, transações, dashboard e balanceamento aceitam `?carteira=<id>`. Sem o
+parâmetro, a resposta é o consolidado — o comportamento que o sistema sempre teve.
+
+```
 
 GET/POST/PATCH/DELETE  /api/investimentos/classes/
 GET/POST/PATCH/DELETE  /api/investimentos/categorias/
@@ -182,3 +199,7 @@ python manage.py test
 python manage.py test investimento.tests
 python manage.py test core.tests
 ```
+
+Os testes exigem PostgreSQL — SQLite não serve, porque a migration
+`core/0002_email_unico_case_insensitive` usa um índice único parcial.
+

@@ -19,9 +19,8 @@ db.sqlite3-journal
 media/
 staticfiles/
 
-# Django Migrations
-**/migrations/*.py
-!**/migrations/__init__.py
+# Migrations do Django são versionadas: o servidor precisa aplicar exatamente
+# as mesmas alterações de esquema que rodaram em desenvolvimento.
 *.log
 local_settings.py
 .celerybeat-schedule

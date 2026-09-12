@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from core.models import AporteMeta, CartaoCredito, Conta, MetaFinanceira, PlanoMetas
 from core.services import metas_service
-from investimento.models import Ativo, Cotacao, Transacao
+from investimento.models import Ativo, Carteira, Cotacao, Transacao
 
 User = get_user_model()
 
@@ -30,12 +30,8 @@ class MetasBaseAPITestCase(APITestCase):
         self.token = str(AccessToken.for_user(self.user))
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
 
-    def _criar_plano(self, renda="8000.00", custo="5000.00"):
+    def _criar_plano(self, renda: str = "8000.00", custo: str = "5000.00"):
         """Cria (ou atualiza) o plano do usuário de teste.
-
-        Args:
-            renda (str): Renda mensal de referência.
-            custo (str): Custo de vida mensal de referência.
 
         Returns:
             PlanoMetas: O plano persistido.
@@ -359,14 +355,11 @@ class AporteMetaAPITests(MetasBaseAPITestCase):
 class ProgressoPelaCarteiraAPITests(MetasBaseAPITestCase):
     """Verifica as metas cujo progresso vem do valor de mercado da carteira."""
 
-    def _criar_ativo(self, ticker, quantidade, preco_medio, cotacao=None):
+    def _criar_ativo(self, ticker: str, quantidade: str, preco_medio: str, cotacao=None):
         """Cria um ativo e, opcionalmente, sua cotação mais recente.
 
         Args:
-            ticker (str): Código do ativo.
-            quantidade (str): Quantidade em custódia.
-            preco_medio (str): Preço médio de aquisição.
-            cotacao (str | None): Cotação atual; None deixa o ativo sem cotação.
+            cotacao: Cotação atual; None deixa o ativo sem cotação.
 
         Returns:
             Ativo: O ativo criado.
@@ -454,13 +447,13 @@ class ProgressoPelaCarteiraAPITests(MetasBaseAPITestCase):
 class MetaMensalAPITests(MetasBaseAPITestCase):
     """Verifica a meta mensal, cujo progresso são os aportes da competência."""
 
-    def _criar_compra(self, valor, data=None, tipo=None):
+    def _criar_compra(self, valor: str, data=None, tipo=None):
         """Registra uma ordem na carteira do usuário de teste.
 
         Args:
-            valor (str): Valor total da ordem.
-            data (date | None): Data da ordem; None usa hoje.
-            tipo (str | None): Tipo da transação; None usa compra.
+            valor: Valor total da ordem.
+            data: Data da ordem; None usa hoje.
+            tipo: Tipo da transação; None usa compra.
 
         Returns:
             Transacao: A ordem criada.
@@ -472,6 +465,7 @@ class MetaMensalAPITests(MetasBaseAPITestCase):
         )
         return Transacao.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             ativo=ativo,
             tipo=tipo or Transacao.TIPO_COMPRA,
             data=data or timezone.localdate(),
@@ -535,7 +529,8 @@ class MetaMensalAPITests(MetasBaseAPITestCase):
             quantidade=Decimal("1"), preco_medio=Decimal("1"),
         )
         Transacao.objects.create(
-            usuario=outro, ativo=ativo, tipo=Transacao.TIPO_COMPRA,
+            usuario=outro, carteira=Carteira.padrao_de(outro),
+            ativo=ativo, tipo=Transacao.TIPO_COMPRA,
             data=timezone.localdate(), quantidade=Decimal("1"),
             preco_unitario=Decimal("5000.00"), valor_total=Decimal("5000.00"),
         )
@@ -571,94 +566,6 @@ class MetaMensalAPITests(MetasBaseAPITestCase):
         )
 
         self.assertEqual(metas_service.patrimonio_carteira(self.user), Decimal("0.00"))
-
-
-class MigracoesDeDadosMetasTests(MetasBaseAPITestCase):
-    """Verifica as migrations que convertem metas criadas em versões anteriores.
-
-    Usa os literais antigos de propósito: são o estado real das linhas no banco
-    de quem já usava a tela, e não devem seguir eventuais renomeações futuras
-    das constantes do modelo.
-    """
-
-    def _rodar(self, modulo, funcao):
-        """Executa uma função de migration contra o registro de apps atual.
-
-        Args:
-            modulo (str): Caminho do módulo da migration.
-            funcao (str): Nome da função a executar.
-        """
-        from importlib import import_module
-        from django.apps import apps as global_apps
-
-        getattr(import_module(modulo), funcao)(global_apps, None)
-
-    def test_0004_aponta_metas_de_investimento_antigas_para_a_carteira(self):
-        """Metas criadas antes do campo `origem_acumulado` devem ser convertidas.
-
-        Elas nasceram com o default 'manual' porque o campo ainda não existia —
-        não há escolha do usuário a preservar nessas linhas.
-        """
-        patrimonio = MetaFinanceira.objects.create(
-            usuario=self.user, nome="Patrimônio antigo", tipo="patrimonio_renda",
-            valor_alvo=Decimal("1000.00"), origem_acumulado="manual",
-        )
-        inicial = MetaFinanceira.objects.create(
-            usuario=self.user, nome="Meta inicial de investimentos",
-            tipo="investimento_inicial", valor_alvo=Decimal("800.00"),
-            origem_acumulado="manual",
-        )
-        reserva = MetaFinanceira.objects.create(
-            usuario=self.user, nome="Reserva antiga", tipo="reserva_emergencia",
-            valor_alvo=Decimal("30000.00"), origem_acumulado="manual",
-        )
-
-        self._rodar(
-            "core.migrations.0004_backfill_origem_acumulado_carteira",
-            "marcar_origem_carteira",
-        )
-
-        patrimonio.refresh_from_db()
-        inicial.refresh_from_db()
-        reserva.refresh_from_db()
-        self.assertEqual(patrimonio.origem_acumulado, "carteira")
-        self.assertEqual(inicial.origem_acumulado, "carteira")
-        # Reserva de emergência não é carteira e deve permanecer manual.
-        self.assertEqual(reserva.origem_acumulado, "manual")
-
-    def test_0006_converte_meta_inicial_em_meta_mensal(self):
-        antiga = MetaFinanceira.objects.create(
-            usuario=self.user, nome="Meta inicial de investimentos",
-            tipo="investimento_inicial", valor_alvo=Decimal("809.37"),
-            origem_acumulado="carteira",
-        )
-
-        self._rodar(
-            "core.migrations.0006_renomear_meta_inicial_para_meta_mensal",
-            "para_meta_mensal",
-        )
-
-        antiga.refresh_from_db()
-        self.assertEqual(antiga.tipo, MetaFinanceira.TIPO_APORTE_MENSAL)
-        self.assertEqual(antiga.nome, "Meta mensal")
-        # O ponto central: deixa de olhar o patrimônio total e passa a olhar o mês.
-        self.assertEqual(antiga.origem_acumulado, MetaFinanceira.ORIGEM_APORTES_MES)
-        self.assertEqual(antiga.valor_alvo, Decimal("809.37"))
-
-    def test_0006_preserva_nome_personalizado_pelo_usuario(self):
-        renomeada = MetaFinanceira.objects.create(
-            usuario=self.user, nome="Meu aporte", tipo="investimento_inicial",
-            valor_alvo=Decimal("800.00"), origem_acumulado="carteira",
-        )
-
-        self._rodar(
-            "core.migrations.0006_renomear_meta_inicial_para_meta_mensal",
-            "para_meta_mensal",
-        )
-
-        renomeada.refresh_from_db()
-        self.assertEqual(renomeada.nome, "Meu aporte")
-        self.assertEqual(renomeada.tipo, MetaFinanceira.TIPO_APORTE_MENSAL)
 
 
 class MetaValidacaoAPITests(MetasBaseAPITestCase):

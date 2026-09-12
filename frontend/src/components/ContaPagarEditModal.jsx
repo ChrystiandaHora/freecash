@@ -1,24 +1,18 @@
 /**
  * Modal de Edição Rápida de Conta a Pagar.
  *
- * Reproduz os campos e as regras de validação de `ContaPagarForm` em um diálogo,
- * permitindo editar um card sem sair da tela em que ele está (ex.: o Pipeline
- * Kanban). Faturas de cartão têm os campos em leitura apenas, pois seus valores
- * são calculados a partir das compras vinculadas.
+ * Reproduz os campos e as validações de `ContaPagarForm` num diálogo, para editar um
+ * card sem sair da tela (ex.: o Pipeline Kanban). Faturas de cartão ficam em leitura
+ * apenas, porque seus valores vêm das compras vinculadas. Oferece também "Marcar como
+ * paga" (`PUT /api/financeiro/contas-pagar/{id}/pagar/`), sem precisar arrastar o card.
  *
- * Além de salvar alterações, o diálogo oferece a ação **"Marcar como paga"**
- * (`PUT /api/financeiro/contas-pagar/{id}/pagar/`) para quitar a conta sem
- * precisar arrastar o card até a coluna "Pagas".
- *
- * @component
  * @param {Object} props
  * @param {Object|null} props.conta - Conta em edição; `null` mantém o diálogo fechado.
  * @param {Function} props.onClose - Callback para fechar o diálogo.
- * @param {Function} [props.onSaved] - Disparado após salvar com sucesso (ex.: toast).
+ * @param {Function} [props.onSaved] - Disparado após salvar com sucesso.
  * @param {Function} [props.onError] - Disparado quando a gravação falha.
- * @param {Function} [props.onPaid] - Disparado após registrar o pagamento com sucesso.
- * @param {Function} [props.onPayError] - Disparado quando o registro do pagamento falha.
- * @returns {React.JSX.Element}
+ * @param {Function} [props.onPaid] - Disparado após registrar o pagamento.
+ * @param {Function} [props.onPayError] - Disparado quando o pagamento falha.
  */
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'

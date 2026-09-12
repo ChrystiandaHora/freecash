@@ -20,8 +20,10 @@ from core.models import Categoria, Conta, CartaoCredito
 from investimento.models import (
     SubcategoriaAtivo,
     Ativo,
+    Carteira,
     DetalheRendaFixa,
     Cotacao,
+    PosicaoCarteira,
     Transacao,
 )
 
@@ -239,24 +241,45 @@ def seed_demo_user():
     sub_rf = SubcategoriaAtivo.objects.filter(usuario=user, nome__icontains="Tesouro").first() or sub_acoes
     sub_cripto = SubcategoriaAtivo.objects.filter(usuario=user, nome__icontains="Bitcoin").first() or sub_acoes
 
+    # Duas custódias, para a demo exercitar o filtro e a alocação por carteira.
+    carteira_xp = Carteira.padrao_de(user)
+    carteira_xp.nome = "XP Investimentos"
+    carteira_xp.instituicao = "XP"
+    carteira_xp.cor = "#0F0F0F"
+    carteira_xp.meta_porcentagem = Decimal("70.00")
+    carteira_xp.save()
+
+    carteira_inter, _ = Carteira.objects.get_or_create(
+        usuario=user,
+        nome="Banco Inter",
+        defaults={
+            "instituicao": "Inter",
+            "cor": "#FF7A00",
+            "meta_porcentagem": Decimal("30.00"),
+            # Renda fixa de liquidez diária: este é dinheiro com que se conta.
+            "considerar_no_saldo": True,
+            "ordem": 1,
+        },
+    )
+
     # Definição dos ativos para somar exatamente ~ R$ 1.080.000,00 a mercado
     assets_def = [
-        {"ticker": "VALE3", "nome": "Vale S.A.", "sub": sub_acoes, "qtd": Decimal("3500"), "pm": Decimal("60.00"), "cot": Decimal("64.20"), "meta": Decimal("20.00")},
-        {"ticker": "PETR4", "nome": "Petróleo Brasileiro S.A.", "sub": sub_acoes, "qtd": Decimal("5000"), "pm": Decimal("35.00"), "cot": Decimal("38.50"), "meta": Decimal("20.00")},
-        {"ticker": "ITUB4", "nome": "Itaú Unibanco Holding S.A.", "sub": sub_acoes, "qtd": Decimal("6000"), "pm": Decimal("30.00"), "cot": Decimal("33.80"), "meta": Decimal("20.00")},
-        {"ticker": "HGLG11", "nome": "CSHG Logística FII", "sub": sub_fii, "qtd": Decimal("1000"), "pm": Decimal("160.00"), "cot": Decimal("168.50"), "meta": Decimal("15.00")},
-        {"ticker": "KNCR11", "nome": "Kinea Rendimentos Imobiliários FII", "sub": sub_fii, "qtd": Decimal("1200"), "pm": Decimal("100.00"), "cot": Decimal("103.20"), "meta": Decimal("10.00")},
-        {"ticker": "CDB-BTG", "nome": "CDB BTG Pactual 115% CDI", "sub": sub_rf, "qtd": Decimal("120"), "pm": Decimal("1000.00"), "cot": Decimal("1050.00"), "meta": Decimal("10.00")},
-        {"ticker": "BTC", "nome": "Bitcoin (BTC)", "sub": sub_cripto, "qtd": Decimal("0.12"), "pm": Decimal("300000.00"), "cot": Decimal("347166.66"), "meta": Decimal("5.00")},
+        {"ticker": "VALE3", "nome": "Vale S.A.", "sub": sub_acoes, "qtd": Decimal("3500"), "pm": Decimal("60.00"), "cot": Decimal("64.20"), "meta": Decimal("28.00"), "carteira": "xp"},
+        {"ticker": "PETR4", "nome": "Petróleo Brasileiro S.A.", "sub": sub_acoes, "qtd": Decimal("5000"), "pm": Decimal("35.00"), "cot": Decimal("38.50"), "meta": Decimal("29.00"), "carteira": "xp"},
+        {"ticker": "ITUB4", "nome": "Itaú Unibanco Holding S.A.", "sub": sub_acoes, "qtd": Decimal("6000"), "pm": Decimal("30.00"), "cot": Decimal("33.80"), "meta": Decimal("28.00"), "carteira": "xp"},
+        {"ticker": "HGLG11", "nome": "CSHG Logística FII", "sub": sub_fii, "qtd": Decimal("1000"), "pm": Decimal("160.00"), "cot": Decimal("168.50"), "meta": Decimal("15.00"), "carteira": "xp"},
+        {"ticker": "KNCR11", "nome": "Kinea Rendimentos Imobiliários FII", "sub": sub_fii, "qtd": Decimal("1200"), "pm": Decimal("100.00"), "cot": Decimal("103.20"), "meta": Decimal("55.00"), "carteira": "inter"},
+        {"ticker": "CDB-BTG", "nome": "CDB BTG Pactual 115% CDI", "sub": sub_rf, "qtd": Decimal("120"), "pm": Decimal("1000.00"), "cot": Decimal("1050.00"), "meta": Decimal("45.00"), "carteira": "inter"},
+        {"ticker": "BTC", "nome": "Bitcoin (BTC)", "sub": sub_cripto, "qtd": Decimal("0.12"), "pm": Decimal("300000.00"), "cot": Decimal("347166.66"), "meta": Decimal("0.00"), "carteira": "xp"},
     ]
 
     for item in assets_def:
+        carteira = carteira_xp if item["carteira"] == "xp" else carteira_inter
         ativo = Ativo.objects.create(
             usuario=user,
             ticker=item["ticker"],
             nome=item["nome"],
             subcategoria=item["sub"],
-            meta_porcentagem=item["meta"],
             quantidade=item["qtd"],
             preco_medio=item["pm"],
         )
@@ -272,6 +295,7 @@ def seed_demo_user():
         Transacao.objects.create(
             usuario=user,
             ativo=ativo,
+            carteira=carteira,
             tipo="C",
             data=today - timedelta(days=90),
             quantidade=item["qtd"],
@@ -286,12 +310,18 @@ def seed_demo_user():
                 Transacao.objects.create(
                     usuario=user,
                     ativo=ativo,
+                    carteira=carteira,
                     tipo="D",
                     data=dt_div,
                     quantidade=item["qtd"],
                     preco_unitario=Decimal("1.35"),
                     valor_total=item["qtd"] * Decimal("1.35"),
                 )
+
+        # A meta agora é por carteira; a posição já foi criada pelo signal da compra.
+        PosicaoCarteira.objects.filter(carteira=carteira, ativo=ativo).update(
+            meta_porcentagem=item["meta"]
+        )
 
         if "CDB" in item["ticker"]:
             DetalheRendaFixa.objects.create(

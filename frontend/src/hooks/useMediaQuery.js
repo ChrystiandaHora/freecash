@@ -4,8 +4,6 @@
  * Usa `useSyncExternalStore` em vez do par `useState(() => mql.matches)` +
  * `useEffect(subscribe)`: aquele padrão tem uma janela de tearing entre a
  * primeira renderização e a montagem do efeito, na qual um `change` é perdido.
- *
- * @module hooks/useMediaQuery
  */
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 

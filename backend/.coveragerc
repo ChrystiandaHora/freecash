@@ -1,0 +1,33 @@
+# Configuração do coverage. Ver docs/testes.md para os comandos.
+[run]
+# `--parallel-mode` permite combinar as medições dos subprocessos que o
+# `manage.py test --parallel` cria; sem isso só o processo pai é medido.
+parallel = true
+branch = true
+source = core,investimento
+
+omit =
+    # Código gerado ou executado uma vez: medir não diz nada sobre qualidade.
+    */migrations/*
+    */tests/*
+    */__init__.py
+    */apps.py
+    manage.py
+    freecash/settings.py
+    freecash/wsgi.py
+    freecash/asgi.py
+    # Seed de dados de demonstração, não faz parte do produto.
+    core/create_dummy_data.py
+
+[report]
+show_missing = true
+skip_covered = false
+# Linhas que não fazem sentido cobrir.
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:
+
+[html]
+directory = htmlcov

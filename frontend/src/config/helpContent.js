@@ -132,48 +132,73 @@ export const helpContent = {
 
   "/investimentos/ativos": {
     title: "Meus Ativos",
-    overview: "Tabela de custódia dos ativos em carteira com quantidades, preços médios e retornos.",
+    overview: "Tabela de custódia dos ativos em carteira com quantidades, preços médios e retornos. Ao filtrar por uma carteira específica, a tabela exibe as cotas e custos relativos àquela custódia.",
     features: [
       "Cálculo de Preço Médio e Valor Total a mercado por ativo.",
-      "Indicador colorido de ganho ou perda de capital (retorno %)."
+      "Indicador colorido de ganho ou perda de capital (retorno %).",
+      "Filtro por Carteira de custódia para visualizar o patrimônio por instituição.",
+      "Atalho de transferência de custódia para portabilidade entre corretoras sem afetar o preço médio fiscal."
     ],
     actions: {
-      "Cadastrar Ativo": "Adicione novos papéis de renda fixa, variável ou cripto ativos à carteira."
+      "Cadastrar Ativo": "Adicione novos papéis de renda fixa, variável ou cripto ativos à carteira.",
+      "Transferir Custódia": "Mova posições de uma corretora para outra sem registrar compra nem venda."
     }
   },
 
   "/investimentos/ativos/:id": {
     title: "Detalhe do Ativo",
-    overview: "Análise individualizada de performance e histórico de transações de um ativo específico.",
+    overview: "Análise individualizada de performance, dados cadastrais consolidados e histórico de transações de um ativo específico.",
     features: [
       "Páginas em abas: Dados Gerais, Desempenho Histórico e Extrato de Operações.",
-      "Histórico de rentabilidade contra o Ibovespa e CDI."
+      "Detalhamento de custódia por corretora e histórico de rentabilidade.",
+      "Atalho direto para portabilidade de custódia entre carteiras."
     ],
     actions: {
-      "Registrar Operação": "Adicione transações de Compra (C), Venda (V) ou recebimento de Provento (D)."
+      "Atualizar Ativo": "Sincroniza as cotações mais recentes do papel.",
+      "Transferir Custódia": "Transfere cotas deste ativo entre carteiras cadastradas."
     }
   },
 
   "/investimentos/balanceamento": {
-    title: "Balanceador Ideal",
-    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas.",
+    title: "Balanceamento de Carteira",
+    overview: "Calculadora automática de aportes necessários para reequilibrar a carteira segundo suas metas. As metas somam 100% dentro de cada carteira selecionada no filtro superior.",
     features: [
-      "Sliders interativos para definir o percentual ideal de alocação de cada ativo.",
-      "Cálculo do aporte sugerido para reequilibrar a alocação sem vender ativos."
+      "Sliders interativos para definir o percentual ideal de cada ativo na carteira em foco.",
+      "Cálculo de Aporte Mágico automático priorizando ativos mais distantes da meta ideal.",
+      "Visão de metas de distribuição de patrimônio entre carteiras no consolidado."
     ],
     actions: {
-      "Simular Aporte": "Insira o valor que deseja investir e veja quais ativos comprar."
+      "Ajustar Metas": "Defina o percentual alvo de cada papel dentro da carteira selecionada.",
+      "Aporte Mágico": "Informe quanto deseja investir hoje para receber a distribuição de compras ideal."
     }
   },
 
   "/investimentos/historico": {
-    title: "Histórico da Carteira",
-    overview: "Evolução histórica mensal da carteira de investimentos consolidada.",
+    title: "Histórico de Ordens",
+    overview: "Livro-razão completo de compras, vendas, proventos e transferências de custódia.",
     features: [
-      "Gráfico comparativo de rentabilidade contra indexadores de referência (CDI e Ibovespa)."
+      "Filtro por tipo de lançamento (Compra, Venda, Proventos, Transferência de Saída e Entrada).",
+      "Filtro por carteira de execução da ordem.",
+      "Histórico de portabilidade rastreável de ponta a ponta."
     ],
     actions: {
-      "Filtro de Janela": "Escolha o período histórico para plotagem no gráfico de rentabilidade."
+      "Nova Ordem": "Lance uma operação de compra, venda ou provento.",
+      "Transferir entre Carteiras": "Registre a mudança de custódia de cotas entre duas carteiras."
+    }
+  },
+
+  "/investimentos/carteiras": {
+    title: "Carteiras",
+    overview: "Suas custódias: uma carteira para cada corretora ou banco onde você tem investimentos. O ativo continua único — o que a carteira diz é onde cada posição está guardada, e por isso transferir entre elas não mexe no seu preço médio.",
+    features: [
+      "Cadastro de carteiras com instituição e cor de identificação.",
+      "Marcação de quais carteiras contam como dinheiro disponível no Horizonte de Saldos.",
+      "Arquivamento, que tira a carteira dos filtros sem apagar o histórico de ordens."
+    ],
+    actions: {
+      "Nova Carteira": "Cadastre a corretora ou banco onde você mantém parte dos investimentos.",
+      "Arquivar": "Some dos filtros preservando as ordens já lançadas. É o caminho para uma corretora que você deixou de usar.",
+      "Contar como dinheiro disponível": "Ligue para reserva de emergência e renda fixa de liquidez diária; desligue para posições que você não pretende resgatar."
     }
   },
 
@@ -424,6 +449,90 @@ export const helpContent = {
     ],
     actions: {
       "Salvar": "Salva as correções do lançamento da ordem."
+    }
+  },
+
+  "/conta": {
+    title: "Minha Conta",
+    overview: "Seus dados de acesso e preferências. Acesse pelo avatar no topo da tela.",
+    features: [
+      "Indicadores no topo: identidade, situação do e-mail e dispositivos conectados.",
+      "Nome de usuário e moeda padrão.",
+      "Troca de e-mail com confirmação no novo endereço.",
+      "Troca de senha com o usuário logado.",
+      "Sessões ativas, com opção de desconectar os outros dispositivos.",
+      "Exclusão definitiva da conta."
+    ],
+    actions: {
+      "Salvar perfil": "Atualiza nome de usuário e moeda. Não pede senha: são dados que não dão acesso a nada.",
+      "Enviar confirmação": "Inicia a troca de e-mail. Pede a senha atual, porque é o e-mail que recupera sua conta. O endereço novo só passa a valer quando você abre o link enviado a ele — até lá, o atual continua funcionando.",
+      "Cancelar troca": "Descarta uma troca pendente e invalida o link já enviado.",
+      "Alterar senha": "Pede a senha atual e encerra as outras sessões da conta. A sessão em uso continua aberta.",
+      "Encerrar as outras sessões": "Desconecta todos os outros dispositivos; esta janela continua conectada. A contagem cobre quem entrou nos últimos 7 dias — uma sessão fechada sem sair da conta continua sendo contada até esse prazo vencer.",
+      "Excluir permanentemente": "Apaga a conta e todo o histórico financeiro. Exige a senha e o nome de usuário digitado por extenso. Não há como desfazer — exporte um backup antes."
+    }
+  },
+
+  "/horizonte-saldos": {
+    title: "Horizonte de Saldos",
+    overview: "Projeção do saldo acumulado dia a dia para os próximos 12 meses, a partir do dinheiro líquido que você tem hoje — o valor aplicado em investimentos fica de fora, salvo se você pedir o contrário.",
+    features: [
+      "Parte do saldo real em caixa, e não de zero — contas vencidas e ainda não pagas entram no saldo de abertura.",
+      "O que já foi liquidado com data de hoje em diante entra no dia em que o dinheiro anda, e não no saldo de abertura.",
+      "Inclui as ocorrências futuras das suas regras de recorrência, de receita e de despesa.",
+      "Compras de cartão não são somadas junto da fatura: o desembolso é contado uma vez só, no vencimento.",
+      "Aviso destacado com o primeiro dia em que o saldo fica negativo, se houver."
+    ],
+    actions: {
+      "Limite de atenção": "Define o piso de conforto. Dias com saldo abaixo dele aparecem sinalizados.",
+      "Considerar aportes das metas": "Alterna para um segundo cenário, que desconta o aporte mensal necessário para cumprir cada meta no prazo. É comparação, não compromisso: o saldo principal continua mostrando apenas o que você já assumiu.",
+      "Considerar valor investido": "Soma ao saldo de abertura o custo de aquisição da sua carteira. Por padrão ele fica de fora: dinheiro aplicado não está disponível para pagar conta, e mantê-lo no saldo esconde aperto de caixa. Usa o preço médio pago, não a cotação do dia — o que saiu do caixa foi o custo, e cotação faria a linha de corte oscilar com o mercado. Só aparece se você tiver ativos cadastrados.",
+      "Clique numa célula": "Abre os lançamentos previstos daquele dia."
+    }
+  },
+
+  "/calendario": {
+    title: "Calendário de Pagamentos",
+    overview: "Agenda mensal do que vence e do que entra, com liquidação direta.",
+    features: [
+      "Cada dia mostra o total a receber e a pagar, e quantos lançamentos seguem pendentes.",
+      "Compras de cartão aparecem no dia, mas o total considera a fatura — o dinheiro sai uma vez só.",
+      "O dia de hoje fica destacado na grade."
+    ],
+    actions: {
+      "Clique num dia": "Abre a lista de lançamentos daquele dia.",
+      "Marcar como pago / Marcar como recebido": "Registra o lançamento como liquidado na data de hoje. O texto do botão acompanha o tipo: despesa é paga, receita é recebida.",
+      "Desfazer pagamento / Desfazer recebimento": "Devolve um lançamento já liquidado ao estado pendente, caso tenha sido marcado por engano.",
+      "Navegação de mês": "Use as setas para mudar de mês, ou 'Ir para hoje' para voltar ao mês corrente."
+    }
+  },
+
+  "/admin/usuarios": {
+    title: "Contas de Usuário",
+    overview: "Administração de acesso das contas da plataforma. Visível apenas para administradores.",
+    features: [
+      "Busca por nome de usuário ou e-mail, com filtro por estado da conta.",
+      "Indicação de quais contas já confirmaram o endereço de e-mail.",
+      "Volume de uso por conta (quantidade de lançamentos e de ativos).",
+      "Esta tela não exibe dados financeiros: administrar a plataforma não exige ver as finanças de ninguém."
+    ],
+    actions: {
+      "Suspender": "Bloqueia o acesso e desconecta a pessoa imediatamente. Pede um motivo, que fica registrado no histórico administrativo.",
+      "Reativar": "Devolve o acesso a uma conta suspensa."
+    }
+  },
+
+  "/admin/metricas": {
+    title: "Métricas da Plataforma",
+    overview: "Indicadores de contas e adoção do produto. Visível apenas para administradores.",
+    features: [
+      "Totais de contas ativas, suspensas e administradoras.",
+      "Percentual de contas com e-mail confirmado.",
+      "Contas criadas e contas que acessaram nos últimos 7 e 30 dias.",
+      "Curva de cadastros por dia, com os mesmos dados disponíveis em tabela."
+    ],
+    actions: {
+      "Período": "Alterna a janela do gráfico de cadastros entre 7, 30 e 90 dias."
     }
   }
 };

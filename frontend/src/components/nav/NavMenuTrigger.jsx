@@ -1,21 +1,16 @@
 /**
  * Gatilho de primeiro nível da navbar (um por grupo).
  *
- * É um DISCLOSURE, não um `menuitem`. O APG é explícito: navegação de site não
- * usa o papel `menu` porque não oferece a funcionalidade complexa que a
- * tecnologia assistiva espera desse papel. Consequências deliberadas:
- * - Sem `role="menubar"/"menuitem"`: preservar o papel `link` dos destinos é o
- *   que mantém "abrir em nova aba" e o rotor de links funcionando.
- * - Sem `aria-haspopup`: esse atributo declara menu/listbox/dialog/tree, e um
- *   disclosure não é nenhum deles.
- * - Sem roving `tabindex`: os 5 gatilhos e 18 links mantêm `tabindex="0"`
- *   natural. Roving tiraria 21 de 23 controles da ordem de tabulação.
- * - Sem `aria-label`: o texto visível É o nome acessível (SC 2.5.3), para quem
- *   usa comando de voz acertar dizendo "clique Financeiro".
- * - Sem `title`: tooltip nativo não é descartável por Escape nem hoverable, e
- *   expira sozinho — falha a SC 1.4.13.
+ * É um DISCLOSURE, não um `menuitem`: o APG é explícito que navegação de site não usa o
+ * papel `menu`, porque não oferece a funcionalidade complexa que a tecnologia assistiva
+ * espera dele. Daí as ausências deliberadas:
  *
- * @module components/nav/NavMenuTrigger
+ * - sem `role="menubar"/"menuitem"`, para os destinos preservarem o papel `link` — é o
+ *   que mantém "abrir em nova aba" e o rotor de links funcionando;
+ * - sem `aria-haspopup`, que declara menu/listbox/dialog/tree, e disclosure não é nenhum;
+ * - sem roving `tabindex`, que tiraria 21 dos 23 controles da ordem de tabulação;
+ * - sem `aria-label`: o texto visível é o nome acessível (SC 2.5.3), para comando de voz;
+ * - sem `title`: tooltip nativo não é descartável nem hoverable, e falha a SC 1.4.13.
  */
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -33,7 +28,6 @@ import { cn } from '../../lib/utils';
  * @param {(event: React.FocusEvent) => void} props.onFocus - Abertura por foco de teclado.
  * @param {(event: React.KeyboardEvent) => void} props.onKeyDown - Setas.
  * @param {(el: HTMLButtonElement | null) => void} props.triggerRef - Callback ref.
- * @returns {React.JSX.Element}
  */
 export function NavMenuTrigger({
   group,

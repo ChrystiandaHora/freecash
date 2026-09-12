@@ -1,42 +1,28 @@
 /**
  * Componente de Caixa de Diálogo Flutuante (Modal).
- * 
- * Renderiza uma janela sobreposta (com backdrop escurecido e blur de fundo) para
- * exibição de formulários operacionais (criar ativo, liquidar contas), contendo escuta
- * nativa para fechamento ao teclar Escape ou clicar fora da janela.
  *
- * @component
+ * Janela sobreposta com backdrop escurecido, usada nos formulários operacionais.
+ * Fecha ao teclar Escape ou clicar fora.
+ *
  * @param {Object} props - Propriedades de configuração do Modal.
- * @param {boolean} props.isOpen - Indica se a modal está visível na tela.
- * @param {Function} props.onClose - Callback disparado para solicitar o fechamento da modal.
- * @param {string} [props.title] - O título do cabeçalho da modal.
- * @param {string} [props.description] - Subtítulo descritivo secundário.
- * @param {React.ReactNode} props.children - Conteúdo do corpo interno a ser renderizado.
- * @param {string} [props.className] - Estilos CSS extras do Tailwind para o container do diálogo.
- * @param {"sm" | "md" | "lg" | "xl"} [props.size="md"] - Largura máxima pré-definida para a modal.
- * @param {string} [props.ariaLabel] - Nome acessível alternativo, usado apenas quando `title` não é passado.
- * @returns {React.JSX.Element | null} Elemento JSX ou null caso esteja fechada.
+ * @param {boolean} props.isOpen - Indica se a modal está visível.
+ * @param {Function} props.onClose - Callback para solicitar o fechamento.
+ * @param {string} [props.title] - Título do cabeçalho.
+ * @param {string} [props.description] - Subtítulo descritivo.
+ * @param {React.ReactNode} props.children - Conteúdo do corpo.
+ * @param {"sm" | "md" | "lg" | "xl"} [props.size="md"] - Largura máxima.
+ * @param {string} [props.ariaLabel] - Nome acessível, usado quando não há `title`.
+ * @returns {React.JSX.Element | null} Elemento JSX, ou null quando fechada.
  *
- * Nota de acessibilidade: ao abrir, o foco é movido para o primeiro elemento
- * focável do diálogo e fica trapeado dentro dele (Tab/Shift+Tab cicla só entre
- * os elementos internos); ao fechar, o foco retorna ao elemento que abriu a
- * modal (WCAG 2.4.3).
+ * Acessibilidade: ao abrir, o foco vai para o primeiro elemento focável e fica
+ * trapeado no diálogo; ao fechar, volta a quem abriu (WCAG 2.4.3).
  *
- * Nota de arquitetura: o diálogo é renderizado por portal no `document.body`, e
- * não no lugar onde foi declarado. Isso não é preferência de estilo — é
- * necessário para a correção. `backdrop-filter`, `filter`, `transform`,
- * `perspective`, `will-change` e `contain` fazem o elemento se tornar o
- * *containing block* de descendentes `position: fixed`. Sem o portal, uma modal
- * declarada dentro de um ancestral com qualquer uma dessas propriedades tem seu
- * `fixed inset-0` resolvido contra aquela caixa em vez da viewport: foi
- * exatamente o que aconteceu com o botão de ajuda dentro da barra de navegação
- * (`backdrop-blur-md`), onde o overlay virou 1440x63 e o diálogo foi centralizado
- * na altura do header, ficando cortado acima da tela.
- *
- * O portal também tira o diálogo do contexto de empilhamento do ancestral, então
- * o `z-50` passa a valer contra a raiz — é o que garante que ele cubra o header
- * `z-40`. O trap de foco, o Escape e a trava de scroll continuam funcionando por
- * refs e listeners no document, portanto são indiferentes ao portal.
+ * Arquitetura: o diálogo é renderizado por portal no `document.body`, e isso é
+ * necessário para a correção, não estilo. `backdrop-filter`, `filter`, `transform` e
+ * afins tornam o elemento o *containing block* de descendentes `position: fixed` — foi
+ * o que aconteceu com o botão de ajuda dentro da navbar (`backdrop-blur-md`), onde o
+ * overlay virou 1440x63. O portal também tira o diálogo do contexto de empilhamento do
+ * ancestral, então o `z-50` vale contra a raiz e cobre o header `z-40`.
  */
 import { useEffect, useId, useRef } from "react"
 import { createPortal } from "react-dom"

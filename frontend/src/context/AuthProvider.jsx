@@ -1,33 +1,7 @@
-/**
- * Provedor de Contexto de Autenticação JWT (AuthProvider).
- *
- * Gerencia o ciclo de vida completo da sessão do usuário utilizando
- * autenticação baseada em JWT com refresh token via cookie HTTP-only:
- *
- * - Na inicialização, tenta renovar silenciosamente o `access token` via
- *   `/api/token/refresh/` (usando o cookie de refresh persistido).
- * - Expõe `login`, `register` e `logout` para operações de autenticação.
- * - Armazena o token de acesso em memória (via `setAccessToken`) para evitar
- *   exposição ao localStorage e mitigar ataques XSS.
- * - O payload do JWT é decodificado localmente para popular o objeto `user`
- *   sem necessidade de chamada adicional à API.
- *
- * Contexto Exportado: `{ user, loading, login, register, logout, isAuthenticated }`
- *
- * @module AuthProvider
- * @component
- *
- * @param {object}      props          - Props do componente.
- * @param {React.ReactNode} props.children - Árvore de componentes filhos que
- *                                          terão acesso ao contexto de auth.
- * @returns {JSX.Element} Provider do contexto de autenticação.
- *
- * @example
- * // Uso do hook de autenticação em um componente filho:
- * const { user, login, logout, isAuthenticated } = useAuth();
- */
-import { createContext, useContext, useState, useEffect } from 'react';
+/** Provedor de contexto de autenticação JWT e gerenciamento de sessão do usuário. */
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';
+import { buscarPerfil } from '../services/auth';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -51,45 +25,62 @@ const decodeToken = (token) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+  /** Carrega os dados mais recentes do perfil diretamente da API (/api/auth/me/). */
+  const recarregarPerfil = useCallback(async () => {
+    try {
+      const dados = await buscarPerfil();
+      setPerfil(dados);
+      return dados;
+    } catch {
+      setPerfil(null);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Tenta renovar silenciosamente na inicialização
         const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
         const { access } = response.data;
         setAccessToken(access);
         const decoded = decodeToken(access);
         setUser(decoded);
+        await recarregarPerfil();
       } catch {
         setAccessToken(null);
         setUser(null);
+        setPerfil(null);
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
-  }, [API_URL]);
+  }, [API_URL, recarregarPerfil]);
 
-  const login = async (username, password) => {
-    const response = await api.post('/api/token/', { username, password });
+  /** Autentica o usuário por e-mail ou username e atualiza o estado da sessão. */
+  const login = async (identificador, password) => {
+    const response = await api.post('/api/token/', { username: identificador, password });
     const { access } = response.data;
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    await recarregarPerfil();
     return decoded;
   };
 
-  const register = async (username, password, confirm) => {
-    const response = await api.post('/api/register/', { username, password, confirm });
+  const register = async (username, email, password, confirm) => {
+    const response = await api.post('/api/register/', { username, email, password, confirm });
     const { access } = response.data;
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    await recarregarPerfil();
     return decoded;
   };
 
@@ -101,11 +92,23 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setAccessToken(null);
       setUser(null);
+      setPerfil(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        perfil,
+        loading,
+        login,
+        register,
+        logout,
+        recarregarPerfil,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

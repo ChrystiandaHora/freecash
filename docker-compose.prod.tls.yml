@@ -1,0 +1,36 @@
+# Sobreposição opcional: HTTPS com certificado automático. Usar junto do compose de
+# produção; passo a passo e variáveis do .env em DEPLOY.md, cenário B.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.prod.tls.yml up -d --build
+#
+# `HTTP_PORT=127.0.0.1:8080` no .env é o que tira o frontend da porta pública: ele
+# passa a escutar só em loopback, alcançável apenas pelo Caddy.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: freecash_caddy
+    restart: unless-stopped
+
+    environment:
+      DOMAIN: ${DOMAIN}
+
+    ports:
+      - "80:80"
+      - "443:443"
+      # QUIC/HTTP3. Opcional; remova se o provedor cobrar por regra de firewall.
+      - "443:443/udp"
+
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Os certificados vivem aqui. Sem este volume, cada `up` pede um certificado
+      # novo e o Let's Encrypt aplica limite de emissões por semana.
+      - caddy_data:/data
+      - caddy_config:/config
+
+    depends_on:
+      - frontend
+
+volumes:
+  caddy_data:
+  caddy_config:

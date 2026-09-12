@@ -1,30 +1,19 @@
 /**
  * Componente Raiz da Aplicação FreeCash (App Router).
  *
- * Configura a estrutura global da SPA: provedor de estado de autenticação
- * (`AuthProvider`), sistema de notificações (`ToastProvider`), cliente de
- * cache de dados remotos (`QueryClientProvider` / TanStack Query) e o roteador
- * declarativo (`BrowserRouter`).
+ * Monta os provedores globais — autenticação, toasts e cache do TanStack Query — e o
+ * roteador. `PublicRoute` manda o autenticado para `/dashboard`, `ProtectedRoute` manda
+ * o anônimo para `/login`, e `AdminRoute` exige `perfil.is_staff` lido da API.
  *
- * Padrão de Rotas:
- * - `PublicRoute`   → redireciona usuários autenticados para `/dashboard`.
- * - `ProtectedRoute` → redireciona usuários não-autenticados para `/login`.
+ * As páginas autenticadas ficam sob o layout mestre `DashboardLayout`, em rotas filhas.
  *
- * Todas as páginas autenticadas são renderizadas sob o layout mestre
- * `DashboardLayout` via rotas filhas (nested routes).
- *
- * @module App
- * @component
  * @returns {JSX.Element} Árvore de provedores e roteador da aplicação.
- *
- * @example
- * // Ponto de entrada (main.jsx)
- * createRoot(document.getElementById('root')).render(<App />);
  */
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+import { CarteiraProvider } from './context/CarteiraProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
 
@@ -32,6 +21,15 @@ import { Loader2 } from 'lucide-react';
 // Layouts & Pages
 import DashboardLayout from './components/DashboardLayout';
 import Login from './pages/Login';
+import EsqueciSenha from './pages/EsqueciSenha';
+import RedefinirSenha from './pages/RedefinirSenha';
+import VerificarEmail from './pages/VerificarEmail';
+import MinhaConta from './pages/MinhaConta';
+import ConfirmarTrocaEmail from './pages/ConfirmarTrocaEmail';
+import HorizonteSaldos from './pages/HorizonteSaldos';
+import CalendarioPagamentos from './pages/CalendarioPagamentos';
+import AdminUsuarios from './pages/admin/AdminUsuarios';
+import AdminMetricas from './pages/admin/AdminMetricas';
 import Dashboard from './pages/Dashboard';
 import Investimentos from './pages/Investimentos';
 import Relatorios from './pages/Relatorios';
@@ -46,6 +44,7 @@ import Metas from './pages/Metas';
 import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
+import AtivosCarteiras from './pages/AtivosCarteiras';
 import MeusAtivos from './pages/MeusAtivos';
 import AtivoDetalhes from './pages/AtivoDetalhes';
 import FerramentasImportar from './pages/FerramentasImportar';
@@ -108,12 +107,56 @@ const PublicRoute = ({ children }) => {
   return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
 };
 
+// Guard Route for Platform Admin Pages
+//
+// O papel vem de `perfil.is_staff`, lido de /api/auth/me/ a cada sessão, e NUNCA
+// de uma claim do JWT: com ROTATE_REFRESH_TOKENS o payload do refresh é preservado
+// na rotação, então um administrador rebaixado continuaria com o papel antigo por
+// até sete dias.
+//
+// Este guard é conveniência de navegação, não segurança. Quem chamar /api/admin/*
+// diretamente é recusado pela permission class IsAdminPlataforma no servidor.
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, perfil, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
+        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
+          Verificando permissões...
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Enquanto o perfil não chegou, não há como afirmar o papel — e mandar para o
+  // dashboard seria expulsar um administrador legítimo por causa de latência.
+  if (perfil === null) {
+    return (
+      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
+        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
+          Verificando permissões...
+        </p>
+      </div>
+    );
+  }
+
+  return perfil.is_staff ? children : <Navigate to="/dashboard" replace />;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <AuthProvider>
           <ThemeProvider>
+            <CarteiraProvider>
             <Router>
             <Routes>
               {/* Public Auth Routes */}
@@ -125,6 +168,31 @@ function App() {
                   </PublicRoute>
                 } 
               />
+              <Route
+                path="/esqueci-senha"
+                element={
+                  <PublicRoute>
+                    <EsqueciSenha />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/redefinir-senha/:uid/:token"
+                element={
+                  <PublicRoute>
+                    <RedefinirSenha />
+                  </PublicRoute>
+                }
+              />
+
+              {/* Confirmação de e-mail: deliberadamente FORA de PublicRoute e de
+                  ProtectedRoute. Quem clica no link do e-mail muitas vezes já está
+                  logado, e o PublicRoute mandaria essa pessoa para /dashboard sem
+                  nunca confirmar o endereço — o link não funcionaria justamente no
+                  caso mais comum. Já o ProtectedRoute exigiria sessão de quem
+                  abriu o link em outro navegador. */}
+              <Route path="/verificar-email/:uid/:token" element={<VerificarEmail />} />
+              <Route path="/conta/confirmar-email/:uid/:token" element={<ConfirmarTrocaEmail />} />
 
               {/* Protected SaaS Workspace Routes */}
               <Route 
@@ -138,6 +206,7 @@ function App() {
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="relatorios" element={<Relatorios />} />
+                <Route path="conta" element={<MinhaConta />} />
                 
                 <Route path="contas-pagar" element={<ContasPagar />} />
                 <Route path="contas-pagar/lote" element={<ContasPagarLote />} />
@@ -147,12 +216,15 @@ function App() {
                 <Route path="transacoes" element={<Transacoes />} />
                 <Route path="simulador" element={<SimuladorGastos />} />
                 <Route path="metas" element={<Metas />} />
+                <Route path="horizonte-saldos" element={<HorizonteSaldos />} />
+                <Route path="calendario" element={<CalendarioPagamentos />} />
 
                 <Route path="investimentos" element={<Investimentos />} />
                 <Route path="investimentos/ativos" element={<MeusAtivos />} />
                 <Route path="investimentos/ativos/:id" element={<AtivoDetalhes />} />
                 <Route path="investimentos/balanceamento" element={<AtivosBalanceamento />} />
                 <Route path="investimentos/historico" element={<AtivosHistorico />} />
+                <Route path="investimentos/carteiras" element={<AtivosCarteiras />} />
                 <Route path="investimentos/classes" element={<AtivosClasses />} />
 
                 <Route path="importar" element={<FerramentasImportar />} />
@@ -160,6 +232,24 @@ function App() {
                 <Route path="compras-cartao/novo" element={<CompraCartaoForm />} />
                 <Route path="compras-cartao/editar/:id" element={<CompraCartaoForm />} />
                 <Route path="backup" element={<FerramentasBackup />} />
+
+                {/* Painel administrativo da plataforma */}
+                <Route
+                  path="admin/usuarios"
+                  element={
+                    <AdminRoute>
+                      <AdminUsuarios />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="admin/metricas"
+                  element={
+                    <AdminRoute>
+                      <AdminMetricas />
+                    </AdminRoute>
+                  }
+                />
 
                 <Route path="pagamentos" element={<AjustesPagamentos />} />
                 <Route path="pagamentos/novo" element={<AjustePagamentoForm />} />
@@ -181,6 +271,7 @@ function App() {
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
             </Router>
+            </CarteiraProvider>
           </ThemeProvider>
         </AuthProvider>
       </ToastProvider>

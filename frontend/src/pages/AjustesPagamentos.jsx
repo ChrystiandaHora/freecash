@@ -6,7 +6,6 @@
  * das principais instituições financeiras brasileiras (ex: Nubank, Inter, Itaú, Bradesco)
  * e seleção de ícones representativos.
  *
- * @component
  * @returns {React.JSX.Element} Painel administrativo contendo grid de cartões ativos e inativos.
  */
 import { useState } from 'react';

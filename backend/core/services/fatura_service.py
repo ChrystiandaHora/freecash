@@ -30,9 +30,6 @@ def obter_categoria_cartao(usuario) -> Categoria:
     toda compra individual importada sem classificação manual recebe esta
     categoria, evitando que o gasto apareça como "Sem categoria" nos painéis.
 
-    Args:
-        usuario (User): Instância do usuário proprietário.
-
     Returns:
         Categoria: A categoria "Cartão de Crédito" do usuário.
     """
@@ -49,9 +46,6 @@ def garantir_categoria_cartao(conta: Conta) -> bool:
 
     Não sobrescreve uma classificação existente — apenas preenche o vazio com a
     categoria "Cartão de Crédito".
-
-    Args:
-        conta (Conta): Fatura consolidada ou compra individual de cartão.
 
     Returns:
         bool: True se a categoria foi preenchida agora, False se já existia.
@@ -70,38 +64,41 @@ def obter_ou_criar_fatura(usuario, cartao, data_vencimento: date) -> Conta:
     A fatura é representada como uma entidade 'Conta' especial marcada com a
     flag 'eh_fatura_cartao=True' e isolada por usuário.
 
-    Args:
-        usuario (User): Instância do usuário proprietário.
-        cartao (CartaoCredito): Instância do cartão de crédito correspondente.
-        data_vencimento (date): Data de vencimento prevista da fatura.
-
     Returns:
         Conta: A instância de fatura existente ou recém-criada.
     """
     mes = data_vencimento.month
     ano = data_vencimento.year
 
-    # Buscar fatura existente para este cartão/mês/ano.
-    # Ordenamos por id para que a escolha seja determinística caso a base já
-    # contenha faturas duplicadas do mesmo período (ver comando
-    # `corrigir_faturas_duplicadas`), evitando que o sistema alterne entre elas.
+    # Casa por data exata, a mesma chave que `compras_da_fatura`, `atualizar_valor_fatura`
+    # e `pagar_fatura` usam. Buscar por mês aqui e por data exata lá deixava a compra de
+    # outro dia do mesmo mês consolidada na busca e invisível na soma (ver docs/fatura-cartao.md).
     existentes = list(
         Conta.objects.filter(
             usuario=usuario,
             cartao=cartao,
             eh_fatura_cartao=True,
-            data_prevista__year=ano,
-            data_prevista__month=mes,
+            data_prevista=data_vencimento,
         ).order_by("id")
     )
 
+    # O aviso continua por mês: mais de uma fatura no período é sinal para o operador,
+    # ainda que não defina mais qual delas recebe a compra.
+    no_mes = Conta.objects.filter(
+        usuario=usuario,
+        cartao=cartao,
+        eh_fatura_cartao=True,
+        data_prevista__year=ano,
+        data_prevista__month=mes,
+    ).count()
+    if no_mes > 1:
+        logger.warning(
+            "Encontradas %d faturas para o cartão %s em %02d/%d. "
+            "Execute `manage.py corrigir_faturas_duplicadas`.",
+            no_mes, cartao, mes, ano,
+        )
+
     if existentes:
-        if len(existentes) > 1:
-            logger.warning(
-                "Encontradas %d faturas duplicadas para o cartão %s em %02d/%d "
-                "(ids=%s). Execute `manage.py corrigir_faturas_duplicadas`.",
-                len(existentes), cartao, mes, ano, [f.id for f in existentes],
-            )
         # Prioriza uma fatura já liquidada, que carrega o histórico de pagamento
         for fatura in existentes:
             if fatura.transacao_realizada:
@@ -130,9 +127,6 @@ def atualizar_valor_fatura(fatura: Conta) -> None:
 
     Soma de forma segura os valores de todas as compras individuais associadas à
     fatura, desde que a fatura ainda não esteja liquidada (paga).
-
-    Args:
-        fatura (Conta): Instância da fatura que receberá a atualização.
     """
     if fatura.transacao_realizada:
         return
@@ -154,8 +148,7 @@ def pagar_fatura(fatura: Conta, data_pagamento: date = None) -> None:
     """Realiza a liquidação atômica da fatura e de todas as suas compras individuais vinculadas.
 
     Args:
-        fatura (Conta): Instância da fatura a ser paga.
-        data_pagamento (date, optional): Data de realização do pagamento. Defaults to timezone.localdate().
+        data_pagamento: Data de realização do pagamento. Defaults to timezone.localdate().
     """
     from django.utils import timezone
 
@@ -186,9 +179,6 @@ def desfazer_pagamento_fatura(fatura: Conta) -> None:
     """Desfaz atomaticamente o pagamento da fatura e de todas as despesas vinculadas.
 
     Retorna a fatura e seus lançamentos de despesa associados para o estado pendente.
-
-    Args:
-        fatura (Conta): Instância da fatura.
     """
     # Desmarcar fatura
     fatura.transacao_realizada = False
@@ -212,22 +202,22 @@ def desfazer_pagamento_fatura(fatura: Conta) -> None:
 def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
     """Garante uma única fatura consolidada por usuário/cartão/mês.
 
-    Faturas consolidadas duplicadas surgem quando um mesmo período ganha mais de
-    uma linha `Conta` com `eh_fatura_cartao=True` — tipicamente ao restaurar um
-    backup gerado por uma versão que criava faturas "fantasma" durante o import.
+    Duplicatas surgem quando um período ganha mais de uma `Conta` com
+    `eh_fatura_cartao=True` — tipicamente ao restaurar backup de uma versão que criava
+    faturas fantasma no import.
 
-    Em cada grupo duplicado preserva a fatura liquidada (que carrega a data de
-    pagamento real) ou, na ausência de uma paga, a mais antiga. As compras
-    individuais do cartão NÃO são tocadas: elas se vinculam à fatura por
-    `data_prevista`, portanto seguem corretamente associadas à fatura preservada.
+    Em cada grupo preserva a fatura liquidada, que carrega a data de pagamento real, ou a
+    mais antiga. As compras das faturas removidas são **reatribuídas** à mantida: o vínculo
+    é por `data_prevista`, então apagar uma fatura de outro dia do mesmo mês deixaria as
+    compras dela sem fatura nenhuma — órfãs no extrato e fora de qualquer soma.
 
     Args:
-        usuario (User, optional): Restringe a limpeza a um usuário. None varre todos.
-        dry_run (bool): Se True, apenas relata as duplicidades sem excluir nada.
+        usuario: Restringe a limpeza a um usuário. None varre todos.
 
     Returns:
-        list[dict]: Um registro por período duplicado, com as chaves `cartao_id`,
-            `usuario_id`, `ano`, `mes`, `mantida` (Conta) e `removidas` (list[Conta]).
+        list[dict]: Um registro por período duplicado, com `cartao_id`, `usuario_id`,
+            `ano`, `mes`, `mantida` (Conta), `removidas` (list[Conta]) e
+            `datas_reatribuidas` (list[date]) — as datas cujas compras mudaram de fatura.
     """
     from collections import defaultdict
 
@@ -258,6 +248,10 @@ def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
         )
         removidas = [f for f in lista if f.id != mantida.id]
 
+        datas_orfas = [
+            f.data_prevista for f in removidas if f.data_prevista != mantida.data_prevista
+        ]
+
         relatorio.append({
             "usuario_id": usuario_id,
             "cartao_id": cartao_id,
@@ -265,8 +259,21 @@ def deduplicar_faturas(usuario=None, dry_run: bool = False) -> list[dict]:
             "mes": mes,
             "mantida": mantida,
             "removidas": removidas,
+            "datas_reatribuidas": datas_orfas,
         })
         ids_para_remover.extend(f.id for f in removidas)
+        if datas_orfas and not dry_run:
+            movidas = Conta.objects.filter(
+                usuario_id=usuario_id,
+                cartao_id=cartao_id,
+                eh_fatura_cartao=False,
+                data_prevista__in=datas_orfas,
+            ).update(data_prevista=mantida.data_prevista)
+            if movidas:
+                logger.info(
+                    "Deduplicação: %d compra(s) reatribuída(s) à fatura %s.",
+                    movidas, mantida.id,
+                )
 
     if ids_para_remover and not dry_run:
         with transaction.atomic():
@@ -284,9 +291,6 @@ def compras_da_fatura(fatura: Conta):
 
     O vínculo entre uma compra e sua fatura é implícito: mesmo usuário, mesmo
     cartão e mesma data de vencimento (`data_prevista`).
-
-    Args:
-        fatura (Conta): Instância da fatura consolidada.
 
     Returns:
         QuerySet: Compras individuais do cartão pertencentes a esta fatura.
@@ -306,9 +310,6 @@ def excluir_fatura(fatura: Conta) -> int:
     A remoção é atômica e os signals de reconsolidação são desconectados durante
     a operação: sem isso, a exclusão de cada compra tentaria recalcular (e
     possivelmente recriar) a fatura que está sendo removida.
-
-    Args:
-        fatura (Conta): Instância da fatura consolidada a excluir.
 
     Returns:
         int: Quantidade de compras individuais removidas junto com a fatura.
@@ -334,9 +335,6 @@ def excluir_fatura(fatura: Conta) -> int:
 def fatura_pode_ser_editada(fatura: Conta) -> bool:
     """Verifica se a fatura consolidada pode sofrer modificações.
 
-    Args:
-        fatura (Conta): Instância da fatura analisada.
-
     Returns:
         bool: True se a fatura estiver aberta (não liquidada), False caso contrário.
     """
@@ -345,9 +343,6 @@ def fatura_pode_ser_editada(fatura: Conta) -> bool:
 
 def despesa_pode_ser_editada(despesa: Conta) -> bool:
     """Verifica se uma despesa individual atrelada a cartão pode ser alterada.
-
-    Args:
-        despesa (Conta): Lançamento de despesa analisado.
 
     Returns:
         bool: False se a despesa pertencer a uma fatura já liquidada/paga.
@@ -370,8 +365,7 @@ def add_months(d: date, months: int) -> date:
     Lida corretamente com anos bissextos e transições de viradas de ano.
 
     Args:
-        d (date): Data de referência.
-        months (int): Quantidade de meses a adicionar (positivo ou negativo).
+        months: Quantidade de meses a adicionar (positivo ou negativo).
 
     Returns:
         date: A data final calculada.
@@ -390,11 +384,6 @@ def calcular_vencimento_fatura(
 
     Utiliza as definições de dia de fechamento do cartão do usuário para decidir se a
     compra cai na fatura atual ou se passa para o mês seguinte (compra pós-fechamento).
-
-    Args:
-        data_compra (date): Data de ocorrência da compra física.
-        dia_fechamento (int): Dia do mês que fecha a fatura do cartão.
-        dia_vencimento (int): Dia do mês que vence a fatura do cartão.
 
     Returns:
         date: A data de vencimento da fatura na qual esta despesa será cobrada.
@@ -435,7 +424,7 @@ def cents_to_decimal(cents: int) -> Decimal:
     """Converte valores expressos em centavos inteiros para Decimal monetário.
 
     Args:
-        cents (int): Valor bruto expresso em centavos.
+        cents: Valor bruto expresso em centavos.
 
     Returns:
         Decimal: O valor convertido em reais (ex: 1500 centavos -> Decimal('15.00')).
@@ -444,11 +433,7 @@ def cents_to_decimal(cents: int) -> Decimal:
 
 
 def detectar_vencimento_fatura(linhas_extraidas: list, cartao) -> date | None:
-    """Detecta a data de vencimento da fatura com base na moda (vencimento mais comum) das transações.
-
-    Args:
-        linhas_extraidas (list): Lista de dicionários das transações extraídas.
-        cartao (CartaoCredito): Instância do cartão de crédito correspondente.
+    """Detecta o vencimento da fatura pela moda dos vencimentos das transações.
 
     Returns:
         date | None: A data de vencimento detectada ou None.

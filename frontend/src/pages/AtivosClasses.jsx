@@ -1,13 +1,4 @@
-/**
- * Página de Gerenciamento da Hierarquia ANBIMA de Ativos.
- * 
- * Permite a visualização em árvore colapsável e o gerenciamento CRUD de três níveis de agrupamentos:
- * Classe (Nível 1) → Categoria (Nível 2) → Subcategoria (Nível 3).
- * Integra-se às APIs do Django REST Framework para garantir unicidade e validação hierárquica.
- *
- * @component
- * @returns {React.JSX.Element}
- */
+/** Gerenciamento da hierarquia ANBIMA de Ativos (Classe → Categoria → Subcategoria). */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,20 +23,6 @@ import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
 
-/* ─────────────────────────── Delete Confirm ─────────────────────────── */
-/**
- * Modal de confirmação de exclusão de elementos de classificação, construído
- * sobre o componente Modal compartilhado (foco inicial, trap de Tab e
- * devolução de foco já vêm de graça dele).
- *
- * @component
- * @param {Object} props - Propriedades do componente.
- * @param {string} props.label - Nome textual do elemento a ser excluído.
- * @param {Function} props.onConfirm - Callback executado ao clicar no botão excluir.
- * @param {Function} props.onClose - Callback de cancelamento/fechamento.
- * @param {boolean} props.isPending - Flag de envio assíncrono.
- * @returns {React.JSX.Element}
- */
 function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
   return (
     <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
@@ -66,8 +43,6 @@ function DeleteConfirmModal({ label, onConfirm, onClose, isPending }) {
     </Modal>
   );
 }
-
-/* ─────────────────────────── Main Page ─────────────────────────── */
 export default function AtivosClasses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();

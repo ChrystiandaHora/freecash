@@ -5,7 +5,6 @@
  * Exibe cartões em formato visual de cartão físico, barras de progresso de utilização de limite,
  * resumo de provisões e accordion dinâmico contendo o extrato de compras recentes de cada cartão.
  *
- * @component
  * @returns {React.JSX.Element} Grid com cartões e resumos consolidados de faturas.
  */
 import { useQuery } from '@tanstack/react-query';

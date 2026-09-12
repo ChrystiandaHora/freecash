@@ -5,14 +5,12 @@
  * O estado nunca é comunicado apenas pela cor da barra: o valor, o percentual
  * e o texto de status aparecem escritos (WCAG 1.4.1).
  *
- * @component
  * @param {Object} props
  * @param {Object} props.meta - Meta serializada pela API.
  * @param {Object} props.avaliacao - Resultado de `avaliarMeta` para esta meta.
  * @param {React.ComponentType} props.icone - Ícone lucide exibido no título.
  * @param {string} [props.badgeOrigem] - Rótulo curto da origem automática do progresso.
  * @param {Function} [props.onAportar] - Quando informado, exibe o botão de aporte rápido.
- * @returns {React.JSX.Element}
  */
 import { Plus, Wallet } from 'lucide-react'
 

@@ -4,8 +4,6 @@
  * Compartilhado entre o mega-painel (desktop), o acordeão (mobile) e o mapa do
  * site no rodapé, para que o contrato de acessibilidade dos links exista num
  * único lugar.
- *
- * @module components/nav/NavLinkList
  */
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -22,7 +20,7 @@ import { SectionLabel } from '../ui/SectionLabel';
  * @param {'lg' | 'md'} [props.size='lg'] - Escala tipográfica dos links.
  * @param {'span' | 'h2' | 'h3'} [props.labelAs='span'] - Elemento do rótulo da coluna.
  * @param {'card' | 'page'} [props.surface='card'] - Fundo sob os links; define a cor do ring-offset do foco.
- * @returns {React.JSX.Element}
+ * @param {number} [props.columns=1] - Número de colunas do grid de links.
  */
 export function NavLinkList({
   labelId,
@@ -34,9 +32,10 @@ export function NavLinkList({
   size = 'lg',
   labelAs = 'span',
   surface = 'card',
+  columns = 1,
 }) {
   return (
-    <div>
+    <div className={columns > 1 ? 'col-span-full' : undefined}>
       {/* Nos painéis o rótulo é <span>, NÃO heading: cinco painéis transientes
           injetariam cinco entradas homônimas no rotor de headings, que é um mapa
           da estrutura do documento — cromo de navegação não é estrutura. No
@@ -51,7 +50,11 @@ export function NavLinkList({
           tela. Onde não há gatilho o rótulo já é único e basta sozinho. */}
       <ul
         aria-labelledby={triggerId ? `${labelId} ${triggerId}` : labelId}
-        className="space-y-0.5"
+        className={cn(
+          columns > 1
+            ? 'grid gap-x-12 gap-y-0.5 sm:grid-cols-2'
+            : 'space-y-0.5'
+        )}
       >
         {items.map((item) => {
           const isActive = activePath === item.path;

@@ -1,0 +1,15 @@
+{% extends "emails/base_email.html" %}
+{% block conteudo %}
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;">Olá, {{ nome }}.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;">
+  O e-mail da sua conta FreeCash foi alterado para <strong>{{ email_novo }}</strong>.
+  Este endereço deixa de ser usado para entrar e para recuperar a senha.
+</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+  <strong>Se não foi você que fez esta alteração</strong>, redefina sua senha
+  imediatamente e entre em contato:
+</p>
+<p style="margin:0;font-size:13px;line-height:1.6;word-break:break-all;">
+  <a href="{{ link_suporte }}" style="color:#0b5fa5;">{{ link_suporte }}</a>
+</p>
+{% endblock %}

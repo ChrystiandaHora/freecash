@@ -15,12 +15,7 @@ class Command(BaseCommand):
     help = "Gera/atualiza o histórico (snapshots) de performance da carteira"
 
     def handle(self, *args, **options):
-        """Invoca o serviço de snapshots históricos consolidando o patrimônio diário dos usuários.
-
-        Args:
-            *args: Argumentos posicionais.
-            **options: Opções de comando.
-        """
+        """Consolida o patrimônio diário dos usuários em snapshots históricos."""
         self.stdout.write("Atualizando histórico da carteira...")
         res = atualizar_historico_para_todos()
         self.stdout.write(

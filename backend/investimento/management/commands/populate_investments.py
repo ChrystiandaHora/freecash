@@ -12,17 +12,16 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    """Classe que encapsula a lógica de execução do comando de população de classes no Django Admin Console.
+    """Popula a árvore de classes de ativos dos usuários.
     """
     help = "Populate default investment classes for all users"
 
     def handle(self, *args, **options):
-        """Processa iterativamente todos os usuários da base de dados populando a árvore padrão de ativos.
+        """Percorre todos os usuários criando a árvore padrão de ativos.
 
         Ignora usuários que já possuem alguma classe associada para evitar duplicidade de registros.
 
         Args:
-            *args: Argumentos posicionais passados via console.
             **options: Dicionário contendo as opções e flags configuradas para o comando.
         """
         users = User.objects.all()

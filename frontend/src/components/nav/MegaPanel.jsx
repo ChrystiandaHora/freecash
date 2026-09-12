@@ -1,20 +1,14 @@
 /**
  * Painel full-width que desce da navbar (desktop).
  *
- * Puramente tipográfico: NÃO lê `item.icon`, por decisão de design.
+ * Puramente tipográfico: não lê `item.icon`, por decisão de design.
  *
- * Detalhes estruturais que sustentam a acessibilidade:
- * - É irmão de DOM do seu gatilho, dentro do mesmo `<li>`. NÃO pode ser portalado
- *   para `document.body`: é a ordem do DOM que faz Tab/Shift+Tab fluírem do
- *   gatilho para os links e de volta, sem uma linha de JS.
- * - `inert` quando fechado, tirando os links da ordem de foco e da árvore de TA.
- * - Sempre montado. `aria-controls` no gatilho aponta para ele, e o A11Y.md
- *   proíbe referências ARIA órfãs — `{aberto && <Painel/>}` deixaria 4 dos 5
- *   gatilhos apontando para o vazio.
- * - Altura dirigida pelo conteúdo, com teto em viewport. Nunca `max-h-[500px]`
- *   fixo: sob letter-spacing 0.12x isso cortaria links (SC 1.4.12).
- *
- * @module components/nav/MegaPanel
+ * Quatro detalhes estruturais sustentam a acessibilidade: é irmão de DOM do seu gatilho,
+ * dentro do mesmo `<li>`, e **não** pode ser portalado — é a ordem do DOM que faz
+ * Tab/Shift+Tab fluírem entre gatilho e links sem uma linha de JS; recebe `inert` quando
+ * fechado, saindo da ordem de foco; fica sempre montado, porque `aria-controls` aponta
+ * para ele e o A11Y.md proíbe referência ARIA órfã; e a altura é dirigida pelo conteúdo,
+ * com teto em viewport — um `max-h` fixo cortaria links sob letter-spacing (SC 1.4.12).
  */
 import { cn } from '../../lib/utils';
 import { NavLinkList } from './NavLinkList';
@@ -30,7 +24,6 @@ import { NavLinkList } from './NavLinkList';
  * @param {() => void} props.onPointerEnter - Cancela o fechamento agendado (SC 1.4.13 "hoverable").
  * @param {() => void} props.onPointerLeave - Agenda o fechamento.
  * @param {(el: HTMLElement | null) => void} props.panelRef - Callback ref.
- * @returns {React.JSX.Element}
  */
 export function MegaPanel({
   group,
@@ -70,6 +63,7 @@ export function MegaPanel({
           items={group.items}
           activePath={activePath}
           onNavigate={onNavigate}
+          columns={group.items.length > 5 ? 2 : 1}
         />
       </div>
     </div>

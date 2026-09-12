@@ -17,9 +17,6 @@ from typing import Iterable
 def format_cnpj(cnpj: str) -> str:
     """Formata um CNPJ puramente numérico no padrão oficial brasileiro (XX.XXX.XXX/XXXX-XX).
 
-    Args:
-        cnpj (str): CNPJ limpo apenas com dígitos (ex: "12987743000186").
-
     Returns:
         str: CNPJ formatado ou o valor original se não tiver 14 caracteres.
     """
@@ -29,14 +26,13 @@ def format_cnpj(cnpj: str) -> str:
 
 
 def fetch_cvm_quotes(cnpjs: Iterable[str], *, timeout_seconds: int = 15) -> dict[str, tuple[Decimal, date]]:
-    """Baixa o arquivo de cotações mensais da CVM e filtra as cotações mais recentes para os CNPJs indicados.
+    """Baixa as cotações mensais da CVM e filtra as mais recentes dos CNPJs pedidos.
 
     Aplica um fallback automático de mês: caso o arquivo do mês corrente não seja encontrado
     (ex: início do mês em que a CVM ainda não gerou o relatório), tenta baixar o do mês anterior.
 
     Args:
-        cnpjs (Iterable[str]): Lista de CNPJs limpos (apenas números).
-        timeout_seconds (int, optional): Timeout da requisição HTTP. Defaults to 15.
+        timeout_seconds: Timeout da requisição HTTP. Defaults to 15.
 
     Returns:
         dict[str, tuple[Decimal, date]]: Dicionário mapeando CNPJ limpo -> (Cotação Decimal, Data do Fechamento).

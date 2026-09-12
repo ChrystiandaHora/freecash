@@ -2,8 +2,6 @@
  * Componentes de Acordeão (Accordion) para Colapso de Conteúdo.
  * 
  * Abstrai seções expansíveis e agrupamentos hierárquicos com transições de altura suaves.
- *
- * @module Accordion
  */
 
 import * as React from "react"
@@ -18,14 +16,9 @@ import { ChevronDown } from "lucide-react"
  * Controla seu próprio estado aberto/fechado local e renderiza o gatilho de cabeçalho
  * e a seção de conteúdo colapsável.
  *
- * @component
  * @param {Object} props - Propriedades do item.
  * @param {string} props.title - O título descritivo exibido no gatilho do acordeão.
  * @param {React.ReactNode} props.children - Conteúdo revelado ao expandir o item.
- * @param {string} [props.className] - Classes CSS extras para o container externo.
- * @param {React.HTMLAttributes<HTMLDivElement>} props - Demais atributos nativos de elemento HTML `<div>`.
- * @param {React.Ref<HTMLDivElement>} ref - Referência DOM encaminhada para o container externo.
- * @returns {React.JSX.Element}
  */
 export const AccordionItem = React.forwardRef(({ title, children, className, ...props }, ref) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -76,11 +69,8 @@ AccordionItem.displayName = "AccordionItem"
  * 
  * Agrupa múltiplos elementos `AccordionItem` organizando-os em uma pilha vertical.
  *
- * @component
  * @param {Object} props - Propriedades do Accordion.
  * @param {React.ReactNode} props.children - Coleção de elementos AccordionItem.
- * @param {string} [props.className] - Estilos CSS extras do Tailwind.
- * @returns {React.JSX.Element}
  */
 export const Accordion = ({ children, className }) => {
   return (

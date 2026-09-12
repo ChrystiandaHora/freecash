@@ -1,0 +1,13 @@
+Olá, {{ nome }}.
+
+Confirme seu endereço de e-mail para garantir que você consiga recuperar o acesso
+à sua conta caso esqueça a senha.
+
+Abra o endereço abaixo no navegador:
+
+{{ link }}
+
+Este link vale por {{ validade_dias }} dia{{ validade_dias|pluralize }} e só pode ser usado uma vez.
+
+Você recebeu esta mensagem porque este endereço está associado a uma conta no
+FreeCash. Se não foi você que solicitou, pode ignorar este e-mail com segurança.

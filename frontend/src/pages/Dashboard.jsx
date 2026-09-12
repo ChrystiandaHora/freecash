@@ -5,7 +5,6 @@
  * despesas liquidadas vs. previstas, cartões de crédito e taxa de poupança atual.
  * Renderiza gráficos interativos de fluxo de caixa projetado para apoio em tomadas de decisões.
  *
- * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 import { useState, useEffect } from 'react';
@@ -59,7 +58,6 @@ const formatPercentage = (value) => {
  * despesas liquidadas vs. previstas, cartões de crédito e taxa de poupança atual.
  * Renderiza gráficos interativos de fluxo de caixa projetado para apoio em tomadas de decisões.
  *
- * @component
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 export default function Dashboard() {
@@ -469,8 +467,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Receitas Card */}
-        <Card className="border-border/40 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none group-hover:bg-primary/10 transition-all duration-300" />
+        <Card className="border-border/40 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -500,8 +497,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Despesas Card */}
-        <Card className="border-border/40 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-rose-500/10 transition-all duration-300" />
+        <Card className="border-border/40 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -531,8 +527,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Saldo Líquido Card */}
-        <Card className="border-border/40 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/10 transition-all duration-300" />
+        <Card className="border-border/40 shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

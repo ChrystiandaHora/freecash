@@ -9,19 +9,25 @@
  * Fica só nas telas autenticadas: o Login não tem rodapé, porque links para
  * rotas protegidas ali só levariam a um redirect.
  *
- * @component
  * @returns {React.JSX.Element} O rodapé com o mapa do site e o aviso de copyright.
  */
 import { useLocation } from 'react-router-dom';
 import { NavLinkList } from './NavLinkList';
-import { navGroups, navIndex } from '../../config/navigation';
+import { filtrarGruposVisiveis, navIndex } from '../../config/navigation';
+import { useAuth } from '../../context/AuthProvider';
 import { findActiveNav } from '../../lib/navigation';
+import { cn } from '../../lib/utils';
 
 export default function SiteFooter() {
   const location = useLocation();
   // Mesmo matcher do TopNav: em `/contas-pagar/novo` o item "Contas a Pagar"
   // continua ativo (prefixo com fronteira de segmento).
   const activePath = findActiveNav(location.pathname, navIndex)?.item.path ?? null;
+
+  const { perfil } = useAuth();
+  // Mesmo critério do TopNav: o mapa do site não anuncia uma área que a pessoa
+  // não pode abrir.
+  const gruposVisiveis = filtrarGruposVisiveis(Boolean(perfil?.is_staff));
 
   return (
     // Único `contentinfo` da página, então NÃO leva `aria-label`: o rótulo só
@@ -32,8 +38,16 @@ export default function SiteFooter() {
             sem um rótulo distinto aqui os dois ficariam indistinguíveis na
             lista de landmarks de um leitor de tela (WCAG 1.3.1 / 2.4.1). */}
         <nav aria-label="Mapa do site">
-          <div className="grid grid-cols-2 items-start gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
-            {navGroups.map((group) => (
+          {/* O número de colunas acompanha o número de grupos: são 5 para o
+              usuário comum e 6 quando o grupo Administração aparece. Fixar em 5
+              jogaria o sexto grupo para uma segunda linha solitária. */}
+          <div
+            className={cn(
+              'grid grid-cols-2 items-start gap-x-6 gap-y-8 sm:grid-cols-3',
+              gruposVisiveis.length > 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+            )}
+          >
+            {gruposVisiveis.map((group) => (
               <NavLinkList
                 key={group.id}
                 labelId={`footer-${group.id}-label`}

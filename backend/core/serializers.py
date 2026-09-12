@@ -90,11 +90,8 @@ class ExtratoImportadoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
 
-    def get_linhas_pendentes(self, obj) -> int:
+    def get_linhas_pendentes(self, obj: ExtratoImportado) -> int:
         """Calcula o número de linhas de extrato que continuam pendentes de conciliação.
-
-        Args:
-            obj (ExtratoImportado): A instância do extrato importado.
 
         Returns:
             int: Quantidade de linhas pendentes.
@@ -146,11 +143,8 @@ class CartaoCreditoAPISerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
 
-    def get_fatura_atual(self, obj) -> float:
+    def get_fatura_atual(self, obj: CartaoCredito) -> float:
         """Soma o valor total das despesas não pagas e não faturadas deste cartão.
-
-        Args:
-            obj (CartaoCredito): Instância do cartão analisado.
 
         Returns:
             float: O valor acumulado da fatura em aberto.
@@ -166,11 +160,8 @@ class CartaoCreditoAPISerializer(serializers.ModelSerializer):
         ).aggregate(total=Sum('valor'))['total']
         return float(total) if total else 0.0
 
-    def get_compras_recentes(self, obj) -> list[dict]:
+    def get_compras_recentes(self, obj: CartaoCredito) -> list[dict]:
         """Obtém as últimas 8 compras individuais efetuadas neste cartão de crédito.
-
-        Args:
-            obj (CartaoCredito): Instância do cartão analisado.
 
         Returns:
             list[dict]: Lista de dicionários contendo dados simplificados das compras.
@@ -194,11 +185,8 @@ class CartaoCreditoAPISerializer(serializers.ModelSerializer):
             })
         return compras_recentes
 
-    def get_titular(self, obj) -> str:
+    def get_titular(self, obj: CartaoCredito) -> str:
         """Retorna o nome do titular do cartão (nome do usuário autenticado).
-
-        Args:
-            obj (CartaoCredito): Instância do cartão analisado.
 
         Returns:
             str: Nome completo do usuário ou seu username.
@@ -206,11 +194,8 @@ class CartaoCreditoAPISerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         return user.get_full_name() or user.username
 
-    def get_validade(self, obj) -> str:
+    def get_validade(self, obj: CartaoCredito) -> str:
         """Gera uma string de validade dinâmica simulada no formato MM/AA.
-
-        Args:
-            obj (CartaoCredito): Instância do cartão analisado.
 
         Returns:
             str: Data de validade fictícia para renderização visual.
@@ -257,7 +242,7 @@ class ReceitasAPISerializer(serializers.ModelSerializer):
     """Serializador customizado otimizado para a exibição de Receitas.
 
     Facilita a visualização do estado de liquidação e recebimento, além de
-    refletir se a receita é uma ocorrência gerada por uma `ReceitaRecorrente`.
+    refletir se a receita é uma ocorrência gerada por uma `LancamentoRecorrente`.
     """
     categoria = serializers.CharField(source='categoria.nome', read_only=True)
     realizada = serializers.BooleanField(source='transacao_realizada', read_only=True)
@@ -277,17 +262,17 @@ class ReceitasAPISerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
 
     def get_tipo(self, obj) -> str:
-        """Retorna 'recorrente' se esta ocorrência pertence a uma ReceitaRecorrente ativa."""
-        return 'recorrente' if obj.receita_recorrente_id else 'unica'
+        """Retorna 'recorrente' se esta ocorrência pertence a uma LancamentoRecorrente ativa."""
+        return 'recorrente' if obj.recorrencia_id else 'unica'
 
     def get_recorrencia(self, obj) -> str | None:
         """Retorna a frequência da regra de recorrência, se houver."""
-        return obj.receita_recorrente.frequencia if obj.receita_recorrente_id else None
+        return obj.recorrencia.frequencia if obj.recorrencia_id else None
 
     def get_data_fim(self, obj) -> str | None:
         """Retorna a data limite da regra de recorrência, se houver."""
-        if obj.receita_recorrente_id and obj.receita_recorrente.data_fim:
-            return obj.receita_recorrente.data_fim.isoformat()
+        if obj.recorrencia_id and obj.recorrencia.data_fim:
+            return obj.recorrencia.data_fim.isoformat()
         return None
 
 
@@ -310,22 +295,16 @@ class TransacaoAPISerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
 
-    def get_tipo(self, obj) -> str:
+    def get_tipo(self, obj: Conta) -> str:
         """Determina a direção da transação financeira ('entrada' ou 'saida').
-
-        Args:
-            obj (Conta): Instância da conta analisada.
 
         Returns:
             str: Direção da transação.
         """
         return 'entrada' if obj.tipo == Conta.TIPO_RECEITA else 'saida'
 
-    def get_data(self, obj) -> str:
+    def get_data(self, obj: Conta) -> str:
         """Calcula a data final de transação no formato ISO de forma segura.
-
-        Args:
-            obj (Conta): Instância da conta analisada.
 
         Returns:
             str: Data da transação em formato ISO 8601.
@@ -360,11 +339,8 @@ class ComprasCartaoAPISerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
 
-    def get_cartao_detalhe(self, obj) -> dict | None:
+    def get_cartao_detalhe(self, obj: Conta) -> dict | None:
         """Retorna os dados resumidos do cartão associado à compra.
-
-        Args:
-            obj (Conta): Instância da compra.
 
         Returns:
             dict | None: Dados básicos do cartão ou None se não houver cartão.
@@ -380,11 +356,8 @@ class ComprasCartaoAPISerializer(serializers.ModelSerializer):
             'final': c.ultimos_digitos,
         }
 
-    def get_categoria_detalhe(self, obj) -> dict | None:
+    def get_categoria_detalhe(self, obj: Conta) -> dict | None:
         """Retorna os dados resumidos da categoria associada à compra.
-
-        Args:
-            obj (Conta): Instância da compra.
 
         Returns:
             dict | None: Dados básicos da categoria ou None se não houver categoria.
@@ -417,9 +390,6 @@ class PlanoMetasSerializer(serializers.ModelSerializer):
     def validate_renda_mensal(self, value):
         """Rejeita renda negativa.
 
-        Args:
-            value (Decimal | None): Valor informado para a renda mensal.
-
         Returns:
             Decimal | None: O próprio valor, quando válido.
 
@@ -433,9 +403,6 @@ class PlanoMetasSerializer(serializers.ModelSerializer):
     def validate_custo_vida_mensal(self, value):
         """Rejeita custo de vida negativo.
 
-        Args:
-            value (Decimal | None): Valor informado para o custo de vida mensal.
-
         Returns:
             Decimal | None: O próprio valor, quando válido.
 
@@ -446,11 +413,8 @@ class PlanoMetasSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O custo de vida não pode ser negativo.")
         return value
 
-    def validate_meses_referencia(self, value):
+    def validate_meses_referencia(self, value: int):
         """Mantém a janela da média entre 1 e 24 competências.
-
-        Args:
-            value (int): Quantidade de meses informada.
 
         Returns:
             int: O próprio valor, quando dentro do intervalo aceito.
@@ -477,9 +441,6 @@ class AporteMetaSerializer(serializers.ModelSerializer):
 
     def validate_valor(self, value):
         """Garante que o aporte tenha valor positivo.
-
-        Args:
-            value (Decimal): Valor informado para o aporte.
 
         Returns:
             Decimal: O próprio valor, quando válido.
@@ -536,11 +497,8 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
         """
         return self.context.get('valores_externos') or {}
 
-    def get_valor_acumulado_efetivo(self, obj) -> float:
+    def get_valor_acumulado_efetivo(self, obj: MetaFinanceira) -> float:
         """Acúmulo considerado no progresso, já resolvida a origem.
-
-        Args:
-            obj (MetaFinanceira): Instância serializada.
 
         Returns:
             float: Valor de mercado da carteira ou total aportado no mês,
@@ -548,11 +506,8 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
         """
         return round(obj.acumulado_efetivo(self._valores_externos), 2)
 
-    def get_progresso_percentual(self, obj) -> float:
+    def get_progresso_percentual(self, obj: MetaFinanceira) -> float:
         """Percentual do alvo já atingido.
-
-        Args:
-            obj (MetaFinanceira): Instância serializada.
 
         Returns:
             float: Percentual atingido, arredondado em duas casas. Pode passar
@@ -560,11 +515,8 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
         """
         return round(obj.progresso_percentual(self._valores_externos), 2)
 
-    def get_valor_restante(self, obj) -> float:
+    def get_valor_restante(self, obj: MetaFinanceira) -> float:
         """Quanto ainda falta para atingir o alvo.
-
-        Args:
-            obj (MetaFinanceira): Instância serializada.
 
         Returns:
             float: Diferença entre alvo e acumulado, com piso em zero.
@@ -573,9 +525,6 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
 
     def validate_valor_alvo(self, value):
         """Garante um alvo positivo.
-
-        Args:
-            value (Decimal): Valor-alvo informado.
 
         Returns:
             Decimal: O próprio valor, quando válido.
@@ -590,9 +539,6 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
     def validate_valor_acumulado(self, value):
         """Rejeita valor acumulado negativo.
 
-        Args:
-            value (Decimal): Valor acumulado informado.
-
         Returns:
             Decimal: O próprio valor, quando válido.
 
@@ -603,14 +549,11 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O valor acumulado não pode ser negativo.")
         return value
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict):
         """Exige multiplicador coerente quando o alvo é derivado de uma base.
 
         Metas com base `renda` ou `custo_vida` calculam o alvo a partir de um
         múltiplo; sem o multiplicador o recálculo silenciosamente zeraria o alvo.
-
-        Args:
-            attrs (dict): Campos já validados individualmente.
 
         Returns:
             dict: Os mesmos campos, quando o conjunto é coerente.
@@ -640,12 +583,11 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    def _alvo_derivado(self, base, multiplicador):
+    def _alvo_derivado(self, base: str, multiplicador):
         """Calcula o valor-alvo a partir da base de cálculo do usuário.
 
         Args:
-            base (str): Base escolhida ('renda' ou 'custo_vida').
-            multiplicador (Decimal): Fator aplicado sobre a base.
+            base: Base escolhida ('renda' ou 'custo_vida').
 
         Returns:
             Decimal | None: Alvo calculado, ou None quando não há plano com a
@@ -671,7 +613,7 @@ class MetaFinanceiraSerializer(serializers.ModelSerializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
-    """Serializador JWT customizado para incluir informações básicas do usuário no token payload.
+    """Serializador JWT que inclui dados básicos do usuário no payload do token.
 
     Adiciona o username como claim customizada no token de acesso decodificável pelo frontend.
     """

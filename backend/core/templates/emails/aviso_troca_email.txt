@@ -1,0 +1,8 @@
+Olá, {{ nome }}.
+
+O e-mail da sua conta FreeCash foi alterado para {{ email_novo }}. Este endereço
+deixa de ser usado para entrar e para recuperar a senha.
+
+Se NÃO foi você que fez esta alteração, redefina sua senha imediatamente:
+
+{{ link_suporte }}

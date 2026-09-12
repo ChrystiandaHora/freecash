@@ -17,13 +17,7 @@ import uuid
 
 
 class AuditoriaModel(models.Model):
-    """Classe abstrata para auditoria de criação e modificação de registros.
-
-    Atributos:
-        uuid (UUID): Identificador único universal gerado automaticamente.
-        criada_em (datetime): Data e hora de criação do registro.
-        atualizada_em (datetime): Data e hora da última modificação do registro.
-    """
+    """Classe abstrata para auditoria de criação e modificação de registros."""
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
@@ -39,10 +33,8 @@ class Categoria(AuditoriaModel):
     possuindo isolamento por usuário.
 
     Atributos:
-        usuario (User): Usuário proprietário da categoria.
-        nome (str): Nome descritivo da categoria.
-        tipo (str): Natureza da categoria ('R' para Receita, 'D' para Despesa, 'I' para Investimento).
-        is_default (bool): Define se é uma categoria global padrão do sistema.
+        tipo: Natureza da categoria ('R' para Receita, 'D' para Despesa, 'I' para Investimento).
+        is_default: Define se é uma categoria global padrão do sistema.
     """
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -84,17 +76,9 @@ class Conta(AuditoriaModel):
     além de mapear transações a cartões de crédito ou categorias específicas.
 
     Atributos:
-        usuario (User): O usuário proprietário deste lançamento financeiro.
-        tipo (str): Tipo do lançamento ('R' para Receita, 'D' para Despesa, 'I' para Investimento).
-        descricao (str): Descrição curta ou observação sobre o lançamento.
-        valor (Decimal): Valor financeiro monetário da operação.
-        data_prevista (date): Data de vencimento ou recebimento planejado.
-        transacao_realizada (bool): Indica se o lançamento foi liquidado (pago/recebido).
-        data_realizacao (date): Data real de liquidação física ou bancária.
-        categoria (Categoria): Classificação da transação na árvore de categorias.
-        cartao (CartaoCredito): Cartão de crédito associado caso seja uma despesa faturável.
-        data_compra (date): Data em que a compra de fato ocorreu.
-        eh_fatura_cartao (bool): Identifica se este registro representa o pagamento consolidado de uma fatura de cartão.
+        tipo: Tipo do lançamento ('R' para Receita, 'D' para Despesa, 'I' para Investimento).
+        transacao_realizada: Indica se o lançamento foi liquidado (pago/recebido).
+        eh_fatura_cartao: Identifica se este registro representa o pagamento consolidado de uma fatura de cartão.
     """
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -148,9 +132,9 @@ class Conta(AuditoriaModel):
         help_text="Marca se este registro é uma fatura de cartão (não uma despesa individual)",
     )
 
-    # Origem, caso esta ocorrência tenha sido gerada por uma regra de receita recorrente
-    receita_recorrente = models.ForeignKey(
-        "core.ReceitaRecorrente",
+    # Origem, caso esta ocorrência tenha sido gerada por uma regra de recorrência
+    recorrencia = models.ForeignKey(
+        "core.LancamentoRecorrente",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -191,7 +175,7 @@ class Conta(AuditoriaModel):
         """Marca o lançamento financeiro como realizado (pago/recebido).
 
         Args:
-            data (date, optional): A data de liquidação da conta. Defaults to timezone.localdate().
+            data: A data de liquidação da conta. Defaults to timezone.localdate().
         """
         if self.transacao_realizada:
             return
@@ -263,23 +247,29 @@ class Conta(AuditoriaModel):
         super().save(*args, **kwargs)
 
 
-class ReceitaRecorrente(AuditoriaModel):
-    """Regra de geração automática de receitas recorrentes (salário, aluguel recebido, etc.).
+class LancamentoRecorrente(AuditoriaModel):
+    """Regra de geração automática de lançamentos recorrentes, de receita ou de despesa.
 
-    Não representa um lançamento financeiro em si — as ocorrências reais são
-    materializadas como `Conta` (tipo Receita) vinculadas via `receita_recorrente`,
-    geradas sob demanda por `core.services.recorrencia_service`.
+    Não é um lançamento: as ocorrências são materializadas como `Conta` vinculadas via
+    `recorrencia`, sob demanda, por `core.services.recorrencia_service`.
+
+    Nasceu como `ReceitaRecorrente`. O campo `tipo` foi acrescentado porque a projeção
+    de 12 meses ficava otimista sem despesas fixas — a receita era materializada um ano
+    à frente, enquanto aluguel e assinaturas só existiam nos meses lançados à mão.
+    Generalizar a regra existente evita manter dois motores de recorrência.
 
     Atributos:
-        usuario (User): Proprietário da regra.
-        descricao (str): Descrição aplicada a cada ocorrência gerada.
-        categoria (Categoria): Categoria aplicada a cada ocorrência gerada.
-        valor (Decimal): Valor de cada ocorrência gerada.
-        frequencia (str): Periodicidade de geração (mensal/quinzenal/semanal/anual).
-        data_inicio (date): Data da primeira ocorrência.
-        data_fim (date): Data limite opcional; indefinida se vazia.
-        ativa (bool): Se False, para a geração de novas ocorrências (histórico é preservado).
+        frequencia: Periodicidade de geração (mensal/quinzenal/semanal/anual).
+        data_fim: Data limite opcional; indefinida se vazia.
+        ativa: Se False, para a geração de novas ocorrências (histórico é preservado).
     """
+
+    TIPO_RECEITA = "R"
+    TIPO_DESPESA = "D"
+    TIPO_CHOICES = (
+        (TIPO_RECEITA, "Receita"),
+        (TIPO_DESPESA, "Despesa"),
+    )
 
     FREQ_MENSAL = "mensal"
     FREQ_QUINZENAL = "quinzenal"
@@ -295,7 +285,12 @@ class ReceitaRecorrente(AuditoriaModel):
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="receitas_recorrentes",
+        related_name="lancamentos_recorrentes",
+    )
+    # Default de receita para que as regras já existentes, criadas quando o modelo
+    # só cobria entradas, mantenham exatamente o comportamento anterior.
+    tipo = models.CharField(
+        max_length=1, choices=TIPO_CHOICES, default=TIPO_RECEITA, db_index=True
     )
     descricao = models.CharField(max_length=255, blank=True)
     categoria = models.ForeignKey(
@@ -303,7 +298,7 @@ class ReceitaRecorrente(AuditoriaModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="receitas_recorrentes",
+        related_name="lancamentos_recorrentes",
     )
     valor = models.DecimalField(max_digits=12, decimal_places=2)
     frequencia = models.CharField(max_length=10, choices=FREQUENCIA_CHOICES, default=FREQ_MENSAL)
@@ -313,26 +308,35 @@ class ReceitaRecorrente(AuditoriaModel):
 
     class Meta:
         ordering = ["-data_inicio"]
-        verbose_name = "Receita Recorrente"
-        verbose_name_plural = "Receitas Recorrentes"
+        verbose_name = "Lançamento Recorrente"
+        verbose_name_plural = "Lançamentos Recorrentes"
 
     def __str__(self):
-        return f"{self.descricao} ({self.get_frequencia_display()})"
+        return f"{self.descricao} ({self.get_tipo_display()}, {self.get_frequencia_display()})"
 
 
 class ConfigUsuario(AuditoriaModel):
-    """Configurações e preferências personalizadas de cada usuário do sistema.
+    """Configurações, preferências e estado de identidade de cada usuário.
+
+    Os campos de verificação de e-mail ficam aqui, e não num modelo novo, porque este já
+    é o perfil um-para-um do usuário, criado junto com a conta e herdando a auditoria de
+    `AuditoriaModel`.
+
+    O endereço confirmado permanece em `User.email`, onde o Django e o gerador de token
+    de redefinição esperam encontrá-lo. `email_pendente` guarda o endereço novo até ser
+    confirmado, sem que o usuário perca o acesso ao atual.
 
     Atributos:
-        usuario (OneToOneField): Usuário proprietário das configurações.
-        moeda_padrao (str): Código da moeda padrão do usuário (ex: BRL).
-        ultimo_export_em (datetime): Registro da data e hora da última exportação de dados.
+        moeda_padrao: Código da moeda padrão do usuário (ex: BRL).
     """
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="config"
     )
     moeda_padrao = models.CharField(max_length=10, default="BRL")
     ultimo_export_em = models.DateTimeField(null=True, blank=True)
+    email_verificado = models.BooleanField(default=False)
+    email_verificado_em = models.DateTimeField(null=True, blank=True)
+    email_pendente = models.EmailField(blank=True, default="")
 
     def __str__(self):
         """Retorna uma string que identifica o proprietário das configurações.
@@ -350,14 +354,7 @@ class CartaoCredito(AuditoriaModel):
     além de agrupar e calcular dinamicamente as despesas faturáveis associadas.
 
     Atributos:
-        usuario (User): Usuário proprietário do cartão.
-        nome (str): Nome de exibição ou apelido do cartão (ex: Nubank, Inter).
-        bandeira (str): Bandeira do cartão (Visa, Mastercard, Elo, etc.).
-        ultimos_digitos (str): Últimos 4 dígitos para identificação amigável.
-        limite (Decimal): Limite máximo de crédito aprovado.
-        dia_fechamento (int): Dia do mês em que ocorre o fechamento da fatura.
-        dia_vencimento (int): Dia do mês em que vence o pagamento da fatura.
-        ativo (bool): Flag de estado do cartão.
+        limite: Limite máximo de crédito aprovado.
     """
 
     usuario = models.ForeignKey(
@@ -406,14 +403,7 @@ class ExtratoImportado(AuditoriaModel):
     o arquivo carregado (OFX ou outro), a instituição de origem e o status do processamento.
 
     Atributos:
-        usuario (User): O usuário que realizou a importação.
-        arquivo_nome (str): O nome original do arquivo carregado.
-        banco (str): Instituição bancária do extrato (Nubank, Inter, Itaú, etc.).
-        status (str): Estado atual da importação (Pendente, Processado, Erro).
-        linhas_encontradas (int): Quantidade total de registros achados no extrato.
-        linhas_importadas (int): Quantidade total de registros conciliados/importados com sucesso.
-        erro_mensagem (str): Detalhamento técnico caso ocorra alguma falha na leitura.
-        cartao (CartaoCredito): Cartão de crédito associado, caso seja um extrato de cartão.
+        linhas_importadas: Quantidade total de registros conciliados/importados com sucesso.
     """
 
     usuario = models.ForeignKey(
@@ -481,13 +471,8 @@ class LinhaExtrato(AuditoriaModel):
     após a confirmação do usuário.
 
     Atributos:
-        extrato (ExtratoImportado): Lote de extrato pai desta linha.
-        data (date): Data de competência da operação no banco.
-        descricao (str): Descrição literal da transação no extrato bancário.
-        valor (Decimal): Valor monetário bruto da operação.
-        tipo (str): Natureza do lançamento ('C' para Crédito, 'D' para Débito).
-        status (str): Estado da conciliação ('pendente', 'importado', 'ignorado').
-        conta_vinculada (Conta): Lançamento financeiro real correspondente a esta linha.
+        tipo: Natureza do lançamento ('C' para Crédito, 'D' para Débito).
+        status: Estado da conciliação ('pendente', 'importado', 'ignorado').
     """
 
     extrato = models.ForeignKey(
@@ -543,13 +528,6 @@ class PlanoMetas(AuditoriaModel):
     (renda mensal e custo de vida mensal). Ambos podem ser preenchidos
     automaticamente pela média dos últimos meses de lançamentos ou
     sobrescritos manualmente pelo usuário.
-
-    Atributos:
-        usuario (User): Proprietário do plano (um por usuário).
-        renda_mensal (Decimal): Renda mensal de referência.
-        custo_vida_mensal (Decimal): Custo de vida mensal de referência.
-        usar_valores_automaticos (bool): Se True, a tela sugere usar a média calculada.
-        meses_referencia (int): Tamanho da janela usada no cálculo da média.
     """
 
     usuario = models.OneToOneField(
@@ -578,33 +556,19 @@ class PlanoMetas(AuditoriaModel):
 class MetaFinanceira(AuditoriaModel):
     """Meta financeira de acúmulo ou teto de gastos.
 
-    As quatro metas padrão são derivadas de múltiplos da renda mensal ou do
-    custo de vida (definidos em `core.services.metas_service.METAS_PADRAO`),
-    mas o usuário também pode cadastrar metas personalizadas com valor-alvo
-    digitado diretamente.
-
-    O campo `natureza` distingue os dois comportamentos: metas de acúmulo
-    progridem em direção ao alvo (quanto mais, melhor), enquanto metas de teto
-    representam um limite mensal que não deve ser ultrapassado.
+    As quatro metas padrão derivam de múltiplos da renda ou do custo de vida
+    (`core.services.metas_service.METAS_PADRAO`); o usuário também cadastra metas
+    personalizadas com valor-alvo digitado. `natureza` distingue os comportamentos:
+    acúmulo progride até o alvo, teto é limite mensal a não ultrapassar.
 
     Atributos:
-        usuario (User): Proprietário da meta.
-        nome (str): Nome descritivo e único por usuário.
-        tipo (str): Identificador da meta padrão ou 'personalizada'.
-        natureza (str): 'acumulo' (progride até o alvo) ou 'teto' (limite mensal).
-        base_calculo (str): Origem do valor-alvo ('renda', 'custo_vida' ou 'manual').
-        multiplicador (Decimal): Fator aplicado sobre a base quando derivada.
-        valor_alvo (Decimal): Valor-alvo persistido, mesmo quando derivado.
-        valor_acumulado (Decimal): Acúmulo informado manualmente; ignorado na
-            exibição quando `origem_acumulado` é 'carteira'.
-        origem_acumulado (str): De onde vem o progresso — 'manual' (o campo
-            acima), 'carteira' (valor de mercado dos investimentos) ou
-            'aportes_mes' (quanto foi comprado na carteira no mês corrente).
-            As duas últimas são recalculadas a cada leitura por `metas_service`.
-        prazo (date): Data limite opcional para atingir a meta.
-        concluida (bool): Marcação manual de meta encerrada.
-        ordem (int): Posição de exibição; as metas padrão ocupam as primeiras.
-        observacao (str): Anotações livres do usuário.
+        tipo: Identificador da meta padrão ou 'personalizada'.
+        natureza: 'acumulo' (progride até o alvo) ou 'teto' (limite mensal).
+        base_calculo: Origem do valor-alvo ('renda', 'custo_vida' ou 'manual').
+        valor_acumulado: Acúmulo manual; ignorado quando `origem_acumulado` é 'carteira'.
+        origem_acumulado: 'manual', 'carteira' (valor de mercado) ou 'aportes_mes'. As
+            duas últimas são recalculadas a cada leitura por `metas_service`.
+        ordem: Posição de exibição; as metas padrão ocupam as primeiras.
     """
 
     TIPO_PATRIMONIO_RENDA = "patrimonio_renda"
@@ -675,13 +639,6 @@ class MetaFinanceira(AuditoriaModel):
     def acumulado_efetivo(self, valores_externos=None):
         """Acúmulo que vale para esta meta, respeitando a origem escolhida.
 
-        Args:
-            valores_externos (dict | None): Mapa de origem automática para o
-                valor já calculado (ex.: `{'carteira': Decimal('11891.15')}`),
-                resolvido uma vez por requisição. Quando a origem desta meta não
-                está no mapa, cai no valor manual — assim o modelo nunca dispara
-                consultas de dentro de um laço de serialização.
-
         Returns:
             float: Valor acumulado a considerar no progresso.
         """
@@ -696,9 +653,6 @@ class MetaFinanceira(AuditoriaModel):
         Não é limitado a 100: uma meta de teto ultrapassada precisa reportar
         o excedente para que a interface possa sinalizar o estouro.
 
-        Args:
-            valores_externos (dict | None): Valores das origens automáticas.
-
         Returns:
             float: Percentual atingido, ou 0.0 quando o alvo não é positivo.
         """
@@ -708,9 +662,6 @@ class MetaFinanceira(AuditoriaModel):
 
     def valor_restante(self, valores_externos=None):
         """Quanto falta para atingir o alvo (nunca negativo).
-
-        Args:
-            valores_externos (dict | None): Valores das origens automáticas.
 
         Returns:
             float: Diferença entre alvo e acumulado, com piso em zero.
@@ -735,10 +686,7 @@ class AporteMeta(AuditoriaModel):
     modelo serve como log auditável das contribuições.
 
     Atributos:
-        meta (MetaFinanceira): Meta que recebeu o aporte.
-        data (date): Data do aporte.
-        valor (Decimal): Valor aportado.
-        observacao (str): Anotação curta e opcional sobre o aporte.
+        observacao: Anotação curta e opcional sobre o aporte.
     """
 
     meta = models.ForeignKey(
@@ -762,3 +710,55 @@ class AporteMeta(AuditoriaModel):
             str: Resumo legível do aporte.
         """
         return f"{self.data} - R$ {self.valor}"
+
+
+class LogAcaoAdmin(AuditoriaModel):
+    """Registro imutável das ações administrativas sobre contas de usuário.
+
+    Um painel capaz de suspender contas precisa deixar rastro de quem fez o quê e
+    quando: sem isso, "minha conta foi bloqueada e ninguém sabe por quê" não tem
+    resposta possível.
+
+    Ambas as chaves usam `SET_NULL` em vez de `CASCADE`. Apagar a conta de um
+    administrador não pode apagar o histórico do que ele fez — o registro perderia
+    exatamente a informação que justifica a sua existência.
+    """
+
+    ACAO_SUSPENDER = "suspender"
+    ACAO_REATIVAR = "reativar"
+    ACAO_CHOICES = [
+        (ACAO_SUSPENDER, "Suspender conta"),
+        (ACAO_REATIVAR, "Reativar conta"),
+    ]
+
+    ator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acoes_admin_realizadas",
+    )
+    ator_username = models.CharField(max_length=150)
+    alvo = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acoes_admin_recebidas",
+    )
+    alvo_username = models.CharField(max_length=150)
+    acao = models.CharField(max_length=20, choices=ACAO_CHOICES)
+    detalhe = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-criada_em"]
+        verbose_name = "Log de ação administrativa"
+        verbose_name_plural = "Logs de ações administrativas"
+
+    def __str__(self):
+        """Descreve a ação de forma legível.
+
+        Returns:
+            str: Resumo no formato "ator ação alvo".
+        """
+        return f"{self.ator_username} {self.get_acao_display()} {self.alvo_username}"

@@ -5,7 +5,6 @@
  * utilizando um layout tabular interativo (tabela editável). Facilita a criação rápida de registros,
  * com validação de campos em tempo real e envio unificado ao servidor.
  *
- * @component
  * @returns {React.JSX.Element} Formular tabular para inserção em lote de despesas futuras.
  */
 import { useState } from 'react';

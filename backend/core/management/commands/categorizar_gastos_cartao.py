@@ -22,11 +22,7 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        """Declara as opções aceitas pelo comando.
-
-        Args:
-            parser (ArgumentParser): Parser de argumentos do comando.
-        """
+        """Declara as opções aceitas pelo comando."""
         parser.add_argument(
             "--usuario",
             dest="usuario",
@@ -40,12 +36,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        """Percorre os usuários preenchendo a categoria dos lançamentos de cartão.
-
-        Args:
-            *args: Argumentos posicionais.
-            **options: Opções do terminal (`usuario`, `dry_run`).
-        """
+        """Percorre os usuários preenchendo a categoria dos lançamentos de cartão."""
         dry_run = options["dry_run"]
         usuarios = get_user_model().objects.all()
 

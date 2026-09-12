@@ -9,6 +9,7 @@ import datetime
 import json
 
 from investimento.models import Ativo, ClasseAtivo, CategoriaAtivo, SubcategoriaAtivo, Cotacao
+from investimento.serializers import AtivoSerializer
 
 class AtivoViewSetTests(APITestCase):
     def setUp(self):
@@ -126,10 +127,12 @@ class AtivoViewSetTests(APITestCase):
         self.assertIn("PRIO3.SA", requested_req.full_url)
         self.assertNotIn("PRIO3F", requested_req.full_url)
 
-    def test_retrieve_ativo_returns_latest_30_quotes_in_chronological_order(self):
-        # Create 35 quotes for the asset, one per day starting from 35 days ago
-        base_date = datetime.date.today() - datetime.timedelta(days=35)
-        for i in range(35):
+    def test_retrieve_ativo_returns_latest_quotes_in_chronological_order(self):
+        # 50 cotações diárias, acima do teto de 45 do serializador
+        total = 50
+        limite = AtivoSerializer.LIMITE_HISTORICO_COTACOES
+        base_date = datetime.date.today() - datetime.timedelta(days=total)
+        for i in range(total):
             Cotacao.objects.create(
                 ativo=self.ativo,
                 data=base_date + datetime.timedelta(days=i),
@@ -141,19 +144,90 @@ class AtivoViewSetTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         historico = response.data["historico_cotacoes"]
-        
-        # Should return exactly 30 quotes
-        self.assertEqual(len(historico), 30)
-        
-        # The first returned quote should be the 6th created quote (day 5 of offset, i.e., index 5)
-        expected_first_date = str(base_date + datetime.timedelta(days=5))
-        expected_last_date = str(base_date + datetime.timedelta(days=34))
-        
-        self.assertEqual(historico[0]["data"], expected_first_date)
-        self.assertEqual(historico[0]["valor"], 105.0)
-        
-        # The last returned quote should be the 35th created quote (day 34 of offset, i.e., index 34)
-        self.assertEqual(historico[-1]["data"], expected_last_date)
-        self.assertEqual(historico[-1]["valor"], 134.0)
+
+        self.assertEqual(len(historico), limite)
+
+        # Corta as mais antigas e devolve em ordem crescente de data
+        primeiro = total - limite
+        self.assertEqual(historico[0]["data"], str(base_date + datetime.timedelta(days=primeiro)))
+        self.assertEqual(historico[0]["valor"], 100.0 + primeiro)
+        self.assertEqual(historico[-1]["data"], str(base_date + datetime.timedelta(days=total - 1)))
+        self.assertEqual(historico[-1]["valor"], 100.0 + total - 1)
+
+
+class HistoricoCotacoesActionTests(APITestCase):
+    """Cobre a série em lote que alimenta o gráfico comparativo de Meus Ativos."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="hist_user", password="senha_segura_123")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}")
+        self.url = reverse("api-ativo-historico-cotacoes")
+
+        self.hoje = datetime.date.today()
+        self.petr = Ativo.objects.create(usuario=self.user, ticker="PETR4", nome="Petrobras")
+        self.hglg = Ativo.objects.create(usuario=self.user, ticker="HGLG11", nome="CSHG Logística")
+
+        for i, valor in enumerate(["30.00", "31.00", "32.00"]):
+            Cotacao.objects.create(
+                ativo=self.petr,
+                data=self.hoje - datetime.timedelta(days=2 - i),
+                valor=Decimal(valor),
+            )
+        Cotacao.objects.create(ativo=self.hglg, data=self.hoje, valor=Decimal("9.50"))
+
+    def test_devolve_uma_serie_por_ativo_em_ordem_cronologica(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["dias"], 60)
+
+        por_ticker = {s["ticker"]: s for s in response.data["series"]}
+        self.assertEqual(set(por_ticker), {"PETR4", "HGLG11"})
+
+        pontos = por_ticker["PETR4"]["pontos"]
+        self.assertEqual([p["valor"] for p in pontos], [30.0, 31.0, 32.0])
+        self.assertEqual([p["data"] for p in pontos], sorted(p["data"] for p in pontos))
+
+    def test_janela_recorta_cotacoes_fora_do_periodo(self):
+        Cotacao.objects.create(
+            ativo=self.petr, data=self.hoje - datetime.timedelta(days=90), valor=Decimal("20.00")
+        )
+
+        # A cotação antiga entra na janela de 120 dias e fica de fora na de 10
+        response = self.client.get(self.url, {"dias": 120})
+        pontos = next(s for s in response.data["series"] if s["ticker"] == "PETR4")["pontos"]
+        self.assertEqual(len(pontos), 4)
+
+        response = self.client.get(self.url, {"dias": 10})
+        pontos = next(s for s in response.data["series"] if s["ticker"] == "PETR4")["pontos"]
+        self.assertEqual(len(pontos), 3)
+
+    def test_ativo_sem_cotacao_no_periodo_fica_fora_da_resposta(self):
+        Ativo.objects.create(usuario=self.user, ticker="ITSA4", nome="Itaúsa")
+
+        response = self.client.get(self.url)
+
+        self.assertNotIn("ITSA4", [s["ticker"] for s in response.data["series"]])
+
+    def test_nao_vaza_serie_de_outro_usuario(self):
+        outro = User.objects.create_user(username="outro_hist", password="senha_segura_123")
+        alheio = Ativo.objects.create(usuario=outro, ticker="VALE3", nome="Vale")
+        Cotacao.objects.create(ativo=alheio, data=self.hoje, valor=Decimal("60.00"))
+
+        response = self.client.get(self.url)
+
+        self.assertNotIn("VALE3", [s["ticker"] for s in response.data["series"]])
+
+    def test_dias_nao_numerico_responde_400(self):
+        response = self.client.get(self.url, {"dias": "dois-meses"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_dias_acima_do_teto_e_limitado(self):
+        response = self.client.get(self.url, {"dias": 9999})
+        self.assertEqual(response.data["dias"], 365)
+
+    def test_exige_autenticacao(self):
+        self.client.credentials()
+        self.assertEqual(self.client.get(self.url).status_code, status.HTTP_401_UNAUTHORIZED)
 
 

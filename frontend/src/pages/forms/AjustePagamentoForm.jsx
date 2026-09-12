@@ -145,6 +145,10 @@ export default function AjustePagamentoForm() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  // Componente de ícone da pré-visualização. Precisa começar com maiúscula para o
+  // JSX tratá-lo como componente, e não como tag HTML literal.
+  const IconePreview = IconMap[form.icone] || CreditCard;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Header */}
@@ -344,10 +348,13 @@ export default function AjustePagamentoForm() {
                 className="mt-4 flex items-center gap-3 p-4 rounded-xl border transition-all"
                 style={{ borderLeftColor: form.cor, borderLeftWidth: 4, backgroundColor: `${form.cor}10` }}
               >
-                {React.createElement(IconMap[form.icone] || CreditCard, {
-                  className: 'h-5 w-5 shrink-0',
-                  style: { color: form.cor },
-                })}
+                {/* JSX direto, e não `React.createElement`: este arquivo não importa
+                    `React` (com o JSX automático do React 17+ ele é desnecessário),
+                    então a chamada estourava `ReferenceError: React is not defined`
+                    em tempo de render — e, sem error boundary, apagava o app inteiro.
+                    O padrão de ícone dinâmico já usado acima nesta mesma tela é
+                    justamente atribuir o componente a uma variável em maiúscula. */}
+                <IconePreview className="h-5 w-5 shrink-0" style={{ color: form.cor }} />
                 <span className="text-sm font-semibold" style={{ color: form.cor }}>
                   {form.nome || 'Nome do cartão'}
                 </span>

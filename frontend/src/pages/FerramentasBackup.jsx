@@ -5,7 +5,6 @@
  * (Excel, CSV, PDF) ou realize um backup criptografado seguro de toda a base de dados
  * com o formato proprietário (.fcbk), protegido pelo algoritmo criptográfico AES-GCM.
  *
- * @component
  * @returns {React.JSX.Element} Painel contendo formulários de configuração de exportação e informações de privacidade.
  */
 import { useState } from 'react';

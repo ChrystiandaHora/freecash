@@ -1,295 +1,30 @@
 /**
- * Tela de Pipeline Kanban de Contas a Pagar.
+ * Rota dedicada ao quadro Kanban das contas a pagar.
  *
- * Visualização ágil do ciclo de vida das contas a pagar através de um
- * quadro Kanban interativo com arrastar-e-soltar (`@hello-pangea/dnd`).
+ * O quadro em si vive em `components/contas/QuadroContasPagar` — a tela de Contas a
+ * Pagar o usa como uma das suas duas visões. Aqui ficam só o recorte de dados (mês
+ * corrente, no servidor) e os KPIs do período.
  *
- * Colunas do Quadro:
- * - **Atrasadas** → contas com `data_vencimento` anterior a hoje.
- * - **Para Hoje**  → contas com vencimento no dia atual.
- * - **Próximos 7 Dias** → contas vencendo dentro de 1–7 dias.
- * - **Final do Mês** → contas vencendo após 7 dias.
- * - **Pagas** → contas já quitadas (`pago === true`).
- *
- * Comportamento de Drag & Drop:
- * - Arrastar um card para a coluna **"Pagas"** dispara a mutation
- *   `pagarConta` que registra o pagamento via API (`POST /api/contas-pagar/{id}/pagar/`).
- * - Movimentação entre outras colunas é visual apenas (sem persistência de data).
- *
- * Edição: clicar no corpo do card abre `ContaPagarEditModal`, permitindo alterar
- * descrição, categoria, valor e vencimento — ou quitar a conta pelo botão
- * "Marcar como paga" do próprio diálogo — sem sair do quadro.
- *
- * KPIs exibidos: Total Pendente, Total Atrasado, Contas Pagas, Total de Contas.
- *
- * @module PipelineKanban
- * @component
- * @returns {JSX.Element} Quadro Kanban interativo de gerenciamento de contas a pagar.
- *
- * @example
- * // Rota configurada em App.jsx:
- * <Route path="contas-kanban" element={<PipelineKanban />} />
+ * @returns {JSX.Element} Quadro Kanban de gerenciamento de contas a pagar.
  */
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import {
-  AlertCircle, Clock, CalendarDays, CheckCircle2,
-  RefreshCw, GripVertical, DollarSign
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { RefreshCw, DollarSign } from 'lucide-react';
 
-import { fetchContasPagar, pagarConta } from '../services/financeiro';
+import { fetchContasPagar } from '../services/financeiro';
 import { useToast } from '../context/ToastContext';
-import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import ContaPagarEditModal from '../components/ContaPagarEditModal';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import QuadroContasPagar from '../components/contas/QuadroContasPagar';
+import { COLUMNS, agruparPorColuna } from '../lib/contasKanban';
 
 const formatCurrency = (val) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
-const formatDueDate = (dateStr) => {
-  if (!dateStr || typeof dateStr !== 'string') return 'Sem data'
-  const parts = dateStr.split('-')
-  if (parts.length < 3) return dateStr
-  const [, month, day] = parts
-  return `${day}/${month}`
-}
-
-// ─── Colunas do Kanban ────────────────────────────────────────────────────────
-
-const COLUMNS = [
-  {
-    id: 'atrasadas',
-    label: 'Atrasadas',
-    icon: AlertCircle,
-    color: 'text-red-500 dark:text-red-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'destructive',
-  },
-  {
-    id: 'hoje',
-    label: 'Vence Hoje',
-    icon: Clock,
-    color: 'text-rose-500 dark:text-rose-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'urgent',
-  },
-  {
-    id: 'amanha',
-    label: 'Vence amanhã',
-    icon: Clock,
-    color: 'text-rose-500 dark:text-rose-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'urgent',
-  },
-  {
-    id: 'vence_2_dias',
-    label: 'Vence 2 dias',
-    icon: Clock,
-    color: 'text-orange-500 dark:text-orange-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'warning',
-  },
-  {
-    id: 'vence_3_dias',
-    label: 'Vence 3 dias',
-    icon: Clock,
-    color: 'text-orange-500 dark:text-orange-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'warning',
-  },
-  {
-    id: 'pendentes',
-    label: 'Pendentes',
-    icon: Clock,
-    color: 'text-muted-foreground',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'secondary',
-  },
-  {
-    id: 'pagas',
-    label: 'Pagas',
-    icon: CheckCircle2,
-    color: 'text-emerald-500 dark:text-emerald-400',
-    borderColor: 'border-border/40',
-    bgColor: 'bg-muted/40',
-    badgeVariant: 'success',
-  },
-]
-
-
-// Classifica uma conta em uma coluna
-const getColumnId = (conta) => {
-  if (!conta) return 'pendentes'
-  if (conta.pago) return 'pagas'
-
-  if (!conta.data_vencimento || typeof conta.data_vencimento !== 'string') return 'pendentes'
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const parts = conta.data_vencimento.split('-')
-  if (parts.length < 3) return 'pendentes'
-
-  const [year, month, day] = parts
-  const due = new Date(Number(year), Number(month) - 1, Number(day))
-  due.setHours(0, 0, 0, 0)
-
-  if (due < today) return 'atrasadas'
-
-  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) return 'hoje'
-  if (diffDays === 1) return 'amanha'
-  if (diffDays === 2) return 'vence_2_dias'
-  if (diffDays === 3) return 'vence_3_dias'
-
-  return 'pendentes'
-}
-
-// ─── Card de Conta (Kanban item) ──────────────────────────────────────────────
-
-const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
-  const isAtrasada = colId === 'atrasadas'
-  const isPaga = colId === 'pagas'
-
-  return (
-    <div
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      className={`rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 select-none
-        ${snapshot.isDragging ? 'shadow-xl scale-[1.02] ring-2 ring-primary/30' : 'hover:shadow-md hover:-translate-y-0.5'}
-        ${isPaga ? 'opacity-60' : ''}
-      `}
-    >
-      {/* Drag handle */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <span
-          {...provided.dragHandleProps}
-          className="-ml-1 -mt-0.5 flex min-h-6 min-w-6 items-center justify-center rounded p-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing"
-          aria-label={`Arrastar ${conta.descricao}`}
-        >
-          <GripVertical className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <div className="flex items-center gap-1.5">
-          {isPaga ? (
-            <Badge variant="success">
-              <CheckCircle2 className="h-3 w-3" />
-              Paga
-            </Badge>
-          ) : isAtrasada ? (
-            <Badge variant="destructive">
-              <AlertCircle className="h-3 w-3" />
-              Atrasada
-            </Badge>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Corpo clicável: abre a edição. É um <button> nativo (e não o card
-          inteiro com role="button") para não englobar a alça de arrastar,
-          mantendo os dois controles operáveis por teclado de forma separada. */}
-      <button
-        type="button"
-        onClick={() => onEdit(conta)}
-        className="block w-full cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-        aria-label={`Editar ${conta.descricao}`}
-      >
-        {/* Conteúdo */}
-        <p className="font-semibold text-sm text-foreground leading-snug line-clamp-2 mb-1">
-          {conta.descricao}
-        </p>
-        {conta.categoria && (
-          <p className="text-xs text-muted-foreground mb-3">{conta.categoria}</p>
-        )}
-
-        {/* Rodapé */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" aria-hidden="true" />
-            {formatDueDate(conta.data_vencimento)}
-          </span>
-          <span className={`text-sm font-bold ${isAtrasada ? 'text-red-500' : 'text-foreground'}`}>
-            {formatCurrency(conta.valor)}
-          </span>
-        </div>
-      </button>
-    </div>
-  )
-}
-
-// ─── Coluna Kanban ────────────────────────────────────────────────────────────
-
-const KanbanColumn = ({ col, contas, provided, snapshot, onEdit }) => {
-  const Icon = col.icon
-  const total = contas.reduce((a, c) => a + Number(c.valor ?? 0), 0)
-
-  return (
-    <div className="flex flex-col rounded-2xl border border-border/40 bg-muted/40 min-h-[300px] min-w-[260px] max-w-[300px] flex-shrink-0">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 pb-3">
-        <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${col.color}`} />
-          <span className="font-semibold text-sm text-foreground">{col.label}</span>
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold bg-background text-muted-foreground border border-border/40">
-            {contas.length}
-          </span>
-        </div>
-        {contas.length > 0 && (
-          <span className="text-xs font-medium text-muted-foreground">
-            {formatCurrency(total)}
-          </span>
-        )}
-      </div>
-
-      {/* Droppable area */}
-      <div
-        ref={provided.innerRef}
-        {...provided.droppableProps}
-        className={`flex-1 space-y-3 p-3 pt-1 min-h-[200px] max-h-[calc(100vh-380px)] overflow-y-auto rounded-b-2xl transition-colors duration-200 ${
-          snapshot.isDraggingOver ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''
-        }`}
-      >
-        {contas.length === 0 && !snapshot.isDraggingOver && (
-          <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border/40">
-            <p className="text-xs text-muted-foreground/60">Nenhuma conta aqui</p>
-          </div>
-        )}
-        {contas.map((conta, index) => (
-          <Draggable key={String(conta.id)} draggableId={String(conta.id)} index={index}>
-            {(provided, snapshot) => (
-              <ContaCard
-                conta={conta}
-                provided={provided}
-                snapshot={snapshot}
-                colId={col.id}
-                onEdit={onEdit}
-              />
-            )}
-          </Draggable>
-        ))}
-        {provided.placeholder}
-      </div>
-    </div>
-  )
-}
-
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function PipelineKanban() {
-  const queryClient = useQueryClient()
   const { addToast } = useToast()
-  const [editingConta, setEditingConta] = useState(null)
 
   const hoje = new Date()
 
@@ -307,48 +42,8 @@ export default function PipelineKanban() {
     }
   }
 
-  // Feedback via toast em vez de estado local: o ToastContext já se auto-dispensa,
-  // pausa no hover/foco e tem botão de fechar — um Alert local ficaria na tela
-  // permanentemente por não ter caminho de limpeza.
-  const pagarMutation = useMutation({
-    mutationFn: pagarConta,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
-      addToast('Pagamento registrado com sucesso.', 'success')
-    },
-    onError: () => {
-      // O card volta à coluna de origem na próxima revalidação; sem esta mensagem,
-      // o usuário não teria como saber que o pagamento não foi registrado.
-      queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
-      addToast('Não foi possível registrar o pagamento. Tente novamente.', 'error')
-    },
-  })
-
-  // Organiza contas em colunas
-  const columnData = useMemo(() => {
-    const map = {}
-    COLUMNS.forEach((col) => { map[col.id] = [] })
-    contas.forEach((conta) => {
-      const colId = getColumnId(conta)
-      if (map[colId]) map[colId].push(conta)
-    })
-    return map
-  }, [contas])
-
-  const onDragEnd = (result) => {
-    const { source, destination, draggableId } = result
-    if (!destination) return
-    if (source.droppableId === destination.droppableId) return
-
-    // Mover para "pagas" dispara a mutation de quitação
-    if (destination.droppableId === 'pagas') {
-      const id = Number(draggableId)
-      pagarMutation.mutate(id)
-    }
-    // Nota: Para reordenação em outras colunas, seria necessário
-    // um endpoint de atualização de data_vencimento no backend.
-    // Por ora, o kanban reflete o estado do backend.
-  }
+  // Mesmo agrupamento que o quadro usa: dois critérios de "atrasada" dariam dois números
+  const columnData = agruparPorColuna(contas)
 
   // KPIs
   const totalPendente = contas
@@ -457,34 +152,8 @@ export default function PipelineKanban() {
         </p>
       </div>
 
-      {/* Board */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2">
-          {COLUMNS.map((col) => (
-            <Droppable key={col.id} droppableId={col.id}>
-              {(provided, snapshot) => (
-                <KanbanColumn
-                  col={col}
-                  contas={columnData[col.id] ?? []}
-                  provided={provided}
-                  snapshot={snapshot}
-                  onEdit={setEditingConta}
-                />
-              )}
-            </Droppable>
-          ))}
-        </div>
-      </DragDropContext>
-
-      {/* ─── Modal: Edição rápida do card ─────────────────────────────────── */}
-      <ContaPagarEditModal
-        conta={editingConta}
-        onClose={() => setEditingConta(null)}
-        onSaved={() => addToast('Conta atualizada com sucesso.', 'success')}
-        onError={() => addToast('Não foi possível salvar a conta. Tente novamente.', 'error')}
-        onPaid={() => addToast('Pagamento registrado com sucesso.', 'success')}
-        onPayError={() => addToast('Não foi possível registrar o pagamento. Tente novamente.', 'error')}
-      />
+      {/* O quadro traz consigo o drag-and-drop e o modal de edição do card */}
+      <QuadroContasPagar contas={contas} />
     </div>
   )
 }

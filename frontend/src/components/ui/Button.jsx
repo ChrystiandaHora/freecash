@@ -5,13 +5,10 @@
  * variantes visuais pré-definidas (glassmorphism/flat), tamanhos configuráveis e
  * encaminhamento de referências do DOM (forwardRef).
  *
- * @component
  * @param {Object} props - Propriedades de configuração do botão.
- * @param {string} [props.className] - Classes CSS adicionais do Tailwind para estilização customizada.
  * @param {"default" | "destructive" | "outline" | "secondary" | "ghost" | "link"} [props.variant="default"] - Variante visual e temática do botão.
  * @param {"default" | "sm" | "lg" | "icon"} [props.size="default"] - Dimensões e espaçamentos do botão.
  * @param {React.ButtonHTMLAttributes<HTMLButtonElement>} props - Demais propriedades nativas do elemento HTML `<button>`.
- * @param {React.Ref<HTMLButtonElement>} ref - Referência DOM encaminhada para o botão.
  * @returns {React.JSX.Element} Elemento JSX do botão renderizado.
  */
 import * as React from "react"

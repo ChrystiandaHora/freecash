@@ -41,10 +41,6 @@ def decrypt_data_fcbk(encrypted_base64: str, password: str) -> dict:
     extrai os blocos de Salt/Nonce e descriptografa via AES-GCM, convertendo o
     JSON resultante em dicionário estruturado.
 
-    Args:
-        encrypted_base64 (str): O conteúdo codificado em Base64 lido do arquivo.
-        password (str): Senha do backup definida pelo usuário.
-
     Raises:
         ValueError: Se o arquivo estiver violado, senha incorreta ou arquivo corrompido.
 
@@ -120,10 +116,13 @@ def get_backupable_models():
         "ClasseAtivo": 4,
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
+        # A carteira precede o ativo porque transações e posições apontam para ela.
+        "Carteira": 6.5,
         "Ativo": 7,
-        "ReceitaRecorrente": 7.5,
+        "LancamentoRecorrente": 7.5,
         "Conta": 8,
         "Transacao": 9,
+        "PosicaoCarteira": 9.5,
         "CarteiraHistorico": 10,
         # MetaFinanceira não referencia outros modelos; os aportes dependem dela
         # e são restaurados à parte, por não terem FK direta para o usuário.
@@ -136,29 +135,76 @@ def get_backupable_models():
     return sorted(backup_models, key=get_priority)
 
 
+# Nomes de classe usados em versões anteriores do sistema, por modelo atual.
+# As chaves do arquivo `.fcbk` são nomes de classe, então renomear um modelo
+# invalidaria os backups já gerados pelos usuários.
+NOMES_LEGADOS_DE_MODELO = {
+    "LancamentoRecorrente": ("ReceitaRecorrente",),
+}
+
+# Renomeações de campo, por modelo atual: {nome_antigo: nome_novo}. Chaves de
+# chave estrangeira aparecem no backup como `<campo>_uuid`.
+CAMPOS_RENOMEADOS_POR_MODELO = {
+    "Conta": {"receita_recorrente_uuid": "recorrencia_uuid"},
+}
+
+# Campos que mudaram de modelo. `filter_valid_fields` descarta o que não existe mais,
+# então sem isto a meta de alocação de um `.fcbk` anterior às carteiras some calada e o
+# balanceamento volta com tudo em 0% (ver docs/backup.md).
+CAMPOS_MOVIDOS_DE_MODELO = {
+    "Ativo": {"meta_porcentagem": "PosicaoCarteira"},
+}
+
+# FKs que viraram obrigatórias depois do backup existir. Sem isto, restaurar um
+# `.fcbk` anterior às carteiras descarta as transações em silêncio (ver docs/carteiras.md).
+FKS_LEGADAS_COM_PADRAO = {
+    "Transacao": ("carteira",),
+    "CarteiraHistorico": ("carteira",),
+    "PosicaoCarteira": ("carteira",),
+}
+
+
+def _carteira_padrao(user):
+    """Devolve (criando se preciso) a carteira que recebe dados de backups antigos.
+
+    Returns:
+        Carteira: A primeira carteira do usuário, ou uma Carteira Padrão nova.
+    """
+    from investimento.models import Carteira
+
+    return Carteira.padrao_de(user)
+
+
+def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
+    """Reescreve as chaves de um registro de backup para os nomes atuais.
+
+    Returns:
+        dict: O mesmo registro, com as chaves renomeadas quando aplicável.
+    """
+    renomeios = CAMPOS_RENOMEADOS_POR_MODELO.get(model_name)
+    if not renomeios:
+        return linha
+
+    for antigo, novo in renomeios.items():
+        if antigo in linha and novo not in linha:
+            linha[novo] = linha.pop(antigo)
+    return linha
+
+
 def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     """Substitui transacionalmente todas as entidades do usuário com os dados do backup.
 
-    Executa um processo atômico de limpeza (delete) dos dados atuais do usuário e
-    insere as novas entidades mapeando e religando chaves estrangeiras com base
-    em UUIDs estáveis contidos no dicionário de backup.
+    Apaga os dados atuais e reinsere os do backup, religando as chaves estrangeiras
+    pelos UUIDs estáveis do arquivo.
 
-    Desconecta temporariamente os signals do módulo de investimentos durante a
-    restauração para evitar recálculos parciais e incorretos de preço médio e
-    quantidade dos ativos enquanto as transações são reinseridas individualmente.
-    Após a restauração completa, força o recálculo de todos os ativos afetados.
-
-    Desconecta também os signals de consolidação de fatura do módulo core: o
-    backup já contém as faturas consolidadas com seus próprios UUIDs, e deixar o
-    signal ativo faria a restauração de uma compra de cartão criar uma fatura
-    "fantasma" (UUID novo) que depois duplicaria a fatura original do backup.
-
-    Args:
-        data_dict (dict): Dicionário contendo os dados decodificados do backup.
-        user (User): O usuário Django que está restaurando a base de dados.
+    Desconecta dois conjuntos de signals durante a operação. Os de investimento, para
+    não recalcular preço médio parcialmente a cada transação reinserida — o recálculo é
+    forçado no fim. E os de consolidação de fatura do core, porque o backup já traz as
+    faturas com seus UUIDs, e o signal ativo criaria uma fatura fantasma que depois
+    duplicaria a original.
 
     Returns:
-        dict: Estatísticas contendo total de registros restaurados ou falhas.
+        dict: Estatísticas com total de registros restaurados ou falhas.
     """
     # ── Desconectar signals de investimento durante a importação ─────────────
     # O signal post_save/post_delete de Transacao chama recalcular_ativo() a
@@ -198,6 +244,8 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     total_ignorados = 0
     faturas_removidas = 0  # faturas de cartão duplicadas descartadas na normalização
     ativos_restaurados = []  # rastreia ativos para recálculo posterior
+    # {ativo_id: meta} lida do `Ativo` de backups anteriores às carteiras
+    metas_legadas_por_ativo: dict[int, str] = {}
 
     def get_model_field_names(model):
         """Retorna os nomes de campos válidos do modelo."""
@@ -240,6 +288,9 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 # Compatibilidade retroativa: manter também pela chave simples de nome
                 uuid_to_id[model.__name__] = uuid_to_id[f"{model._meta.app_label}.{model.__name__}"]
 
+            # Resolvido uma vez só, e apenas se algum registro legado precisar dele.
+            carteira_padrao_cache: dict[str, int] = {}
+
             # 2. IMPORT NEW
             for model in backup_models:
                 app_label = model._meta.app_label
@@ -252,7 +303,36 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         is_one_to_one_user = True
                         break
 
-                records = data_dict.get("data", {}).get(app_label, {}).get(model_name, [])
+                registros_do_app = data_dict.get("data", {}).get(app_label, {})
+                records = registros_do_app.get(model_name, [])
+
+                # Compatibilidade com backups gerados antes de um modelo ser
+                # renomeado. As chaves do `.fcbk` são nomes de classe, então um
+                # rename tornaria os registros invisíveis aqui e a restauração
+                # perderia os dados em silêncio — sem erro algum, que é o pior tipo
+                # de falha num backup.
+                if not records:
+                    for nome_legado in NOMES_LEGADOS_DE_MODELO.get(model_name, ()):
+                        legados = registros_do_app.get(nome_legado)
+                        if legados:
+                            logger.info(
+                                "Backup antigo: lendo %s a partir da chave legada %s.",
+                                model_name, nome_legado,
+                            )
+                            records = legados
+                            break
+
+                # A normalização de campo vale para TODO registro, não só para os de
+                # chave legada: `Conta` nunca foi renomeada, mas o campo que aponta
+                # para a regra de recorrência foi (`receita_recorrente` ->
+                # `recorrencia`), e as FKs aparecem no backup como `<campo>_uuid`.
+                # Sem isto, restaurar um backup antigo devolveria as contas sem o
+                # vínculo com a regra que as gerou.
+                if records and model_name in CAMPOS_RENOMEADOS_POR_MODELO:
+                    records = [
+                        _normalizar_campos_legados(model_name, dict(linha))
+                        for linha in records
+                    ]
                 logger.debug(
                     "Restaurando %d registros de %s.%s", len(records), app_label, model_name
                 )
@@ -262,6 +342,13 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                     if not uid:
                         total_ignorados += 1
                         continue
+
+                    # Guardado antes da filtragem: o campo não existe mais neste modelo
+                    meta_legada = None
+                    if model_name in CAMPOS_MOVIDOS_DE_MODELO:
+                        for campo in CAMPOS_MOVIDOS_DE_MODELO[model_name]:
+                            if row.get(campo) is not None:
+                                meta_legada = row[campo]
 
                     # Parse date/datetime fields from string to actual python objects
                     from django.db.models import DateField, DateTimeField
@@ -296,6 +383,13 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                                 row[f"{field.name}_id"] = local_id
                             else:
                                 row[f"{field.name}_id"] = None
+
+                    # Backup antigo não traz `carteira_uuid`; sem o padrão, o NOT NULL descarta a ordem
+                    for campo in FKS_LEGADAS_COM_PADRAO.get(model_name, ()):
+                        if row.get(f"{campo}_id") is None:
+                            if "id" not in carteira_padrao_cache:
+                                carteira_padrao_cache["id"] = _carteira_padrao(user).id
+                            row[f"{campo}_id"] = carteira_padrao_cache["id"]
 
                     # Filtrar campos que não existem mais no modelo
                     row = filter_valid_fields(model, row)
@@ -348,6 +442,8 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         # Rastrear ativos restaurados para recálculo posterior
                         if model_name == "Ativo":
                             ativos_restaurados.append(obj)
+                            if meta_legada is not None:
+                                metas_legadas_por_ativo[obj.id] = meta_legada
 
             # 2b. Restaurar o histórico de aportes das metas
             # Não passa pelo laço genérico porque `AporteMeta` não tem FK para o
@@ -450,19 +546,64 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 
             # 4. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
             # Necessário porque os signals foram desconectados durante a importação.
+            # Reconstrói também a posição por carteira: é cache, e o backup antigo nem a tem
             if ativos_restaurados:
                 try:
-                    from investimento.calculators import recalcular_ativo
+                    from investimento.calculators import (
+                        recalcular_ativo,
+                        recalcular_posicoes_do_ativo,
+                    )
                     for ativo in ativos_restaurados:
                         try:
                             ativo.refresh_from_db()  # Garante estado fresco do DB
                             recalcular_ativo(ativo)
+                            recalcular_posicoes_do_ativo(ativo)
                         except Exception as recalc_err:
                             logger.warning(
                                 "Erro ao recalcular ativo %s: %s", ativo, recalc_err
                             )
                 except ImportError:
                     logger.debug("Módulo de investimentos não disponível para recálculo.")
+
+            # 4b. Reconduzir a meta de alocação que vinha no `Ativo`
+            # Só entra em backup anterior às carteiras: o export atual grava a meta na
+            # `PosicaoCarteira`, e aí o laço acima já a restaurou. Roda depois do
+            # recálculo porque é ele que cria as posições que recebem o valor.
+            if metas_legadas_por_ativo:
+                from decimal import Decimal as DecimalMeta
+
+                from investimento.models import PosicaoCarteira
+
+                recuperadas = 0
+                for ativo_id, meta in metas_legadas_por_ativo.items():
+                    posicoes = list(
+                        PosicaoCarteira.objects.filter(usuario=user, ativo_id=ativo_id)
+                    )
+                    # A meta era global por ativo; dividi-la entre custódias exigiria um
+                    # critério que o arquivo não tem. Com uma posição só não há dúvida.
+                    if len(posicoes) != 1:
+                        if len(posicoes) > 1:
+                            logger.warning(
+                                "Meta legada do ativo %s não aplicada: %d posições, "
+                                "e o backup não diz como dividir entre elas.",
+                                ativo_id, len(posicoes),
+                            )
+                        continue
+                    try:
+                        PosicaoCarteira.objects.filter(pk=posicoes[0].pk).update(
+                            meta_porcentagem=DecimalMeta(str(meta))
+                        )
+                        recuperadas += 1
+                    except (ArithmeticError, TypeError, ValueError) as meta_err:
+                        logger.warning(
+                            "Meta legada inválida no ativo %s (%r): %s",
+                            ativo_id, meta, meta_err,
+                        )
+                if recuperadas:
+                    logger.info(
+                        "Backup anterior às carteiras: %d meta(s) de alocação movida(s) "
+                        "do ativo para a posição na carteira.", recuperadas,
+                    )
 
             # 5. DEDUPLICAR FATURAS DE CARTÃO
             # Rede de segurança na fronteira do import: backups gerados por versões
@@ -540,11 +681,6 @@ def importar_universal(arquivo, usuario, password=None) -> dict:
     o isolamento transacional é gerenciado internamente por
     `restore_user_data_fcbk`, que também garante a reconexão dos signals Django
     de investimentos via bloco `try/finally` ao redor da transaction.
-
-    Args:
-        arquivo (File): O arquivo binário do backup carregado.
-        usuario (User): Instância do usuário que está processando o backup.
-        password (str, optional): Senha de criptografia. Requerido para '.fcbk'.
 
     Raises:
         ValueError: Se o formato for inválido ou a senha estiver faltando.

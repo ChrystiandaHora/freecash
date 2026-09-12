@@ -7,10 +7,12 @@ serviços de apoio para cadastros em lote, liquidação e consolidação de grá
 """
 
 import calendar
+import logging
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from dateutil.relativedelta import relativedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum, Q, F, Value
 from django.db.models.functions import Coalesce, Greatest
@@ -21,6 +23,12 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from core.throttles import AuthScopedRateThrottle
+from core.views.cookies import clear_refresh_cookie, set_refresh_cookie
+
+logger = logging.getLogger("core")
 
 from core.models import (
     AporteMeta, Categoria, Conta, CartaoCredito, MetaFinanceira, PlanoMetas
@@ -65,11 +73,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
         return Categoria.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
-        """Salva a nova categoria atribuindo o usuário autenticado da requisição.
-
-        Args:
-            serializer (Serializer): Instância do serializador da categoria.
-        """
+        """Salva a nova categoria atribuindo o usuário autenticado da requisição."""
         serializer.save(usuario=self.request.user)
 
 
@@ -90,11 +94,7 @@ class CartaoCreditoViewSet(viewsets.ModelViewSet):
         return CartaoCredito.objects.filter(usuario=self.request.user, ativo=True)
 
     def perform_create(self, serializer):
-        """Associa o usuário autenticado como proprietário ao criar o cartão.
-
-        Args:
-            serializer (Serializer): Instância do serializador do cartão.
-        """
+        """Associa o usuário autenticado como proprietário ao criar o cartão."""
         serializer.save(usuario=self.request.user)
 
 
@@ -138,11 +138,7 @@ class ContaViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        """Salva a nova conta associando-a ao usuário autenticado.
-
-        Args:
-            serializer (Serializer): Serializador da conta contendo dados validados.
-        """
+        """Salva a nova conta associando-a ao usuário autenticado."""
         serializer.save(usuario=self.request.user)
 
 
@@ -163,7 +159,7 @@ class SaldoAtualAPIView(APIView):
         da janela e hoje seriam contados duas vezes — uma no saldo, outra na curva.
 
         Args:
-            request (Request): Requisição HTTP autenticada, com `ate` (YYYY-MM-DD)
+            request: Requisição HTTP autenticada, com `ate` (YYYY-MM-DD)
                 opcional na query string. Datas inválidas caem em hoje.
 
         Returns:
@@ -194,9 +190,6 @@ class DashboardAPIView(APIView):
 
     def get(self, request):
         """Processa a requisição GET retornando o payload completo do dashboard financeiro.
-
-        Args:
-            request (Request): Requisição HTTP contendo parâmetros opcionais de mês/ano.
 
         Returns:
             Response: Dicionário contendo estatísticas, séries temporais e listas do dashboard.
@@ -308,12 +301,11 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     e de atualização (refresh token, configurado em um cookie seguro HttpOnly).
     """
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs) -> Response:
         """Gera os tokens JWT e define o refresh token em um cookie HttpOnly seguro.
-
-        Args:
-            request (Request): Requisição contendo as credenciais (username, password).
 
         Returns:
             Response: Dicionário contendo o token de acesso (access token).
@@ -322,26 +314,17 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
-            raise InvalidToken(e.detail)
-            
+            # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
+            # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
+            # em vez de 401 sempre que o token era inválido, expirado ou revogado.
+            raise InvalidToken(str(e))
+
         data = serializer.validated_data
         response_data = {
             "access": data["access"]
         }
         response = Response(response_data, status=status.HTTP_200_OK)
-        
-        # Set the refresh token in HttpOnly cookie
-        refresh_token = data["refresh"]
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=7 * 24 * 60 * 60, # 7 days
-            path="/api/token/refresh/",
-        )
-        return response
+        return set_refresh_cookie(response, data["refresh"])
 
 class CookieTokenRefreshView(TokenRefreshView):
     """View customizada para renovação de token JWT.
@@ -353,14 +336,11 @@ class CookieTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs) -> Response:
         """Processa a renovação do token de acesso utilizando o refresh token do cookie.
 
-        Args:
-            request (Request): Requisição contendo cookies ou dados do refresh token.
-
         Returns:
             Response: Novo token de acesso gerado.
         """
         # Extract refresh token from cookies
-        refresh_token = request.COOKIES.get("refresh_token")
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
         if not refresh_token:
             # check body just in case
             refresh_token = request.data.get("refresh")
@@ -374,7 +354,10 @@ class CookieTokenRefreshView(TokenRefreshView):
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
-            raise InvalidToken(e.detail)
+            # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
+            # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
+            # em vez de 401 sempre que o token era inválido, expirado ou revogado.
+            raise InvalidToken(str(e))
             
         data = serializer.validated_data
         response_data = {
@@ -385,118 +368,40 @@ class CookieTokenRefreshView(TokenRefreshView):
         # If SimpleJWT rotated the refresh token, set the new one in the cookie
         new_refresh = data.get("refresh")
         if new_refresh:
-            response.set_cookie(
-                key="refresh_token",
-                value=new_refresh,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=7 * 24 * 60 * 60,
-                path="/api/token/refresh/",
-            )
+            set_refresh_cookie(response, new_refresh)
         return response
 
 class CookieTokenClearView(APIView):
     """Endpoint responsável pelo logout do usuário no sistema.
 
-    Limpa e deleta o cookie HttpOnly do refresh token para invalidar a sessão ativa.
+    Revoga o refresh token recebido no cookie (registrando-o na blacklist do
+    SimpleJWT) e em seguida remove o cookie, encerrando a sessão de fato.
+
+    Nota sobre o access token: por ser stateless, ele continua válido até expirar
+    (15 minutos). Essa janela é inerente a JWT sem introspecção e está documentada
+    em `docs/autenticacao.md`.
     """
     permission_classes = []
+
     def post(self, request) -> Response:
-        """Remove o cookie seguro de refresh token, encerrando a autenticação.
-
-        Args:
-            request (Request): Requisição de logout.
+        """Revoga o refresh token e remove o cookie, encerrando a autenticação.
 
         Returns:
-            Response: Confirmação de logout bem-sucedido.
+            Response: Confirmação de logout. O logout é sempre reportado como
+                bem-sucedido: um token ausente, expirado ou já revogado significa
+                que a sessão já não existe, que é exatamente o estado desejado.
         """
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
+
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except TokenError:
+                # Token expirado, malformado ou já revogado: nada a fazer.
+                logger.info("Logout com refresh token inválido ou já revogado.")
+
         response = Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh_token", path="/api/token/refresh/")
-        return response
-
-
-from django.db import transaction
-from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-from core.services.criar_usuario import criar_usuario_com_ecosistema
-
-class RegistrationAPIView(APIView):
-    """Endpoint responsável pela criação e registro de novos usuários no FreeCash.
-
-    Realiza validações de senhas, evita duplicação de usernames e cria o
-    ecossistema financeiro básico (categorias iniciais) em uma transação atômica.
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs) -> Response:
-        """Cria um novo usuário, gera suas credenciais e retorna os tokens JWT iniciais.
-
-        Args:
-            request (Request): Requisição com username, password e confirm.
-
-        Returns:
-            Response: Token de acesso e cookie HttpOnly do refresh token.
-        """
-        username = request.data.get("username")
-        password = request.data.get("password")
-        confirm = request.data.get("confirm")
-
-        if not username or not password or not confirm:
-            return Response(
-                {"detail": "Todos os campos (usuário, senha e confirmação de senha) são obrigatórios."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        username = username.strip()
-
-        if len(password) < 6:
-            return Response(
-                {"detail": "A senha deve ter no mínimo 6 caracteres."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if password != confirm:
-            return Response(
-                {"detail": "As senhas não coincidem."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        User = get_user_model()
-        if User.objects.filter(username=username).exists():
-            return Response(
-                {"detail": "Este nome de usuário já está em uso."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            with transaction.atomic():
-                user = criar_usuario_com_ecosistema(username, password)
-            
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-            refresh['username'] = user.username
-            response_data = {
-                "access": str(refresh.access_token)
-            }
-            response = Response(response_data, status=status.HTTP_201_CREATED)
-            
-            # Set the refresh token in HttpOnly cookie
-            response.set_cookie(
-                key="refresh_token",
-                value=str(refresh),
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=7 * 24 * 60 * 60, # 7 days
-                path="/api/token/refresh/",
-            )
-            return response
-        except Exception as e:
-            return Response(
-                {"detail": f"Erro interno ao criar usuário: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return clear_refresh_cookie(response)
 
 
 # ─── Integrated REST Endpoints for React Frontend ─────────────────────────────
@@ -527,11 +432,7 @@ class CartaoCreditoAPIViewSet(viewsets.ModelViewSet):
         return CartaoCredito.objects.filter(usuario=self.request.user, ativo=True)
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar um novo cartão.
-
-        Args:
-            serializer (Serializer): Serializador do cartão.
-        """
+        """Salva a associação do usuário logado ao criar um novo cartão."""
         serializer.save(usuario=self.request.user)
 
 
@@ -573,37 +474,31 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-data_prevista')
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar a despesa.
-
-        Args:
-            serializer (Serializer): Serializador da conta.
-        """
+        """Salva a associação do usuário logado ao criar a despesa."""
         serializer.save(usuario=self.request.user)
 
     def perform_update(self, serializer):
-        """Garante a associação do usuário ao atualizar a despesa.
-
-        Args:
-            serializer (Serializer): Serializador da conta.
-        """
+        """Garante a associação do usuário ao atualizar a despesa."""
         serializer.save(usuario=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Response:
-        """Customiza a criação resolvendo a categoria pelo nome em string e mapeando a data de vencimento.
+        """Customiza a criação resolvendo a categoria pelo nome e mapeando a data de vencimento.
 
-        Args:
-            request (Request): Requisição contendo os dados da despesa.
+        Quando `recorrencia` vem preenchida, cria um `LancamentoRecorrente` de
+        despesa e gera suas ocorrências, em vez de uma `Conta` avulsa — mesmo
+        contrato já usado pelas receitas.
 
         Returns:
             Response: A despesa criada serializada.
         """
         data = request.data.copy()
-        
+
         # 1. Map data_vencimento -> data_prevista
         if 'data_vencimento' in data:
             data['data_prevista'] = data['data_vencimento']
-            
+
         # 2. Resolve or create category name string
+        categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
             categoria_obj, _ = Categoria.objects.get_or_create(
@@ -612,9 +507,74 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
                 tipo=Categoria.TIPO_DESPESA
             )
             data['categoria'] = categoria_obj.id
-            
+
         # 3. Enforce tipo = Despesa
         data['tipo'] = Conta.TIPO_DESPESA
+
+        # 4. Despesa fixa: cria a regra e materializa as ocorrências.
+        # Sem isto, a projeção de saldo de 12 meses só enxergaria as despesas
+        # lançadas manualmente mês a mês, e a curva subiria de forma irreal.
+        frequencia = data.get('recorrencia')
+        if frequencia:
+            from datetime import datetime
+
+            from core.models import LancamentoRecorrente
+            from core.services.recorrencia_service import criar_regra_e_gerar
+
+            frequencias_validas = dict(LancamentoRecorrente.FREQUENCIA_CHOICES)
+            if frequencia not in frequencias_validas:
+                return Response(
+                    {"recorrencia": [
+                        "Frequência inválida. Use: "
+                        + ", ".join(frequencias_validas)
+                    ]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not data.get('data_prevista'):
+                return Response(
+                    {"data_vencimento": ["Obrigatória para uma despesa recorrente."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                data_inicio = datetime.strptime(
+                    str(data['data_prevista']), "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                return Response(
+                    {"data_vencimento": ["Use o formato AAAA-MM-DD."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            data_fim = None
+            if data.get('data_fim'):
+                try:
+                    data_fim = datetime.strptime(
+                        str(data['data_fim']), "%Y-%m-%d"
+                    ).date()
+                except ValueError:
+                    return Response(
+                        {"data_fim": ["Use o formato AAAA-MM-DD."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            _, primeira = criar_regra_e_gerar(
+                usuario=request.user,
+                descricao=data.get('descricao', ''),
+                categoria=categoria_obj,
+                valor=data.get('valor'),
+                frequencia=frequencia,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                tipo=LancamentoRecorrente.TIPO_DESPESA,
+            )
+            return Response(
+                ContasPagarAPISerializer(
+                    primeira, context={'request': request}
+                ).data,
+                status=status.HTTP_201_CREATED,
+            )
         
         # Validate using standard serializer
         serializer = ContaSerializer(data=data, context={'request': request})
@@ -631,9 +591,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         Para faturas consolidadas de cartão (eh_fatura_cartao=True), o campo `valor`
         não pode ser alterado manualmente — ele é sempre calculado automaticamente
         pelo sistema de signals.
-
-        Args:
-            request (Request): Dados da modificação.
 
         Returns:
             Response: Despesa atualizada serializada.
@@ -683,9 +640,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         consolidação recriaria a fatura no próximo salvamento. Por isso a
         exclusão de uma fatura remove o período inteiro.
 
-        Args:
-            request (Request): Requisição HTTP.
-
         Returns:
             Response: 204 sem conteúdo em caso de sucesso.
         """
@@ -703,10 +657,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
     def pagar(self, request, pk=None) -> Response:
         """Liquida a despesa marcando-a como paga na data atual.
 
-        Args:
-            request (Request): Requisição HTTP.
-            pk (str, optional): ID da conta.
-
         Returns:
             Response: Despesa paga serializada.
         """
@@ -717,10 +667,6 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['put'], url_path='desfazer-pagamento')
     def desfazer_pagamento(self, request, pk=None) -> Response:
         """Reverte o status de pago da despesa, retornando-a a pendente.
-
-        Args:
-            request (Request): Requisição HTTP.
-            pk (str, optional): ID da conta.
 
         Returns:
             Response: Despesa revertida serializada.
@@ -734,7 +680,7 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         """Registra múltiplos lançamentos de despesa simultaneamente de forma atômica.
 
         Args:
-            request (Request): Requisição contendo 'itens' (lista de despesas) e 'todas_pagas'.
+            request: Requisição contendo 'itens' (lista de despesas) e 'todas_pagas'.
 
         Returns:
             Response: Confirmação do total de despesas criadas ou lista detalhada de erros.
@@ -894,29 +840,18 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-data_prevista')
 
     def perform_create(self, serializer):
-        """Salva a associação do usuário logado ao criar a receita.
-
-        Args:
-            serializer (Serializer): Serializador da receita.
-        """
+        """Salva a associação do usuário logado ao criar a receita."""
         serializer.save(usuario=self.request.user)
 
     def perform_update(self, serializer):
-        """Salva o usuário autenticado na receita atualizada.
-
-        Args:
-            serializer (Serializer): Serializador de atualização.
-        """
+        """Salva o usuário autenticado na receita atualizada."""
         serializer.save(usuario=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Response:
         """Customiza a criação mapeando a data de recebimento e resolvendo a categoria.
 
-        Quando `tipo == 'recorrente'`, cria uma `ReceitaRecorrente` e gera suas
+        Quando `tipo == 'recorrente'`, cria uma `LancamentoRecorrente` e gera suas
         ocorrências iniciais em vez de uma `Conta` avulsa.
-
-        Args:
-            request (Request): Dados da nova receita.
 
         Returns:
             Response: Receita criada serializada.
@@ -980,12 +915,9 @@ class ReceitasViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs) -> Response:
         """Customiza a atualização mapeando categoria pelo nome e data de recebimento.
 
-        Quando `tipo == 'recorrente'`, atualiza (ou cria) a `ReceitaRecorrente`
+        Quando `tipo == 'recorrente'`, atualiza (ou cria) a `LancamentoRecorrente`
         vinculada e propaga os novos valores para ocorrências futuras não
         realizadas, sem afetar histórico já liquidado.
-
-        Args:
-            request (Request): Dados da modificação.
 
         Returns:
             Response: Receita atualizada serializada.
@@ -1026,19 +958,19 @@ class ReceitasViewSet(viewsets.ModelViewSet):
                 datetime.strptime(request.data['data_fim'], "%Y-%m-%d").date()
                 if request.data.get('data_fim') else None
             )
-            if instance.receita_recorrente_id:
+            if instance.recorrencia_id:
                 campos = {"valor": serializer.instance.valor, "descricao": serializer.instance.descricao,
                           "categoria": categoria_obj}
                 if frequencia:
                     campos["frequencia"] = frequencia
                 campos["data_fim"] = data_fim
-                propagar_edicao(instance.receita_recorrente, **campos)
+                propagar_edicao(instance.recorrencia, **campos)
             elif frequencia:
-                from core.models import ReceitaRecorrente
+                from core.models import LancamentoRecorrente
                 from core.services.recorrencia_service import gerar_ocorrencias, HORIZONTE_PADRAO_MESES
                 from dateutil.relativedelta import relativedelta
 
-                regra = ReceitaRecorrente.objects.create(
+                regra = LancamentoRecorrente.objects.create(
                     usuario=request.user,
                     descricao=serializer.instance.descricao,
                     categoria=categoria_obj,
@@ -1050,8 +982,8 @@ class ReceitasViewSet(viewsets.ModelViewSet):
                 # Vincula esta ocorrência já existente ANTES de gerar as futuras,
                 # para que `gerar_ocorrencias` a reconheça e não crie uma duplicata
                 # na mesma data_inicio.
-                serializer.instance.receita_recorrente = regra
-                serializer.instance.save(update_fields=["receita_recorrente"])
+                serializer.instance.recorrencia = regra
+                serializer.instance.save(update_fields=["recorrencia"])
                 horizonte = regra.data_inicio + relativedelta(months=HORIZONTE_PADRAO_MESES)
                 gerar_ocorrencias(regra, horizonte)
 
@@ -1113,9 +1045,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
     def _verificar_editavel(self, despesa: Conta) -> Response | None:
         """Verifica se a compra pode ser editada/excluída (fatura não paga).
 
-        Args:
-            despesa (Conta): A compra individual a ser verificada.
-
         Returns:
             Response | None: Resposta de erro 403 se não editável, None se permitido.
         """
@@ -1161,9 +1090,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Compras enviadas sem categoria nascem caracterizadas como gasto de cartão,
         para não aparecerem como "Sem categoria" nos painéis.
-
-        Args:
-            serializer (Serializer): Serializador validado.
         """
         extras = {
             'usuario': self.request.user,
@@ -1181,9 +1107,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Aceita `data_compra` e calcula automaticamente a `data_prevista` (vencimento)
         com base nas configurações do cartão selecionado. O signal sincroniza a fatura.
-
-        Args:
-            request (Request): Dados da nova compra.
 
         Returns:
             Response: Compra criada serializada.
@@ -1219,9 +1142,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         """Atualiza uma compra individual de cartão.
 
         Impede a edição se a fatura correspondente já estiver paga.
-
-        Args:
-            request (Request): Dados da atualização.
 
         Returns:
             Response: Compra atualizada serializada.
@@ -1266,9 +1186,6 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
 
         Impede a exclusão se a fatura correspondente já estiver paga.
         O signal `post_delete` atualiza automaticamente o valor da fatura.
-
-        Args:
-            request (Request): Requisição HTTP.
 
         Returns:
             Response: 204 No Content em caso de sucesso.
@@ -1341,7 +1258,7 @@ class TransacoesViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RelatoriosDREAPIView(APIView):
-    """Endpoint responsável pela emissão simplificada do relatório de DRE (Demonstração do Resultado do Exercício).
+    """Emite o relatório de DRE (Demonstração do Resultado do Exercício).
 
     Emite agregados anuais consolidados contendo o somatório de receitas,
     despesas fixas e variáveis, rentabilidade e dividendos acumulados da carteira.
@@ -1350,9 +1267,6 @@ class RelatoriosDREAPIView(APIView):
 
     def get(self, request) -> Response:
         """Calcula e formata os dados anuais da DRE.
-
-        Args:
-            request (Request): Requisição HTTP contendo 'ano' na query string.
 
         Returns:
             Response: Payload JSON estruturado com DRE anual de receitas, despesas e investimentos.
@@ -1475,9 +1389,6 @@ class ExecutiveBIDashboardAPIView(APIView):
 
     def get(self, request) -> Response:
         """Calcula e formata a série mensal e indicadores de saúde patrimonial do usuário.
-
-        Args:
-            request (Request): Requisição HTTP.
 
         Returns:
             Response: Dicionário contendo labels de meses, séries de liquidez, custódia, DRE e KPIs.
@@ -1687,11 +1598,7 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        """Salva a nova meta atribuindo o usuário autenticado.
-
-        Args:
-            serializer (Serializer): Serializador da meta com dados validados.
-        """
+        """Salva a nova meta atribuindo o usuário autenticado."""
         serializer.save(usuario=self.request.user)
 
     @action(detail=False, methods=['post'], url_path='gerar-padrao')
@@ -1702,7 +1609,7 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         de modo que ajustar a renda não apaga o progresso registrado.
 
         Args:
-            request (Request): Requisição autenticada, sem corpo obrigatório.
+            request: Requisição autenticada, sem corpo obrigatório.
 
         Returns:
             Response: Lista das metas padrão atualizadas, ou 400 se o plano
@@ -1728,9 +1635,6 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         `{"patrimonio_renda": "150", "reserva_emergencia": "12"}`, e recalcula
         os valores-alvo correspondentes. Aplicado em transação para que uma
         entrada inválida não deixe metade dos multiplicadores atualizados.
-
-        Args:
-            request (Request): Requisição com o mapa de multiplicadores.
 
         Returns:
             Response: Todas as metas do usuário já atualizadas, ou 400 com os
@@ -1783,12 +1687,11 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='aportes')
-    def aportes(self, request, pk=None) -> Response:
+    def aportes(self, request, pk: str = None) -> Response:
         """Registra um aporte na meta e soma o valor no acumulado.
 
         Args:
-            request (Request): Requisição com `valor` e, opcionalmente, `data` e `observacao`.
-            pk (str): Chave primária da meta.
+            request: Requisição com `valor` e, opcionalmente, `data` e `observacao`.
 
         Returns:
             Response: A meta atualizada, já com o novo aporte no histórico.
@@ -1810,16 +1713,11 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(meta).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['delete'], url_path=r'aportes/(?P<aporte_id>[^/.]+)')
-    def remover_aporte(self, request, pk=None, aporte_id=None) -> Response:
+    def remover_aporte(self, request, pk: str = None, aporte_id: str = None) -> Response:
         """Exclui um aporte e desconta o valor do acumulado da meta.
 
         Necessário para corrigir um lançamento errado: sem isso, um aporte
         digitado com o valor trocado ficaria somado para sempre.
-
-        Args:
-            request (Request): Requisição autenticada.
-            pk (str): Chave primária da meta.
-            aporte_id (str): Chave primária do aporte a excluir.
 
         Returns:
             Response: A meta atualizada, ou 404 se o aporte não pertencer a ela.
@@ -1854,9 +1752,6 @@ class PlanoMetasAPIView(APIView):
     def get(self, request) -> Response:
         """Retorna o plano salvo, as médias sugeridas e o gasto do mês corrente.
 
-        Args:
-            request (Request): Requisição autenticada.
-
         Returns:
             Response: Payload com `plano`, `sugestoes` e `gasto_essencial_mes`.
         """
@@ -1878,9 +1773,6 @@ class PlanoMetasAPIView(APIView):
 
     def put(self, request) -> Response:
         """Atualiza a base de cálculo do usuário.
-
-        Args:
-            request (Request): Requisição com os campos do plano a atualizar.
 
         Returns:
             Response: O plano atualizado, ou 400 com os erros de validação.

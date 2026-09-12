@@ -3,32 +3,22 @@
  *
  * Era o rodapé da sidebar. Tem duas formas deliberadamente diferentes:
  *
- * - `menu` (header desktop): o avatar com a inicial fica sempre visível — é o
- *   que responde "estou logado?" num relance — e é um gatilho de *disclosure*
- *   que abre um painel com o username completo, o tema e o Sair, respondendo
- *   "qual conta?". Consolidar assim ENCOLHE a barra: o Sair (~90px) e o tema
- *   (~44px) saíram dela e o avatar custa ~46px. E tira o logout de um clique no
- *   canto, o que evita saída acidental.
- * - `stacked` (rodapé do painel mobile): avatar + nome + tema + Sair, tudo
- *   achatado e sempre visível. Ali há espaço de sobra e um popup dentro de outro
- *   painel seria aninhamento gratuito.
+ * - `menu` (header desktop): o avatar com a inicial fica sempre visível — responde
+ *   "estou logado?" num relance — e é um gatilho de *disclosure* que abre o painel com
+ *   username, tema e Sair. Consolidar assim encolhe a barra (o Sair custava ~90px e o
+ *   tema ~44px; o avatar custa ~46px) e tira o logout de um clique no canto.
+ * - `stacked` (rodapé do painel mobile): tudo achatado e visível, porque ali há espaço e
+ *   um popup dentro de outro painel seria aninhamento gratuito.
  *
- * O painel agrega o que é "meu": identidade, preferência de tema e sair. O tema
- * NÃO fecha o painel ao ser acionado — é um ciclo de três estados, e você precisa
- * ver o resultado e poder clicar de novo. O Sair fecha por navegar para /login.
+ * O tema **não** fecha o painel ao ser acionado: é um ciclo de três estados, e você
+ * precisa ver o resultado e poder clicar de novo.
  *
- * PADRÃO: disclosure, igual ao resto da navbar — sem `role="menu"/"menuitem"`.
- * Um menu ARIA obrigaria o contrato completo de teclado (setas, Home/End,
- * type-ahead) para dois itens, e implementar 60% dele é pior que não usá-lo,
- * porque a TA já anunciou um contrato que o widget não honra.
- *
- * Diferente dos painéis de navegação, este NUNCA abre por hover: é popup de
- * ação, não de navegação, então abrir sem intenção explícita seria hostil.
- *
- * @module components/nav/UserMenu
+ * Padrão de disclosure, como o resto da navbar — sem `role="menu"`. Um menu ARIA
+ * obrigaria o contrato completo de teclado para dois itens, e implementar 60% dele é
+ * pior que não usá-lo. E este nunca abre por hover: é popup de ação, não de navegação.
  */
-import { LogOut, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogOut, User, UserCog } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthProvider';
@@ -42,7 +32,6 @@ import { ThemeToggle } from './ThemeToggle';
  * @param {() => void} [props.onClose] - Fecha o painel (usado quando o Tab sai dele).
  * @param {(el: HTMLButtonElement | null) => void} [props.triggerRef] - Callback ref do gatilho.
  * @param {(el: HTMLDivElement | null) => void} [props.panelRef] - Callback ref do painel.
- * @returns {React.JSX.Element}
  */
 export function UserMenu({ variant = 'menu', isOpen, onToggle, onClose, triggerRef, panelRef }) {
   const { user, logout } = useAuth();
@@ -65,6 +54,24 @@ export function UserMenu({ variant = 'menu', isOpen, onToggle, onClose, triggerR
     >
       {initial ?? <User className="h-4 w-4" />}
     </span>
+  );
+
+  // Acesso à edição da própria conta. É um `<Link>`, e não um botão com
+  // `navigate()`: destino de navegação precisa ser link de verdade, para não
+  // perder "abrir em nova aba", o menu de contexto e o rotor de links.
+  const contaLink = (
+    <Link
+      to="/conta"
+      onClick={onClose}
+      className={cn(
+        'flex min-h-11 w-full items-center gap-2 rounded-xl px-4 text-muted-foreground',
+        'transition-colors hover:bg-muted hover:text-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+      )}
+    >
+      <UserCog className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <span className="text-sm font-semibold">Minha conta</span>
+    </Link>
   );
 
   const logoutButton = (
@@ -94,6 +101,7 @@ export function UserMenu({ variant = 'menu', isOpen, onToggle, onClose, triggerR
           </div>
         </div>
         <div className="my-1 h-px bg-border/60" aria-hidden="true" />
+        {contaLink}
         <ThemeToggle variant="row" />
         {logoutButton}
       </div>
@@ -150,6 +158,7 @@ export function UserMenu({ variant = 'menu', isOpen, onToggle, onClose, triggerR
           </div>
         </div>
         <div className="my-1 h-px bg-border/60" aria-hidden="true" />
+        {contaLink}
         <ThemeToggle variant="row" />
         {logoutButton}
       </div>

@@ -29,7 +29,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from datetime import date
 from decimal import Decimal
-from investimento.models import CarteiraHistorico
+from investimento.models import Carteira, CarteiraHistorico
 from investimento.services.carteira_historico_service import CarteiraHistoricoService
 
 class CarteiraHistoricoServiceTestCase(TestCase):
@@ -43,6 +43,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         # Mês 3: Mar 2026. Investido = 1500, Patrimonio = 1550 (Rentabilidade = 50, Rentabilidade % = 3.33%)
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 1, 31),
             patrimonio=Decimal("1050.00"),
             total_compras=Decimal("1000.00"),
@@ -53,6 +54,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         )
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 2, 28),
             patrimonio=Decimal("1600.00"),
             total_compras=Decimal("1500.00"),
@@ -63,6 +65,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         )
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 3, 31),
             patrimonio=Decimal("1550.00"),
             total_compras=Decimal("1500.00"),
@@ -105,6 +108,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         # Mês 3: total_dividendos acumulado = 250 (0 no mês)
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 1, 31),
             patrimonio=Decimal("1000.00"),
             total_compras=Decimal("1000.00"),
@@ -115,6 +119,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         )
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 2, 28),
             patrimonio=Decimal("1200.00"),
             total_compras=Decimal("1000.00"),
@@ -125,6 +130,7 @@ class CarteiraHistoricoServiceTestCase(TestCase):
         )
         CarteiraHistorico.objects.create(
             usuario=self.user,
+            carteira=Carteira.padrao_de(self.user),
             data=date(2026, 3, 31),
             patrimonio=Decimal("1200.00"),
             total_compras=Decimal("1000.00"),

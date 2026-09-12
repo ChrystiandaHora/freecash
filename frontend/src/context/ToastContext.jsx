@@ -1,38 +1,9 @@
-/**
- * Sistema de Notificações em Toast (ToastContext).
- *
- * Provedor de contexto que implementa um sistema de notificações temporárias
- * (toasts) posicionadas no canto inferior direito da tela. Cada notificação
- * é exibida por um tempo configurável e removida automaticamente após sua
- * expiração.
- *
- * Tipos de Toast suportados:
- * - `'success'` → Verde esmeralda com ícone de confirmação.
- * - `'error'`   → Vermelho destrutivo com ícone de alerta.
- * - `'warning'` → Âmbar com ícone de aviso triangular.
- * - `'info'`    → Cor primária com ícone informativo (padrão).
- *
- * Contexto Exportado: `{ addToast, removeToast }`
- *
- * @module ToastContext
- * @component
- *
- * @param {object}         props          - Props do componente.
- * @param {React.ReactNode} props.children - Árvore de componentes filhos que
- *                                          terão acesso ao contexto de toast.
- * @returns {JSX.Element} Provider com o container de toasts renderizado.
- *
- * @example
- * // Disparar um toast de sucesso em qualquer componente filho:
- * const { addToast } = useToast();
- * addToast('Operação realizada com sucesso!', 'success');
- */
+/** Sistema de notificações temporárias em toast (ToastContext). */
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
-// Papel ARIA por tipo (WCAG 4.1.3): erro/aviso interrompem (assertive), sucesso/info só informam (polite).
 const roleByType = {
   error: 'alert',
   warning: 'alert',
@@ -40,35 +11,22 @@ const roleByType = {
   info: 'status',
 };
 
-/** Intervalo de reavaliação do auto-dismiss. */
 const TICK_MS = 250;
-/** Folga concedida após o usuário soltar o toast, antes de dispensá-lo. */
 const GRACE_MS = 750;
-/** Teto de retenção por hover: além disso o toast sai mesmo com o ponteiro parado sobre ele. */
 const MAX_HOVER_HOLD_FACTOR = 3;
 
-/**
- * Como o usuário está retendo o toast, se estiver. Consultamos o DOM em vez de
- * confiar em eventos pareados de hover/foco, porque mouseleave é pouco confiável:
- * pode disparar com o foco de teclado ainda dentro do toast, e não dispara quando o
- * toast se reposiciona por outro ter sido removido sem o ponteiro se mover.
- */
+/** Avalia se o toast está sob foco de teclado ou cursor do mouse. */
 const getHoldState = (id) => {
   const el = document.querySelector(`[data-toast-id="${id}"]`);
   if (!el) return { porFoco: false, porHover: false };
   return {
-    // Foco de teclado é interação deliberada: retém sem teto, pois dispensar
-    // destruiria o elemento focado e jogaria o foco no <body>.
     porFoco: el.contains(document.activeElement),
-    // Hover pode ser acidental — a pilha fica no canto inferior direito, ponto
-    // comum de repouso do mouse — então tem teto.
     porHover: el.matches(':hover'),
   };
 };
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
-  // Prazos absolutos de cada toast, fora do state para não re-renderizar a cada tick.
   const timersRef = useRef(new Map());
 
   const removeToast = useCallback((id) => {
@@ -81,8 +39,6 @@ export function ToastProvider({ children }) {
     if (duration > 0) {
       const agora = Date.now();
       timersRef.current.set(id, {
-        // Prazos absolutos (em vez de decrementar um contador) para que reinícios
-        // do intervalo não estendam indefinidamente a vida do toast.
         prazo: agora + duration,
         prazoMaximo: agora + duration * MAX_HOVER_HOLD_FACTOR,
       });
@@ -90,13 +46,7 @@ export function ToastProvider({ children }) {
     setToasts((prev) => [...prev, { id, message, type, duration }]);
   }, []);
 
-  /**
-   * Um único tick reavalia todos os toasts, em vez de um setTimeout por toast.
-   * A checagem de retenção acontece a cada ciclo, o que trata de forma uniforme
-   * hover, foco de teclado e reposicionamento da pilha — casos em que depender de
-   * mouseenter/mouseleave pareados deixava o toast preso na tela ou o dispensava
-   * com o foco ainda dentro dele (SC 2.2.1 e perda de foco).
-   */
+  /** Reavalia periodicamente o auto-dismiss respeitando hover e foco ativo. */
   useEffect(() => {
     if (toasts.length === 0) return;
 
@@ -159,12 +109,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
       
-      {/* Container Absoluto no Canto Inferior Direito */}
-      {/* A live region fica no container PERSISTENTE, não no toast: um nó com
-          role="status" inserido junto com seu próprio texto costuma não ser
-          anunciado por NVDA/JAWS. Com o container já presente na árvore, a
-          inserção do toast é percebida como mudança de conteúdo. O role por
-          toast (alert para erros) continua valendo para a urgência. */}
+      {/* Live region persistente para leitores de tela */}
       <div
         aria-live="polite"
         aria-atomic="false"
@@ -179,8 +124,6 @@ export function ToastProvider({ children }) {
               className={`w-full pointer-events-auto flex items-start gap-3 rounded-xl p-4 shadow-lg border backdrop-blur-md text-xs font-semibold text-foreground/90 transition-all transform animate-toast-in ${config.borderClass} ${config.bgClass}`}
               role={roleByType[toast.type] ?? 'status'}
             >
-              {/* A pausa por hover/foco é resolvida pelo tick, que consulta
-                  :hover e o foco ativo — não precisa de handlers aqui. */}
               {config.icon}
               <div className="flex-1 leading-relaxed break-words pr-2">
                 {toast.message}

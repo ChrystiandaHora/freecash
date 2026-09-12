@@ -1,27 +1,18 @@
 /**
  * Banner de mensagem contextual (erro, sucesso, aviso ou informação).
  *
- * Padroniza as caixas de mensagem coloridas usadas em todas as telas, reutilizando
- * a mesma paleta semântica já estabelecida pelo componente Badge.
+ * Padroniza as caixas coloridas de todas as telas, reutilizando a paleta semântica do
+ * componente Badge.
  *
- * @component
- * @param {Object} props - Propriedades do componente.
- * @param {"error" | "success" | "warning" | "info"} [props.variant="info"] - Estilo temático da mensagem.
- * @param {React.ComponentType} [props.icon] - Componente de ícone (lucide-react) exibido à esquerda.
- * @param {string} [props.title] - Título curto em destaque, exibido acima do conteúdo.
- * @param {string} [props.className] - Estilos CSS extras do Tailwind.
+ * @param {"error" | "success" | "warning" | "info"} [props.variant="info"] - Estilo da mensagem.
+ * @param {React.ComponentType} [props.icon] - Ícone (lucide-react) exibido à esquerda.
+ * @param {string} [props.title] - Título curto em destaque.
  * @param {React.ReactNode} props.children - Conteúdo da mensagem.
- * @returns {React.JSX.Element} Elemento JSX do Alert renderizado.
  *
- * Nota de acessibilidade: os tons de texto de cada variante foram escolhidos
- * para manter contraste >= 4.5:1 (WCAG AA / WAVE) mesmo contra o fundo mais
- * claro do tema (`--background: #eee`) — por isso `success`/`warning` usam
- * -800 em vez de -600 (que falha: ~3.2:1 a ~3.8:1 nesse fundo).
- *
- * O `role` da região é derivado da variante (WCAG 4.1.3 — Status Messages):
- * `error`/`warning` usam `role="alert"` (anúncio assertivo), `success`/`info`
- * usam `role="status"` (anúncio educado). Não definimos `aria-live` explícito
- * junto, pois o role já carrega a política de live-region implícita correta.
+ * Acessibilidade: os tons de texto mantêm contraste >= 4.5:1 mesmo contra o fundo mais
+ * claro do tema, por isso `success`/`warning` usam -800 em vez de -600 (que fica em
+ * ~3.2:1). O `role` deriva da variante (WCAG 4.1.3): `alert` para erro e aviso,
+ * `status` para sucesso e informação — sem `aria-live` explícito, já implícito no role.
  */
 import { cn } from "../../lib/utils"
 

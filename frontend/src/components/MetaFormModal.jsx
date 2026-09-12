@@ -6,7 +6,6 @@
  * é derivada, o valor-alvo passa a ser calculado e exibido apenas para leitura,
  * evitando que o número salvo divirja do múltiplo escolhido.
  *
- * @component
  * @param {Object} props
  * @param {boolean} props.isOpen - Controla a exibição do diálogo.
  * @param {Object|null} [props.meta] - Meta em edição; ausente significa criação.
@@ -15,7 +14,6 @@
  * @param {Function} props.onClose - Callback para fechar o diálogo.
  * @param {Function} [props.onSaved] - Disparado após salvar com sucesso.
  * @param {Function} [props.onError] - Disparado quando a gravação falha.
- * @returns {React.JSX.Element}
  */
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'

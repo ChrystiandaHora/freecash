@@ -4,14 +4,12 @@
  * O valor informado é somado ao acumulado da meta e fica registrado no
  * histórico, exibido logo abaixo do formulário para dar contexto ao usuário.
  *
- * @component
  * @param {Object} props
  * @param {Object|null} props.meta - Meta que receberá o aporte; `null` mantém o diálogo fechado.
  * @param {Function} props.onClose - Callback para fechar o diálogo.
  * @param {Function} [props.onSaved] - Disparado após salvar com sucesso.
  * @param {Function} [props.onError] - Disparado quando a gravação falha.
  * @param {Function} [props.onAporteRemovido] - Recebe a meta atualizada após excluir um aporte.
- * @returns {React.JSX.Element}
  */
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
