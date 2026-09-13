@@ -62,7 +62,7 @@ graph LR
    * **Runtime:** Selecione **Docker** (o Render usará seu `Dockerfile.backend`) ou **Python 3**.
      * *Se escolher Python:*
        * **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --noinput`
-       * **Start Command:** `python manage.py migrate --noinput && python manage.py createcachetable && gunicorn freecash.wsgi:application --bind 0.0.0.0:$PORT`
+       * **Start Command:** `python manage.py migrate --noinput && python manage.py createcachetable && python manage.py ensure_superuser && gunicorn freecash.wsgi:application --bind 0.0.0.0:$PORT`
    * **Instance Type:** Escolha **Free** ($0/month).
 
 5. Role até **Environment Variables** (Variáveis de Ambiente) e adicione as seguintes chaves:
@@ -81,18 +81,20 @@ graph LR
 | `DJANGO_AUTH_COOKIE_SECURE` | `True` |
 | `DJANGO_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` *(Atualizaremos com a Vercel na Etapa 3)* |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://*.onrender.com` |
+| `ADMIN_USERNAME` | *(Seu usuário de administrador, ex: `admin`)* |
+| `ADMIN_EMAIL` | *(Seu e-mail, ex: `admin@seudominio.com`)* |
+| `ADMIN_PASSWORD` | *(Sua senha forte de administrador)* |
 
 6. Clique em **"Create Web Service"**.
 7. O Render começará a compilar e aplicar as migrations no Supabase. Quando terminar, o status mudará para **"Live"** e você terá uma URL, por exemplo:
    `https://freecash-api.onrender.com`
 
-8. **Criar seu Usuário Administrador:**
-   * No menu do seu serviço no Render, clique na aba **"Shell"**.
-   * Digite:
-     ```bash
-     python manage.py createsuperuser
+8. **Usuário Administrador (Automático!):**
+   * Como você preencheu `ADMIN_USERNAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD` no passo 5, o comando `ensure_superuser` **já cria a conta de administrador automaticamente no primeiro deploy** com privilégios totais (`is_staff` e `is_superuser`) e e-mail verificado!
+   * *Alternativa manual (caso prefira criar depois):* No painel do Render, vá na aba **"Shell"** e digite `python manage.py createsuperuser`. Ou no painel do Supabase (SQL Editor), execute:
+     ```sql
+     UPDATE auth_user SET is_staff = TRUE, is_superuser = TRUE WHERE username = 'seu_usuario';
      ```
-   * Defina seu nome de usuário, e-mail e senha.
 
 ---
 

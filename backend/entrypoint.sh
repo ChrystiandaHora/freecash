@@ -15,5 +15,8 @@ python manage.py migrate --noinput
 echo "==> Garantindo a tabela de cache do throttle"
 python manage.py createcachetable
 
+echo "==> Ensuring initial administrative superuser"
+python manage.py ensure_superuser
+
 echo "==> Iniciando: $*"
 exec "$@"
