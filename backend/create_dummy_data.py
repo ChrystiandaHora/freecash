@@ -1,508 +1,243 @@
-"""
-Script para criação de usuário de teste com dados realistas e balanceados.
+"""Script para criação de usuário de teste com dados realistas cobrindo 12 meses.
 
-Métricas simuladas conforme requisitos:
-- Receitas mensais: ~ R$ 20.000,00 (R$ 20.080,00)
-- Gastos mensais: ~ R$ 14.000,00 (R$ 14.000,00)
-- Investimentos total aportado: R$ 168.000,00 distribuído exatamente em 20% (R$ 33.600,00) em cada classe de ativo:
-  1. Renda Fixa (20%)
-  2. Ações Brasil (20%)
-  3. Fundos Imobiliários (FIIs) (20%)
-  4. Internacional / BDRs (20%)
-  5. Criptoativos (20%)
+Métricas:
+- Receitas: ~ R$ 20.000,00/mês
+- Gastos: ~ R$ 14.000,00/mês
+- Investimentos: R$ 168.000,00 (20% em cada uma das 5 classes)
+- Proventos contínuos em 12 meses e consolidação via CarteiraHistoricoService
 """
 
+import calendar
 import os
-import django
-from decimal import Decimal
+import sys
 from datetime import date, timedelta
+from decimal import Decimal
+from dateutil.relativedelta import relativedelta
+import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "freecash.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
-from core.models import Categoria, Conta, CartaoCredito
+from django.utils import timezone
+from core.models import CartaoCredito, Categoria, ConfigUsuario, Conta, LancamentoRecorrente
+from core.services.fatura_service import deduplicar_faturas
 from investimento.models import (
-    ClasseAtivo,
-    CategoriaAtivo,
-    SubcategoriaAtivo,
-    Ativo,
-    Carteira,
-    DetalheRendaFixa,
-    Cotacao,
-    PosicaoCarteira,
-    Transacao,
+    Ativo, Carteira, CarteiraHistorico, Cotacao, DetalheRendaFixa,
+    PosicaoCarteira, SubcategoriaAtivo, Transacao,
 )
+from investimento.services.carteira_historico_service import CarteiraHistoricoService
 from investimento.signals import criar_classificacao_padrao
 
 User = get_user_model()
 
-def seed_user_data(user):
-    print(f"Populando dados realistas para o usuário '{user.username}'...")
 
-    # Garante árvore hierárquica padrão se não existir
+def safe_date(year: int, month: int, day: int) -> date:
+    """Retorna uma data válida limitando o dia ao número máximo de dias do mês."""
+    return date(year, month, min(day, calendar.monthrange(year, month)[1]))
+
+
+def seed_user_data(user):
+    """Gera 12 meses de dados realistas e balanceados para o usuário informado."""
+    print(f"Populando dados realistas de 12 meses para o usuário '{user.username}'...")
+
     if not user.classes_ativos.exists():
         criar_classificacao_padrao(sender=User, instance=user, created=True)
 
-    # Limpa dados anteriores do usuário para um estado limpo
-    Conta.objects.filter(usuario=user).delete()
-    CartaoCredito.objects.filter(usuario=user).delete()
-    Transacao.objects.filter(usuario=user).delete()
-    Ativo.objects.filter(usuario=user).delete()
+    # Limpeza atômica dos dados anteriores APENAS do usuário de teste informado
+    for model in (Conta, CartaoCredito, Transacao, Ativo, CarteiraHistorico, LancamentoRecorrente):
+        model.objects.filter(usuario=user).delete()
 
     today = date.today()
-    current_year = today.year
-    current_month = today.month
 
     # 1. Categorias Core
-    cat_rec_salario, _ = Categoria.objects.get_or_create(usuario=user, nome="Salário & Pró-Labore", defaults={"tipo": "R"})
-    cat_rec_consultoria, _ = Categoria.objects.get_or_create(usuario=user, nome="Consultoria & Serviços PJ", defaults={"tipo": "R"})
-    cat_rec_proventos, _ = Categoria.objects.get_or_create(usuario=user, nome="Rendimentos & Dividendos", defaults={"tipo": "R"})
+    cat_defs = [
+        ("Salário & Pró-Labore", "R"), ("Consultoria & Serviços PJ", "R"), ("Rendimentos & Dividendos", "R"),
+        ("Moradia & Aluguel", "D"), ("Transporte & Veículo", "D"), ("Fatura Cartão de Crédito", "D"),
+        ("Supermercado & Alimentação", "D"), ("Saúde & Seguros", "D"),
+        ("Utilidades & Contas Básicas", "D"), ("Lazer & Assinaturas", "D"),
+    ]
+    cats = {n: Categoria.objects.get_or_create(usuario=user, nome=n, defaults={"tipo": t})[0] for n, t in cat_defs}
 
-    cat_desp_moradia, _ = Categoria.objects.get_or_create(usuario=user, nome="Moradia & Aluguel", defaults={"tipo": "D"})
-    cat_desp_veiculo, _ = Categoria.objects.get_or_create(usuario=user, nome="Transporte & Veículo", defaults={"tipo": "D"})
-    cat_desp_cartao, _ = Categoria.objects.get_or_create(usuario=user, nome="Fatura Cartão de Crédito", defaults={"tipo": "D"})
-    cat_desp_alimentacao, _ = Categoria.objects.get_or_create(usuario=user, nome="Supermercado & Alimentação", defaults={"tipo": "D"})
-    cat_desp_saude, _ = Categoria.objects.get_or_create(usuario=user, nome="Saúde & Seguros", defaults={"tipo": "D"})
-    cat_desp_utilidades, _ = Categoria.objects.get_or_create(usuario=user, nome="Utilidades & Contas Básicas", defaults={"tipo": "D"})
-    cat_desp_lazer, _ = Categoria.objects.get_or_create(usuario=user, nome="Lazer & Assinaturas", defaults={"tipo": "D"})
+    # Helper conciso para criação de lançamentos
+    def add_conta(tipo, desc, val, dt, cat, realizado=True, cartao=None, eh_fat=False, dt_compra=None):
+        return Conta.objects.create(
+            usuario=user, tipo=tipo, descricao=desc, valor=val, data_prevista=dt,
+            transacao_realizada=realizado, data_realizacao=dt if realizado else None,
+            categoria=cat, cartao=cartao, eh_fatura_cartao=eh_fat, data_compra=dt_compra,
+        )
 
-    # 2. Cartões de Crédito (Nomes genéricos)
-    c_platinum = CartaoCredito.objects.create(
-        usuario=user,
-        nome="Cartão Platinum Prime",
-        limite=Decimal("35000.00"),
-        dia_fechamento=15,
-        dia_vencimento=25,
-        ativo=True,
-    )
-    c_black = CartaoCredito.objects.create(
-        usuario=user,
-        nome="Cartão Black Executivo",
-        limite=Decimal("45000.00"),
-        dia_fechamento=25,
-        dia_vencimento=5,
-        ativo=True,
-    )
+    # 2. Cartões de Crédito
+    c_plat = CartaoCredito.objects.create(usuario=user, nome="Cartão Platinum Prime", limite=Decimal("35000.00"), dia_fechamento=15, dia_vencimento=25, ativo=True)
+    c_black = CartaoCredito.objects.create(usuario=user, nome="Cartão Black Executivo", limite=Decimal("45000.00"), dia_fechamento=25, dia_vencimento=5, ativo=True)
 
-    # 3. Receitas (~ R$ 20.000,00 -> Total R$ 20.080,00)
-    d_salario = date(current_year, current_month, 5)
-    d_consult = date(current_year, current_month, 12)
-    d_provent = date(current_year, current_month, 15)
+    # 3. Lançamentos mensais (12 meses: do mais antigo até hoje)
+    consult_vals = [Decimal(v) for v in ("4200", "4400", "4150", "4500", "4300", "4250", "4600", "4100", "4350", "4450", "4200", "4300")]
+    mercado_vals = [Decimal(v) for v in ("1420", "1480", "1390", "1510", "1450", "1430", "1530", "1400", "1460", "1490", "1440", "1450")]
+    luz_vals = [Decimal(v) for v in ("235", "245", "220", "260", "230", "240", "255", "225", "240", "250", "235", "240")]
 
-    Conta.objects.create(
-        usuario=user,
-        tipo="R",
-        descricao="Salário & Remuneração Mensal",
-        valor=Decimal("14500.00"),
-        data_prevista=d_salario,
-        transacao_realizada=True,
-        data_realizacao=d_salario,
-        categoria=cat_rec_salario,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="R",
-        descricao="Consultoria Especializada PJ",
-        valor=Decimal("4300.00"),
-        data_prevista=d_consult,
-        transacao_realizada=True,
-        data_realizacao=d_consult,
-        categoria=cat_rec_consultoria,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="R",
-        descricao="Rendimentos FIIs & Dividendos Ações",
-        valor=Decimal("1280.00"),
-        data_prevista=d_provent,
-        transacao_realizada=True,
-        data_realizacao=d_provent,
-        categoria=cat_rec_proventos,
-    )
+    for m_offset in range(11, -1, -1):
+        idx = 11 - m_offset
+        is_cur = (m_offset == 0)
+        ref = today - relativedelta(months=m_offset)
+        ref_prev = ref - relativedelta(months=1)
+        y, m = ref.year, ref.month
 
-    # 4. Despesas (~ R$ 14.000,00 -> Total R$ 14.000,00)
-    dt_black = date(current_year, current_month, 5)
-    dt_saude = date(current_year, current_month, 8)
-    dt_moradia = date(current_year, current_month, 10)
-    dt_veiculo = date(current_year, current_month, 14)
-    dt_mercado = date(current_year, current_month, 18)
-    dt_assinat = date(current_year, current_month, 20)
-    dt_platinum = date(current_year, current_month, 25)
+        # Receitas (~ R$ 20k/mês)
+        add_conta("R", "Salário & Remuneração Mensal", Decimal("14500.00"), safe_date(y, m, 5), cats["Salário & Pró-Labore"], not is_cur or today.day >= 5)
+        add_conta("R", "Consultoria Especializada PJ", consult_vals[idx], safe_date(y, m, 12), cats["Consultoria & Serviços PJ"], not is_cur or today.day >= 12)
+        add_conta("R", "Rendimentos FIIs & Dividendos Ações", Decimal(str(850 + idx * 39)), safe_date(y, m, 15), cats["Rendimentos & Dividendos"], not is_cur or today.day >= 15)
 
-    # Contas Pagas (Totalizando R$ 10.580,00 já liquidadas)
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Aluguel & Condomínio Residencial",
-        valor=Decimal("4200.00"),
-        data_prevista=dt_moradia,
-        transacao_realizada=True,
-        data_realizacao=dt_moradia,
-        categoria=cat_desp_moradia,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Fatura Cartão Black Executivo",
-        valor=Decimal("2400.00"),
-        data_prevista=dt_black,
-        transacao_realizada=True,
-        data_realizacao=dt_black,
-        categoria=cat_desp_cartao,
-        cartao=c_black,
-        eh_fatura_cartao=True,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Financiamento Parcela Veículo",
-        valor=Decimal("1850.00"),
-        data_prevista=dt_veiculo,
-        transacao_realizada=True,
-        data_realizacao=dt_veiculo,
-        categoria=cat_desp_veiculo,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Supermercado Mensal & Hortifruti",
-        valor=Decimal("1450.00"),
-        data_prevista=dt_mercado,
-        transacao_realizada=True,
-        data_realizacao=dt_mercado,
-        categoria=cat_desp_alimentacao,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Plano de Saúde Familiar Executivo",
-        valor=Decimal("680.00"),
-        data_prevista=dt_saude,
-        transacao_realizada=True,
-        data_realizacao=dt_saude,
-        categoria=cat_desp_saude,
-    )
+        # Despesas Fixas e Contas (~ R$ 14k/mês)
+        add_conta("D", "Aluguel & Condomínio Residencial", Decimal("4200.00"), safe_date(y, m, 10), cats["Moradia & Aluguel"], not is_cur or today.day >= 10)
+        add_conta("D", "Financiamento Parcela Veículo", Decimal("1850.00"), safe_date(y, m, 14), cats["Transporte & Veículo"], not is_cur or today.day >= 14)
+        add_conta("D", "Supermercado Mensal & Hortifruti", mercado_vals[idx], safe_date(y, m, 18), cats["Supermercado & Alimentação"], not is_cur or today.day >= 18)
+        add_conta("D", "Plano de Saúde Familiar Executivo", Decimal("680.00"), safe_date(y, m, 8), cats["Saúde & Seguros"], not is_cur or today.day >= 8)
+        add_conta("D", "Assinaturas de Software & Streaming", Decimal("320.00"), safe_date(y, m, 20), cats["Lazer & Assinaturas"], not is_cur)
 
-    # Contas Pendentes do Mês (Totalizando R$ 3.420,00 a vencer)
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Fatura Cartão Platinum Prime",
-        valor=Decimal("3100.00"),
-        data_prevista=dt_platinum,
-        transacao_realizada=False,
-        categoria=cat_desp_cartao,
-        cartao=c_platinum,
-        eh_fatura_cartao=True,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Assinaturas de Software & Streaming",
-        valor=Decimal("320.00"),
-        data_prevista=dt_assinat,
-        transacao_realizada=False,
-        categoria=cat_desp_lazer,
-    )
+        # Utilidades
+        if not is_cur:
+            add_conta("D", "Internet Fibra Óptica 1Gbps", Decimal("190.00"), safe_date(y, m, 20), cats["Utilidades & Contas Básicas"])
+            add_conta("D", "Energia Elétrica Concessionária", luz_vals[idx], safe_date(y, m, 22), cats["Utilidades & Contas Básicas"])
+        else:
+            add_conta("D", "Internet Fibra Óptica 1Gbps", Decimal("190.00"), today, cats["Utilidades & Contas Básicas"], realizado=False)
+            add_conta("D", "Energia Elétrica Concessionária", Decimal("240.00"), today - timedelta(days=2), cats["Utilidades & Contas Básicas"], realizado=False)
 
-    # Contas extras para enriquecer as colunas do Kanban (Vence Hoje e Atrasada)
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Internet Fibra Óptica 1Gbps",
-        valor=Decimal("190.00"),
-        data_prevista=today,
-        transacao_realizada=False,
-        categoria=cat_desp_utilidades,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Energia Elétrica Concessionária",
-        valor=Decimal("240.00"),
-        data_prevista=today - timedelta(days=2),
-        transacao_realizada=False,
-        categoria=cat_desp_utilidades,
-    )
+        # Cartão Black Executivo (fechamento 25, vencimento 5)
+        dt_black = safe_date(y, m, 5)
+        pg_black = not is_cur or today.day >= 5
+        add_conta("D", f"Fatura Cartão Black Executivo{' - ' + f'{m:02d}/{y}' if not is_cur else ''}", Decimal("2400.00"), dt_black, cats["Fatura Cartão de Crédito"], realizado=pg_black, cartao=c_black, eh_fat=True)
+        add_conta("D", "Combustível & Serviços Automotivos", Decimal("380.00"), dt_black, cats["Transporte & Veículo"], realizado=pg_black, cartao=c_black, dt_compra=safe_date(ref_prev.year, ref_prev.month, 10))
+        add_conta("D", "Restaurantes Executivos & Cafés", Decimal("420.00"), dt_black, cats["Supermercado & Alimentação"], realizado=pg_black, cartao=c_black, dt_compra=safe_date(ref_prev.year, ref_prev.month, 18))
 
-    # 5. Compras no Cartão de Crédito
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Jantar Restaurante Empório",
-        valor=Decimal("380.00"),
-        data_prevista=dt_platinum,
-        data_compra=today - timedelta(days=3),
-        categoria=cat_desp_alimentacao,
-        cartao=c_platinum,
-        eh_fatura_cartao=False,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Passagens Aéreas Férias",
-        valor=Decimal("1850.00"),
-        data_prevista=dt_platinum,
-        data_compra=today - timedelta(days=7),
-        categoria=cat_desp_lazer,
-        cartao=c_platinum,
-        eh_fatura_cartao=False,
-    )
-    Conta.objects.create(
-        usuario=user,
-        tipo="D",
-        descricao="Manutenção Preventiva Carro",
-        valor=Decimal("870.00"),
-        data_prevista=dt_platinum,
-        data_compra=today - timedelta(days=10),
-        categoria=cat_desp_veiculo,
-        cartao=c_platinum,
-        eh_fatura_cartao=False,
-    )
+        # Cartão Platinum Prime (fechamento 15, vencimento 25)
+        dt_plat = safe_date(y, m, 25)
+        if not is_cur:
+            add_conta("D", f"Fatura Cartão Platinum Prime - {m:02d}/{y}", Decimal("3100.00"), dt_plat, cats["Fatura Cartão de Crédito"], cartao=c_plat, eh_fat=True)
+            add_conta("D", "Compras Online & Tecnologia", Decimal("790.00"), dt_plat, cats["Lazer & Assinaturas"], cartao=c_plat, dt_compra=safe_date(y, m, 5))
+            add_conta("D", "Supermercado Gourmet & Empório", Decimal("490.00"), dt_plat, cats["Supermercado & Alimentação"], cartao=c_plat, dt_compra=safe_date(y, m, 10))
+        else:
+            add_conta("D", "Fatura Cartão Platinum Prime", Decimal("3100.00"), dt_plat, cats["Fatura Cartão de Crédito"], realizado=False, cartao=c_plat, eh_fat=True)
+            add_conta("D", "Jantar Restaurante Empório", Decimal("380.00"), dt_plat, cats["Supermercado & Alimentação"], cartao=c_plat, dt_compra=today - timedelta(days=3))
+            add_conta("D", "Passagens Aéreas Férias", Decimal("1850.00"), dt_plat, cats["Lazer & Assinaturas"], cartao=c_plat, dt_compra=today - timedelta(days=7))
+            add_conta("D", "Manutenção Preventiva Carro", Decimal("870.00"), dt_plat, cats["Transporte & Veículo"], cartao=c_plat, dt_compra=today - timedelta(days=10))
 
-    # 6. INVESTIMENTOS (Total Aportado: R$ 168.000,00)
-    # Exatamente 20% em cada uma das 5 classes (R$ 33.600,00 por classe):
-    # 1. Renda Fixa: R$ 33.600,00 (20%)
-    # 2. Ações Brasil: R$ 33.600,00 (20%)
-    # 3. Fundos Imobiliários: R$ 33.600,00 (20%)
-    # 4. Internacional (BDRs/ETFs): R$ 33.600,00 (20%)
-    # 5. Criptoativos: R$ 33.600,00 (20%)
+    deduplicar_faturas(user)
 
-    sub_rf = SubcategoriaAtivo.objects.filter(usuario=user, categoria__classe__nome__icontains="Renda Fixa").first()
-    sub_acoes = SubcategoriaAtivo.objects.filter(usuario=user, categoria__classe__nome__icontains="Renda Variável", nome__icontains="Ações").first()
-    sub_fii = SubcategoriaAtivo.objects.filter(usuario=user, categoria__classe__nome__icontains="Renda Variável", nome__icontains="FII").first()
-    sub_inter = (
-        SubcategoriaAtivo.objects.filter(usuario=user, nome__icontains="BDR").first()
-        or SubcategoriaAtivo.objects.filter(usuario=user, nome__icontains="Internacional").first()
-        or SubcategoriaAtivo.objects.filter(usuario=user, nome__icontains="ETF").first()
-    )
-    sub_cripto = SubcategoriaAtivo.objects.filter(usuario=user, categoria__classe__nome__icontains="Cripto").first()
+    # 4. Investimentos (R$ 168.000,00 distribuído em 20% por classe)
+    def get_sub(cls_pat, sub_pat=None):
+        qs = SubcategoriaAtivo.objects.filter(usuario=user, categoria__classe__nome__icontains=cls_pat)
+        return (qs.filter(nome__icontains=sub_pat).first() if sub_pat else qs.first()) or SubcategoriaAtivo.objects.filter(usuario=user).first()
 
-    # Fallbacks defensivos se alguma subcategoria não for localizada pelo filtro
-    todas_subs = list(SubcategoriaAtivo.objects.filter(usuario=user))
-    if not sub_rf: sub_rf = todas_subs[0]
-    if not sub_acoes: sub_acoes = todas_subs[1] if len(todas_subs) > 1 else todas_subs[0]
-    if not sub_fii: sub_fii = todas_subs[2] if len(todas_subs) > 2 else todas_subs[0]
-    if not sub_inter: sub_inter = todas_subs[3] if len(todas_subs) > 3 else todas_subs[0]
-    if not sub_cripto: sub_cripto = todas_subs[4] if len(todas_subs) > 4 else todas_subs[0]
+    sub_rf = get_sub("Renda Fixa")
+    sub_acoes = get_sub("Renda Variável", "Ações")
+    sub_fii = get_sub("Renda Variável", "FII")
+    sub_inter = SubcategoriaAtivo.objects.filter(usuario=user, nome__iregex=r"BDR|Internacional|ETF").first() or sub_acoes
+    sub_cripto = get_sub("Cripto")
 
     carteira_xp = Carteira.padrao_de(user)
-    carteira_xp.nome = "Custódia Alpha Capital"
-    carteira_xp.instituicao = "Alpha"
-    carteira_xp.cor = "#0F0F0F"
-    carteira_xp.meta_porcentagem = Decimal("60.00")
+    carteira_xp.nome, carteira_xp.instituicao, carteira_xp.cor, carteira_xp.meta_porcentagem = "Custódia Alpha Capital", "Alpha", "#0F0F0F", Decimal("60.00")
     carteira_xp.save()
 
     carteira_inter, _ = Carteira.objects.get_or_create(
-        usuario=user,
-        nome="Banco Digital Horizon",
-        defaults={
-            "instituicao": "Horizon",
-            "cor": "#FF7A00",
-            "meta_porcentagem": Decimal("40.00"),
-            "considerar_no_saldo": True,
-            "ordem": 1,
-        },
+        usuario=user, nome="Banco Digital Horizon",
+        defaults={"instituicao": "Horizon", "cor": "#FF7A00", "meta_porcentagem": Decimal("40.00"), "considerar_no_saldo": True, "ordem": 1},
     )
 
-    # Definição dos ativos para somar exatamente R$ 168.000,00 aportados (20% por classe = R$ 33.600)
     assets_def = [
-        # Classe 1: Renda Fixa (Total aportado = R$ 33.600,00)
-        {
-            "ticker": "SELIC2029",
-            "nome": "Tesouro Selic 2029",
-            "sub": sub_rf,
-            "qtd": Decimal("2.24"),
-            "pm": Decimal("15000.00"),
-            "cot": Decimal("15450.00"),
-            "meta": Decimal("20.00"),
-            "carteira": "inter",
-        },
-        # Classe 2: Ações Brasil (15.000 + 12.600 + 6.000 = R$ 33.600,00)
-        {
-            "ticker": "VALE3",
-            "nome": "Vale S.A.",
-            "sub": sub_acoes,
-            "qtd": Decimal("250"),
-            "pm": Decimal("60.00"),
-            "cot": Decimal("63.80"),
-            "meta": Decimal("9.00"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "ITUB4",
-            "nome": "Itaú Unibanco Holding S.A.",
-            "sub": sub_acoes,
-            "qtd": Decimal("400"),
-            "pm": Decimal("31.50"),
-            "cot": Decimal("34.25"),
-            "meta": Decimal("7.50"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "WEGE3",
-            "nome": "WEG S.A.",
-            "sub": sub_acoes,
-            "qtd": Decimal("150"),
-            "pm": Decimal("40.00"),
-            "cot": Decimal("43.40"),
-            "meta": Decimal("3.50"),
-            "carteira": "xp",
-        },
-        # Classe 3: FIIs (16.000 + 12.000 + 5.600 = R$ 33.600,00)
-        {
-            "ticker": "HGLG11",
-            "nome": "CSHG Logística FII",
-            "sub": sub_fii,
-            "qtd": Decimal("100"),
-            "pm": Decimal("160.00"),
-            "cot": Decimal("166.20"),
-            "meta": Decimal("10.00"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "KNCR11",
-            "nome": "Kinea Rendimentos Imobiliários FII",
-            "sub": sub_fii,
-            "qtd": Decimal("120"),
-            "pm": Decimal("100.00"),
-            "cot": Decimal("103.50"),
-            "meta": Decimal("7.00"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "MXRF11",
-            "nome": "Maxi Renda FII",
-            "sub": sub_fii,
-            "qtd": Decimal("560"),
-            "pm": Decimal("10.00"),
-            "cot": Decimal("10.48"),
-            "meta": Decimal("3.00"),
-            "carteira": "xp",
-        },
-        # Classe 4: Internacional / BDRs / ETFs (21.600 + 12.000 = R$ 33.600,00)
-        {
-            "ticker": "IVVB11",
-            "nome": "iShares S&P 500 Fundo de Índice",
-            "sub": sub_inter,
-            "qtd": Decimal("60"),
-            "pm": Decimal("360.00"),
-            "cot": Decimal("385.00"),
-            "meta": Decimal("13.00"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "AAPL34",
-            "nome": "Apple Inc. BDR",
-            "sub": sub_inter,
-            "qtd": Decimal("200"),
-            "pm": Decimal("60.00"),
-            "cot": Decimal("65.10"),
-            "meta": Decimal("7.00"),
-            "carteira": "xp",
-        },
-        # Classe 5: Criptoativos (25.600 + 8.000 = R$ 33.600,00)
-        {
-            "ticker": "BTC",
-            "nome": "Bitcoin (BTC)",
-            "sub": sub_cripto,
-            "qtd": Decimal("0.08"),
-            "pm": Decimal("320000.00"),
-            "cot": Decimal("352000.00"),
-            "meta": Decimal("15.00"),
-            "carteira": "xp",
-        },
-        {
-            "ticker": "ETH",
-            "nome": "Ethereum (ETH)",
-            "sub": sub_cripto,
-            "qtd": Decimal("0.50"),
-            "pm": Decimal("16000.00"),
-            "cot": Decimal("18200.00"),
-            "meta": Decimal("5.00"),
-            "carteira": "xp",
-        },
+        ("SELIC2029", "Tesouro Selic 2029", sub_rf, Decimal("2.24"), Decimal("15000.00"), Decimal("15450.00"), Decimal("20.00"), "inter"),
+        ("VALE3", "Vale S.A.", sub_acoes, Decimal("250"), Decimal("60.00"), Decimal("63.80"), Decimal("9.00"), "xp"),
+        ("ITUB4", "Itaú Unibanco Holding S.A.", sub_acoes, Decimal("400"), Decimal("31.50"), Decimal("34.25"), Decimal("7.50"), "xp"),
+        ("WEGE3", "WEG S.A.", sub_acoes, Decimal("150"), Decimal("40.00"), Decimal("43.40"), Decimal("3.50"), "xp"),
+        ("HGLG11", "CSHG Logística FII", sub_fii, Decimal("100"), Decimal("160.00"), Decimal("166.20"), Decimal("10.00"), "xp"),
+        ("KNCR11", "Kinea Rendimentos Imobiliários FII", sub_fii, Decimal("120"), Decimal("100.00"), Decimal("103.50"), Decimal("7.00"), "xp"),
+        ("MXRF11", "Maxi Renda FII", sub_fii, Decimal("560"), Decimal("10.00"), Decimal("10.48"), Decimal("3.00"), "xp"),
+        ("IVVB11", "iShares S&P 500 Fundo de Índice", sub_inter, Decimal("60"), Decimal("360.00"), Decimal("385.00"), Decimal("13.00"), "xp"),
+        ("AAPL34", "Apple Inc. BDR", sub_inter, Decimal("200"), Decimal("60.00"), Decimal("65.10"), Decimal("7.00"), "xp"),
+        ("BTC", "Bitcoin (BTC)", sub_cripto, Decimal("0.08"), Decimal("320000.00"), Decimal("352000.00"), Decimal("15.00"), "xp"),
+        ("ETH", "Ethereum (ETH)", sub_cripto, Decimal("0.50"), Decimal("16000.00"), Decimal("18200.00"), Decimal("5.00"), "xp"),
     ]
 
-    for item in assets_def:
-        carteira = carteira_xp if item["carteira"] == "xp" else carteira_inter
-        ativo = Ativo.objects.create(
-            usuario=user,
-            ticker=item["ticker"],
-            nome=item["nome"],
-            subcategoria=item["sub"],
-            quantidade=item["qtd"],
-            preco_medio=item["pm"],
-        )
+    data_inicio_invest = today - timedelta(days=365)
 
-        # Cotação a mercado
-        Cotacao.objects.create(
-            ativo=ativo,
-            data=today,
-            valor=item["cot"],
-        )
+    for ticker, nome, sub, qtd, pm, cot, meta, cart_key in assets_def:
+        carteira = carteira_xp if cart_key == "xp" else carteira_inter
+        ativo = Ativo.objects.create(usuario=user, ticker=ticker, nome=nome, subcategoria=sub, quantidade=qtd, preco_medio=pm)
 
-        # Ordem de compra inicial realizada há 90 dias
-        Transacao.objects.create(
-            usuario=user,
-            ativo=ativo,
-            carteira=carteira,
-            tipo="C",
-            data=today - timedelta(days=90),
-            quantidade=item["qtd"],
-            preco_unitario=item["pm"],
-            valor_total=item["qtd"] * item["pm"],
-        )
+        # Ordem de compra inicial há 1 ano
+        Transacao.objects.create(usuario=user, ativo=ativo, carteira=carteira, tipo="C", data=data_inicio_invest, quantidade=qtd, preco_unitario=pm, valor_total=qtd * pm)
 
-        # Transações de proventos nos últimos 6 meses (Efeito Bola de Neve crescente)
-        if item["ticker"] in ["HGLG11", "KNCR11", "MXRF11", "ITUB4", "VALE3"]:
-            unit_val = Decimal("1.25") if "11" in item["ticker"] else Decimal("0.65")
-            for m_offset in range(5, -1, -1):
-                dt_div = today - timedelta(days=m_offset * 30 + 10)
-                # Crescimento sutil simulando reinvestimento
-                growth_factor = Decimal(str(1.0 + (5 - m_offset) * 0.05))
-                Transacao.objects.create(
-                    usuario=user,
-                    ativo=ativo,
-                    carteira=carteira,
-                    tipo="D",
-                    data=dt_div,
-                    quantidade=item["qtd"],
-                    preco_unitario=unit_val * growth_factor,
-                    valor_total=(item["qtd"] * unit_val * growth_factor).quantize(Decimal("0.01")),
-                )
+        # Cotações históricas mensais
+        for m_offset in range(11, 0, -1):
+            ref = today - relativedelta(months=m_offset)
+            prog = Decimal(str(round((11 - m_offset) / 11.0, 4)))
+            val_cot = (pm * Decimal("0.96") + (cot - pm * Decimal("0.96")) * prog).quantize(Decimal("0.01"))
+            Cotacao.objects.create(ativo=ativo, data=safe_date(ref.year, ref.month, 28), valor=val_cot)
+        Cotacao.objects.create(ativo=ativo, data=today, valor=cot)
 
-        # Atualiza a meta percentual na posição da carteira
-        PosicaoCarteira.objects.filter(carteira=carteira, ativo=ativo).update(
-            meta_porcentagem=item["meta"]
-        )
+        # Proventos mensais (dividendos)
+        if ticker in ["HGLG11", "KNCR11", "MXRF11", "ITUB4", "VALE3"]:
+            unit = Decimal("1.25") if "11" in ticker else Decimal("0.65")
+            for m_offset in range(11, -1, -1):
+                ref = today - relativedelta(months=m_offset)
+                dt_div = safe_date(ref.year, ref.month, min(today.day, 10) if (m_offset == 0 and today.day < 15) else 15)
+                growth = Decimal(str(round(0.85 + ((11 - m_offset) / 11.0) * 0.30, 4)))
+                pu = (unit * growth).quantize(Decimal("0.01"))
+                Transacao.objects.create(usuario=user, ativo=ativo, carteira=carteira, tipo="D", data=dt_div, quantidade=qtd, preco_unitario=pu, valor_total=(qtd * pu).quantize(Decimal("0.01")))
 
-        if "SELIC" in item["ticker"]:
-            DetalheRendaFixa.objects.create(
-                ativo=ativo,
-                emissor="Tesouro Nacional",
-                indexador="SELIC",
-                taxa=Decimal("100.00"),
-                data_vencimento=date(current_year + 5, 3, 1),
-            )
+        PosicaoCarteira.objects.filter(carteira=carteira, ativo=ativo).update(meta_porcentagem=meta)
+        if "SELIC" in ticker:
+            DetalheRendaFixa.objects.create(ativo=ativo, emissor="Tesouro Nacional", indexador="SELIC", taxa=Decimal("100.00"), data_vencimento=date(today.year + 5, 3, 1))
 
-    print(f"Sucesso! Usuário '{user.username}' populado com receitas de ~R$ 20k, despesas de ~R$ 14k e R$ 168k aportados em 5 classes.")
+    # 5. Snapshots patrimoniais consolidados
+    CarteiraHistoricoService(user).atualizar()
+    print(f"Sucesso! Usuário '{user.username}' populado com 12 meses de dados (~R$ 20k rec, ~R$ 14k desp, R$ 168k inv).")
 
-def seed_demo_user():
-    username = "demo_user"
-    email = "demo@freecash.local"
-    password = "password123"
 
+def criar_ou_atualizar_usuario_teste(username: str, email: str, password: str = "password123"):
+    """Cria ou atualiza uma conta de teste isolada com e-mail confirmado."""
     user, _ = User.objects.get_or_create(username=username, defaults={"email": email})
+    user.email = email
     user.set_password(password)
+    user.is_active = True
     user.save()
-    seed_user_data(user)
 
-    # Se existir o usuário 'chrystian', popula ele também para que ambas as contas fiquem com os dados realistas
-    user_chrystian = User.objects.filter(username="chrystian").first()
-    if user_chrystian:
-        seed_user_data(user_chrystian)
+    config, _ = ConfigUsuario.objects.get_or_create(usuario=user)
+    config.email_verificado = True
+    config.email_verificado_em = timezone.now()
+    config.save()
+
+    seed_user_data(user)
+    return user
+
 
 if __name__ == "__main__":
-    seed_demo_user()
+    # Permite passar argumentos CLI opcionais: python create_dummy_data.py [usuario] [senha]
+    alvo_username = sys.argv[1] if len(sys.argv) > 1 else "teste"
+    alvo_senha = sys.argv[2] if len(sys.argv) > 2 else "password123"
+
+    print("=" * 65)
+    print("  SEMAPHORE / SEEDER DE DADOS DE TESTE (12 MESES)")
+    print("=" * 65)
+
+    # Popula a conta 'teste' solicitada
+    user_teste = criar_ou_atualizar_usuario_teste(
+        username=alvo_username,
+        email=f"{alvo_username}@freecash.local",
+        password=alvo_senha,
+    )
+
+    # Cria também 'demo_user' se o alvo for o padrão 'teste' para total conveniência
+    if alvo_username == "teste":
+        criar_ou_atualizar_usuario_teste(
+            username="demo_user",
+            email="demo@freecash.local",
+            password="password123",
+        )
+
+    print("\n" + "=" * 65)
+    print("  CONTA DE TESTE GERADA COM SUCESSO!")
+    print(f"  - Usuário: {user_teste.username}  (ou demo_user)")
+    print(f"  - Senha:   {alvo_senha}")
+    print(f"  - E-mail:  {user_teste.email} (com verificação ativa)")
+    print("=" * 65 + "\n")
