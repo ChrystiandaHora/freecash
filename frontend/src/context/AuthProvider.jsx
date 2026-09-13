@@ -23,6 +23,8 @@ const decodeToken = (token) => {
   }
 };
 
+const HAS_SESSION_KEY = 'freecash_has_session';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
@@ -44,14 +46,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // Se não há indicador de sessão anterior (visitante anônimo ou usuário deslogado),
+      // evita chamada desnecessária ao refresh que geraria ruído de Bad Request 400 no console.
+      const hasSessionHint = localStorage.getItem(HAS_SESSION_KEY) === 'true';
+      if (!hasSessionHint) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
         const { access } = response.data;
         setAccessToken(access);
         const decoded = decodeToken(access);
         setUser(decoded);
+        localStorage.setItem(HAS_SESSION_KEY, 'true');
         await recarregarPerfil();
       } catch {
+        localStorage.removeItem(HAS_SESSION_KEY);
         setAccessToken(null);
         setUser(null);
         setPerfil(null);
@@ -70,6 +82,7 @@ export const AuthProvider = ({ children }) => {
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    localStorage.setItem(HAS_SESSION_KEY, 'true');
     await recarregarPerfil();
     return decoded;
   };
@@ -80,6 +93,7 @@ export const AuthProvider = ({ children }) => {
     setAccessToken(access);
     const decoded = decodeToken(access);
     setUser(decoded);
+    localStorage.setItem(HAS_SESSION_KEY, 'true');
     await recarregarPerfil();
     return decoded;
   };
@@ -90,6 +104,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.error('Logout request failed', e);
     } finally {
+      localStorage.removeItem(HAS_SESSION_KEY);
       setAccessToken(null);
       setUser(null);
       setPerfil(null);
