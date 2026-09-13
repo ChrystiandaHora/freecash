@@ -1,0 +1,4 @@
+# Garante que scripts bash/sh sempre mantenham quebras de linha padrão Linux (LF),
+# mesmo em checkouts e edits feitos no Windows.
+*.sh text eol=lf
+*.bash text eol=lf
