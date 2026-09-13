@@ -8,83 +8,33 @@ Vai além do registro de entradas e saídas: integra carteira multi-ativos com h
 
 ## Telas do Sistema
 
-### 1. Login e Dashboard Principal
+### 1. Visão Geral e Gestão Ágil de Contas
 
-| Tela de Login | Dashboard Financeiro |
+| Dashboard Financeiro Consolidado | Pipeline Kanban de Contas a Pagar |
 |---|---|
-| ![Login](docs/screenshots/00-login.png) | ![Dashboard](docs/screenshots/01-dashboard.png) |
+| ![Dashboard Financeiro](frontend/public/screenshots/01-dashboard.png) | ![Pipeline Kanban](frontend/public/screenshots/03-pipeline-kanban.png) |
 
-> A **Tela de Login** garante acesso seguro via autenticação JWT HttpOnly. O **Dashboard Financeiro** consolida receitas, despesas e saldo do mês em tempo real, com gráfico de fluxo de caixa diário, breakdown de maiores gastos por categoria e projeção de 6 meses.
+> O **Dashboard Financeiro** consolida receitas, despesas e saldo do mês em tempo real, com gráfico de fluxo de caixa diário, breakdown de categorias e taxa de poupança. O **Pipeline Kanban** revoluciona a rotina financeira: arraste contas entre status (Atrasado, Vence Hoje, Pendente) e, ao mover para "Pagas", a liquidação contábil é registrada automaticamente no backend.
 
 ---
 
-### 2. Gestão de Contas a Pagar e Pipeline Kanban
+### 2. Investimentos Profissionais e Rebalanceamento
 
-| Contas a Pagar | Pipeline Kanban |
+| Aporte Mágico & Rebalanceamento | Dashboard de Investimentos |
 |---|---|
-| ![Contas a Pagar](docs/screenshots/02-contas-pagar.png) | ![Pipeline Kanban](docs/screenshots/03-pipeline-kanban.png) |
+| ![Balanceamento de Carteira](frontend/public/screenshots/09-balanceamento.png) | ![Painel de Investimentos](frontend/public/screenshots/07-investimentos-dashboard.png) |
 
-> A tela de **Contas a Pagar** apresenta status visual inteligente (Atrasado, Pendente, Vence Hoje, Pago) com liquidação rápida e cadastro em lote. O **Pipeline Kanban** permite arrastar contas entre colunas — ao mover para "Pagas", o pagamento é registrado automaticamente no backend.
+> A **Calculadora de Aporte Mágico** aposenta planilhas complexas: defina metas por classe (ex: 20% em cada uma) e o algoritmo calcula em tempo real as compras ideais para reequilibrar a carteira sem precisar vender ativos nem pagar IR. O **Dashboard de Investimentos** exibe patrimônio consolidado, alocação ANBIMA de 3 níveis, rentabilidade real e a aceleração dos dividendos no gráfico do **Efeito Bola de Neve**.
 
 ---
 
-### 3. Receitas e Extrato de Transações
+### 3. Inteligência Preditiva e Gestão de Cartões
 
-| Gestão de Receitas | Extrato de Transações |
+| Simulador de Gastos Sandbox (12 Meses) | Gestão de Cartões de Crédito |
 |---|---|
-| ![Receitas](docs/screenshots/04-receitas.png) | ![Transações](docs/screenshots/05-transacoes.png) |
+| ![Simulador de Gastos](frontend/public/screenshots/12-simulador-gastos.png) | ![Meus Cartões](frontend/public/screenshots/06-meus-cartoes.png) |
 
-> O módulo de **Receitas** oferece controle de entradas recorrentes e avulsas com KPIs de total previsto vs. recebido. O **Extrato de Transações** apresenta a linha do tempo cronológica unificada de todas as movimentações financeiras com busca global e filtros por categoria.
-
----
-
-### 4. Meus Cartões de Crédito e Simulador de Gastos
-
-| Meus Cartões de Crédito | Simulador de Gastos |
-|---|---|
-| ![Meus Cartões](docs/screenshots/06-meus-cartoes.png) | ![Simulador de Gastos](docs/screenshots/12-simulador-gastos.png) |
-
-> A página **Meus Cartões** traz gauges de utilização do limite, datas de fechamento/vencimento e histórico de compras. O **Simulador de Gastos** permite simular cenários financeiros em até 12 meses, cruzando projeções temporárias client-side com dados reais do sistema.
-
----
-
-### 5. Carteira de Investimentos e Meus Ativos
-
-| Dashboard de Investimentos | Meus Ativos |
-|---|---|
-| ![Investimentos](docs/screenshots/07-investimentos-dashboard.png) | ![Meus Ativos](docs/screenshots/08-meus-ativos.png) |
-
-> O **Dashboard de Investimentos** exibe patrimônio total, rentabilidade acumulada, alocação por classe em gráfico donut e o gráfico de Efeito Bola de Neve (proventos). A tabela de **Meus Ativos** exibe tickers, quantidade, preço médio, cotação via Yahoo Finance e retorno colorido.
-
----
-
-### 6. Balanceamento de Carteira e Histórico de Operações
-
-| Balanceamento de Carteira | Histórico de Investimentos |
-|---|---|
-| ![Balanceamento](docs/screenshots/09-balanceamento.png) | ![Histórico](docs/screenshots/10-historico.png) |
-
-> O **Balanceamento de Carteira** calcula o aporte ideal por ativo com sliders de meta percentual em tempo real (soma 100%), indicando quanto comprar para atingir a alocação alvo. O **Histórico de Operações** mantém o ledger de compras, vendas e proventos com recálculo automático de preço médio via Django Signals.
-
----
-
-### 7. Hierarquia ANBIMA e Relatórios DRE
-
-| Hierarquia & Classes ANBIMA | Relatórios Financeiros (DRE) |
-|---|---|
-| ![Classes ANBIMA](docs/screenshots/13-classes-ativos.png) | ![Relatórios](docs/screenshots/11-relatorios.png) |
-
-> O gerenciador de **Classes de Ativos** disponibiliza uma árvore expansível de 3 níveis (Classe → Categoria → Subcategoria) com CRUD completo para customizar a estrutura ANBIMA. A página de **Relatórios** constrói o DRE anual com EBITDA, Resultado Líquido e exportação para PDF.
-
----
-
-### 8. Compras no Cartão e Ajustes de Pagamentos
-
-| Compras no Cartão | Ajustes de Pagamentos |
-|---|---|
-| ![Compras Cartão](docs/screenshots/14-compras-cartao.png) | ![Ajustes Pagamentos](docs/screenshots/15-ajustes-pagamentos.png) |
-
-> **Compras no Cartão** gerencia a importação e conciliação de faturas PDF (Nubank, Santander) e controle de parcelamentos. **Ajustes de Pagamentos** permite cadastrar e configurar contas bancárias e cartões de crédito com presets de cores de bancos brasileiros e ícones personalizados.
+> O **Simulador de Gastos** projeta o fluxo de caixa em até 12 meses no futuro em ambiente Sandbox isolado, detectando o "Ponto de Virada" através de um heatmap diário estilo calendário. A página **Meus Cartões** traz gauges circulares de utilização do limite, datas de corte/vencimento e previsibilidade de compras parceladas futuras.
 
 ---
 
@@ -415,7 +365,6 @@ freecash/
 ├── backend/Dockerfile.postgres
 ├── frontend/Dockerfile.frontend
 ├── frontend/nginx.conf         # Fallback de rotas do SPA + proxy de /api/
-├── .github/workflows/ci.yml
 ├── run.sh                      # Orquestrador Bash (recomendado)
 └── run.py                      # Orquestrador Python alternativo
 ```
