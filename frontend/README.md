@@ -1,125 +1,106 @@
-# FreeCash — Frontend
+# FreeCash — Frontend Application
 
-SPA (Single Page Application) construída em **React 19 + Vite 8**, com **Tailwind CSS v4** para estilização ultra-veloz e **TanStack React Query** para sincronização inteligente com a API.
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-v5-FF4154?logo=react-query&logoColor=white)](https://tanstack.com/query)
+[![ESLint](https://img.shields.io/badge/ESLint-v10-4B32C3?logo=eslint&logoColor=white)](https://eslint.org/)
 
----
-
-## Tech Stack
-
-| Tecnologia | Uso |
-|---|---|
-| React 19 + Vite 8 | SPA com HMR e build otimizado |
-| Tailwind CSS v4 | Estilização nativa baseada em CSS moderno |
-| TanStack React Query | Cache, sincronização e invalidação de estado com a API |
-| React Router Dom v7 | Roteamento SPA com rotas protegidas |
-| React Hook Form + Zod | Formulários com validação tipada no cliente |
-| ApexCharts | Gráficos interativos (área, donut, barra, scatter, radial) |
-| Lucide React | Biblioteca unificada de ícones vetoriais |
-| Axios | HTTP client com interceptors JWT |
-| @hello-pangea/dnd | Drag-and-drop (Pipeline Kanban, Compras Cartão) |
-| react-dropzone | Upload de arquivos por arrastar-e-soltar |
+Interface Single Page Application (SPA) do **FreeCash**, projetada com **React 19**, **Vite 6** e **Tailwind CSS v4**. Entrega alta reatividade, design system com suporte a Dark Mode, formulários com validação assíncrona tipada, visualização analítica com **ApexCharts** e governança de sessão ativa.
 
 ---
 
-## Páginas
+## 🧭 Mapa de Rotas e Telas
 
-### Geral
-| Rota | Página | Descrição |
+### 1. Rotas Públicas & Conversão
+| Rota | Componente | Finalidade |
 |---|---|---|
-| `/dashboard` | Dashboard | KPIs financeiros, fluxo de caixa diário, projeção 6 meses |
-| `/relatorios` | Relatórios | DRE anual, fluxo operacional, heatmap de sazonalidade |
+| `/landing`, `/inicio` | `LandingPage.jsx` | Apresentação institucional, diferenciais de mercado e captura |
+| `/login` | `Login.jsx` | Autenticação de credenciais via cookies seguros |
+| `/cadastro` | `Cadastro.jsx` | Fluxo de onboarding com validação de política de senhas |
 
-### Financeiro
-| Rota | Página | Descrição |
+### 2. Gestão Financeira & Planejamento
+| Rota | Tela | Funcionalidade Principal |
 |---|---|---|
-| `/contas-pagar` | Contas a Pagar | CRUD com status inteligente e pagamento rápido |
-| `/contas-pagar/lote` | Cadastro em Lote | Tabela editável para múltiplas contas |
-| `/contas-kanban` | Pipeline Kanban | Quadro drag-and-drop com 5 colunas de status |
-| `/cartoes` | Meus Cartões | Gauge de limite, histórico por cartão |
-| `/receitas` | Receitas | Controle de receitas previstas e realizadas |
-| `/transacoes` | Transações | Extrato cronológico agrupado por dia |
-| `/simulador` | Simulador de Gastos | Simulação de cenários com base nas contas cadastradas |
+| `/dashboard` | Dashboard Consolidado | Visão unificada de fluxo de caixa, despesas e KPIs mensais |
+| `/contas-kanban` | Pipeline Kanban | Gestão de vencimentos com baixa por drag-and-drop |
+| `/contas-pagar` | Contas a Pagar | Listagem, filtros e liquidação ágil com suporte a desfazer |
+| `/contas-pagar/lote` | Cadastro em Lote | Tabela editável para importação massiva de despesas |
+| `/cartoes` | Meus Cartões | Monitoramento de limites, faturas e projeção parcelada |
+| `/simulador` | Simulador Sandbox | Projeção preditiva de 12 meses isolada em memória |
+| `/horizonte-saldos` | Horizonte de Saldos | Grade de liquidez projetada dia a dia para o ano |
+| `/calendario` | Calendário de Pagamentos | Calendário visual mensal de vencimentos e recebimentos |
 
-### Investimentos
-| Rota | Página | Descrição |
+### 3. Gestão Patrimonial & Investimentos
+| Rota | Tela | Funcionalidade Principal |
 |---|---|---|
-| `/investimentos` | Dashboard | Patrimônio, alocação, árvore ANBIMA, snowball effect |
-| `/investimentos/ativos` | Meus Ativos | Tabela completa de carteira com cotações |
-| `/investimentos/ativos/:id` | Detalhe do Ativo | Posição, rentabilidade e histórico por ativo |
-| `/investimentos/balanceamento` | Balanceamento | Sliders de meta e cálculo de aporte ideal |
-| `/investimentos/historico` | Histórico | Ledger de compras, vendas e proventos |
-| `/investimentos/classes` | Classes ANBIMA | CRUD da hierarquia de 3 níveis |
+| `/investimentos` | Dashboard de Investimentos | Alocação ANBIMA, patrimônio líquido e Efeito Bola de Neve |
+| `/investimentos/ativos` | Meus Ativos | Posições em carteira com cotações em tempo real |
+| `/investimentos/ativos/:id` | Detalhe de Posição | Visão isolada por ativo, rentabilidade e histórico |
+| `/investimentos/balanceamento` | Aporte Eficiente | Algoritmo de rebalanceamento por metas percentuais |
+| `/investimentos/historico` | Ledger de Operações | Livro contábil de compras, vendas e proventos |
+| `/investimentos/classes` | Gestor ANBIMA | Manutenção da taxonomia de classes e categorias |
 
-### Ferramentas e Ajustes
-| Rota | Página | Descrição |
+### 4. Governança e Administração
+| Rota | Tela | Funcionalidade Principal |
 |---|---|---|
-| `/importar` | Importar Backup | Drag-and-drop de arquivo `.fcbk` |
-| `/compras-cartao` | Compras Cartão | Importação de PDF de faturas |
-| `/backup` | Backup/Exportar | Export XLSX/CSV/PDF/.fcbk com senha |
-| `/pagamentos` | Ajustes Pagamentos | Gestão de cartões e contas bancárias |
+| `/conta` | Minha Conta | Alteração de e-mail, encerramento de sessões e LGPD |
+| `/admin/usuarios` | Gestão de Acessos | Auditoria de usuários e controle de suspensão de contas |
+| `/admin/metricas` | BI de Plataforma | Indicadores analíticos de utilização do sistema |
 
 ---
 
-## Estrutura
+## 🏗️ Padrões de Arquitetura do Frontend
 
-```
-src/
+- **Camada de Cache e Sincronização:** Implementada com **TanStack Query v5**, assegurando *optimistic updates*, revalidação inteligente e eliminação de *state waterfalls*.
+- **Governança de Sessão & Inatividade:** Hook especializado `useInactivityTimer` acoplado ao `DashboardLayout`, monitorando eventos do usuário e acionando o `ModalInatividade` antes do encerramento forçado da sessão.
+- **Formulários & Schemas:** Integração estrita entre **React Hook Form** e schemas **Zod**, validando políticas de segurança antes da submissão à API.
+- **Design System Nativo:** Construído com classes utilitárias modernas do **Tailwind CSS v4** e ícones consistentes via **Lucide React**.
+
+---
+
+## 📂 Estrutura de Diretórios
+
+```text
+frontend/src/
 ├── components/
-│   ├── ui/                 # Componentes atômicos (Button, Card, Modal, Badge, DataTable...)
-│   └── DashboardLayout.jsx # Layout mestre com sidebar colapsável e navbar
-├── config/
-│   └── helpContent.js      # Conteúdo de ajuda contextual por rota
-├── context/
-│   ├── AuthProvider.jsx    # Estado de autenticação JWT + interceptors Axios
-│   └── ToastContext.jsx    # Sistema de notificações (toasts)
-├── lib/
-│   └── utils.js            # Helpers (ex.: merge de classes Tailwind)
-├── pages/                  # 20 telas da aplicação
-├── services/
-│   ├── api.js              # Instância Axios + interceptors JWT
-│   ├── financeiro.js       # Chamadas de API do domínio financeiro
-│   └── investimentos.js    # Chamadas de API do domínio de investimentos
-├── App.jsx                 # Roteamento + provedores globais
-└── main.jsx                # Ponto de entrada
+│   ├── auth/              # Componentes de segurança e controle de sessão
+│   ├── ui/                # Átomos e moléculas do design system (Modal, Button, Table, etc.)
+│   └── DashboardLayout.jsx# Layout estrutural autenticado com sidebar responsiva
+├── config/                # Tabelas e documentação de ajuda contextual
+├── context/               # Provedores globais (Autenticação JWT, Toasts)
+├── hooks/                 # Custom hooks (temporizador de inatividade, media queries)
+├── pages/                 # Visualizações e telas divididas por domínio
+├── services/              # Camada de comunicação Axios com interceptors de segurança
+├── App.jsx                # Declaração hierárquica de rotas e guardas de acesso
+└── main.jsx               # Inicialização da aplicação React 19
 ```
-
-Chamadas à API ficam centralizadas em `services/financeiro.js` e `services/investimentos.js`; o uso de React Query (`useQuery`/`useMutation`) é feito diretamente dentro de cada página, sem uma camada de hooks customizados por domínio.
 
 ---
 
-## Desenvolvimento Local
+## 🚀 Execução e Comandos
 
-### Pré-requisitos
-Node.js 20+ instalado.
-
-### 1. Instalar dependências
+### Via Docker (Ambiente Integrado)
 
 ```bash
+# Executar a suíte de testes no container
+docker compose exec frontend npm run test
+
+# Executar linter estático no container
+docker compose exec frontend npm run lint
+```
+
+### Execução Local (Node.js 20+)
+
+```bash
+# 1. Instalar dependências
 npm install
-```
 
-### 2. Variável de ambiente
-
-Crie `.env` na raiz do `frontend/`:
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-### 3. Servidor de desenvolvimento
-
-```bash
+# 2. Iniciar servidor de desenvolvimento (Vite HMR)
 npm run dev
+
+# 3. Compilar para produção
+npm run build
 ```
 
-Acesse http://localhost:5173.
-
----
-
-## Scripts
-
-| Comando | Descrição |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento com HMR |
-| `npm run build` | Build otimizado para produção em `dist/` |
-| `npm run preview` | Preview do build de produção localmente |
-| `npm run lint` | Análise estática com ESLint |
+Acesso local após iniciar: `http://localhost:5173`.
