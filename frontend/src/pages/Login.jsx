@@ -16,7 +16,7 @@
  * @returns {JSX.Element} Tela de login/cadastro responsiva e acessível.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
 import { Input } from '../components/ui/Input';
 import { PasswordInput } from '../components/ui/PasswordInput';
@@ -39,10 +39,14 @@ const HIGHLIGHTS = [
 function BrandMark({ size = 'lg' }) {
   const isLg = size === 'lg';
   return (
-    <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+    <Link
+      to="/landing"
+      title="Conhecer o FreeCash"
+      className="group flex flex-col items-center lg:items-start text-center lg:text-left transition-transform hover:opacity-95"
+    >
       <div
         className={cn(
-          'rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 transition-colors duration-300',
+          'rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 transition-transform duration-300 group-hover:scale-105',
           isLg ? 'w-14 h-14 mb-4' : 'w-12 h-12 mb-3'
         )}
       >
@@ -64,13 +68,15 @@ function BrandMark({ size = 'lg' }) {
       >
         Clareza total sobre o seu dinheiro.
       </p>
-    </div>
+    </Link>
   );
 }
 
 export default function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const motivo = searchParams.get('motivo');
 
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
@@ -233,6 +239,19 @@ export default function Login() {
 
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
+
+                {/* Aviso quando a sessão foi encerrada por inatividade */}
+                {motivo === 'inatividade' && !error && (
+                  <Alert
+                    variant="warning"
+                    icon={ShieldCheck}
+                    className="text-xs"
+                  >
+                    <span className="font-medium leading-relaxed">
+                      Sua sessão foi encerrada após 15 minutos de inatividade para proteger seus dados financeiros. Faça login novamente para continuar.
+                    </span>
+                  </Alert>
+                )}
 
                 {/* Resumo de erro. tabIndex={-1} permite receber foco por script
                     sem entrar na ordem de tabulação. */}

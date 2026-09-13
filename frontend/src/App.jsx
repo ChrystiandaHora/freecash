@@ -16,10 +16,12 @@ import { ThemeProvider } from './context/ThemeProvider';
 import { CarteiraProvider } from './context/CarteiraProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
+import { LoadingScreen } from './components/ui/LoadingScreen';
 
 
 // Layouts & Pages
 import DashboardLayout from './components/DashboardLayout';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import EsqueciSenha from './pages/EsqueciSenha';
 import RedefinirSenha from './pages/RedefinirSenha';
@@ -76,14 +78,7 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
-        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
-          Iniciando sessão segura...
-        </p>
-      </div>
-    );
+    return <LoadingScreen label="Iniciando sessão segura..." />;
   }
 
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -94,14 +89,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
-        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
-          Verificando sessão...
-        </p>
-      </div>
-    );
+    return <LoadingScreen label="Verificando sessão..." />;
   }
 
   return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
@@ -120,14 +108,7 @@ const AdminRoute = ({ children }) => {
   const { isAuthenticated, perfil, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div role="status" className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" aria-hidden="true" />
-        <p className="text-sm font-semibold text-muted-foreground mt-4 uppercase tracking-wider">
-          Verificando permissões...
-        </p>
-      </div>
-    );
+    return <LoadingScreen label="Verificando permissões..." />;
   }
 
   if (!isAuthenticated) {
@@ -159,6 +140,10 @@ function App() {
             <CarteiraProvider>
             <Router>
             <Routes>
+              {/* Public Marketing & Landing Page */}
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/inicio" element={<LandingPage />} />
+
               {/* Public Auth Routes */}
               <Route 
                 path="/login" 
