@@ -175,3 +175,4 @@ const Modal = ({ isOpen, onClose, title, description, children, className, size 
 Modal.displayName = "Modal"
 
 export { Modal }
+export default Modal

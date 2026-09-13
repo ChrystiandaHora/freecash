@@ -16,17 +16,22 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { EmailVerificationBanner } from './auth/EmailVerificationBanner';
+import { ModalInatividade } from './auth/ModalInatividade';
 import { ErrorBoundary } from './ErrorBoundary';
 import TopNav from './nav/TopNav';
 import SiteFooter from './nav/SiteFooter';
 import { navIndex } from '../config/navigation';
 import { getRouteTitle } from '../lib/navigation';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 export default function DashboardLayout() {
   const location = useLocation();
   const mainRef = useRef(null);
   // Evita roubar o foco na primeira renderização — só realoca a partir da 1ª navegação.
   const isFirstRenderRef = useRef(true);
+
+  // Monitor de inatividade de 15 minutos (com aviso prévio aos 14 minutos)
+  const { mostrarAviso, segundosRestantes, estenderSessao, encerrarSessao } = useInactivityTimer();
 
   // Ao navegar (SPA): atualiza o título da aba e devolve o foco ao conteúdo
   // principal, para que usuários de teclado/leitor de tela percebam a mudança de
@@ -87,6 +92,14 @@ export default function DashboardLayout() {
           </ErrorBoundary>
         </div>
       </main>
+
+      {/* Modal de aviso de expiração por inatividade bancária */}
+      <ModalInatividade
+        isOpen={mostrarAviso}
+        segundosRestantes={segundosRestantes}
+        onEstender={estenderSessao}
+        onEncerrar={encerrarSessao}
+      />
 
       <SiteFooter />
     </div>
