@@ -188,6 +188,103 @@ class FerramentasImportarExtratoAPIView(APIView):
                 os.remove(temp_path)
 
 
+class FerramentasConciliacaoUploadAPIView(APIView):
+    """Upload de PDF que enfileira linhas para revisão, sem criar lançamento.
+
+    Contrapartida de `FerramentasImportarExtratoAPIView`: aquele cria `Conta` na hora e
+    exige cartão; aqui o cartão é opcional e nada nasce na base até o usuário aprovar
+    linha a linha. Sem cartão, a linha aprovada vira conta a pagar avulsa.
+    Ver docs/importacao-extrato.md.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request) -> Response:
+        arquivo = request.FILES.get('arquivo')
+        banco = request.data.get('banco', 'generico')
+        cartao_uuid = request.data.get('cartao') or None
+
+        if not arquivo:
+            return Response(
+                {'erro': 'Nenhum arquivo enviado. Use o campo "arquivo".'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        bancos_validos = {escolha[0] for escolha in ExtratoImportado.BANCO_CHOICES}
+        if banco not in bancos_validos:
+            return Response(
+                {'erro': f'Banco inválido. Use um de: {", ".join(sorted(bancos_validos))}.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cartao_obj = None
+        if cartao_uuid:
+            try:
+                cartao_obj = CartaoCredito.objects.get(uuid=cartao_uuid, usuario=request.user)
+            except (CartaoCredito.DoesNotExist, ValueError):
+                return Response(
+                    {'erro': 'Cartão de crédito não encontrado.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        suffix = os.path.splitext(arquivo.name)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            for chunk in arquivo.chunks():
+                temp_file.write(chunk)
+            temp_path = temp_file.name
+
+        try:
+            from core.services.extrato_parser import processar_pdf
+            linhas_extraidas = processar_pdf(temp_path, banco=banco)
+
+            if not linhas_extraidas:
+                return Response(
+                    {'erro': 'Nenhuma transação encontrada no arquivo ou formato incompatível.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            data_vencimento = None
+            if cartao_obj:
+                from core.services.fatura_service import detectar_vencimento_fatura
+                data_vencimento = detectar_vencimento_fatura(linhas_extraidas, cartao_obj)
+
+            extrato = ExtratoImportado.objects.create(
+                usuario=request.user,
+                arquivo_nome=arquivo.name[:255],
+                banco=banco,
+                status='processado',
+                linhas_encontradas=len(linhas_extraidas),
+                cartao=cartao_obj,
+                data_vencimento=data_vencimento,
+            )
+
+            LinhaExtrato.objects.bulk_create([
+                LinhaExtrato(
+                    extrato=extrato,
+                    data=linha['data'],
+                    descricao=linha['descricao'][:500],
+                    valor=linha['valor'],
+                    tipo=linha.get('tipo', 'D'),
+                )
+                for linha in linhas_extraidas
+            ])
+
+            return Response(
+                ExtratoImportadoSerializer(extrato).data,
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            return Response(
+                {'erro': f'Falha ao processar arquivo: {str(e)}'},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+
 class FerramentasConciliacaoListAPIView(APIView):
     """Lista os últimos extratos importados e suas linhas pendentes de conciliação."""
 
@@ -206,6 +303,44 @@ class FerramentasConciliacaoListAPIView(APIView):
             data.append(extrato_data)
 
         return Response({'extratos': data}, status=status.HTTP_200_OK)
+
+
+class FerramentasConciliacaoLinhaAPIView(APIView):
+    """Corrige a natureza (débito/crédito) de uma linha antes da aprovação.
+
+    Existe por causa de um limite real do parser genérico: ele decide o tipo pelo sinal
+    de menos (`_extrair_linha`), e extrato que imprime despesa sem sinal sai inteiro como
+    crédito — viraria receita e inflaria o saldo. A fila é justamente o lugar de corrigir
+    o que a heurística errou, então o conserto é do usuário, e não de um palpite melhor.
+    Ver docs/importacao-extrato.md.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def patch(self, request, pk) -> Response:
+        tipo = request.data.get('tipo')
+
+        if tipo not in (LinhaExtrato.TIPO_CREDITO, LinhaExtrato.TIPO_DEBITO):
+            return Response(
+                {'erro': 'Campo "tipo" deve ser "C" ou "D".'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            linha = LinhaExtrato.objects.get(
+                pk=pk, extrato__usuario=request.user, status='pendente'
+            )
+        except LinhaExtrato.DoesNotExist:
+            return Response(
+                {'erro': 'Linha não encontrada ou já revisada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        linha.tipo = tipo
+        linha.save(update_fields=['tipo'])
+
+        return Response(LinhaExtratoSerializer(linha).data, status=status.HTTP_200_OK)
 
 
 class FerramentasConciliacaoProcessarAPIView(APIView):
@@ -240,6 +375,7 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
             )
 
         count = 0
+        duplicadas = 0
         if acao == 'importar':
             for linha_id in linha_ids:
                 try:
@@ -268,6 +404,25 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                         if extrato.data_vencimento and data_prevista < extrato.data_vencimento:
                             data_prevista = extrato.data_vencimento
 
+                    # Reimportar o mesmo PDF é o caso comum: vincula ao lançamento que já existe
+                    # em vez de duplicar (mesma comparação de campos do caminho direto)
+                    duplicada = Conta.objects.filter(
+                        usuario=request.user,
+                        tipo=tipo_conta,
+                        descricao=linha.descricao,
+                        valor=linha.valor,
+                        cartao=extrato.cartao,
+                        data_compra=data_compra,
+                        data_prevista=data_prevista,
+                    ).first()
+
+                    if duplicada:
+                        linha.status = 'importado'
+                        linha.conta_vinculada = duplicada
+                        linha.save()
+                        duplicadas += 1
+                        continue
+
                     conta = Conta.objects.create(
                         usuario=request.user,
                         tipo=tipo_conta,
@@ -287,10 +442,10 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
                 except LinhaExtrato.DoesNotExist:
                     continue
 
-            extrato.linhas_importadas += count
+            extrato.linhas_importadas += count + duplicadas
             extrato.save(update_fields=['linhas_importadas'])
             return Response(
-                {'ok': True, 'importadas': count},
+                {'ok': True, 'importadas': count, 'duplicadas': duplicadas},
                 status=status.HTTP_200_OK
             )
 

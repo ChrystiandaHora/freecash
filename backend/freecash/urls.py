@@ -80,7 +80,9 @@ from core.views.admin_api import (
 from core.views.ferramentas_api import (
     FerramentasImportarAPIView,
     FerramentasImportarExtratoAPIView,
+    FerramentasConciliacaoUploadAPIView,
     FerramentasConciliacaoListAPIView,
+    FerramentasConciliacaoLinhaAPIView,
     FerramentasConciliacaoProcessarAPIView,
     FerramentasExportarAPIView,
     ContasBancariasViewSet,
@@ -175,7 +177,9 @@ urlpatterns += [
     # Ferramentas
     path('api/ferramentas/importar/', FerramentasImportarAPIView.as_view(), name='api-ferramentas-importar'),
     path('api/ferramentas/importar-extrato/', FerramentasImportarExtratoAPIView.as_view(), name='api-ferramentas-importar-extrato'),
+    path('api/ferramentas/conciliacao/upload/', FerramentasConciliacaoUploadAPIView.as_view(), name='api-ferramentas-conciliacao-upload'),
     path('api/ferramentas/conciliacao/', FerramentasConciliacaoListAPIView.as_view(), name='api-ferramentas-conciliacao'),
+    path('api/ferramentas/conciliacao/linha/<int:pk>/', FerramentasConciliacaoLinhaAPIView.as_view(), name='api-ferramentas-conciliacao-linha'),
     path('api/ferramentas/conciliacao/processar/', FerramentasConciliacaoProcessarAPIView.as_view(), name='api-ferramentas-conciliacao-processar'),
     path('api/ferramentas/exportar/', FerramentasExportarAPIView.as_view(), name='api-ferramentas-exportar'),
 ]
