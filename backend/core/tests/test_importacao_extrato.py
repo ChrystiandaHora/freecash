@@ -441,3 +441,239 @@ class DataFuturaNaImportacaoTests(APITestCase):
         agendado = Conta.objects.get(descricao="Agendado")
         self.assertFalse(agendado.transacao_realizada)
         self.assertIsNone(agendado.data_realizacao)
+
+
+class ConciliacaoUploadTestCase(APITestCase):
+    """Cobre o upload que enfileira linhas para revisão, sem criar lançamento.
+
+    A fila (`ExtratoImportado` + `LinhaExtrato`) existia no banco desde o início, mas
+    nenhum endpoint a populava: o único upload criava `Conta` direto e exigia cartão.
+    Estes testes fixam as duas propriedades que fazem a fila valer a pena — nada nasce
+    na base antes da aprovação, e o cartão é opcional, que é o que permite a linha
+    aprovada virar conta a pagar avulsa.
+    """
+
+    def setUp(self):
+        """Autentica o usuário e prepara um PDF de mentira; o parser é sempre mockado."""
+        self.user = User.objects.create_user(
+            username="conciliador", password="senha-bem-comprida-123"
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+        self.hoje = timezone.localdate()
+
+    def _upload(self, **extra):
+        """Envia um PDF para a fila de conciliação.
+
+        Returns:
+            Response: A resposta do endpoint de upload.
+        """
+        import io as _io
+        arquivo = _io.BytesIO(b"%PDF-1.4 conteudo")
+        arquivo.name = "extrato.pdf"
+        return self.client.post(
+            "/api/ferramentas/conciliacao/upload/",
+            {"arquivo": arquivo, "banco": "generico", **extra},
+            format="multipart",
+        )
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_upload_sem_cartao_enfileira_sem_criar_conta(self, mock_processar):
+        """O ponto da fila: o PDF vira linha pendente, e nenhuma Conta nasce ainda."""
+        mock_processar.return_value = [
+            {"data": self.hoje, "descricao": "ALUGUEL", "valor": Decimal("1800.00"), "tipo": "D"},
+            {"data": self.hoje, "descricao": "LUZ", "valor": Decimal("210.00"), "tipo": "D"},
+        ]
+
+        resposta = self._upload()
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Conta.objects.count(), 0)
+
+        extrato = ExtratoImportado.objects.get(usuario=self.user)
+        self.assertIsNone(extrato.cartao)
+        self.assertEqual(extrato.linhas_encontradas, 2)
+        self.assertEqual(extrato.linhas.filter(status="pendente").count(), 2)
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_linha_sem_cartao_aprovada_vira_conta_a_pagar(self, mock_processar):
+        """Sem cartão a despesa é avulsa: sem vínculo de fatura e sem data_compra."""
+        mock_processar.return_value = [
+            {"data": self.hoje + timedelta(days=5), "descricao": "ALUGUEL",
+             "valor": Decimal("1800.00"), "tipo": "D"},
+        ]
+        self._upload()
+        extrato = ExtratoImportado.objects.get(usuario=self.user)
+        linha = extrato.linhas.get()
+
+        resposta = self.client.post(
+            "/api/ferramentas/conciliacao/processar/",
+            {"acao": "importar", "extrato_id": extrato.id, "linha_ids": [linha.id]},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        conta = Conta.objects.get(usuario=self.user)
+        self.assertEqual(conta.tipo, "D")
+        self.assertIsNone(conta.cartao)
+        self.assertIsNone(conta.data_compra)
+        self.assertFalse(conta.transacao_realizada)  # data futura, regra de _ja_ocorreu
+        self.assertEqual(conta.data_prevista, self.hoje + timedelta(days=5))
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_reimportar_o_mesmo_pdf_nao_duplica(self, mock_processar):
+        """Reimportar é o caso comum; a segunda aprovação vincula, não cria."""
+        mock_processar.return_value = [
+            {"data": self.hoje, "descricao": "ALUGUEL", "valor": Decimal("1800.00"), "tipo": "D"},
+        ]
+
+        for _ in range(2):
+            self._upload()
+
+        primeiro, segundo = ExtratoImportado.objects.order_by("id")
+        for extrato in (primeiro, segundo):
+            self.client.post(
+                "/api/ferramentas/conciliacao/processar/",
+                {"acao": "importar", "extrato_id": extrato.id,
+                 "linha_ids": [linha.id for linha in extrato.linhas.all()]},
+                format="json",
+            )
+
+        self.assertEqual(Conta.objects.count(), 1)
+        conta = Conta.objects.get()
+        self.assertEqual(
+            [linha.conta_vinculada_id for linha in LinhaExtrato.objects.all()],
+            [conta.id, conta.id],
+        )
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_upload_com_cartao_preenche_vencimento_da_fatura(self, mock_processar):
+        """Com cartão, o extrato guarda o vencimento detectado para a aprovação usar."""
+        cartao = CartaoCredito.objects.create(
+            usuario=self.user, nome="Cartão", limite=Decimal("5000.00"),
+            dia_fechamento=15, dia_vencimento=25, ativo=True,
+        )
+        mock_processar.return_value = [
+            {"data": date(2026, 3, 10), "descricao": "MERCADO",
+             "valor": Decimal("90.00"), "tipo": "D"},
+        ]
+
+        resposta = self._upload(cartao=str(cartao.uuid))
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        extrato = ExtratoImportado.objects.get(usuario=self.user)
+        self.assertEqual(extrato.cartao, cartao)
+        self.assertEqual(extrato.data_vencimento, date(2026, 3, 25))
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_pdf_ilegivel_nao_deixa_extrato_orfao(self, mock_processar):
+        """Parser que não achou nada devolve 400 e não cria fila vazia para revisar."""
+        mock_processar.return_value = []
+
+        resposta = self._upload()
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ExtratoImportado.objects.count(), 0)
+
+    def test_upload_exige_arquivo(self):
+        """Sem arquivo o erro é do cliente, não uma exceção do parser."""
+        resposta = self.client.post(
+            "/api/ferramentas/conciliacao/upload/", {"banco": "generico"}, format="multipart"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch('core.services.extrato_parser.processar_pdf')
+    def test_cartao_de_outro_usuario_nao_e_aceito(self, mock_processar):
+        """O cartão vem por UUID do cliente: precisa ser filtrado pelo dono."""
+        alheio = User.objects.create_user(username="outro", password="senha-bem-comprida-123")
+        cartao = CartaoCredito.objects.create(
+            usuario=alheio, nome="Cartão alheio", limite=Decimal("5000.00"),
+            dia_fechamento=15, dia_vencimento=25, ativo=True,
+        )
+
+        resposta = self._upload(cartao=str(cartao.uuid))
+
+        self.assertEqual(resposta.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(ExtratoImportado.objects.count(), 0)
+
+
+class CorrecaoNaturezaLinhaTestCase(APITestCase):
+    """Cobre a correção de débito/crédito na fila, antes da aprovação.
+
+    O parser genérico decide a natureza pelo sinal de menos: extrato que imprime
+    despesa sem sinal sai inteiro como crédito, e aprovado assim viraria receita —
+    saldo e projeção inflados, que é o mesmo estrago da regra de data. Como a
+    heurística não tem como acertar sozinha, quem corrige é o usuário, na fila.
+    """
+
+    def setUp(self):
+        """Cria um extrato com uma linha classificada como crédito pelo parser."""
+        self.user = User.objects.create_user(
+            username="corretor", password="senha-bem-comprida-123"
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+        self.extrato = ExtratoImportado.objects.create(
+            usuario=self.user, arquivo_nome="extrato.pdf", banco="generico"
+        )
+        self.linha = LinhaExtrato.objects.create(
+            extrato=self.extrato, data=timezone.localdate(),
+            descricao="ALUGUEL", valor=Decimal("1800.00"), tipo="C",
+        )
+
+    def _corrigir(self, tipo, linha_id=None):
+        """Troca a natureza de uma linha pendente.
+
+        Returns:
+            Response: A resposta do endpoint de correção.
+        """
+        return self.client.patch(
+            f"/api/ferramentas/conciliacao/linha/{linha_id or self.linha.id}/",
+            {"tipo": tipo}, format="json",
+        )
+
+    def test_corrigir_para_debito_faz_a_linha_virar_despesa(self):
+        """O ponto do endpoint: crédito chutado vira despesa e é lançado como tal."""
+        self.assertEqual(self._corrigir("D").status_code, status.HTTP_200_OK)
+
+        self.client.post(
+            "/api/ferramentas/conciliacao/processar/",
+            {"acao": "importar", "extrato_id": self.extrato.id,
+             "linha_ids": [self.linha.id]},
+            format="json",
+        )
+
+        self.assertEqual(Conta.objects.get(usuario=self.user).tipo, "D")
+
+    def test_tipo_invalido_e_recusado(self):
+        """`tipo` vem do cliente: só 'C' e 'D' podem chegar ao banco."""
+        self.assertEqual(self._corrigir("X").status_code, status.HTTP_400_BAD_REQUEST)
+        self.linha.refresh_from_db()
+        self.assertEqual(self.linha.tipo, "C")
+
+    def test_linha_ja_revisada_nao_muda_mais(self):
+        """Depois de virar lançamento, mexer no tipo da linha não corrigiria a Conta."""
+        self.linha.status = "importado"
+        self.linha.save(update_fields=["status"])
+
+        self.assertEqual(self._corrigir("D").status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_linha_de_outro_usuario_nao_e_alcancavel(self):
+        """O id da linha é sequencial e vem do cliente: precisa filtrar pelo dono."""
+        alheio = User.objects.create_user(username="outro2", password="senha-bem-comprida-123")
+        extrato_alheio = ExtratoImportado.objects.create(
+            usuario=alheio, arquivo_nome="alheio.pdf", banco="generico"
+        )
+        linha_alheia = LinhaExtrato.objects.create(
+            extrato=extrato_alheio, data=timezone.localdate(),
+            descricao="ALHEIO", valor=Decimal("10.00"), tipo="C",
+        )
+
+        resposta = self._corrigir("D", linha_id=linha_alheia.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_404_NOT_FOUND)
+        linha_alheia.refresh_from_db()
+        self.assertEqual(linha_alheia.tipo, "C")
