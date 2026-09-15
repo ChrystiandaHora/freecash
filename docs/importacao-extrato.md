@@ -19,17 +19,30 @@ de linhas para o usuário conferir, não lançamentos prontos.
 
 ## Dois caminhos, e eles não são iguais
 
-**Importação direta** (`FerramentasImportarExtratoAPIView`) cria `Conta` na hora, a
-partir do que o parser extraiu. É o caminho da fatura de cartão, onde o usuário já sabe
-o que está importando.
+**Importação direta** (`FerramentasImportarExtratoAPIView`, `POST
+/api/ferramentas/importar-extrato/`) cria `Conta` na hora, a partir do que o parser
+extraiu, e **exige** um cartão. É o caminho da fatura, onde o usuário já sabe o que está
+importando. A tela é *Compras Cartão*.
 
 **Conciliação** (`ExtratoImportado` + `LinhaExtrato`) guarda cada linha com
 `status="pendente"` e espera. O usuário aprova, descarta ou vincula a um lançamento que
-já existe — `conta_vinculada`. É o caminho do extrato de conta corrente, onde metade das
-linhas provavelmente já foi lançada à mão.
+já existe — `conta_vinculada`. Aqui o cartão é **opcional**, e é isso que faz a linha
+aprovada poder virar conta a pagar avulsa. A tela é *Conciliação*.
 
 A diferença não é técnica, é de confiança: numa fatura, toda linha é despesa nova; num
 extrato, a maioria já está no sistema.
+
+### A fila ficou anos sem entrada
+
+Os models, os serializers e os dois endpoints de conciliação existem desde o começo, mas
+até 2026-09-14 **nada os populava**: `ExtratoImportado.objects.create` não aparecia em
+lugar nenhum fora dos testes. A fila estava sempre vazia, e a tela que a exibia foi
+apagada em `adcceaa` sem que a peça faltante — o upload — tivesse sido escrita.
+
+Quem preenche a lacuna é `FerramentasConciliacaoUploadAPIView` (`POST
+/api/ferramentas/conciliacao/upload/`): roda o mesmo `processar_pdf`, mas grava linhas
+pendentes em vez de `Conta`. Nada entra na base antes da aprovação — é o ponto inteiro
+do caminho, e a razão de ele não reaproveitar o endpoint direto.
 
 ---
 
@@ -103,6 +116,12 @@ uma `Conta` com **usuário, tipo, descrição, valor, cartão, `data_compra` e
 Isso torna reimportar o mesmo PDF inofensivo — o caso comum, quando o usuário não sabe
 se já importou.
 
+A conciliação aplica a **mesma** comparação, mas no momento da aprovação, e não do
+upload: achando a `Conta` idêntica, a linha é marcada `importado` e apontada para ela em
+vez de criar uma segunda. O usuário vê "N já existia(m) e foi(ram) vinculada(s)". Só a
+aprovação pode fazer essa checagem, porque `data_prevista` de compra de cartão depende
+do ciclo e não é conhecida enquanto a linha está na fila.
+
 E tem o efeito colateral esperado: **duas compras genuinamente iguais no mesmo dia** —
 dois cafés de R$ 8 na mesma padaria — são lidas como uma. O sistema erra para o lado de
 não duplicar dinheiro, que é o lado menos ruim; a segunda entra à mão.
@@ -123,5 +142,9 @@ classificador que erra em silêncio seria pior que campo vazio — existe
 impresso no PDF, o que pegaria página perdida ou linha mal lida. Seria a checagem de
 maior retorno aqui, e não existe.
 
-**Conciliação não sugere vínculo.** O usuário escolhe manualmente a que lançamento cada
-linha corresponde; não há casamento automático por valor e data aproximados.
+**Conciliação não tem vínculo manual.** `FerramentasConciliacaoProcessarAPIView` aceita
+exatamente duas ações — `importar` e `ignorar` — e o `conta_vinculada` da linha só é
+preenchido pela `Conta` que a aprovação criou, ou pela duplicata exata que ela achou.
+Não existe "esta linha é aquele lançamento que eu já tinha digitado": para um pagamento
+lançado à mão com descrição diferente, o caminho é descartar a linha. Casamento
+aproximado por valor e data seria a evolução natural, e é o que falta.
