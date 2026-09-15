@@ -27,6 +27,7 @@ import {
   History,
   Layers,
   UploadCloud,
+  Inbox,
   CheckSquare,
   DownloadCloud,
   Settings,
@@ -90,6 +91,7 @@ export const navGroups = [
     label: 'Ferramentas',
     items: [
       { name: 'Relatórios', path: '/relatorios', icon: FileText },
+      { name: 'Conciliação', path: '/conciliacao', icon: Inbox, docTitle: 'Conciliação de Extratos' },
       { name: 'Importar', path: '/importar', icon: UploadCloud },
       { name: 'Compras Cartão', path: '/compras-cartao', icon: CheckSquare, docTitle: 'Compras no Cartão' },
       { name: 'Backup', path: '/backup', icon: DownloadCloud },

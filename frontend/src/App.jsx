@@ -50,6 +50,7 @@ import AtivosCarteiras from './pages/AtivosCarteiras';
 import MeusAtivos from './pages/MeusAtivos';
 import AtivoDetalhes from './pages/AtivoDetalhes';
 import FerramentasImportar from './pages/FerramentasImportar';
+import FerramentasConciliacao from './pages/FerramentasConciliacao';
 import ComprasCartao from './pages/ComprasCartao';
 import FerramentasBackup from './pages/FerramentasBackup';
 import AjustesPagamentos from './pages/AjustesPagamentos';
@@ -213,6 +214,7 @@ function App() {
                 <Route path="investimentos/classes" element={<AtivosClasses />} />
 
                 <Route path="importar" element={<FerramentasImportar />} />
+                <Route path="conciliacao" element={<FerramentasConciliacao />} />
                 <Route path="compras-cartao" element={<ComprasCartao />} />
                 <Route path="compras-cartao/novo" element={<CompraCartaoForm />} />
                 <Route path="compras-cartao/editar/:id" element={<CompraCartaoForm />} />

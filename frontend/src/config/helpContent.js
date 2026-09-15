@@ -214,14 +214,31 @@ export const helpContent = {
   },
 
   "/importar": {
-    title: "Importar Extrato",
-    overview: "Ferramenta para importação e conciliação massiva de extratos bancários em formato de planilha.",
+    title: "Restaurar Backup",
+    overview: "Restauração da base a partir de um arquivo de backup criptografado (.fcbk) gerado pela própria conta.",
     features: [
-      "Leitor de arquivos XLS/CSV de múltiplos bancos com mapeamento de colunas.",
-      "Fila de conciliação assistida para evitar transações duplicadas."
+      "Leitura de backup proprietário .fcbk protegido por senha.",
+      "Resumo dos registros restaurados por categoria ao final."
     ],
     actions: {
-      "Enviar Arquivo": "Arraste ou selecione o extrato e confirme os lançamentos para a base real."
+      "Enviar Arquivo": "Selecione o .fcbk, informe a senha e confirme a restauração.",
+      "Importar extrato em PDF": "Não é aqui: extrato e fatura em PDF entram por Ferramentas › Conciliação."
+    }
+  },
+
+  "/conciliacao": {
+    title: "Conciliação de Extratos",
+    overview: "Envio de extrato ou fatura em PDF que vira uma fila de linhas para você conferir antes de virar lançamento.",
+    features: [
+      "Leitor de PDF por banco (Nubank, Santander) com varredura genérica de reserva.",
+      "Fila de revisão linha a linha: nada entra na base sem aprovação.",
+      "Cartão opcional — sem cartão, a linha aprovada vira conta a pagar avulsa.",
+      "Reenviar o mesmo PDF não duplica: a linha é vinculada ao lançamento que já existe."
+    ],
+    actions: {
+      "Enviar para a fila": "Escolha o banco, opcionalmente um cartão, e suba o PDF. Nada é gravado neste passo.",
+      "Lançar selecionadas": "Cria os lançamentos das linhas marcadas. Data futura nasce prevista, não realizada.",
+      "Descartar selecionadas": "Tira da fila as linhas que você não quer lançar, sem criar nada."
     }
   },
 
