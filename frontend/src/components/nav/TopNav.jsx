@@ -5,6 +5,10 @@
  * na horizontal a partir de 1280px; abaixo disso um painel full-screen desce com
  * as seções em acordeão.
  *
+ * A barra só tem gatilhos de grupo: os links diretos que havia antes (Dashboard,
+ * Transações, Contas a Pagar) repetiam entradas já presentes nos painéis, e a
+ * duplicata deixava a mesma rota ativa em dois lugares da mesma linha.
+ *
  * PADRÃO: navegação por DISCLOSURE, não `menubar` — ver NavMenuTrigger.jsx.
  *
  * Guardas de anti-padrão do A11Y.md observadas aqui:
@@ -17,10 +21,9 @@
 import { useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Wallet, X } from 'lucide-react';
-import { directNavLinks, filtrarGruposVisiveis, navIndex } from '../../config/navigation';
+import { filtrarGruposVisiveis, navIndex } from '../../config/navigation';
 import { useAuth } from '../../context/AuthProvider';
 import { findActiveNav } from '../../lib/navigation';
-import { cn } from '../../lib/utils';
 import {
   DESKTOP_NAV_QUERY,
   FINE_HOVER_QUERY,
@@ -56,12 +59,6 @@ export default function TopNav({ mainRef }) {
   const active = useMemo(() => findActiveNav(pathname, navIndex), [pathname]);
   const activePath = active?.item.path ?? null;
   const activeGroupId = active?.groupId ?? null;
-
-  // Verifica se a rota ativa é um dos links diretos promovidos ao topo
-  const isDirectActive = useMemo(
-    () => directNavLinks.some((d) => d.path === activePath),
-    [activePath]
-  );
 
   // Os refs vivem aqui, e nao dentro do useNavMenu: o React Compiler nao consegue
   // provar que `menu.containerRef` e um objeto de ref, e acusa acesso a ref
@@ -220,36 +217,12 @@ export default function TopNav({ mainRef }) {
                   segundo saía como "Navegação principal, navegação". */}
               <nav aria-label="Principal" className="hidden h-full lg:block">
                 <ul className="flex h-full items-stretch gap-1">
-                  {/* Links diretos promovidos à barra superior (1 clique) */}
-                  {directNavLinks.map((item) => {
-                    const isActive = activePath === item.path;
-                    return (
-                      <li key={item.path} className="flex items-center">
-                        <Link
-                          to={item.path}
-                          onClick={() => onNavigate(item.path)}
-                          aria-current={isActive ? 'page' : undefined}
-                          className={cn(
-                            'nav-link relative inline-flex min-h-11 items-center rounded-md px-3 text-sm xl:px-4',
-                            'transition-colors focus-visible:outline-none focus-visible:ring-2',
-                            'focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
-                            isActive
-                              ? 'font-bold text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:bg-primary after:content-[""]'
-                              : 'font-medium text-muted-foreground hover:text-foreground'
-                          )}
-                        >
-                          {item.name}
-                        </Link>
-                      </li>
-                    );
-                  })}
-
                   {/* Menus suspensos de navegação */}
                   {gruposVisiveis.map((group, index) => {
                     const triggerId = `navtrig-${group.id}`;
                     const panelId = `navpanel-${group.id}`;
                     const isOpen = menu.openId === group.id;
-                    const isGroupActive = activeGroupId === group.id && !isDirectActive;
+                    const isGroupActive = activeGroupId === group.id;
 
                     return (
                       // O painel é irmão de DOM do gatilho, dentro do mesmo <li>.
@@ -325,7 +298,6 @@ export default function TopNav({ mainRef }) {
         isOpen={menu.isMobileOpen}
         isDesktop={isDesktop}
         groups={gruposVisiveis}
-        directLinks={directNavLinks}
         openSectionId={menu.openSectionId}
         onToggleSection={menu.toggleSection}
         activePath={activePath}

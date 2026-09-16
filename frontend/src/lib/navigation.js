@@ -4,13 +4,13 @@
  */
 
 /**
- * Achata grupos e links diretos num índice ordenado por especificidade.
+ * Achata grupos e rotas avulsas num índice ordenado por especificidade.
  * @param {Array<{id: string, label: string, items: Array<Object>}>} groups
- * @param {Array<Object>} [directLinks=[]]
+ * @param {Array<Object>} [avulsas=[]] - Rotas fora de qualquer menu; vencem o empate de caminho.
  * @returns {Array<Object>} Índice ordenado para busca rápida.
  */
-export function buildNavIndex(groups, directLinks = []) {
-  const directFlat = directLinks.map((item) => ({
+export function buildNavIndex(groups, avulsas = []) {
+  const directFlat = avulsas.map((item) => ({
     groupId: item.groupId ?? 'dashboard',
     groupLabel: item.groupLabel ?? item.name,
     item,
