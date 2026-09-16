@@ -35,17 +35,9 @@ import {
   BarChart3,
   CalendarClock,
   TrendingUp,
+  Rows3,
 } from 'lucide-react';
 import { buildNavIndex } from '../lib/navigation';
-
-/**
- * Links diretos promovidos ao topo da barra superior (acesso rápido de 1 clique).
- */
-export const directNavLinks = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, aliases: ['/'], groupId: 'dashboard' },
-  { name: 'Transações', path: '/transacoes', icon: List, groupId: 'financeiro' },
-  { name: 'Contas a Pagar', path: '/contas-pagar', icon: FileSpreadsheet, groupId: 'financeiro' },
-];
 
 /**
  * Grupos de navegação com menus colapsáveis (disclosure).
@@ -56,45 +48,54 @@ export const directNavLinks = [
  * - `aliases`: caminhos extras que ativam o item.
  * - `exact`: escape hatch; por padrão é derivado em `buildNavIndex`.
  * - `adminOnly`: o grupo só é renderizado para quem tem `is_staff`.
+ *
+ * Os itens de cada grupo ficam em ordem alfabética (pt-BR, acento ignorado) — é a
+ * ordem em que o painel os desenha, e `navigation.test.js` a trava. A ordem daqui
+ * não influencia o casamento de rota: `buildNavIndex` reordena por especificidade.
  */
 export const navGroups = [
   {
     id: 'financeiro',
     label: 'Financeiro',
     items: [
-      { name: 'Contas a Pagar', path: '/contas-pagar', icon: FileSpreadsheet },
-      { name: 'Transações', path: '/transacoes', icon: List },
-      { name: 'Receitas', path: '/receitas', icon: Coins },
-      { name: 'Meus Cartões', path: '/cartoes', icon: CreditCard },
-      { name: 'Kanban', path: '/contas-kanban', icon: KanbanSquare, docTitle: 'Kanban de Contas' },
       { name: 'Calendário', path: '/calendario', icon: CalendarClock, docTitle: 'Calendário de Pagamentos' },
+      // `exact: false` explícito: com a rota de lote no índice, a derivação
+      // automática marcaria este item como exato e os formulários filhos
+      // (`/novo`, `/editar/:id`) ficariam sem título e sem estado ativo.
+      { name: 'Contas a Pagar', path: '/contas-pagar', icon: FileSpreadsheet, exact: false },
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, aliases: ['/'] },
       { name: 'Horizonte de Saldos', path: '/horizonte-saldos', icon: TrendingUp },
-      { name: 'Simulador de Gastos', path: '/simulador', icon: ClockIcon },
+      { name: 'Kanban', path: '/contas-kanban', icon: KanbanSquare, docTitle: 'Kanban de Contas' },
+      { name: 'Lançamento em Lote', path: '/contas-pagar/lote', icon: Rows3 },
       { name: 'Metas', path: '/metas', icon: Target },
+      { name: 'Meus Cartões', path: '/cartoes', icon: CreditCard },
       { name: 'Pagamentos', path: '/pagamentos', icon: Settings, docTitle: 'Formas de Pagamento' },
+      { name: 'Receitas', path: '/receitas', icon: Coins },
+      { name: 'Simulador de Gastos', path: '/simulador', icon: ClockIcon },
+      { name: 'Transações', path: '/transacoes', icon: List },
     ],
   },
   {
     id: 'investimentos',
     label: 'Investimentos',
     items: [
-      { name: 'Dashboard', path: '/investimentos', icon: Activity, docTitle: 'Investimentos' },
-      { name: 'Meus Ativos', path: '/investimentos/ativos', icon: Gem },
-      { name: 'Carteiras', path: '/investimentos/carteiras', icon: Wallet },
       { name: 'Balanceamento', path: '/investimentos/balanceamento', icon: Scale },
-      { name: 'Histórico', path: '/investimentos/historico', icon: History, docTitle: 'Histórico de Ordens' },
+      { name: 'Carteiras', path: '/investimentos/carteiras', icon: Wallet },
       { name: 'Classes', path: '/investimentos/classes', icon: Layers, docTitle: 'Classes de Ativos' },
+      { name: 'Dashboard', path: '/investimentos', icon: Activity, docTitle: 'Investimentos' },
+      { name: 'Histórico', path: '/investimentos/historico', icon: History, docTitle: 'Histórico de Ordens' },
+      { name: 'Meus Ativos', path: '/investimentos/ativos', icon: Gem },
     ],
   },
   {
     id: 'ferramentas',
     label: 'Ferramentas',
     items: [
-      { name: 'Relatórios', path: '/relatorios', icon: FileText },
+      { name: 'Backup', path: '/backup', icon: DownloadCloud },
+      { name: 'Compras Cartão', path: '/compras-cartao', icon: CheckSquare, docTitle: 'Compras no Cartão' },
       { name: 'Conciliação', path: '/conciliacao', icon: Inbox, docTitle: 'Conciliação de Extratos' },
       { name: 'Importar', path: '/importar', icon: UploadCloud },
-      { name: 'Compras Cartão', path: '/compras-cartao', icon: CheckSquare, docTitle: 'Compras no Cartão' },
-      { name: 'Backup', path: '/backup', icon: DownloadCloud },
+      { name: 'Relatórios', path: '/relatorios', icon: FileText },
     ],
   },
   {
@@ -109,7 +110,7 @@ export const navGroups = [
 ];
 
 /** Índice pré-computado (singleton de módulo) consumido por `findActiveNav`. */
-export const navIndex = buildNavIndex(navGroups, directNavLinks);
+export const navIndex = buildNavIndex(navGroups);
 
 /**
  * Filtra os grupos de navegação conforme o papel de quem está navegando.

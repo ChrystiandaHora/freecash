@@ -7,15 +7,15 @@
  * Não precisa de jsdom nem de @testing-library — `lib/navigation.js` é puro.
  */
 import { describe, expect, it } from 'vitest';
-import { directNavLinks, filtrarGruposVisiveis, navGroups, navIndex } from '../config/navigation';
+import { filtrarGruposVisiveis, navGroups, navIndex } from '../config/navigation';
 import { findActiveNav, getRouteTitle } from './navigation';
 import { helpContent } from '../config/helpContent';
 
 /** [rota, grupo esperado, caminho de menu esperado, título esperado] */
 const ROUTES = [
   // Itens que existem no menu ou como link direto.
-  ['/', 'dashboard', '/dashboard', 'Dashboard'],
-  ['/dashboard', 'dashboard', '/dashboard', 'Dashboard'],
+  ['/', 'financeiro', '/dashboard', 'Dashboard'],
+  ['/dashboard', 'financeiro', '/dashboard', 'Dashboard'],
   ['/relatorios', 'ferramentas', '/relatorios', 'Relatórios'],
   ['/contas-pagar', 'financeiro', '/contas-pagar', 'Contas a Pagar'],
   ['/contas-kanban', 'financeiro', '/contas-kanban', 'Kanban de Contas'],
@@ -35,7 +35,7 @@ const ROUTES = [
   ['/pagamentos', 'financeiro', '/pagamentos', 'Formas de Pagamento'],
 
   // Sub-rotas de formulário que NÃO estão no menu: devem acender o item pai.
-  ['/contas-pagar/lote', 'financeiro', '/contas-pagar', 'Contas a Pagar'],
+  ['/contas-pagar/lote', 'financeiro', '/contas-pagar/lote', 'Lançamento em Lote'],
   ['/contas-pagar/novo', 'financeiro', '/contas-pagar', 'Contas a Pagar'],
   ['/contas-pagar/editar/42', 'financeiro', '/contas-pagar', 'Contas a Pagar'],
   ['/receitas/novo', 'financeiro', '/receitas', 'Receitas'],
@@ -93,14 +93,13 @@ describe('getRouteTitle', () => {
 describe('integridade da config', () => {
   const items = navGroups.flatMap((g) => g.items);
 
-  it('tem os 4 grupos e os 23 itens esperados em navGroups, mais 3 directNavLinks', () => {
+  it('tem os 4 grupos e os 25 itens esperados em navGroups', () => {
     // O quarto grupo é Administração, marcado com `adminOnly`.
     // 23 itens desde que Ferramentas ganhou "Conciliação" — o grupo foi a 5 itens,
     // dentro do teto de 7 por painel registrado no A11Y-DECISIONS (Investimentos
     // segue sendo o maior, com 6).
     expect(navGroups).toHaveLength(4);
-    expect(items).toHaveLength(23);
-    expect(directNavLinks).toHaveLength(3);
+    expect(items).toHaveLength(25);
   });
 
   it('esconde o grupo administrativo de quem não é administrador', () => {
@@ -111,13 +110,21 @@ describe('integridade da config', () => {
     expect(semAdmin.some((g) => g.adminOnly)).toBe(false);
   });
 
+  it('mantém os itens de cada grupo em ordem alfabética pt-BR', () => {
+    for (const grupo of navGroups) {
+      const nomes = grupo.items.map((i) => i.name);
+      const ordenados = [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      expect(nomes, `grupo ${grupo.id}`).toEqual(ordenados);
+    }
+  });
+
   it('não repete caminhos dentro de navGroups', () => {
     const paths = items.map((i) => i.path);
     expect(new Set(paths).size).toBe(paths.length);
   });
 
   it('todo item tem entrada de ajuda contextual em helpContent', () => {
-    const allItems = [...items, ...directNavLinks];
+    const allItems = items;
     const missing = allItems.filter((i) => !(i.path in helpContent)).map((i) => i.path);
     expect(missing).toEqual([]);
   });
