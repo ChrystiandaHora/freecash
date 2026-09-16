@@ -4,6 +4,20 @@
  * Compartilhado entre o mega-painel (desktop), o acordeão (mobile) e o mapa do
  * site no rodapé, para que o contrato de acessibilidade dos links exista num
  * único lugar.
+ *
+ * ## Por que multicol e não grid em `columns > 1`
+ *
+ * O `grid-cols-2` preenche por LINHA: numa lista alfabética a coluna esquerda
+ * ficava com A, C, E e a direita com B, D, F, e quem lê uma coluna de cima para
+ * baixo não encontra a ordem que o rótulo promete. O `column-count` do CSS
+ * preenche por COLUNA — esquerda A–F, direita G–L — que é como se lê uma lista
+ * ordenada, e é a única das duas em que a ordem visual coincide com a ordem de
+ * DOM, que é a que o Tab e o leitor de tela percorrem (SC 1.3.2, SC 2.4.3).
+ *
+ * O espaçamento vertical vem de `mb` em cada `<li>`, e não de `space-y`: o
+ * `space-y` pula o primeiro filho do DOM, que no multicol é o primeiro só da
+ * coluna da esquerda — a da direita começaria 2px acima. `break-inside-avoid`
+ * impede que um link de duas linhas seja partido entre as colunas.
  */
 import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -20,7 +34,7 @@ import { SectionLabel } from '../ui/SectionLabel';
  * @param {'lg' | 'md'} [props.size='lg'] - Escala tipográfica dos links.
  * @param {'span' | 'h2' | 'h3'} [props.labelAs='span'] - Elemento do rótulo da coluna.
  * @param {'card' | 'page'} [props.surface='card'] - Fundo sob os links; define a cor do ring-offset do foco.
- * @param {number} [props.columns=1] - Número de colunas do grid de links.
+ * @param {number} [props.columns=1] - Acima de 1, distribui os links em duas colunas de leitura (preenchidas de cima para baixo).
  */
 export function NavLinkList({
   labelId,
@@ -48,11 +62,12 @@ export function NavLinkList({
           ordem de DOM → "Ir para Financeiro". Sem o id do gatilho seriam cinco
           listas todas chamadas "Ir para", indistinguíveis num rotor de leitor de
           tela. Onde não há gatilho o rótulo já é único e basta sozinho. */}
+      {/* Multicol e não `grid-cols`: o grid preenche por linha (ver docblock). */}
       <ul
         aria-labelledby={triggerId ? `${labelId} ${triggerId}` : labelId}
         className={cn(
           columns > 1
-            ? 'grid gap-x-12 gap-y-0.5 sm:grid-cols-2'
+            ? 'columns-1 gap-12 sm:columns-2 [&>li]:mb-0.5 [&>li]:break-inside-avoid'
             : 'space-y-0.5'
         )}
       >
