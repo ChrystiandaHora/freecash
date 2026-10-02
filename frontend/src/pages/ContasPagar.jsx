@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
-import { DataTable } from '../components/ui/DataTable';
+import { DataTable, FilterToolbar } from '../components/ui/DataTable';
+import { applyColumnFilters, describeAppliedFilters, resolveFilterTypes } from '../components/ui/columnFilters';
 import { Badge } from '../components/ui/Badge';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
@@ -107,7 +108,8 @@ export default function ContasPagar() {
   const [desfazerPagamentoId, setDesfazerPagamentoId] = useState(null) // ID da conta a reverter pagamento
   const [editingConta, setEditingConta] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
-  const [filteredContas, setFilteredContas] = useState(null)
+  // Filtro compartilhado pelas duas visões: mudá-lo na tabela também recorta o quadro
+  const [filtros, setFiltros] = useState(() => ({ data_vencimento: getCurrentMonthDateRange() }))
   const [actionError, setActionError] = useState('')
   const [vista, setVista] = useState(lerVistaSalva)
 
@@ -247,46 +249,6 @@ export default function ContasPagar() {
       return (a?.data_vencimento || '').localeCompare(b?.data_vencimento || '')
     })
   }, [contas])
-
-  // O quadro mostra o mês corrente, o mesmo recorte que /contas-kanban pede ao
-  // servidor. Sem data de vencimento a conta fica fora, como no filtro de lá.
-  const contasDoMes = useMemo(() => {
-    const { from, to } = getCurrentMonthDateRange()
-    return (contasOrdenadas || []).filter(
-      (c) => typeof c.data_vencimento === 'string' && c.data_vencimento >= from && c.data_vencimento <= to
-    )
-  }, [contasOrdenadas])
-
-  // ─── KPIs ──────────────────────────────────────────────────────────────────
-  // Os três indicadores descrevem o conjunto que está à vista: sob a tabela, o que o
-  // filtro dela deixou; sob o quadro, o mês que o quadro mostra. Deixá-los presos ao
-  // filtro da tabela faria o kanban exibir números de um recorte invisível.
-  const contasParaKpis = vista === 'kanban' ? contasDoMes : (filteredContas ?? contasOrdenadas)
-  const pendentes = (contasParaKpis || []).filter((c) => !c.pago)
-  const atrasadas = (contasParaKpis || []).filter((c) => {
-    if (c.pago || !c.data_vencimento || typeof c.data_vencimento !== 'string') return false
-    const parts = c.data_vencimento.split('-')
-    if (parts.length < 3) return false
-    const [year, month, day] = parts
-    const due = new Date(Number(year), Number(month) - 1, Number(day))
-    due.setHours(0, 0, 0, 0)
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    return due < today
-  })
-  const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
-
-  // Terceiro indicador: o que já foi PAGO dentro do período filtrado.
-  //
-  // Antes ele somava "o mês atual" — mas calculado sobre o conjunto já filtrado, o
-  // que o tornava a interseção entre o período escolhido e o mês corrente. Filtrando
-  // qualquer outro mês, essa interseção é vazia e o card exibia R$ 0,00 com a tabela
-  // cheia. No filtro de julho, os três indicadores mostravam zero para 15 linhas
-  // liquidadas — a tela informava nada.
-  //
-  // Agora os três descrevem o MESMO conjunto: o que está na tabela. "Pago" completa
-  // "pendente" e "atrasadas" e nunca é trivialmente zero quando há linhas.
-  const pagas = (contasParaKpis || []).filter((c) => c.pago)
-  const totalPago = pagas.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
 
   // ─── Dados da Tabela Memoizados ───────────────────────────────────────────
   const tableData = useMemo(() => {
@@ -466,6 +428,42 @@ export default function ContasPagar() {
   ]
 
   // ─── Render ────────────────────────────────────────────────────────────────
+
+  // ─── Filtro compartilhado ──────────────────────────────────────────────────
+  const filterTypes = resolveFilterTypes(columns, contasOrdenadas)
+  const contasFiltradas = applyColumnFilters(columns, contasOrdenadas, filtros, filterTypes)
+  const filtrosAplicados = describeAppliedFilters(columns, filtros, filterTypes)
+
+  // ─── KPIs ──────────────────────────────────────────────────────────────────
+  // Os três indicadores descrevem o conjunto que está à vista — o mesmo recorte do
+  // filtro, seja na tabela ou no quadro.
+  const contasParaKpis = contasFiltradas
+  const pendentes = (contasParaKpis || []).filter((c) => !c.pago)
+  const atrasadas = (contasParaKpis || []).filter((c) => {
+    if (c.pago || !c.data_vencimento || typeof c.data_vencimento !== 'string') return false
+    const parts = c.data_vencimento.split('-')
+    if (parts.length < 3) return false
+    const [year, month, day] = parts
+    const due = new Date(Number(year), Number(month) - 1, Number(day))
+    due.setHours(0, 0, 0, 0)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    return due < today
+  })
+  const totalPendente = pendentes.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
+
+  // Terceiro indicador: o que já foi PAGO dentro do período filtrado.
+  //
+  // Antes ele somava "o mês atual" — mas calculado sobre o conjunto já filtrado, o
+  // que o tornava a interseção entre o período escolhido e o mês corrente. Filtrando
+  // qualquer outro mês, essa interseção é vazia e o card exibia R$ 0,00 com a tabela
+  // cheia. No filtro de julho, os três indicadores mostravam zero para 15 linhas
+  // liquidadas — a tela informava nada.
+  //
+  // Agora os três descrevem o MESMO conjunto: o que está na tabela. "Pago" completa
+  // "pendente" e "atrasadas" e nunca é trivialmente zero quando há linhas.
+  const pagas = (contasParaKpis || []).filter((c) => c.pago)
+  const totalPago = pagas.reduce((acc, c) => acc + Number(c.valor ?? 0), 0)
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -582,15 +580,22 @@ export default function ContasPagar() {
           <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
             <p>
-              Mostrando o mês corrente. Arraste um card para <strong>"Pagas"</strong> para
-              registrar o pagamento, ou clique no card para editá-lo. Para filtrar outros
-              períodos e excluir contas, use a <strong>Tabela</strong>.
+              {filtrosAplicados.length > 0 ? 'Mostrando as contas do filtro abaixo.' : 'Mostrando todas as contas.'}{' '}
+              Arraste um card para <strong>"Pagas"</strong> para registrar o pagamento, ou
+              clique no card para editá-lo. O filtro vale também para a <strong>Tabela</strong>,
+              onde ficam as exclusões.
             </p>
           </div>
+          <FilterToolbar
+            columns={columns}
+            data={contasOrdenadas}
+            filters={filtros}
+            onFilterChange={setFiltros}
+          />
           {isLoading ? (
             <p role="status" className="text-sm text-muted-foreground">Carregando contas a pagar...</p>
           ) : (
-            <QuadroContasPagar contas={contasDoMes} />
+            <QuadroContasPagar contas={contasFiltradas} />
           )}
         </div>
       )}
@@ -603,9 +608,9 @@ export default function ContasPagar() {
             data={tableData}
             isLoading={isLoading}
             pageSize={10}
-            defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
+            filters={filtros}
+            onFilterChange={setFiltros}
             emptyMessage="Nenhuma conta cadastrada."
-            onFilteredDataChange={setFilteredContas}
             rowClassName={(row) =>
               row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
             }

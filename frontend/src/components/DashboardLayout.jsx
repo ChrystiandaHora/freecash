@@ -43,7 +43,9 @@ export default function DashboardLayout() {
       isFirstRenderRef.current = false;
       return;
     }
-    mainRef.current?.focus();
+    // A SPA herda o scroll da tela anterior; sem isto a nova rota abre no rodapé
+    window.scrollTo(0, 0);
+    mainRef.current?.focus({ preventScroll: true });
   }, [location.pathname]);
 
   return (

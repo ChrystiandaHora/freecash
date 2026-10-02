@@ -17,120 +17,51 @@ import {
 } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { Button } from "./Button"
+import {
+  getFilterValue,
+  isFilterActive,
+  resolveFilterTypes,
+  applyColumnFilters,
+  describeAppliedFilters,
+} from "./columnFilters"
 
-// ─── Utilitários de Filtragem ────────────────────────────────────────────────
+const headerLabel = (col) => (typeof col.header === "string" ? col.header : col.key)
 
-/** Normaliza texto removendo acentos e caixa, para comparações tolerantes em pt-BR. */
-const normalizeText = (val) =>
-  String(val ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-
-/** Converte um valor arbitrário em data ISO (YYYY-MM-DD) ou null caso não seja temporal. */
-const toISODate = (val) => {
-  if (val === null || val === undefined || val === "") return null
-  if (val instanceof Date) {
-    return Number.isNaN(val.getTime()) ? null : val.toISOString().slice(0, 10)
-  }
-  const str = String(val)
-  const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (isoMatch) return isoMatch[1]
-
-  // Suporte a datas no formato brasileiro (DD/MM/YYYY)
-  const brMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
-  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`
-
-  const parsed = new Date(str)
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
-}
-
-/** Extrai o valor bruto de uma coluna usado na filtragem (permite acessor customizado). */
-const getFilterValue = (col, row) =>
-  col.filterAccessor ? col.filterAccessor(row) : row[col.key]
-
-/** Verifica se um valor está preenchido (tratando 0 e false como preenchidos). */
-const hasValue = (val) => val !== "" && val !== null && val !== undefined
-
-/**
- * Infere o tipo de filtro de uma coluna a partir da primeira amostra de dados,
- * salvo quando o tipo é declarado explicitamente via `col.filterType`.
- */
-const inferFilterType = (col, data) => {
-  if (col.filterType) return col.filterType
-  if (col.filterOptions) return "select"
-
-  const sampleRow = data.find((row) => hasValue(getFilterValue(col, row)))
-  if (!sampleRow) return "text"
-
-  const sample = getFilterValue(col, sampleRow)
-  if (typeof sample === "boolean") return "boolean"
-  if (sample instanceof Date) return "date"
-  if (typeof sample === "string" && /^\d{4}-\d{2}-\d{2}/.test(sample)) return "date"
-  if (typeof sample === "number") return "number"
-  // Valores decimais serializados como string pela API (ex.: "1500.00")
-  if (typeof sample === "string" && sample.trim() !== "" && !Number.isNaN(Number(sample))) return "number"
-  return "text"
-}
-
-/** Indica se o filtro de uma coluna possui algum critério ativo. */
-const isFilterActive = (type, value) => {
-  if (!hasValue(value)) return false
-  if (type === "date") return hasValue(value.from) || hasValue(value.to)
-  if (type === "number") return hasValue(value.min) || hasValue(value.max)
-  return true
-}
-
-/** Aplica o critério de filtro de uma coluna sobre uma linha. */
-const matchesFilter = (col, type, row, filterValue) => {
-  if (!isFilterActive(type, filterValue)) return true
-  const raw = getFilterValue(col, row)
-
-  if (type === "date") {
-    const iso = toISODate(raw)
-    if (!iso) return false
-    if (hasValue(filterValue.from) && iso < filterValue.from) return false
-    if (hasValue(filterValue.to) && iso > filterValue.to) return false
-    return true
-  }
-
-  if (type === "number") {
-    const num = Number(raw)
-    if (Number.isNaN(num)) return false
-    if (hasValue(filterValue.min) && num < Number(filterValue.min)) return false
-    if (hasValue(filterValue.max) && num > Number(filterValue.max)) return false
-    return true
-  }
-
-  if (type === "boolean") {
-    const isTruthy = raw === true || raw === "true" || raw === 1
-    return filterValue === "true" ? isTruthy : !isTruthy
-  }
-
-  if (type === "select") {
-    return String(raw ?? "") === String(filterValue)
-  }
-
-  return normalizeText(raw).includes(normalizeText(filterValue))
-}
-
-/** Descreve o filtro ativo em texto curto, usado nos chips de resumo. */
-const describeFilter = (type, value) => {
-  if (type === "date") {
-    const from = hasValue(value.from) ? toISODate(value.from) : null
-    const to = hasValue(value.to) ? toISODate(value.to) : null
-    const fmt = (iso) => iso.split("-").reverse().join("/")
-    if (from && to) return `${fmt(from)} — ${fmt(to)}`
-    if (from) return `a partir de ${fmt(from)}`
-    return `até ${fmt(to)}`
-  }
-  if (type === "number") {
-    if (hasValue(value.min) && hasValue(value.max)) return `${value.min} — ${value.max}`
-    if (hasValue(value.min)) return `≥ ${value.min}`
-    return `≤ ${value.max}`
-  }
-  if (type === "boolean") return value === "true" ? "Sim" : "Não"
-  return String(value)
+/** Resumo dos filtros aplicados, em chips removíveis. */
+const AppliedFiltersBar = ({ appliedFilters, onClear, onClearAll, className }) => {
+  if (appliedFilters.length === 0) return null
+  return (
+    <div
+      className={cn("flex flex-wrap items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2.5", className)}
+      aria-label="Filtros aplicados"
+    >
+      <span className="text-xs font-medium text-muted-foreground">Filtros:</span>
+      {appliedFilters.map(({ col, label }) => (
+        <span
+          key={col.key}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-1 text-xs text-foreground"
+        >
+          <span className="font-medium text-muted-foreground">{headerLabel(col)}:</span>
+          <span className="max-w-48 truncate">{label}</span>
+          <button
+            type="button"
+            onClick={() => onClear(col.key)}
+            aria-label={`Remover filtro de ${headerLabel(col)}`}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </span>
+      ))}
+      <button
+        type="button"
+        onClick={onClearAll}
+        className="ml-auto text-xs font-semibold text-primary transition-opacity hover:opacity-80"
+      >
+        Limpar todos
+      </button>
+    </div>
+  )
 }
 
 /**
@@ -302,6 +233,98 @@ const ColumnFilterPopover = ({ column, type, value, anchorRect, data = [], onCha
   )
 }
 
+/**
+ * Barra de filtros por coluna para visões dos mesmos dados que não são a tabela
+ * (ex.: o kanban de Contas a Pagar). Usa as mesmas regras e o mesmo popover dos
+ * cabeçalhos, então um filtro criado aqui ou na tabela significa a mesma coisa.
+ */
+const FilterToolbar = ({ columns = [], data = [], filters = {}, onFilterChange, className }) => {
+  const [openFilterKey, setOpenFilterKey] = useState(null)
+  const [anchorRect, setAnchorRect] = useState(null)
+  const triggerRef = useRef(null)
+
+  const filterTypes = useMemo(() => resolveFilterTypes(columns, data), [columns, data])
+  const appliedFilters = describeAppliedFilters(columns, filters, filterTypes)
+  const filterableColumns = columns.filter((col) => filterTypes[col.key])
+
+  // Ao fechar, o foco volta ao botão que abriu o popover (WCAG 2.4.3)
+  const closeFilter = useCallback(() => {
+    setOpenFilterKey(null)
+    setAnchorRect(null)
+    triggerRef.current?.focus({ preventScroll: true })
+  }, [])
+
+  const handleToggle = (event, key) => {
+    event.stopPropagation()
+    if (openFilterKey === key) {
+      closeFilter()
+      return
+    }
+    triggerRef.current = event.currentTarget
+    setAnchorRect(event.currentTarget.getBoundingClientRect())
+    setOpenFilterKey(key)
+  }
+
+  const clearFilter = (key) => {
+    const next = { ...filters }
+    delete next[key]
+    onFilterChange(next)
+  }
+
+  return (
+    <div className={cn("overflow-hidden rounded-xl border border-border/60 bg-card", className)}>
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+        <span className="text-xs font-medium text-muted-foreground">Filtrar por:</span>
+        {filterableColumns.map((col) => {
+          const active = isFilterActive(filterTypes[col.key], filters[col.key])
+          const open = openFilterKey === col.key
+          return (
+            <button
+              key={col.key}
+              type="button"
+              data-filter-trigger={col.key}
+              onClick={(e) => handleToggle(e, col.key)}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              className={cn(
+                "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                "focus:outline-none focus:ring-2 focus:ring-primary/40",
+                active || open
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Filter className="h-3 w-3" aria-hidden="true" fill={active ? "currentColor" : "none"} />
+              {headerLabel(col)}
+              {active && <span className="sr-only"> (filtro ativo)</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      <AppliedFiltersBar
+        appliedFilters={appliedFilters}
+        onClear={clearFilter}
+        onClearAll={() => onFilterChange({})}
+        className="border-b-0 border-t"
+      />
+
+      {openFilterKey && anchorRect && (
+        <ColumnFilterPopover
+          column={columns.find((col) => col.key === openFilterKey)}
+          type={filterTypes[openFilterKey]}
+          value={filters[openFilterKey]}
+          anchorRect={anchorRect}
+          data={data}
+          onChange={(value) => onFilterChange({ ...filters, [openFilterKey]: value })}
+          onClear={() => clearFilter(openFilterKey)}
+          onClose={closeFilter}
+        />
+      )}
+    </div>
+  )
+}
+
 const DataTable = ({
   columns = [],
   data = [],
@@ -332,9 +355,11 @@ const DataTable = ({
   filterable = true,
   defaultFilters = {},
 
-  // Filtros Controlados (Server-side)
+  // Filtros Controlados: o pai guarda o estado; a filtragem segue local,
+  // salvo com `manualFiltering`, quando os dados já chegam filtrados do servidor
   filters,
   onFilterChange,
+  manualFiltering = false,
 
   // Callback ao alterar dados filtrados (para atualizar cards/KPIs no pai)
   onFilteredDataChange,
@@ -361,19 +386,10 @@ const DataTable = ({
   }, [data.length, pageSize, filterSignature])
 
   // --- Mapa de Tipos de Filtro por Coluna ---
-  const filterTypes = useMemo(() => {
-    if (!filterable) return {}
-    return columns.reduce((acc, col) => {
-      // Colunas não ordenáveis (ex.: ações) ficam fora por padrão, salvo opt-in explícito
-      const enabled =
-        col.filterable === true || (col.filterable !== false && col.sortable !== false)
-
-      if (col.key && enabled) {
-        acc[col.key] = inferFilterType(col, data)
-      }
-      return acc
-    }, {})
-  }, [columns, data, filterable])
+  const filterTypes = useMemo(
+    () => resolveFilterTypes(columns, data, filterable),
+    [columns, data, filterable]
+  )
 
   const closeFilter = useCallback(() => {
     setOpenFilterKey(null)
@@ -413,33 +429,16 @@ const DataTable = ({
 
   // --- Colunas com Filtro Ativo (usadas nos chips de resumo) ---
   const appliedFilters = useMemo(
-    () =>
-      columns
-        .filter((col) => filterTypes[col.key] && isFilterActive(filterTypes[col.key], activeFilters[col.key]))
-        .map((col) => ({
-          col,
-          type: filterTypes[col.key],
-          label: describeFilter(filterTypes[col.key], activeFilters[col.key]),
-        })),
+    () => describeAppliedFilters(columns, activeFilters, filterTypes),
     [columns, filterTypes, activeFilters]
   )
 
   // --- Processamento Local: Filtragem ---
   const filteredData = useMemo(() => {
-    if (onFilterChange) return data // Filtragem controlada por API externa
-
-    const entries = Object.entries(activeFilters).filter(
-      ([key, value]) => filterTypes[key] && isFilterActive(filterTypes[key], value)
-    )
-    if (entries.length === 0) return data
-
-    const columnByKey = new Map(columns.map((col) => [col.key, col]))
-
-    return data.filter((row) =>
-      entries.every(([key, value]) => matchesFilter(columnByKey.get(key), filterTypes[key], row, value))
-    )
+    if (manualFiltering) return data
+    return applyColumnFilters(columns, data, activeFilters, filterTypes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, columns, filterTypes, filterSignature, onFilterChange])
+  }, [data, columns, filterTypes, filterSignature, manualFiltering])
 
   // --- Notificar o componente pai sobre os dados filtrados ---
   const lastEmittedRef = useRef(null)
@@ -657,40 +656,11 @@ const DataTable = ({
       <div className={cn("absolute right-0 top-0 bottom-0 w-8 pointer-events-none transition-opacity duration-300 bg-gradient-to-l from-background/80 to-transparent z-10", showRightShadow ? "opacity-100" : "opacity-0")} />
 
       {/* --- Resumo dos Filtros Aplicados --- */}
-      {appliedFilters.length > 0 && (
-        <div
-          className="flex flex-wrap items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2.5"
-          aria-label="Filtros aplicados"
-        >
-          <span className="text-xs font-medium text-muted-foreground">Filtros:</span>
-          {appliedFilters.map(({ col, label }) => (
-            <span
-              key={col.key}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-1 text-xs text-foreground"
-            >
-              <span className="font-medium text-muted-foreground">
-                {typeof col.header === "string" ? col.header : col.key}:
-              </span>
-              <span className="max-w-48 truncate">{label}</span>
-              <button
-                type="button"
-                onClick={() => handleFilterClear(col.key)}
-                aria-label={`Remover filtro de ${typeof col.header === "string" ? col.header : col.key}`}
-                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            onClick={handleClearAllFilters}
-            className="ml-auto text-xs font-semibold text-primary transition-opacity hover:opacity-80"
-          >
-            Limpar todos
-          </button>
-        </div>
-      )}
+      <AppliedFiltersBar
+        appliedFilters={appliedFilters}
+        onClear={handleFilterClear}
+        onClearAll={handleClearAllFilters}
+      />
 
       {/* Container de Rolagem Horizontal */}
       <div
@@ -941,4 +911,4 @@ const DataTable = ({
   )
 }
 
-export { DataTable }
+export { DataTable, AppliedFiltersBar, FilterToolbar }
