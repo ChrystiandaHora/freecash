@@ -113,6 +113,7 @@ def get_backupable_models():
         "PlanoMetas": 1.5,
         "Categoria": 2,
         "CartaoCredito": 3,
+        "Evento": 3.5,
         "ClasseAtivo": 4,
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,

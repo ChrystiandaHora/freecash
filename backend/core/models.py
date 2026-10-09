@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 
 # Create your models here.
@@ -69,6 +70,52 @@ class Categoria(AuditoriaModel):
         return self.nome
 
 
+class Evento(AuditoriaModel):
+    """Agrupa gastos de uma ocasião (viagem, reforma) pagos fora do orçamento mensal.
+
+    Atributos:
+        usuario: Dono do evento.
+        nome: Nome legível da ocasião (ex: 'Viagem Europa 2026').
+        inicio: Data de início do evento (opcional).
+        fim: Data de encerramento do evento (opcional).
+        orcamento: Valor previsto/teto para o evento.
+        fora_dos_relatorios: Se True, os lançamentos entram no saldo, mas não
+            nas agregações de período (dashboard, DRE, séries, custo de vida).
+    """
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="eventos",
+    )
+    nome = models.CharField(max_length=100)
+    inicio = models.DateField(null=True, blank=True)
+    fim = models.DateField(null=True, blank=True)
+    orcamento = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    fora_dos_relatorios = models.BooleanField(
+        default=True,
+        help_text="Se True, os lançamentos do evento entram no saldo, mas não nas agregações de período.",
+    )
+
+    class Meta:
+        unique_together = ("usuario", "nome")
+        ordering = ["-inicio", "nome"]
+        verbose_name = "Evento"
+        verbose_name_plural = "Eventos"
+
+    def __str__(self):
+        return self.nome
+
+
+class ContaQuerySet(models.QuerySet):
+    """QuerySet customizado para o modelo Conta."""
+
+    def do_orcamento(self):
+        """Exclui lançamentos vinculados a eventos fora dos relatórios mensais."""
+        return self.exclude(evento__fora_dos_relatorios=True)
+
+
 class Conta(AuditoriaModel):
     """Modelo principal que representa lançamentos financeiros de receitas ou despesas.
 
@@ -80,6 +127,8 @@ class Conta(AuditoriaModel):
         transacao_realizada: Indica se o lançamento foi liquidado (pago/recebido).
         eh_fatura_cartao: Identifica se este registro representa o pagamento consolidado de uma fatura de cartão.
     """
+    objects = ContaQuerySet.as_manager()
+
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -139,6 +188,15 @@ class Conta(AuditoriaModel):
         null=True,
         blank=True,
         related_name="ocorrencias",
+    )
+
+    # Evento fora do orçamento (ex: viagem, reforma)
+    evento = models.ForeignKey(
+        "core.Evento",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="contas",
     )
 
     class Meta:
@@ -216,6 +274,23 @@ class Conta(AuditoriaModel):
                 transacao_realizada=False,
                 data_realizacao=None
             )
+
+    def clean(self):
+        """Validações de integridade do lançamento."""
+        super().clean()
+        if self.evento:
+            if self.cartao_id is not None or self.eh_fatura_cartao:
+                raise ValidationError(
+                    {"evento": "Compras de cartão não podem ser vinculadas a eventos fora do orçamento."}
+                )
+            if self.tipo != self.TIPO_DESPESA:
+                raise ValidationError(
+                    {"evento": "Eventos só podem ser vinculados a despesas."}
+                )
+            if hasattr(self, "usuario") and self.usuario_id and self.evento.usuario_id != self.usuario_id:
+                raise ValidationError(
+                    {"evento": "O evento deve pertencer ao mesmo usuário do lançamento."}
+                )
 
     def save(self, *args, **kwargs):
         """Salva a transação sincronizando o estado com a fatura consolidada se aplicável.
