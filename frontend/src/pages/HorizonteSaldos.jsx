@@ -24,6 +24,11 @@
  * e cruzá-lo com o cenário de metas geraria quatro séries para duas perguntas. Refazendo
  * a busca, a classificação de cada dia continua vindo pronta de lá.
  *
+ * **A composição é uma aba, não um painel ao lado da grade.** Ela explica a curva — de
+ * onde vem o caixa de abertura e o que move cada mês —, e quem a abre quer ler isso
+ * sem a grade de ~370 células disputando a tela. Os filtros ficam acima das abas
+ * porque valem para as duas.
+ *
  * **Os filtros nunca desmontam a grade.** Eles entram na `queryKey`, então cada mudança
  * é uma chave nova e sem cache — o que acenderia o carregamento inicial e trocaria a
  * tela inteira por um spinner, levando junto o scroll e o foco de quem está digitando.
@@ -32,8 +37,18 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { AlertCircle, AlertTriangle, CalendarClock, Loader2, Target, Wallet } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calculator,
+  CalendarClock,
+  CalendarDays,
+  Loader2,
+  Target,
+  Wallet,
+} from 'lucide-react';
 
+import HorizonteComposicao from '../components/HorizonteComposicao';
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -43,6 +58,11 @@ import { formatarMoeda, formatarMoedaCompacta } from '../lib/moeda';
 import { buscarCalendario, buscarHorizonteSaldos } from '../services/planejamento';
 
 const DIAS_DO_MES = Array.from({ length: 31 }, (_, i) => i + 1);
+
+const ABAS = [
+  { id: 'grade', label: 'Grade diária', Icon: CalendarDays },
+  { id: 'composicao', label: 'Composição do saldo', Icon: Calculator },
+];
 
 /**
  * Classes visuais de cada situação de saldo.
@@ -103,6 +123,7 @@ export default function HorizonteSaldos() {
   const [considerarInvestimentos, setConsiderarInvestimentos] = useState(false);
   const [limiteAtencao, setLimiteAtencao] = useState('1000');
   const [diaSelecionado, setDiaSelecionado] = useState(null);
+  const [aba, setAba] = useState('grade');
 
   const tabelaRef = useRef(null);
 
@@ -145,6 +166,22 @@ export default function HorizonteSaldos() {
     }
     return mapa;
   }, [data]);
+
+  const handleAbaKeyDown = (event, index) => {
+    const keyToIndex = {
+      ArrowRight: (index + 1) % ABAS.length,
+      ArrowLeft: (index - 1 + ABAS.length) % ABAS.length,
+      Home: 0,
+      End: ABAS.length - 1,
+    };
+    const nextIndex = keyToIndex[event.key];
+    if (nextIndex === undefined) return;
+
+    event.preventDefault();
+    const proxima = ABAS[nextIndex];
+    setAba(proxima.id);
+    document.getElementById(`aba-${proxima.id}`)?.focus();
+  };
 
   const campoSaldo = considerarMetas ? 'saldo_com_metas' : 'saldo';
   const campoSituacao = considerarMetas ? 'situacao_com_metas' : 'situacao';
@@ -296,104 +333,141 @@ export default function HorizonteSaldos() {
         </p>
       )}
 
-      <Card className="overflow-hidden rounded-2xl border-border/40">
-        <CardContent className="space-y-3 p-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-            <ItemLegenda situacao="confortavel" texto="acima do limite de atenção" />
-            <ItemLegenda situacao="atencao" texto="abaixo do limite de atenção" />
-            <ItemLegenda situacao="negativo" texto="negativo" />
-            <span>— clique numa célula para ver os lançamentos do dia</span>
-          </div>
+      {/* Abas — padrão WAI-ARIA de tabs: troca a região visível, navegável por setas */}
+      <div role="tablist" aria-label="Visão do horizonte de saldos" className="flex border-b border-border/40">
+        {ABAS.map((item, index) => {
+          const { Icon } = item;
+          const ativa = aba === item.id;
+          return (
+            <button
+              key={item.id}
+              id={`aba-${item.id}`}
+              role="tab"
+              type="button"
+              aria-selected={ativa}
+              aria-controls={`painel-${item.id}`}
+              // Só a aba ativa fica na ordem de tabulação; as demais vêm pelas setas.
+              tabIndex={ativa ? 0 : -1}
+              onClick={() => setAba(item.id)}
+              onKeyDown={(e) => handleAbaKeyDown(e, index)}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs uppercase tracking-wider transition-all ${ativa ? 'border-primary font-extrabold text-primary' : 'border-transparent font-bold text-muted-foreground hover:text-foreground'}`}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
 
-          {/* Grade larga: rola dentro do próprio contêiner, para que a página
-              nunca role horizontalmente. */}
-          <div ref={tabelaRef} className="overflow-x-auto">
-            <table className="w-full min-w-[64rem] border-separate border-spacing-1 text-xs">
-              <caption className="sr-only">
-                Saldo acumulado projetado por dia, de {dataPorExtenso(data.inicio)} a{' '}
-                {dataPorExtenso(data.fim)}
-                {considerarMetas
-                  ? ', descontando os aportes necessários às metas'
-                  : ', considerando apenas os lançamentos registrados'}
-                {Number(data.valor_investido) > 0 && !data.investimentos_considerados
-                  ? ', e sem o valor aplicado na carteira de investimentos'
-                  : ''}
-              </caption>
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-10 bg-card px-2 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground"
-                  >
-                    Dia
-                  </th>
-                  {data.meses.map((mes) => (
-                    <th
-                      key={`${mes.ano}-${mes.mes}`}
-                      scope="col"
-                      className="px-2 py-2 text-center font-semibold uppercase tracking-wide text-muted-foreground"
-                    >
-                      {mes.rotulo}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {DIAS_DO_MES.map((numeroDia) => (
-                  <tr key={numeroDia}>
-                    <th
-                      scope="row"
-                      className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium tabular-nums text-muted-foreground"
-                    >
-                      {numeroDia}
-                    </th>
+      {aba === 'composicao' && (
+        <div id="painel-composicao" role="tabpanel" aria-labelledby="aba-composicao" tabIndex={0}>
+          <HorizonteComposicao data={data} considerarMetas={considerarMetas} />
+        </div>
+      )}
 
-                    {data.meses.map((mes) => {
-                      const celula = indice.get(`${mes.ano}-${mes.mes}-${numeroDia}`);
+      {aba === 'grade' && (
+        <div id="painel-grade" role="tabpanel" aria-labelledby="aba-grade" tabIndex={0}>
+          <Card className="overflow-hidden rounded-2xl border-border/40">
+            <CardContent className="space-y-3 p-4">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                <ItemLegenda situacao="confortavel" texto="acima do limite de atenção" />
+                <ItemLegenda situacao="atencao" texto="abaixo do limite de atenção" />
+                <ItemLegenda situacao="negativo" texto="negativo" />
+                <span>— clique numa célula para ver os lançamentos do dia</span>
+              </div>
 
-                      // Dia inexistente no mês, ou anterior a hoje no primeiro
-                      // mês: fica vazio, sem virar zero — zero significaria saldo
-                      // nulo, e não ausência de projeção.
-                      if (!celula) {
-                        return (
-                          <td
-                            key={`${mes.ano}-${mes.mes}-${numeroDia}`}
-                            className="px-1 py-1"
-                          />
-                        );
-                      }
+              {/* Grade larga: rola dentro do próprio contêiner, para que a página
+                  nunca role horizontalmente. O `relative` prende ao corte os textos
+                  sr-only, que são absolutos e escapariam alargando a página. */}
+              <div ref={tabelaRef} className="relative overflow-x-auto">
+                <table className="w-full min-w-[64rem] border-separate border-spacing-1 text-xs">
+                  <caption className="sr-only">
+                    Saldo acumulado projetado por dia, de {dataPorExtenso(data.inicio)} a{' '}
+                    {dataPorExtenso(data.fim)}
+                    {considerarMetas
+                      ? ', descontando os aportes necessários às metas'
+                      : ', considerando apenas os lançamentos registrados'}
+                    {Number(data.valor_investido) > 0 && !data.investimentos_considerados
+                      ? ', e sem o valor aplicado na carteira de investimentos'
+                      : ''}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th
+                        scope="col"
+                        className="sticky left-0 z-10 bg-card px-2 py-2 text-left font-semibold uppercase tracking-wide text-muted-foreground"
+                      >
+                        Dia
+                      </th>
+                      {data.meses.map((mes) => (
+                        <th
+                          key={`${mes.ano}-${mes.mes}`}
+                          scope="col"
+                          className="px-2 py-2 text-center font-semibold uppercase tracking-wide text-muted-foreground"
+                        >
+                          {mes.rotulo}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DIAS_DO_MES.map((numeroDia) => (
+                      <tr key={numeroDia}>
+                        <th
+                          scope="row"
+                          className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium tabular-nums text-muted-foreground"
+                        >
+                          {numeroDia}
+                        </th>
 
-                      const estilo = ESTILO_POR_SITUACAO[celula[campoSituacao]];
-                      return (
-                        <td key={`${mes.ano}-${mes.mes}-${numeroDia}`} className="px-1 py-1">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDiaSelecionado({
-                                ano: mes.ano,
-                                mes: mes.mes,
-                                dia: celula.dia,
-                                data: celula.data,
-                                saldo: celula[campoSaldo],
-                              })
-                            }
-                            className={`w-full rounded-md px-2 py-1 text-center tabular-nums transition-colors hover:brightness-95 ${estilo.celula}`}
-                          >
-                            {formatarMoedaCompacta(celula[campoSaldo])}
-                            {/* Terceiro sinal, para leitor de tela: a cor e a
-                                borda não são percebidas por quem ouve a tabela. */}
-                            <span className="sr-only">, {estilo.rotulo}</span>
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                        {data.meses.map((mes) => {
+                          const celula = indice.get(`${mes.ano}-${mes.mes}-${numeroDia}`);
+
+                          // Dia inexistente no mês, ou anterior a hoje no primeiro
+                          // mês: fica vazio, sem virar zero — zero significaria saldo
+                          // nulo, e não ausência de projeção.
+                          if (!celula) {
+                            return (
+                              <td
+                                key={`${mes.ano}-${mes.mes}-${numeroDia}`}
+                                className="px-1 py-1"
+                              />
+                            );
+                          }
+
+                          const estilo = ESTILO_POR_SITUACAO[celula[campoSituacao]];
+                          return (
+                            <td key={`${mes.ano}-${mes.mes}-${numeroDia}`} className="px-1 py-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDiaSelecionado({
+                                    ano: mes.ano,
+                                    mes: mes.mes,
+                                    dia: celula.dia,
+                                    data: celula.data,
+                                    saldo: celula[campoSaldo],
+                                  })
+                                }
+                                className={`w-full rounded-md px-2 py-1 text-center tabular-nums transition-colors hover:brightness-95 ${estilo.celula}`}
+                              >
+                                {formatarMoedaCompacta(celula[campoSaldo])}
+                                {/* Terceiro sinal, para leitor de tela: a cor e a
+                                    borda não são percebidas por quem ouve a tabela. */}
+                                <span className="sr-only">, {estilo.rotulo}</span>
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Modal
         isOpen={Boolean(diaSelecionado)}
