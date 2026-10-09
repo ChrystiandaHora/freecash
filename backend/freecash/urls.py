@@ -37,7 +37,7 @@ from core.views.api import (
     CartaoCreditoAPIViewSet, ContasPagarViewSet, ReceitasViewSet,
     TransacoesViewSet, RelatoriosDREAPIView,
     ExecutiveBIDashboardAPIView, ComprasCartaoViewSet, SaldoAtualAPIView,
-    MetaFinanceiraViewSet, PlanoMetasAPIView
+    MetaFinanceiraViewSet, PlanoMetasAPIView, EventoViewSet
 )
 from core.views.auth_api import (
     EmailVerifyConfirmAPIView,
@@ -101,6 +101,8 @@ router.register(r'financeiro/receitas', ReceitasViewSet, basename='api-financeir
 router.register(r'financeiro/transacoes', TransacoesViewSet, basename='api-financeiro-transacoes')
 router.register(r'financeiro/compras-cartao', ComprasCartaoViewSet, basename='api-financeiro-compras-cartao')
 router.register(r'financeiro/metas', MetaFinanceiraViewSet, basename='api-financeiro-metas')
+router.register(r'financeiro/eventos', EventoViewSet, basename='api-financeiro-eventos')
+router.register(r'eventos', EventoViewSet, basename='api-eventos')
 
 router.register(r'investimentos/carteiras', CarteiraViewSet, basename='api-carteira')
 router.register(r'investimentos/posicoes', PosicaoCarteiraViewSet, basename='api-posicao-carteira')

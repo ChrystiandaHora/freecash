@@ -6,6 +6,7 @@ PostgreSQL, aplicando lógica sob medida de cálculo de faturas de cartão de cr
 e formatação de datas de vencimento.
 """
 
+from django.db.models import Sum
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
@@ -13,6 +14,7 @@ from .models import (
     Categoria,
     Conta,
     CartaoCredito,
+    Evento,
     ExtratoImportado,
     LinhaExtrato,
     MetaFinanceira,
@@ -47,15 +49,61 @@ class CartaoCreditoSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
 
 
+class EventoSerializer(serializers.ModelSerializer):
+    """Serializador do modelo Evento (viagens, reformas, etc)."""
+    total_gasto = serializers.SerializerMethodField()
+    total_previsto = serializers.SerializerMethodField()
+    saldo_restante = serializers.SerializerMethodField()
+    qtd_lancamentos = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Evento
+        fields = [
+            'id', 'uuid', 'nome', 'inicio', 'fim', 'orcamento',
+            'fora_dos_relatorios', 'total_gasto', 'total_previsto',
+            'saldo_restante', 'qtd_lancamentos', 'criada_em', 'atualizada_em'
+        ]
+        read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']
+
+    def get_total_gasto(self, obj: Evento) -> float:
+        """Total realizado (já pago) de despesas deste evento."""
+        total = obj.contas.filter(tipo=Conta.TIPO_DESPESA, transacao_realizada=True).aggregate(
+            t=Sum('valor')
+        )['t'] or 0
+        return float(total)
+
+    def get_total_previsto(self, obj: Evento) -> float:
+        """Total geral (pendente + realizado) de despesas deste evento."""
+        total = obj.contas.filter(tipo=Conta.TIPO_DESPESA).aggregate(
+            t=Sum('valor')
+        )['t'] or 0
+        return float(total)
+
+    def get_saldo_restante(self, obj: Evento) -> float | None:
+        """Saldo restante do orçamento (orcamento - total_previsto)."""
+        if obj.orcamento is None:
+            return None
+        total = self.get_total_previsto(obj)
+        return round(float(obj.orcamento) - total, 2)
+
+    def get_qtd_lancamentos(self, obj: Evento) -> int:
+        return obj.contas.count()
+
+
 class ContaSerializer(serializers.ModelSerializer):
     """Serializador padrão do modelo Conta.
 
-    Fornece aninhamento profundo opcional para categorias e cartões de crédito,
+    Fornece aninhamento profundo opcional para categorias, cartões e eventos,
     além de calcular dinamicamente o status de atraso de lançamentos financeiros.
     """
     categoria_detalhe = CategoriaSerializer(source='categoria', read_only=True)
     cartao_detalhe = CartaoCreditoSerializer(source='cartao', read_only=True)
+    evento_detalhe = EventoSerializer(source='evento', read_only=True)
+    evento_nome = serializers.CharField(source='evento.nome', read_only=True, default=None)
     esta_atrasada = serializers.BooleanField(read_only=True)
+    evento = serializers.PrimaryKeyRelatedField(
+        queryset=Evento.objects.none(), required=False, allow_null=True
+    )
 
     class Meta:
         model = Conta
@@ -63,10 +111,47 @@ class ContaSerializer(serializers.ModelSerializer):
             'id', 'uuid', 'tipo', 'descricao', 'valor', 'data_prevista',
             'transacao_realizada', 'data_realizacao', 'categoria', 
             'categoria_detalhe', 'cartao', 'cartao_detalhe', 
+            'evento', 'evento_detalhe', 'evento_nome',
             'data_compra', 'eh_fatura_cartao', 'esta_atrasada',
             'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'esta_atrasada', 'criada_em', 'atualizada_em']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            self.fields['evento'].queryset = Evento.objects.filter(usuario=request.user)
+
+    def validate(self, attrs):
+        evento = attrs.get('evento')
+        cartao = attrs.get('cartao')
+        tipo = attrs.get('tipo')
+
+        if self.instance:
+            if evento is None and 'evento' not in attrs:
+                evento = self.instance.evento
+            if cartao is None and 'cartao' not in attrs:
+                cartao = self.instance.cartao
+            if tipo is None and 'tipo' not in attrs:
+                tipo = self.instance.tipo
+
+        if evento:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and evento.usuario_id != request.user.id:
+                raise serializers.ValidationError(
+                    {"evento": "O evento deve pertencer ao seu usuário."}
+                )
+            if cartao is not None:
+                raise serializers.ValidationError(
+                    {"evento": "Compras no cartão não podem ser vinculadas a eventos fora do orçamento."}
+                )
+            if tipo != Conta.TIPO_DESPESA:
+                raise serializers.ValidationError(
+                    {"evento": "Eventos só podem ser vinculados a despesas."}
+                )
+
+        return super().validate(attrs)
 
 
 class ExtratoImportadoSerializer(serializers.ModelSerializer):
@@ -215,12 +300,23 @@ class ContasPagarAPISerializer(serializers.ModelSerializer):
     pago = serializers.BooleanField(source='transacao_realizada', read_only=True)
     data_vencimento = serializers.DateField(source='data_prevista', read_only=True)
     qtd_compras_vinculadas = serializers.SerializerMethodField()
+    evento = serializers.PrimaryKeyRelatedField(
+        queryset=Evento.objects.none(), required=False, allow_null=True
+    )
+    evento_nome = serializers.CharField(source='evento.nome', read_only=True, default=None)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            self.fields['evento'].queryset = Evento.objects.filter(usuario=request.user)
 
     class Meta:
         model = Conta
         fields = [
             'id', 'uuid', 'tipo', 'descricao', 'valor', 'data_vencimento',
             'pago', 'data_realizacao', 'categoria', 'cartao',
+            'evento', 'evento_nome',
             'data_compra', 'eh_fatura_cartao', 'esta_atrasada',
             'qtd_compras_vinculadas', 'criada_em', 'atualizada_em'
         ]
@@ -285,12 +381,15 @@ class TransacaoAPISerializer(serializers.ModelSerializer):
     categoria = serializers.CharField(source='categoria.nome', read_only=True)
     tipo = serializers.SerializerMethodField()
     data = serializers.SerializerMethodField()
+    evento = serializers.IntegerField(source='evento.id', read_only=True, default=None)
+    evento_nome = serializers.CharField(source='evento.nome', read_only=True, default=None)
 
     class Meta:
         model = Conta
         fields = [
             'id', 'uuid', 'tipo', 'descricao', 'valor', 'data',
             'transacao_realizada', 'data_realizacao', 'categoria', 'cartao',
+            'evento', 'evento_nome',
             'eh_fatura_cartao', 'criada_em', 'atualizada_em'
         ]
         read_only_fields = ['id', 'uuid', 'criada_em', 'atualizada_em']

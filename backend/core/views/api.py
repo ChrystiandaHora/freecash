@@ -31,12 +31,14 @@ from core.views.cookies import clear_refresh_cookie, set_refresh_cookie
 logger = logging.getLogger("core")
 
 from core.models import (
-    AporteMeta, Categoria, Conta, CartaoCredito, MetaFinanceira, PlanoMetas
+    AporteMeta, Categoria, Conta, CartaoCredito, Evento, MetaFinanceira, PlanoMetas
 )
 from core.serializers import (
     CategoriaSerializer,
     ContaSerializer,
     CartaoCreditoSerializer,
+    ContasPagarAPISerializer,
+    EventoSerializer,
     CustomTokenObtainPairSerializer,
     AporteMetaSerializer,
     MetaFinanceiraSerializer,
@@ -53,7 +55,8 @@ from core.services.dashboard_helper import (
     clamp_int,
     make_periodo,
     make_periodo_custom,
-    saldo_liquidez_ate
+    saldo_liquidez_ate,
+    gastos_eventos_fora_orcamento,
 )
 
 class CategoriaViewSet(viewsets.ModelViewSet):
@@ -75,6 +78,64 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Salva a nova categoria atribuindo o usuário autenticado da requisição."""
         serializer.save(usuario=self.request.user)
+
+
+class EventoViewSet(viewsets.ModelViewSet):
+    """ViewSet REST para operações de CRUD de Eventos fora do orçamento.
+
+    Permite gerenciar ocasiões extraordinárias (viagens, reformas, casamentos)
+    e acompanhar o orçamento vs. total realizado por categoria.
+    """
+    serializer_class = EventoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Retorna os eventos pertencentes ao usuário logado."""
+        return Evento.objects.filter(usuario=self.request.user).order_by('-inicio', 'nome')
+
+    def perform_create(self, serializer):
+        """Associa o evento ao usuário autenticado."""
+        serializer.save(usuario=self.request.user)
+
+    @action(detail=True, methods=['get'])
+    def resumo(self, request, pk=None):
+        """Retorna detalhes do evento com gastos agregados por categoria e lançamentos."""
+        evento = self.get_object()
+        contas = evento.contas.select_related('categoria').order_by('-data_prevista', '-id')
+
+        por_categoria = (
+            contas.values('categoria__nome')
+            .annotate(total=Sum('valor'))
+            .order_by('-total')
+        )
+        total_realizado = float(
+            contas.filter(transacao_realizada=True).aggregate(t=Sum('valor'))['t'] or 0
+        )
+        total_previsto = float(
+            contas.aggregate(t=Sum('valor'))['t'] or 0
+        )
+        saldo_restante = (
+            round(float(evento.orcamento) - total_previsto, 2)
+            if evento.orcamento is not None
+            else None
+        )
+
+        return Response({
+            'evento': EventoSerializer(evento, context={'request': request}).data,
+            'total_realizado': total_realizado,
+            'total_previsto': total_previsto,
+            'saldo_restante': saldo_restante,
+            'categorias': [
+                {
+                    'categoria': row['categoria__nome'] or 'Sem categoria',
+                    'total': float(row['total'] or 0),
+                }
+                for row in por_categoria
+            ],
+            'lancamentos': ContasPagarAPISerializer(
+                contas, many=True, context={'request': request}
+            ).data,
+        }, status=status.HTTP_200_OK)
 
 
 class CartaoCreditoViewSet(viewsets.ModelViewSet):
@@ -260,6 +321,11 @@ class DashboardAPIView(APIView):
         saldo_prev = receitas_prev - despesas_prev
         saldo_pct = pct_change(saldo_mes, saldo_prev)
 
+        eventos_fora_orcamento = gastos_eventos_fora_orcamento(
+            usuario, periodo.inicio, periodo.fim, regime="competencia"
+        )
+        total_fora_orcamento = sum(e["total"] for e in eventos_fora_orcamento)
+
         payload = {
             "periodo": periodo.idx,
             "periodo_label": periodo.label,
@@ -286,6 +352,10 @@ class DashboardAPIView(APIView):
             "breakdown_despesas": breakdown_items,
             "top_categoria": top_categoria,
             "resumo_3_meses": resumo_3_meses,
+            "gastos_fora_orcamento": {
+                "total": total_fora_orcamento,
+                "eventos": eventos_fora_orcamento,
+            },
         }
 
         return Response(payload, status=status.HTTP_200_OK)
@@ -1290,7 +1360,7 @@ class RelatoriosDREAPIView(APIView):
         total_receitas = receitas_qs.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
 
         # Despesas
-        despesas_qs = Conta.objects.filter(
+        despesas_qs = Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
             data_prevista__year=ano,
@@ -1322,7 +1392,7 @@ class RelatoriosDREAPIView(APIView):
         hoje_dt = timezone.localdate()
         seis_meses_atras = hoje_dt - datetime.timedelta(days=180)
         
-        gastos_qs = Conta.objects.filter(
+        gastos_qs = Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
             data_prevista__gte=seis_meses_atras,
