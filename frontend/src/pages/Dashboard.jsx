@@ -8,6 +8,7 @@
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
@@ -20,7 +21,8 @@ import {
   AlertTriangle,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -61,6 +63,7 @@ const formatPercentage = (value) => {
  * @returns {React.JSX.Element} Painel visual composto por cartões de KPIs e gráficos analíticos.
  */
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [periodo, setPeriodo] = useState(0); // 0: Atual, 1: Anterior, 2: Próximo, -1: Customizado
   const [customDate, setCustomDate] = useState(() => {
     const d = new Date();
@@ -556,6 +559,34 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Aviso de Gastos Fora do Orçamento (Eventos) */}
+      {data?.gastos_fora_orcamento?.total > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                Gastos extraordinários fora do orçamento mensal:{' '}
+                <span className="font-bold">{formatCurrency(data.gastos_fora_orcamento.total)}</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {data.gastos_fora_orcamento.eventos?.map((e) => `${e.evento_nome} (${formatCurrency(e.total)})`).join(', ')} — Esses valores reduziram seu saldo de caixa, mas foram isolados dos KPIs acima para não distorcer suas médias.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/eventos')}
+            className="shrink-0 border-amber-500/30 hover:bg-amber-500/20 text-amber-900 dark:text-amber-200"
+          >
+            Ver Eventos
+          </Button>
+        </div>
+      )}
 
       {/* Main Charts & Breakdown Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
