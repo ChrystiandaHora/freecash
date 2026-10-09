@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
 from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models.functions import TruncMonth
 
 from core.models import Conta, MetaFinanceira
 from core.services.dashboard_helper import saldo_liquidez_ate
@@ -21,6 +22,9 @@ FILTRO_CARTAO = Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
 
 MESES_PADRAO = 12
 MESES_MAXIMO = 24
+
+# Quantos lançamentos de cada tipo a composição do mês lista nominalmente
+MAIORES_POR_TIPO = 5
 
 
 def _centavos(valor) -> Decimal:
@@ -70,15 +74,21 @@ def _carteiras_consideradas(usuario) -> list[str]:
     )
 
 
-def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
-    """Agrupa por dia receitas e despesas pendentes (data_prevista) e liquidadas na janela."""
-    movimentos = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
+def _lancamentos_da_janela(usuario, inicio: date, fim: date) -> list[dict]:
+    """Lista os lançamentos que movem o saldo na janela, cada um no dia em que o dinheiro anda.
 
-    def _acumular(linhas, campo_data: str) -> None:
-        for linha in linhas:
-            chave = "receitas" if linha["tipo"] == Conta.TIPO_RECEITA else "despesas"
-            movimentos[linha[campo_data]][chave] += _centavos(linha["total"])
+    Pendente conta pela `data_prevista`; liquidado, pela `data_realizacao` — uma conta
+    prevista para setembro e paga hoje move o saldo hoje. É a fonte única dessa regra:
+    o fluxo diário da grade e a composição de cada mês saem desta mesma lista, para que
+    a explicação nunca divirja da curva.
 
+    Returns:
+        list[dict]: Lançamentos com `data` efetiva, em ordem indefinida.
+    """
+    campos = (
+        "id", "tipo", "descricao", "valor", "data_prevista", "data_realizacao",
+        "transacao_realizada", "categoria__nome", "evento__nome",
+    )
     pendentes = (
         Conta.objects.filter(
             usuario=usuario,
@@ -87,11 +97,8 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
             data_prevista__lte=fim,
         )
         .filter(FILTRO_CARTAO)
-        .values("data_prevista", "tipo")
-        .annotate(total=Sum("valor"))
+        .values(*campos)
     )
-    _acumular(pendentes, "data_prevista")
-
     liquidados = (
         Conta.objects.filter(
             usuario=usuario,
@@ -100,12 +107,123 @@ def _movimentos_por_dia(usuario, inicio: date, fim: date) -> dict[date, dict]:
             data_realizacao__lte=fim,
         )
         .filter(FILTRO_CARTAO)
-        .values("data_realizacao", "tipo")
+        .values(*campos)
+    )
+
+    lancamentos = []
+    for linha in [*pendentes, *liquidados]:
+        realizado = linha["transacao_realizada"]
+        lancamentos.append({
+            "id": linha["id"],
+            "tipo": linha["tipo"],
+            "descricao": linha["descricao"],
+            "valor": _centavos(linha["valor"]),
+            "data": linha["data_realizacao"] if realizado else linha["data_prevista"],
+            "data_prevista": linha["data_prevista"],
+            "realizado": realizado,
+            "categoria": linha["categoria__nome"],
+            "evento": linha["evento__nome"],
+        })
+    return lancamentos
+
+
+def _movimentos_por_dia(lancamentos: list[dict]) -> dict[date, dict]:
+    """Soma por dia as receitas e despesas da lista de lançamentos da janela."""
+    movimentos = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
+    for lancamento in lancamentos:
+        chave = "receitas" if lancamento["tipo"] == Conta.TIPO_RECEITA else "despesas"
+        movimentos[lancamento["data"]][chave] += lancamento["valor"]
+    return movimentos
+
+
+def _composicao_do_mes(lancamentos: list[dict]) -> dict:
+    """Separa os maiores lançamentos de cada tipo e resume o restante do mês.
+
+    Mostrar todos afogaria a resposta à pergunta "por que o saldo mudou?" em dezenas de
+    lançamentos pequenos; os maiores explicam quase toda a variação.
+
+    Returns:
+        dict: `receitas` e `despesas`, cada um com `maiores`, `outros_qtd` e `outros_total`.
+    """
+    composicao = {}
+    for tipo, chave in ((Conta.TIPO_RECEITA, "receitas"), (Conta.TIPO_DESPESA, "despesas")):
+        do_tipo = sorted(
+            (l for l in lancamentos if l["tipo"] == tipo),
+            key=lambda l: (-l["valor"], l["data"], l["id"]),
+        )
+        maiores = do_tipo[:MAIORES_POR_TIPO]
+        restantes = do_tipo[MAIORES_POR_TIPO:]
+        composicao[chave] = {
+            "maiores": [
+                {
+                    "id": l["id"],
+                    "descricao": l["descricao"],
+                    "valor": str(l["valor"]),
+                    "data": l["data"].isoformat(),
+                    "data_prevista": l["data_prevista"].isoformat(),
+                    "realizado": l["realizado"],
+                    "categoria": l["categoria"],
+                    "evento": l["evento"],
+                }
+                for l in maiores
+            ],
+            "outros_qtd": len(restantes),
+            "outros_total": str(sum((l["valor"] for l in restantes), Decimal("0.00"))),
+        }
+    return composicao
+
+
+def _historico_realizado(usuario, ate: date) -> list[dict]:
+    """Reconstrói o caixa mês a mês, do primeiro lançamento liquidado até `ate`.
+
+    Usa o mesmo recorte de `saldo_liquidez_ate` (liquidado, pela data de realização,
+    com o filtro de cartão), então o saldo final do último mês é exatamente o caixa
+    realizado que ancora a projeção. Meses sem movimento entram zerados, para que a
+    linha do tempo não pule meses.
+
+    Returns:
+        list[dict]: Um item por mês, em ordem; o mês de `ate` vem marcado como parcial
+        quando `ate` não é o último dia dele.
+    """
+    linhas = (
+        Conta.objects.filter(
+            usuario=usuario,
+            transacao_realizada=True,
+            data_realizacao__lte=ate,
+        )
+        .filter(FILTRO_CARTAO)
+        .annotate(mes=TruncMonth("data_realizacao"))
+        .values("mes", "tipo")
         .annotate(total=Sum("valor"))
     )
-    _acumular(liquidados, "data_realizacao")
 
-    return movimentos
+    fluxo = defaultdict(lambda: {"receitas": Decimal("0.00"), "despesas": Decimal("0.00")})
+    for linha in linhas:
+        mes = linha["mes"].date() if hasattr(linha["mes"], "date") else linha["mes"]
+        chave = "receitas" if linha["tipo"] == Conta.TIPO_RECEITA else "despesas"
+        fluxo[mes][chave] += _centavos(linha["total"])
+
+    if not fluxo:
+        return []
+
+    historico = []
+    saldo = Decimal("0.00")
+    cursor = min(fluxo)
+    ultimo = ate.replace(day=1)
+    while cursor <= ultimo:
+        receitas = fluxo[cursor]["receitas"]
+        despesas = fluxo[cursor]["despesas"]
+        saldo += receitas - despesas
+        historico.append({
+            "ano": cursor.year,
+            "mes": cursor.month,
+            "receitas": str(receitas),
+            "despesas": str(despesas),
+            "saldo_final": str(saldo),
+            "parcial": cursor == ultimo and ate.day != monthrange(ate.year, ate.month)[1],
+        })
+        cursor = cursor + relativedelta(months=1)
+    return historico
 
 
 def _pendencias_atrasadas(usuario, antes_de: date) -> dict:
@@ -166,7 +284,9 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
     garantir_horizonte(usuario, fim)
 
     # Âncora: saldo realizado até ontem + pendências vencidas
-    saldo_inicial = _centavos(saldo_liquidez_ate(usuario, hoje - timedelta(days=1)))
+    ontem = hoje - timedelta(days=1)
+    caixa_realizado = _centavos(saldo_liquidez_ate(usuario, ontem))
+    saldo_inicial = caixa_realizado
     atrasados = _pendencias_atrasadas(usuario, hoje)
     saldo_inicial += atrasados["receitas"] - atrasados["despesas"]
 
@@ -174,7 +294,11 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
     if not considerar_investimentos:
         saldo_inicial -= valor_investido
 
-    movimentos = _movimentos_por_dia(usuario, hoje, fim)
+    lancamentos = _lancamentos_da_janela(usuario, hoje, fim)
+    movimentos = _movimentos_por_dia(lancamentos)
+    lancamentos_por_mes = defaultdict(list)
+    for lancamento in lancamentos:
+        lancamentos_por_mes[lancamento["data"].replace(day=1)].append(lancamento)
     aportes_meta = _aportes_mensais_de_metas(usuario, hoje, fim)
 
     saldo = saldo_inicial
@@ -192,6 +316,8 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
         total_despesas = Decimal("0.00")
 
         aporte_do_mes = aportes_meta.get(cursor, Decimal("0.00"))
+        abertura = saldo
+        abertura_com_metas = saldo_com_metas
 
         for numero_dia in range(1, ultimo_dia + 1):
             dia = date(cursor.year, cursor.month, numero_dia)
@@ -237,7 +363,11 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
             "total_receitas": str(total_receitas),
             "total_despesas": str(total_despesas),
             "aporte_metas": str(aporte_do_mes),
-            "saldo_final": dias_saida[-1]["saldo"] if dias_saida else str(saldo),
+            "saldo_abertura": str(abertura),
+            "saldo_abertura_com_metas": str(abertura_com_metas),
+            "saldo_final": str(saldo),
+            "saldo_final_com_metas": str(saldo_com_metas),
+            "composicao": _composicao_do_mes(lancamentos_por_mes.get(cursor, [])),
         })
 
         cursor = cursor + relativedelta(months=1)
@@ -246,6 +376,8 @@ def horizonte_saldos(usuario, hoje: date, meses: int = MESES_PADRAO,
         "inicio": hoje.isoformat(),
         "fim": fim.isoformat(),
         "saldo_inicial": str(saldo_inicial),
+        "caixa_realizado": str(caixa_realizado),
+        "historico": _historico_realizado(usuario, ontem),
         "atrasados": {
             "receitas": str(atrasados["receitas"]),
             "despesas": str(atrasados["despesas"]),
