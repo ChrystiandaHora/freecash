@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, CheckCircle2, AlertCircle, Clock, Loader2,
   CalendarDays, Tag, RefreshCw, Pencil, CreditCard, ExternalLink,
-  Trash2, RotateCcw, KanbanSquare, Table2
+  Trash2, RotateCcw, KanbanSquare, Table2, Sparkles
 } from 'lucide-react';
 
 import { fetchContasPagar, pagarConta, deleteContaPagar, desfazerPagamentoConta } from '../services/financeiro';
@@ -280,6 +280,15 @@ export default function ContasPagar() {
             >
               <CreditCard className="h-2.5 w-2.5" />
               Cartão
+            </span>
+          )}
+          {row.evento_nome && (
+            <span
+              title={`Evento: ${row.evento_nome} (fora do orçamento mensal)`}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0"
+            >
+              <Sparkles className="h-2.5 w-2.5" />
+              {row.evento_nome}
             </span>
           )}
           <span className="font-medium text-foreground">{val}</span>

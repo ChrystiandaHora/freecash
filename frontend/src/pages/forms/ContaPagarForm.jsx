@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Save, RotateCcw } from 'lucide-react';
 
-import { fetchContaPagar, createContaPagar, updateContaPagar, desfazerPagamentoConta } from '../../services/financeiro';
+import { fetchContaPagar, createContaPagar, updateContaPagar, desfazerPagamentoConta, fetchEventos } from '../../services/financeiro';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -16,6 +16,7 @@ const schema = z.object({
   categoria: z.string().min(1, 'Informe a categoria'),
   valor: z.coerce.number().positive('Valor deve ser positivo'),
   data_vencimento: z.string().min(1, 'Data de vencimento obrigatória'),
+  evento: z.string().optional(),
   // Vazio significa despesa avulsa; preenchido cria uma regra de despesa fixa.
   recorrencia: z.string().optional(),
   data_fim: z.string().optional(),
@@ -30,12 +31,17 @@ const FREQUENCIAS = [
 
 export default function ContaPagarForm() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const eventoParam = searchParams.get('evento');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEdit = !!id;
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: {
+      evento: eventoParam || '',
+    },
   });
 
   // Despesa fixa só pode ser definida na criação: editar uma ocorrência já gerada
@@ -49,6 +55,12 @@ export default function ContaPagarForm() {
     enabled: isEdit,
   });
 
+  // Query to fetch active events
+  const { data: eventos = [] } = useQuery({
+    queryKey: ['eventos'],
+    queryFn: () => fetchEventos(),
+  });
+
   useEffect(() => {
     if (conta) {
       reset({
@@ -56,6 +68,7 @@ export default function ContaPagarForm() {
         categoria: conta.categoria || '',
         valor: conta.valor,
         data_vencimento: conta.data_vencimento,
+        evento: conta.evento ? String(conta.evento) : '',
       });
     }
   }, [conta, reset]);
@@ -85,25 +98,26 @@ export default function ContaPagarForm() {
   });
 
   const onSubmit = (values) => {
+    const dadosTratados = { ...values };
+    dadosTratados.evento = dadosTratados.evento ? Number(dadosTratados.evento) : null;
+
     if (isEdit) {
       // `recorrencia` e `data_fim` não participam da edição de uma ocorrência:
       // editar um lançamento gerado altera aquele registro, não a regra.
-      const campos = { ...values };
-      delete campos.recorrencia;
-      delete campos.data_fim;
-      updateMutation.mutate({ id, ...campos });
+      delete dadosTratados.recorrencia;
+      delete dadosTratados.data_fim;
+      updateMutation.mutate({ id, ...dadosTratados });
       return;
     }
 
-    const dados = { ...values };
     if (!ehFixa) {
-      delete dados.recorrencia;
-      delete dados.data_fim;
-    } else if (!dados.data_fim) {
+      delete dadosTratados.recorrencia;
+      delete dadosTratados.data_fim;
+    } else if (!dadosTratados.data_fim) {
       // String vazia viraria uma data inválida no servidor.
-      delete dados.data_fim;
+      delete dadosTratados.data_fim;
     }
-    createMutation.mutate(dados);
+    createMutation.mutate(dadosTratados);
   };
 
   if (isEdit && isFetching) {
@@ -221,6 +235,32 @@ export default function ContaPagarForm() {
                   <p id="conta-vencimento-error" role="alert" className="text-xs text-red-500">{errors.data_vencimento.message}</p>
                 )}
               </div>
+
+              {/* Evento fora do orçamento */}
+              {!isFaturaCartao && (
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label htmlFor="conta-evento" className="text-sm font-medium text-foreground flex items-center justify-between">
+                    <span>Evento / Ocasião (opcional)</span>
+                    <span className="text-xs text-muted-foreground font-normal">Viagens, reformas, etc.</span>
+                  </label>
+                  <select
+                    id="conta-evento"
+                    {...register('evento')}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-describedby="conta-evento-help"
+                  >
+                    <option value="">Nenhum (orçamento mensal regular)</option>
+                    {eventos.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.nome} {ev.fora_dos_relatorios ? '(Fora dos relatórios)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p id="conta-evento-help" className="text-xs text-muted-foreground">
+                    Gastos de eventos reduzem seu saldo de caixa normalmente, mas não inflam os KPIs e médias do mês.
+                  </p>
+                </div>
+              )}
 
               {/* Despesa fixa. Só aparece na criação: editar uma ocorrência
                   altera aquele lançamento, não a regra que o gerou. É o que

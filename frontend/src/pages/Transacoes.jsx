@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Trash2,
   Undo2,
+  Sparkles,
 } from 'lucide-react';
 
 import { deleteContaPagar, deleteReceita, fetchTransacoes } from '../services/financeiro';
@@ -195,7 +196,20 @@ export default function Transacoes() {
     {
       key: 'descricao',
       header: 'Descrição',
-      render: (val) => <span className="font-medium text-foreground">{val || 'Sem descrição'}</span>,
+      render: (val, row) => (
+        <span className="flex items-center gap-2">
+          {row.evento_nome && (
+            <span
+              title={`Evento: ${row.evento_nome} (fora do orçamento mensal)`}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0"
+            >
+              <Sparkles className="h-2.5 w-2.5" />
+              {row.evento_nome}
+            </span>
+          )}
+          <span className="font-medium text-foreground">{val || 'Sem descrição'}</span>
+        </span>
+      ),
     },
     {
       key: 'categoria',
