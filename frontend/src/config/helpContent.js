@@ -18,6 +18,22 @@ export const helpContent = {
     }
   },
 
+  "/eventos": {
+    title: "Eventos Fora do Orçamento",
+    overview: "Planejamento e controle de despesas extraordinárias (viagens, reformas, festas) com isolamento das médias mensais e DRE.",
+    features: [
+      "Definição de tetos orçamentários por evento e acompanhamento do saldo restante.",
+      "Isolamento automático dos relatórios mensais, DRE e metas de custo de vida.",
+      "Distribuição de despesas por categoria específica do evento.",
+      "Vinculação direta de despesas e quitação rápida."
+    ],
+    actions: {
+      "Novo Evento": "Cadastre um novo evento definindo período, orçamento previsto e opção de isolamento.",
+      "Ver Detalhes": "Acesse a tela detalhada do evento com categorias e extrato de despesas vinculadas.",
+      "Adicionar Despesa": "Lance uma despesa associada diretamente ao evento."
+    }
+  },
+
   "/relatorios": {
     title: "Relatórios DRE",
     overview: "Demonstração do Resultado (DRE) anual consolidada com análise de EBITDA e sazonalidade.",

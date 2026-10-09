@@ -43,6 +43,41 @@ export const fetchCartoes = async () => {
   return data
 }
 
+// ─── Eventos ─────────────────────────────────────────────────────────────────
+
+export const fetchEventos = async (params = {}) => {
+  const { data } = await api.get('/api/financeiro/eventos/', { params })
+  return data
+}
+
+export const fetchEvento = async (id) => {
+  const { data } = await api.get(`/api/financeiro/eventos/${id}/`)
+  return data
+}
+
+export const fetchEventoResumo = async (id) => {
+  const { data } = await api.get(`/api/financeiro/eventos/${id}/resumo/`)
+  return data
+}
+
+export const createEvento = async (payload) => {
+  const { data } = await api.post('/api/financeiro/eventos/', payload)
+  return data
+}
+
+export const updateEvento = async (arg1, arg2) => {
+  const id = typeof arg1 === 'object' ? arg1.id : arg1
+  const payload = typeof arg1 === 'object' ? { ...arg1 } : { ...arg2 }
+  if (typeof arg1 === 'object') delete payload.id
+  const { data } = await api.put(`/api/financeiro/eventos/${id}/`, payload)
+  return data
+}
+
+export const deleteEvento = async (id) => {
+  const { data } = await api.delete(`/api/financeiro/eventos/${id}/`)
+  return data
+}
+
 // ─── Receitas ─────────────────────────────────────────────────────────────────
 
 export const fetchReceitas = async (params = {}) => {

@@ -36,6 +36,7 @@ import {
   CalendarClock,
   TrendingUp,
   Rows3,
+  Sparkles,
 } from 'lucide-react';
 import { buildNavIndex } from '../lib/navigation';
 
@@ -64,6 +65,7 @@ export const navGroups = [
       // (`/novo`, `/editar/:id`) ficariam sem título e sem estado ativo.
       { name: 'Contas a Pagar', path: '/contas-pagar', icon: FileSpreadsheet, exact: false },
       { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, aliases: ['/'] },
+      { name: 'Eventos', path: '/eventos', icon: Sparkles, exact: false },
       { name: 'Horizonte de Saldos', path: '/horizonte-saldos', icon: TrendingUp },
       { name: 'Kanban', path: '/contas-kanban', icon: KanbanSquare, docTitle: 'Kanban de Contas' },
       { name: 'Lançamento em Lote', path: '/contas-pagar/lote', icon: Rows3 },

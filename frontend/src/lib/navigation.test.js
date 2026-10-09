@@ -16,6 +16,7 @@ const ROUTES = [
   // Itens que existem no menu ou como link direto.
   ['/', 'financeiro', '/dashboard', 'Dashboard'],
   ['/dashboard', 'financeiro', '/dashboard', 'Dashboard'],
+  ['/eventos', 'financeiro', '/eventos', 'Eventos'],
   ['/relatorios', 'ferramentas', '/relatorios', 'Relatórios'],
   ['/contas-pagar', 'financeiro', '/contas-pagar', 'Contas a Pagar'],
   ['/contas-kanban', 'financeiro', '/contas-kanban', 'Kanban de Contas'],
@@ -42,6 +43,7 @@ const ROUTES = [
   ['/receitas/editar/42', 'financeiro', '/receitas', 'Receitas'],
   ['/compras-cartao/novo', 'ferramentas', '/compras-cartao', 'Compras no Cartão'],
   ['/compras-cartao/editar/42', 'ferramentas', '/compras-cartao', 'Compras no Cartão'],
+  ['/eventos/42', 'financeiro', '/eventos', 'Eventos'],
   ['/pagamentos/novo', 'financeiro', '/pagamentos', 'Formas de Pagamento'],
   ['/pagamentos/editar/42', 'financeiro', '/pagamentos', 'Formas de Pagamento'],
   ['/investimentos/ativos/42', 'investimentos', '/investimentos/ativos', 'Meus Ativos'],
@@ -93,13 +95,11 @@ describe('getRouteTitle', () => {
 describe('integridade da config', () => {
   const items = navGroups.flatMap((g) => g.items);
 
-  it('tem os 4 grupos e os 25 itens esperados em navGroups', () => {
+  it('tem os 4 grupos e os 26 itens esperados em navGroups', () => {
     // O quarto grupo é Administração, marcado com `adminOnly`.
-    // 23 itens desde que Ferramentas ganhou "Conciliação" — o grupo foi a 5 itens,
-    // dentro do teto de 7 por painel registrado no A11Y-DECISIONS (Investimentos
-    // segue sendo o maior, com 6).
+    // 26 itens após adição de Eventos em Financeiro.
     expect(navGroups).toHaveLength(4);
-    expect(items).toHaveLength(25);
+    expect(items).toHaveLength(26);
   });
 
   it('esconde o grupo administrativo de quem não é administrador', () => {

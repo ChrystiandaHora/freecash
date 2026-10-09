@@ -43,6 +43,8 @@ import Receitas from './pages/Receitas';
 import Transacoes from './pages/Transacoes';
 import SimuladorGastos from './pages/SimuladorGastos';
 import Metas from './pages/Metas';
+import Eventos from './pages/Eventos';
+import EventoDetalhe from './pages/EventoDetalhe';
 import AtivosBalanceamento from './pages/AtivosBalanceamento';
 import AtivosHistorico from './pages/AtivosHistorico';
 import AtivosClasses from './pages/AtivosClasses';
@@ -202,6 +204,8 @@ function App() {
                 <Route path="transacoes" element={<Transacoes />} />
                 <Route path="simulador" element={<SimuladorGastos />} />
                 <Route path="metas" element={<Metas />} />
+                <Route path="eventos" element={<Eventos />} />
+                <Route path="eventos/:id" element={<EventoDetalhe />} />
                 <Route path="horizonte-saldos" element={<HorizonteSaldos />} />
                 <Route path="calendario" element={<CalendarioPagamentos />} />
 
