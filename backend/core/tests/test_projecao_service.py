@@ -663,3 +663,201 @@ def relativedelta_meses(n: int):
     from dateutil.relativedelta import relativedelta
 
     return relativedelta(months=n)
+
+
+class ComposicaoDoSaldoTests(ProjecaoBaseTestCase):
+    """Cobre a memória de cálculo que a aba de composição exibe.
+
+    A aba só é útil se as parcelas fecharem com a curva ao centavo: uma explicação
+    que soma diferente do saldo mostrado gera mais dúvida do que responde.
+    """
+
+    def _maiores(self, mes: dict, chave: str) -> list[dict]:
+        """Atalho para os lançamentos nominais de um tipo no mês.
+
+        Returns:
+            list[dict]: Itens de `composicao[chave]["maiores"]`.
+        """
+        return mes["composicao"][chave]["maiores"]
+
+    def test_caixa_de_abertura_se_decompoe_nas_parcelas(self):
+        """Realizado até ontem + atrasados − investido é exatamente o saldo inicial."""
+        from investimento.models import Ativo
+
+        self.lancar(Conta.TIPO_RECEITA, "5000.00", self.hoje - timedelta(days=20), realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "300.00", self.hoje - timedelta(days=3))
+        self.lancar(Conta.TIPO_RECEITA, "120.00", self.hoje - timedelta(days=2))
+        Ativo.objects.create(
+            usuario=self.user, ticker="ABCD3",
+            quantidade=Decimal("10"), preco_medio=Decimal("25.00"),
+        )
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["caixa_realizado"]), Decimal("5000.00"))
+        recomposto = (
+            Decimal(projecao["caixa_realizado"])
+            + Decimal(projecao["atrasados"]["receitas"])
+            - Decimal(projecao["atrasados"]["despesas"])
+            - Decimal(projecao["valor_investido"])
+        )
+        self.assertEqual(recomposto, Decimal(projecao["saldo_inicial"]))
+
+    def test_ponte_do_mes_fecha_nos_dois_cenarios(self):
+        """Abertura + receitas − despesas (− aporte) = fechamento, e encadeia os meses."""
+        self.lancar(Conta.TIPO_RECEITA, "1000.00", self.hoje - timedelta(days=5), realizada=True)
+        self.lancar(Conta.TIPO_RECEITA, "800.00", self.hoje + timedelta(days=3))
+        self.lancar(Conta.TIPO_DESPESA, "450.00", self.hoje + timedelta(days=40))
+        MetaFinanceira.objects.create(
+            usuario=self.user, nome="Viagem",
+            valor_alvo=Decimal("1200.00"), valor_acumulado=Decimal("0.00"),
+            prazo=self.hoje + relativedelta_meses(3),
+        )
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=3)
+
+        anterior = None
+        for mes in projecao["meses"]:
+            rec, desp = Decimal(mes["total_receitas"]), Decimal(mes["total_despesas"])
+            self.assertEqual(
+                Decimal(mes["saldo_abertura"]) + rec - desp, Decimal(mes["saldo_final"])
+            )
+            self.assertEqual(
+                Decimal(mes["saldo_abertura_com_metas"]) + rec - desp
+                - Decimal(mes["aporte_metas"]),
+                Decimal(mes["saldo_final_com_metas"]),
+            )
+            if anterior:
+                self.assertEqual(mes["saldo_abertura"], anterior["saldo_final"])
+            anterior = mes
+        self.assertEqual(projecao["meses"][0]["saldo_abertura"], projecao["saldo_inicial"])
+
+    def test_conta_prevista_no_passado_e_paga_hoje_aparece_no_mes_corrente(self):
+        """É o caso que motivou a aba: o caixa de abertura não muda, o dia de hoje sim."""
+        self.lancar(
+            Conta.TIPO_DESPESA, "11000.00", self.hoje - timedelta(days=9),
+            realizada=True, data_realizacao=self.hoje,
+        )
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        self.assertEqual(Decimal(projecao["saldo_inicial"]), Decimal("0.00"))
+        item = self._maiores(projecao["meses"][0], "despesas")[0]
+        self.assertEqual(item["data"], self.hoje.isoformat())
+        self.assertEqual(item["data_prevista"], (self.hoje - timedelta(days=9)).isoformat())
+        self.assertTrue(item["realizado"])
+
+    def test_lista_os_maiores_e_resume_o_restante(self):
+        """Os nominais mais o resumo somam o total do mês."""
+        for i in range(1, 8):
+            self.lancar(Conta.TIPO_DESPESA, f"{i * 10}.00", self.hoje + timedelta(days=i))
+
+        mes = horizonte_saldos(self.user, self.hoje, meses=1)["meses"][0]
+        despesas = mes["composicao"]["despesas"]
+
+        valores = [Decimal(d["valor"]) for d in despesas["maiores"]]
+        self.assertEqual(valores, [Decimal(v) for v in ("70", "60", "50", "40", "30")])
+        self.assertEqual(despesas["outros_qtd"], 2)
+        self.assertEqual(
+            sum(valores) + Decimal(despesas["outros_total"]), Decimal(mes["total_despesas"])
+        )
+
+    def test_compra_de_cartao_fica_fora_e_a_fatura_entra(self):
+        """A composição aplica o mesmo filtro de cartão que a curva.
+
+        As compras disparam o signal que consolida a fatura; o esperado é só ela.
+        """
+        cartao = CartaoCredito.objects.create(
+            usuario=self.user, nome="Cartão", limite=Decimal("5000.00"),
+            dia_fechamento=1, dia_vencimento=10,
+        )
+        vencimento = self.hoje + timedelta(days=20)
+        self.lancar(Conta.TIPO_DESPESA, "300.00", vencimento, cartao=cartao)
+        self.lancar(Conta.TIPO_DESPESA, "500.00", vencimento, cartao=cartao)
+
+        mes = horizonte_saldos(self.user, self.hoje, meses=1)["meses"][0]
+
+        despesas = self._maiores(mes, "despesas")
+        self.assertEqual(len(despesas), 1)
+        self.assertEqual(Decimal(despesas[0]["valor"]), Decimal("800.00"))
+        self.assertEqual(Decimal(mes["total_despesas"]), Decimal("800.00"))
+
+    def test_identifica_o_evento_do_lancamento(self):
+        """Despesa de evento sai do orçamento, mas não do saldo — e a aba diz de qual evento."""
+        from core.models import Evento
+
+        evento = Evento.objects.create(usuario=self.user, nome="Viagem 2026", inicio=self.hoje)
+        conta = self.lancar(Conta.TIPO_DESPESA, "900.00", self.hoje + timedelta(days=1))
+        conta.evento = evento
+        conta.save(update_fields=["evento"])
+
+        mes = horizonte_saldos(self.user, self.hoje, meses=1)["meses"][0]
+
+        self.assertEqual(self._maiores(mes, "despesas")[0]["evento"], "Viagem 2026")
+
+
+class HistoricoRealizadoTests(ProjecaoBaseTestCase):
+    """Cobre a linha do tempo do início do histórico até o caixa de hoje.
+
+    O último mês do histórico precisa terminar exatamente no caixa realizado que ancora
+    a projeção: é ali que a linha do passado encontra a do futuro.
+    """
+
+    def test_termina_no_caixa_realizado(self):
+        """O saldo do último mês é o `caixa_realizado`, ao centavo."""
+        self.lancar(Conta.TIPO_RECEITA, "3000.00", date(2025, 11, 5), realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "1200.00", date(2026, 1, 20), realizada=True)
+        self.lancar(Conta.TIPO_DESPESA, "150.00", self.hoje - timedelta(days=2), realizada=True)
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+        historico = projecao["historico"]
+
+        self.assertEqual((historico[0]["ano"], historico[0]["mes"]), (2025, 11))
+        self.assertEqual(historico[-1]["saldo_final"], projecao["caixa_realizado"])
+        self.assertEqual(Decimal(projecao["caixa_realizado"]), Decimal("1650.00"))
+
+    def test_meses_sem_movimento_entram_zerados(self):
+        """A linha do tempo não pula meses: de nov/25 a mar/26 são cinco pontos."""
+        self.lancar(Conta.TIPO_RECEITA, "100.00", date(2025, 11, 5), realizada=True)
+
+        historico = horizonte_saldos(self.user, self.hoje, meses=1)["historico"]
+
+        self.assertEqual(len(historico), 5)
+        self.assertEqual(historico[2]["receitas"], "0.00")
+        self.assertEqual(historico[2]["saldo_final"], "100.00")
+
+    def test_mes_corrente_vem_parcial_e_sem_o_que_foi_pago_hoje(self):
+        """Pago hoje é movimento do dia, não histórico — como no caixa de abertura."""
+        self.lancar(Conta.TIPO_RECEITA, "500.00", self.hoje - timedelta(days=1), realizada=True)
+        self.lancar(
+            Conta.TIPO_DESPESA, "200.00", self.hoje - timedelta(days=20),
+            realizada=True, data_realizacao=self.hoje,
+        )
+        self.lancar(Conta.TIPO_RECEITA, "900.00", self.hoje + timedelta(days=4), realizada=True)
+
+        historico = horizonte_saldos(self.user, self.hoje, meses=1)["historico"]
+
+        self.assertEqual(len(historico), 1)
+        self.assertTrue(historico[0]["parcial"])
+        self.assertEqual(historico[0]["saldo_final"], "500.00")
+
+    def test_compra_de_cartao_conta_so_pela_fatura(self):
+        """O histórico aplica o mesmo filtro de cartão que o caixa."""
+        cartao = CartaoCredito.objects.create(
+            usuario=self.user, nome="Cartão", limite=Decimal("5000.00"),
+            dia_fechamento=1, dia_vencimento=10,
+        )
+        self.lancar(Conta.TIPO_RECEITA, "1000.00", date(2026, 2, 1), realizada=True)
+        self.lancar(
+            Conta.TIPO_DESPESA, "300.00", date(2026, 2, 3), realizada=True, cartao=cartao,
+        )
+
+        projecao = horizonte_saldos(self.user, self.hoje, meses=1)
+
+        # A fatura gerada pelo signal ainda está pendente: o caixa não mudou
+        self.assertEqual(projecao["historico"][-1]["saldo_final"], "1000.00")
+        self.assertEqual(projecao["historico"][-1]["saldo_final"], projecao["caixa_realizado"])
+
+    def test_sem_lancamentos_o_historico_e_vazio(self):
+        """Usuário novo: não há passado a desenhar."""
+        self.assertEqual(horizonte_saldos(self.user, self.hoje, meses=1)["historico"], [])
