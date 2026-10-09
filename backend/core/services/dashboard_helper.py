@@ -26,7 +26,7 @@ class Periodo:
 
 def totals_for_range_competencia(usuario, inicio: date, fim: date) -> tuple[float, float]:
     """Calcula a soma de receitas e despesas por competência no intervalo informado."""
-    qs = Conta.objects.filter(
+    qs = Conta.objects.do_orcamento().filter(
         usuario=usuario,
         data_prevista__gte=inicio,
         data_prevista__lt=fim,
@@ -48,7 +48,7 @@ def strip_tz(v) -> date:
 def serie_por_dia_competencia(usuario, tipo: str, inicio: date, fim: date, ultimo_dia: int) -> tuple[list[str], list[float]]:
     """Gera série diária de valores previstos para o mês por competência."""
     qs = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=tipo,
             data_prevista__gte=inicio,
@@ -76,7 +76,7 @@ def serie_6m_competencia(usuario, tipo: str, inicio_ref: date, fim_ref: date) ->
     inicio_janela = inicio_ref - relativedelta(months=5)
 
     qs = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=tipo,
             data_prevista__gte=inicio_janela,
@@ -105,7 +105,7 @@ def serie_fluxo_projetado_competencia(usuario, tipo: str, inicio_ref: date) -> t
     fim_janela = inicio_ref + relativedelta(months=4)
 
     qs = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=tipo,
             data_prevista__gte=inicio_janela,
@@ -178,7 +178,7 @@ def despesas_por_categoria(usuario, inicio: date, fim: date, campo_data: str, **
     totais: dict[str, Decimal] = defaultdict(Decimal)
 
     despesas_comuns = (
-        Conta.objects.filter(cartao__isnull=True, **filtros)
+        Conta.objects.do_orcamento().filter(cartao__isnull=True, **filtros)
         .values("categoria__nome")
         .annotate(total=Sum("valor"))
     )
@@ -313,7 +313,7 @@ def pct_change(atual: float, anterior: float) -> float | None:
 
 def totals_for_range_realizadas(usuario, inicio: date, fim: date) -> tuple[float, float]:
     """Soma receitas e despesas realizadas (regime de caixa) no intervalo."""
-    qs = Conta.objects.filter(
+    qs = Conta.objects.do_orcamento().filter(
         usuario=usuario,
         transacao_realizada=True,
         data_realizacao__gte=inicio,
@@ -349,7 +349,7 @@ def saldo_liquidez_ate(usuario, ate: date) -> float:
 def serie_por_dia_realizadas(usuario, tipo: str, inicio: date, fim: date, ultimo_dia: int) -> tuple[list[str], list[float]]:
     """Gera série temporal diária dos lançamentos realizados (caixa)."""
     qs = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=tipo,
             transacao_realizada=True,
@@ -378,7 +378,7 @@ def serie_6m_realizadas(usuario, tipo: str, inicio_ref: date, fim_ref: date) -> 
     inicio_janela = inicio_ref - relativedelta(months=5)
 
     qs = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=tipo,
             transacao_realizada=True,
@@ -450,7 +450,7 @@ def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date) -> list[dict]:
         inicio_mes = (inicio_ref - relativedelta(months=i)).replace(day=1)
         fim_mes = (inicio_mes + relativedelta(months=1)).replace(day=1)
 
-        qs = Conta.objects.filter(
+        qs = Conta.objects.do_orcamento().filter(
             usuario=usuario,
             data_prevista__gte=inicio_mes,
             data_prevista__lt=fim_mes,
@@ -477,4 +477,41 @@ def resumo_ultimos_3_meses_competencia(usuario, inicio_ref: date) -> list[dict]:
         )
 
     return itens
+
+
+def gastos_eventos_fora_orcamento(
+    usuario, inicio: date, fim: date, regime: str = "competencia"
+) -> list[dict]:
+    """Retorna os eventos com gastos fora do orçamento no período e seus respectivos totais.
+
+    Usado para sinalizar no Dashboard o montante extraordinário consumido no mês
+    sem distorcer os KPIs do orçamento recorrente.
+    """
+    campo_data = "data_prevista" if regime == "competencia" else "data_realizacao"
+    filtros = {
+        "usuario": usuario,
+        "tipo": Conta.TIPO_DESPESA,
+        "cartao__isnull": True,
+        "evento__isnull": False,
+        "evento__fora_dos_relatorios": True,
+        f"{campo_data}__gte": inicio,
+        f"{campo_data}__lt": fim,
+    }
+    if regime == "realizadas":
+        filtros["transacao_realizada"] = True
+
+    qs = (
+        Conta.objects.filter(**filtros)
+        .values("evento_id", "evento__nome")
+        .annotate(total=Sum("valor"))
+        .order_by("-total")
+    )
+    return [
+        {
+            "evento_id": row["evento_id"],
+            "evento_nome": row["evento__nome"],
+            "total": float(row["total"] or 0),
+        }
+        for row in qs
+    ]
 

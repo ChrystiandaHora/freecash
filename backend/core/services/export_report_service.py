@@ -221,7 +221,7 @@ def get_movimentacoes(usuario, data_inicio: date, data_fim: date):
             # Apenas contas sem cartão OU faturas de cartão
             Q(cartao__isnull=True) | Q(eh_fatura_cartao=True)
         )
-        .select_related("categoria", "cartao")
+        .select_related("categoria", "cartao", "evento")
         .order_by("data_prevista", "id")
     )
     return qs
@@ -307,7 +307,7 @@ def get_despesas_por_categoria(usuario, data_inicio: date, data_fim: date, limit
         list[dict]: Dicionários com 'categoria', 'total' e 'percentual' sobre o total de despesas.
     """
     agregado = (
-        Conta.objects.filter(
+        Conta.objects.do_orcamento().filter(
             usuario=usuario,
             tipo=Conta.TIPO_DESPESA,
             data_prevista__gte=data_inicio,
@@ -394,7 +394,7 @@ def get_comparativo_mensal_data(usuario, data_inicio: date, data_fim: date):
     Returns:
         list[dict]: Lista contendo dicionários com 'periodo', 'receitas', 'despesas' e 'saldo'.
     """
-    movs = Conta.objects.filter(
+    movs = Conta.objects.do_orcamento().filter(
         usuario=usuario,
         data_prevista__gte=data_inicio,
         data_prevista__lte=data_fim,
