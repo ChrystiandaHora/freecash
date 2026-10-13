@@ -342,6 +342,12 @@ class EventosTestCase(APITestCase):
         self.assertEqual(res.data["saldo_restante"], 3000.00)
         self.assertEqual(len(res.data["categorias"]), 2)
         self.assertEqual(len(res.data["lancamentos"]), 2)
+        # A tabela do EventoDetalhe lê o nome da categoria deste campo
+        self.assertEqual(
+            {l["descricao"]: l["categoria"] for l in res.data["lancamentos"]},
+            {"Pousada Maragogi": self.cat_viagem.nome,
+             "Restaurante Frutos do Mar": self.cat_alimentacao.nome},
+        )
 
     def test_backup_restore_com_eventos(self):
         """Valida que backup exporta Evento e restore preserva o vínculo em Conta.evento."""
