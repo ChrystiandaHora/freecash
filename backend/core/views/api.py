@@ -45,6 +45,7 @@ from core.serializers import (
     PlanoMetasSerializer,
 )
 from core.services import metas_service
+from core.services.categoria_service import resolver_categoria_por_nome
 from core.services.dashboard_helper import (
     totals_for_range_competencia,
     pct_change,
@@ -571,11 +572,7 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
-            categoria_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_DESPESA
-            )
+            categoria_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_DESPESA)
             data['categoria'] = categoria_obj.id
 
         # 3. Enforce tipo = Despesa
@@ -683,11 +680,7 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
         # 2. Resolve or create category name string
         categoria_nome = data.get('categoria')
         if categoria_nome:
-            categoria_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_DESPESA
-            )
+            categoria_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_DESPESA)
             data['categoria'] = categoria_obj.id
             
         # 3. Enforce tipo = Despesa
@@ -825,11 +818,7 @@ class ContasPagarViewSet(viewsets.ModelViewSet):
             # If the item specifies a custom category name, let's create/fetch it
             cat_nome = item.get('categoria', '').strip()
             if cat_nome:
-                categoria_obj, _ = Categoria.objects.get_or_create(
-                    usuario=usuario,
-                    nome=cat_nome,
-                    tipo=Categoria.TIPO_DESPESA
-                )
+                categoria_obj = resolver_categoria_por_nome(usuario, cat_nome, Categoria.TIPO_DESPESA)
             else:
                 categoria_obj = default_cat
                 
@@ -936,11 +925,7 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
-            categoria_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_RECEITA
-            )
+            categoria_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_RECEITA)
             data['categoria'] = categoria_obj.id
 
         if data.get('tipo') == 'recorrente':
@@ -1004,11 +989,7 @@ class ReceitasViewSet(viewsets.ModelViewSet):
         categoria_obj = None
         categoria_nome = data.get('categoria')
         if categoria_nome:
-            categoria_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_RECEITA
-            )
+            categoria_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_RECEITA)
             data['categoria'] = categoria_obj.id
 
         # 3. Enforce tipo = Receita
@@ -1191,11 +1172,7 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         # Resolve categoria pelo nome se passada como string
         categoria_nome = data.get('categoria_nome') or data.get('categoria')
         if categoria_nome and isinstance(categoria_nome, str):
-            cat_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_DESPESA,
-            )
+            cat_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_DESPESA)
             data['categoria'] = cat_obj.id
 
         serializer = ContaSerializer(data=data, context={'request': request})
@@ -1233,11 +1210,7 @@ class ComprasCartaoViewSet(viewsets.ModelViewSet):
         # Resolve categoria pelo nome se passada como string
         categoria_nome = data.get('categoria_nome') or data.get('categoria')
         if categoria_nome and isinstance(categoria_nome, str):
-            cat_obj, _ = Categoria.objects.get_or_create(
-                usuario=request.user,
-                nome=categoria_nome.strip(),
-                tipo=Categoria.TIPO_DESPESA,
-            )
+            cat_obj = resolver_categoria_por_nome(request.user, categoria_nome, Categoria.TIPO_DESPESA)
             data['categoria'] = cat_obj.id
 
         serializer = ContaSerializer(
