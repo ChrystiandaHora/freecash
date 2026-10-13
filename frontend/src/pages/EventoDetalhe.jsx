@@ -34,6 +34,7 @@ import { Alert } from '../components/ui/Alert';
 import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
 import EventoFormModal from '../components/EventoFormModal';
+import { filtrarLancamentos, nomeCategoria } from '../lib/lancamentosEvento';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,15 +149,10 @@ export default function EventoDetalhe() {
 
   // ─── Lançamentos Filtrados ──────────────────────────────────────────────────
 
-  const lancamentosFiltrados = useMemo(() => {
-    if (!buscaDespesa.trim()) return lancamentos;
-    const termo = buscaDespesa.toLowerCase();
-    return lancamentos.filter(
-      (l) =>
-        l.descricao?.toLowerCase().includes(termo) ||
-        l.categoria_nome?.toLowerCase().includes(termo)
-    );
-  }, [lancamentos, buscaDespesa]);
+  const lancamentosFiltrados = useMemo(
+    () => filtrarLancamentos(lancamentos, buscaDespesa),
+    [lancamentos, buscaDespesa]
+  );
 
   if (isLoading) {
     return (
@@ -493,7 +489,7 @@ export default function EventoDetalhe() {
                               {item.descricao}
                             </td>
                             <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
-                              {item.categoria_nome || '—'}
+                              {nomeCategoria(item)}
                             </td>
                             <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
                               {formatDate(item.data_prevista || item.data_vencimento)}
