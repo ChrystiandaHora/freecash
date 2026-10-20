@@ -17,6 +17,7 @@ import { CarteiraProvider } from './context/CarteiraProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
 import { LoadingScreen } from './components/ui/LoadingScreen';
+import { ConexaoIndisponivel } from './components/ConexaoIndisponivel';
 
 
 // Layouts & Pages
@@ -141,6 +142,9 @@ function App() {
         <AuthProvider>
           <ThemeProvider>
             <CarteiraProvider>
+            {/* Fora do Router e acima das rotas: a queda da API vale para o app
+                inteiro, inclusive enquanto a sessão ainda está sendo restaurada. */}
+            <ConexaoIndisponivel />
             <Router>
             <Routes>
               {/* Public Marketing & Landing Page */}

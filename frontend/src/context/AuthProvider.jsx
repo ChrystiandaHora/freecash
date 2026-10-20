@@ -3,6 +3,12 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import api, { setAccessToken } from '../services/api';
 import { buscarPerfil } from '../services/auth';
 import axios from 'axios';
+import {
+  aguardarConexao,
+  classificarFalha,
+  definirStatusConexao,
+  ehFalhaDeConexao,
+} from '../lib/statusConexao';
 
 const AuthContext = createContext(null);
 
@@ -45,6 +51,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    let cancelado = false;
+
     const initializeAuth = async () => {
       // Se não há indicador de sessão anterior (visitante anônimo ou usuário deslogado),
       // evita chamada desnecessária ao refresh que geraria ruído de Bad Request 400 no console.
@@ -54,25 +62,40 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      try {
-        const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
-        const { access } = response.data;
-        setAccessToken(access);
-        const decoded = decodeToken(access);
-        setUser(decoded);
-        localStorage.setItem(HAS_SESSION_KEY, 'true');
-        await recarregarPerfil();
-      } catch {
-        localStorage.removeItem(HAS_SESSION_KEY);
-        setAccessToken(null);
-        setUser(null);
-        setPerfil(null);
-      } finally {
+      // Repete enquanto a falha for de conexão: com a API fora do ar não há como saber
+      // se a sessão vale, e apagá-la mandaria para o login quem só precisava esperar.
+      // `loading` segue verdadeiro, e a tela de conexão fica por cima nesse meio-tempo.
+      while (!cancelado) {
+        try {
+          const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
+          if (cancelado) return;
+          const { access } = response.data;
+          setAccessToken(access);
+          const decoded = decodeToken(access);
+          setUser(decoded);
+          localStorage.setItem(HAS_SESSION_KEY, 'true');
+          await recarregarPerfil();
+        } catch (erro) {
+          if (cancelado) return;
+          if (ehFalhaDeConexao(erro)) {
+            definirStatusConexao(classificarFalha(navigator.onLine));
+            await aguardarConexao();
+            continue;
+          }
+          localStorage.removeItem(HAS_SESSION_KEY);
+          setAccessToken(null);
+          setUser(null);
+          setPerfil(null);
+        }
         setLoading(false);
+        return;
       }
     };
 
     initializeAuth();
+    return () => {
+      cancelado = true;
+    };
   }, [API_URL, recarregarPerfil]);
 
   /** Autentica o usuário por e-mail ou username e atualiza o estado da sessão. */

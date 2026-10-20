@@ -1,4 +1,10 @@
 import axios from 'axios';
+import {
+  STATUS_CONEXAO,
+  classificarFalha,
+  definirStatusConexao,
+  ehFalhaDeConexao,
+} from '../lib/statusConexao';
 
 // Variável em memória para o Access Token (segura contra XSS)
 let _accessToken = null;
@@ -46,10 +52,37 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+/**
+ * Consulta o healthcheck do backend para saber se a API voltou.
+ *
+ * Usa o axios puro, e não a instância `api`: o healthcheck não precisa de token e
+ * não deve passar pelos interceptores, que reportariam a própria falha de volta ao
+ * estado de conexão.
+ *
+ * @returns {Promise<boolean>} `true` quando a API e o banco respondem.
+ */
+export const verificarSaudeApi = async () => {
+  try {
+    await axios.get(`${API_URL}/api/health/`, { timeout: 8000 });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Qualquer resposta do servidor prova que ele está no ar.
+    definirStatusConexao(STATUS_CONEXAO.ONLINE);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+
+    if (ehFalhaDeConexao(error)) {
+      definirStatusConexao(classificarFalha(navigator.onLine));
+      return Promise.reject(error);
+    }
 
     // Se falhar por 401 e não for uma tentativa de login ou refresh
     if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/api/token/' && originalRequest.url !== '/api/token/refresh/') {
@@ -85,7 +118,15 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         isRefreshing = false;
-        
+
+        // Servidor fora do ar não é sessão expirada: deslogar aqui mandaria para o
+        // login quem não fez nada de errado. A tela de conexão assume, e a sessão
+        // continua válida quando a API voltar.
+        if (ehFalhaDeConexao(refreshError)) {
+          definirStatusConexao(classificarFalha(navigator.onLine));
+          return Promise.reject(refreshError);
+        }
+
         // Se a renovação falhar (refresh token expirado ou inválido), desloga o usuário
         setAccessToken(null);
         // Só redireciona se não estiver na página de login para evitar loops
