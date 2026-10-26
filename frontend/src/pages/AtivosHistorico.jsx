@@ -23,13 +23,9 @@ import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
+import { useMoeda } from '../hooks/useMoeda';
 import SeletorCarteira from '../components/SeletorCarteira';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
-
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—';
@@ -84,6 +80,7 @@ export default function AtivosHistorico() {
   const [filteredTransacoes, setFilteredTransacoes] = useState(null);
   const [transferenciaAberta, setTransferenciaAberta] = useState(false);
   const { carteiraId, carteiraSelecionada, carteirasAtivas } = useCarteira();
+  const { formatarMoeda } = useMoeda();
 
   const handleEdit = (transacao) => {
     navigate(`/investimentos/historico/editar/${transacao.id}`);
@@ -182,14 +179,14 @@ export default function AtivosHistorico() {
       header: 'Preço Unit.',
       className: 'text-left',
       cellClassName: 'text-left text-muted-foreground',
-      render: (val, row) => row.tipo === 'D' ? '—' : formatCurrency(val),
+      render: (val, row) => row.tipo === 'D' ? '—' : formatarMoeda(val),
     },
     {
       key: 'taxas',
       header: 'Taxas',
       className: 'text-left',
       cellClassName: 'text-left text-muted-foreground',
-      render: (val) => parseFloat(val ?? 0) > 0 ? formatCurrency(val) : '—',
+      render: (val) => parseFloat(val ?? 0) > 0 ? formatarMoeda(val) : '—',
     },
     {
       key: 'valor_total',
@@ -200,7 +197,7 @@ export default function AtivosHistorico() {
         const cfg = TIPO_CONFIG[row.tipo] ?? TIPO_CONFIG['C'];
         return (
           <span className={cfg.color}>
-            {formatCurrency(val)}
+            {formatarMoeda(val)}
           </span>
         );
       },
@@ -363,7 +360,7 @@ export default function AtivosHistorico() {
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{cfg.label}s</p>
                     <p className="text-lg font-bold text-foreground">{count}</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(total)}</p>
+                    <p className="text-xs text-muted-foreground">{formatarMoeda(total)}</p>
                   </div>
                 </div>
               </CardContent>

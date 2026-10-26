@@ -28,15 +28,11 @@ import { Input } from '../components/ui/Input';
 import { Alert } from '../components/ui/Alert';
 import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
+import { useMoeda } from '../hooks/useMoeda';
 import { resolverCarteiraEmFoco } from '../lib/balanceamento';
 import SeletorCarteira from '../components/SeletorCarteira';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-
 const formatPct = (value) => {
   const num = parseFloat(value) || 0;
   return num.toFixed(2).replace('.', ',') + '%';
@@ -110,6 +106,7 @@ export default function AtivosBalanceamento() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const { carteiraId, setCarteiraId, carteirasAtivas, consolidadoExplicito } = useCarteira();
+  const { formatarMoeda } = useMoeda();
 
   // Regra e seus casos de borda em lib/balanceamento.js, com teste tabelado
   const carteiraEmFoco = resolverCarteiraEmFoco({
@@ -563,7 +560,7 @@ export default function AtivosBalanceamento() {
                               {c.nome} {c.instituicao && <span className="text-muted-foreground font-normal">({c.instituicao})</span>}
                             </td>
                             <td className="py-3 px-5 text-right font-semibold text-foreground">
-                              {formatCurrency(c.valor_atual)}
+                              {formatarMoeda(c.valor_atual)}
                             </td>
                             <td className="py-3 px-5 text-right font-semibold text-muted-foreground">
                               {formatPct(c.perc_atual)}
@@ -595,7 +592,7 @@ export default function AtivosBalanceamento() {
                               )}
                             </td>
                             <td className="py-3 px-5 text-right font-semibold text-muted-foreground">
-                              {formatCurrency(c.valor_ideal)}
+                              {formatarMoeda(c.valor_ideal)}
                             </td>
                             {/* O sinal não é comunicado só por cor: o texto traz o
                                 verbo, e o valor vem com o sinal explícito. */}
@@ -603,8 +600,8 @@ export default function AtivosBalanceamento() {
                               {Math.abs(falta) < 0.01
                                 ? '—'
                                 : falta > 0
-                                  ? `aportar ${formatCurrency(falta)}`
-                                  : `acima em ${formatCurrency(-falta)}`}
+                                  ? `aportar ${formatarMoeda(falta)}`
+                                  : `acima em ${formatarMoeda(-falta)}`}
                             </td>
                           </tr>
                         );
@@ -683,7 +680,7 @@ export default function AtivosBalanceamento() {
              {(aporteNum > 0 || finalSalesCash > 0) && (
               <div className="text-right shrink-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Investido futuro</p>
-                <p className="text-xl font-extrabold text-foreground">{formatCurrency(futuroPatrimonio)}</p>
+                <p className="text-xl font-extrabold text-foreground">{formatarMoeda(futuroPatrimonio)}</p>
               </div>
             )}
           </div>
@@ -723,9 +720,9 @@ export default function AtivosBalanceamento() {
                         <p className="text-xs text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatCurrency(at.cotacao)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valor_atual)}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(at.valorIdeal)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatarMoeda(at.cotacao)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">{formatarMoeda(at.valor_atual)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">{formatarMoeda(at.valorIdeal)}</td>
                       <td className={`py-3 px-4 text-right font-extrabold font-mono`}>
                         {at.isOverAllocated ? (
                           <span className="text-red-500 dark:text-red-400">
@@ -742,11 +739,11 @@ export default function AtivosBalanceamento() {
                       <td className={`py-3 px-4 text-right font-extrabold`}>
                         {at.isOverAllocated ? (
                           <span className="text-red-500 dark:text-red-400">
-                            - {formatCurrency(at.excesso)}
+                            - {formatarMoeda(at.excesso)}
                           </span>
                         ) : at.aporte > 0.01 ? (
                           <span className="text-emerald-500">
-                            + {formatCurrency(at.aporte)}
+                            + {formatarMoeda(at.aporte)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -764,15 +761,15 @@ export default function AtivosBalanceamento() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 text-xs">
                   <p className="text-xs uppercase font-semibold text-emerald-600 dark:text-emerald-400">Total em Compras</p>
-                  <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">{formatCurrency(totalBuysCash)}</p>
+                  <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">{formatarMoeda(totalBuysCash)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 text-xs">
                   <p className="text-xs uppercase font-semibold text-red-600 dark:text-red-400">Total em Vendas</p>
-                  <p className="text-base font-extrabold text-red-700 dark:text-red-300 mt-1">{formatCurrency(finalSalesCash)}</p>
+                  <p className="text-base font-extrabold text-red-700 dark:text-red-300 mt-1">{formatarMoeda(finalSalesCash)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
                   <p className="text-xs uppercase font-semibold text-primary">Aporte Líquido Requerido</p>
-                  <p className="text-base font-extrabold text-primary mt-1">{formatCurrency(Math.max(0, netContribution))}</p>
+                  <p className="text-base font-extrabold text-primary mt-1">{formatarMoeda(Math.max(0, netContribution))}</p>
                 </div>
               </div>
 
@@ -780,7 +777,7 @@ export default function AtivosBalanceamento() {
                 <Alert variant="warning" className="p-3.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">Saldo restante não alocado (devido aos preços das cotas):</span>
-                    <span className="font-extrabold text-sm">{formatCurrency(remainingBudget)}</span>
+                    <span className="font-extrabold text-sm">{formatarMoeda(remainingBudget)}</span>
                   </div>
                 </Alert>
               )}
@@ -796,7 +793,7 @@ export default function AtivosBalanceamento() {
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Investido</span>
           </CardHeader>
           <CardContent>
-            <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalPatrimonio)}</h3>
+            <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatarMoeda(totalPatrimonio)}</h3>
           </CardContent>
         </Card>
 
@@ -874,7 +871,7 @@ export default function AtivosBalanceamento() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-xs font-bold text-foreground">{formatCurrency(at.valor_atual)}</p>
+                        <p className="text-xs font-bold text-foreground">{formatarMoeda(at.valor_atual)}</p>
                         <p className="text-xs text-muted-foreground">investido • {formatPct(at.perc_atual)} carteira</p>
                       </div>
                     </div>
@@ -895,20 +892,20 @@ export default function AtivosBalanceamento() {
                           <ArrowRight className="h-3 w-3 shrink-0 text-emerald-500" />
                           <span className="font-semibold">
                             {magicoItem.aporte > 0.01 ? (
-                              <>Aporte sugerido: {formatCurrency(magicoItem.aporte)} ({magicoItem.qtdComprar} cota{magicoItem.qtdComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
+                              <>Aporte sugerido: {formatarMoeda(magicoItem.aporte)} ({magicoItem.qtdComprar} cota{magicoItem.qtdComprar !== 1 ? 's' : ''} a {formatarMoeda(magicoItem.cotacao)})</>
                             ) : (
-                              <>Aporte ideal: {formatCurrency(magicoItem.diferencaIdeal)} ({magicoItem.qtdIdealComprar} cota{magicoItem.qtdIdealComprar !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})</>
+                              <>Aporte ideal: {formatarMoeda(magicoItem.diferencaIdeal)} ({magicoItem.qtdIdealComprar} cota{magicoItem.qtdIdealComprar !== 1 ? 's' : ''} a {formatarMoeda(magicoItem.cotacao)})</>
                             )}
                           </span>
-                          <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
+                          <span className="text-muted-foreground">→ saldo ideal: {formatarMoeda(magicoItem.valorIdeal)}</span>
                         </div>
                       ) : magicoItem.diferencaIdeal < -0.01 ? (
                         <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/10 rounded-lg px-3 py-1.5 flex-wrap border border-red-100 dark:border-red-900/30">
                           <ArrowRight className="h-3 w-3 shrink-0 text-red-500" />
                           <span className="font-semibold">
-                            Excesso (Venda ideal): {formatCurrency(magicoItem.excesso)} ({magicoItem.qtdIdealVender} cota{magicoItem.qtdIdealVender !== 1 ? 's' : ''} a {formatCurrency(magicoItem.cotacao)})
+                            Excesso (Venda ideal): {formatarMoeda(magicoItem.excesso)} ({magicoItem.qtdIdealVender} cota{magicoItem.qtdIdealVender !== 1 ? 's' : ''} a {formatarMoeda(magicoItem.cotacao)})
                           </span>
-                          <span className="text-muted-foreground">→ saldo ideal: {formatCurrency(magicoItem.valorIdeal)}</span>
+                          <span className="text-muted-foreground">→ saldo ideal: {formatarMoeda(magicoItem.valorIdeal)}</span>
                         </div>
                       ) : null
                     )}

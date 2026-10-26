@@ -24,19 +24,14 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
 import SeletorCarteira from '../components/SeletorCarteira';
+import { useMoeda } from '../hooks/useMoeda';
+import { MASCARA_MOEDA } from '../lib/moeda';
 
-
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
 
 export default function Investimentos() {
   const { addToast } = useToast();
   const { carteiraId, carteiraSelecionada } = useCarteira();
+  const { formatarMoeda, valoresOcultos } = useMoeda();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [patrimonioMonthsFilter, setPatrimonioMonthsFilter] = useState(12);
@@ -149,7 +144,7 @@ export default function Investimentos() {
           labels: {
             show: true,
             value: {
-              formatter: (val) => formatCurrency(val),
+              formatter: (val) => formatarMoeda(val),
               color: isDarkTheme ? '#e2e8f0' : '#1e293b',
               fontSize: '18px',
               fontWeight: 700
@@ -160,7 +155,7 @@ export default function Investimentos() {
               color: '#888888',
               fontSize: '12px',
               fontWeight: 600,
-              formatter: () => formatCurrency(total_patrimonio)
+              formatter: () => formatarMoeda(total_patrimonio)
             }
           }
         }
@@ -172,7 +167,7 @@ export default function Investimentos() {
     tooltip: {
       theme: isDarkTheme ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val)
+        formatter: (val) => formatarMoeda(val)
       }
     }
   };
@@ -224,7 +219,7 @@ export default function Investimentos() {
     },
     yaxis: {
       labels: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
         style: { fontSize: '12px' },
       },
     },
@@ -238,7 +233,7 @@ export default function Investimentos() {
     tooltip: {
       theme: isDarkTheme ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
       },
     },
   };
@@ -294,7 +289,9 @@ export default function Investimentos() {
     },
     yaxis: {
       labels: {
-        formatter: (val) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val),
+        formatter: (val) => (valoresOcultos
+          ? MASCARA_MOEDA
+          : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val)),
         style: { fontSize: '12px' },
       },
     },
@@ -316,12 +313,11 @@ export default function Investimentos() {
         const delta = patrimonio - investido;
         const deltaColor = delta >= 0 ? '#10b981' : '#f43f5e';
         const deltaSign = delta >= 0 ? '+' : '';
-        const fmt = (v) => formatCurrency(v);
         return [
           '<div style="padding:10px 14px;font-family:Outfit,Inter,sans-serif;font-size:12px;line-height:1.6;">',
-          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:6px;"></span><strong>Patrimônio:</strong> ${fmt(patrimonio)}</div>`,
-          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:6px;"></span><strong>Investido:</strong> ${fmt(investido)}</div>`,
-          `<div style="border-top:1px solid rgba(128,128,128,0.2);margin-top:6px;padding-top:6px;color:${deltaColor};"><strong>Ganho/Perda:</strong> ${deltaSign}${fmt(delta)}</div>`,
+          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:6px;"></span><strong>Patrimônio:</strong> ${formatarMoeda(patrimonio)}</div>`,
+          `<div style="margin-bottom:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#64748b;margin-right:6px;"></span><strong>Investido:</strong> ${formatarMoeda(investido)}</div>`,
+          `<div style="border-top:1px solid rgba(128,128,128,0.2);margin-top:6px;padding-top:6px;color:${deltaColor};"><strong>Ganho/Perda:</strong> ${deltaSign}${formatarMoeda(delta)}</div>`,
           '</div>',
         ].join('');
       },
@@ -371,7 +367,7 @@ export default function Investimentos() {
             total: {
               ...donutChartOptions.plotOptions.pie.donut.labels.total,
               label: 'Custodiado',
-              formatter: () => formatCurrency(totalEmCarteiras),
+              formatter: () => formatarMoeda(totalEmCarteiras),
             },
           },
         },
@@ -446,12 +442,12 @@ export default function Investimentos() {
               </span>
             </div>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(total_patrimonio)}
+              {formatarMoeda(total_patrimonio)}
             </h3>
           </div>
           <div className="mt-4 pt-4 border-t border-border/40 flex justify-between items-center text-xs">
             <span className="text-muted-foreground">Valor investido</span>
-            <span className="font-semibold text-foreground">{formatCurrency(total_investido)}</span>
+            <span className="font-semibold text-foreground">{formatarMoeda(total_investido)}</span>
           </div>
         </Card>
 
@@ -462,17 +458,17 @@ export default function Investimentos() {
               Lucro total
             </div>
             <h3 className={`text-2xl font-bold tracking-tight ${total_rentabilidade >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-              {formatCurrency(total_rentabilidade)}
+              {formatarMoeda(total_rentabilidade)}
             </h3>
           </div>
           <div className="mt-4 pt-4 border-t border-border/40 grid grid-cols-2 gap-2 text-xs">
             <div>
               <div className="text-xs text-muted-foreground uppercase font-semibold">Ganho de Capital</div>
-              <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_patrimonio - total_investido)}</div>
+              <div className="font-bold text-foreground mt-0.5">{formatarMoeda(total_patrimonio - total_investido)}</div>
             </div>
             <div className="border-l border-border/40 pl-3">
               <div className="text-xs text-muted-foreground uppercase font-semibold">Dividendos</div>
-              <div className="font-bold text-foreground mt-0.5">{formatCurrency(total_dividendos)}</div>
+              <div className="font-bold text-foreground mt-0.5">{formatarMoeda(total_dividendos)}</div>
             </div>
           </div>
         </Card>
@@ -484,12 +480,12 @@ export default function Investimentos() {
               Proventos Recebidos (12M)
             </div>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(total_dividendos)}
+              {formatarMoeda(total_dividendos)}
             </h3>
           </div>
           <div className="mt-4 pt-4 border-t border-border/40 flex justify-between items-center text-xs">
             <span className="text-muted-foreground">Total</span>
-            <span className="font-semibold text-foreground">{formatCurrency(total_dividendos)}</span>
+            <span className="font-semibold text-foreground">{formatarMoeda(total_dividendos)}</span>
           </div>
         </Card>
 
@@ -512,7 +508,7 @@ export default function Investimentos() {
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-rose-500'
             }`}>
-              {formatCurrency(total_patrimonio - total_investido)}
+              {formatarMoeda(total_patrimonio - total_investido)}
             </div>
           </div>
           
@@ -582,7 +578,7 @@ export default function Investimentos() {
               <div className="h-[320px] w-full" aria-hidden="true">
                 {patrimonioSeriesData.length > 0 ? (
                   <Chart
-                    key={`patrimonio-area-${isDarkTheme}`}
+                    key={`patrimonio-area-${isDarkTheme}-${valoresOcultos}`}
                     options={patrimonioChartOptions}
                     series={patrimonioChartSeries}
                     type="area"
@@ -617,6 +613,7 @@ export default function Investimentos() {
                 <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0" aria-hidden="true">
                   {carteiraDonutSeries.length > 0 ? (
                     <Chart
+                      key={`carteira-donut-${valoresOcultos}`}
                       options={carteiraDonutOptions}
                       series={carteiraDonutSeries}
                       type="donut"
@@ -643,7 +640,7 @@ export default function Investimentos() {
                         <span className="text-muted-foreground truncate">{item.label}</span>
                       </div>
                       <span className="text-foreground shrink-0 pl-2 tabular-nums">
-                        {formatCurrency(item.valor)} · {item.pct.toFixed(1).replace('.', ',')}%
+                        {formatarMoeda(item.valor)} · {item.pct.toFixed(1).replace('.', ',')}%
                       </span>
                     </li>
                   ))}
@@ -661,6 +658,7 @@ export default function Investimentos() {
               <div className="relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] shrink-0" aria-hidden="true">
                 {donutChartSeries.length > 0 ? (
                   <Chart
+                    key={`categoria-donut-${valoresOcultos}`}
                     options={donutChartOptions}
                     series={donutChartSeries}
                     type="donut"
@@ -787,7 +785,7 @@ export default function Investimentos() {
             <CardContent>
               <div className="h-[280px] w-full" aria-hidden="true">
                 <Chart
-                  key={`snowball-${isDarkTheme}`}
+                  key={`snowball-${isDarkTheme}-${valoresOcultos}`}
                   options={snowballChartOptions}
                   series={snowballChartSeries}
                   type="bar"

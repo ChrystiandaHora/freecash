@@ -44,15 +44,7 @@ import GraficoCotacoesAtivos from '../components/GraficoCotacoesAtivos';
 import SeletorCarteira from '../components/SeletorCarteira';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 import { useCarteira } from '../context/CarteiraProvider';
-
-// Helper de formatação de moedas
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
+import { useMoeda } from '../hooks/useMoeda';
 
 // Helper de formatação de porcentagens
 const formatPercentage = (value) => {
@@ -65,6 +57,7 @@ const formatPercentage = (value) => {
 export default function MeusAtivos() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { formatarMoeda } = useMoeda();
 
   const columns = [
     {
@@ -85,21 +78,21 @@ export default function MeusAtivos() {
       header: 'P. Médio',
       className: 'px-5 py-3.5 text-left',
       cellClassName: 'px-5 py-3.5 text-left text-muted-foreground',
-      render: (val) => formatCurrency(val),
+      render: (val) => formatarMoeda(val),
     },
     {
       key: 'cotacao_atual',
       header: 'Cotação',
       className: 'px-5 py-3.5 text-left',
       cellClassName: 'px-5 py-3.5 text-left text-muted-foreground font-semibold',
-      render: (val) => formatCurrency(val),
+      render: (val) => formatarMoeda(val),
     },
     {
       key: 'valor_total_atual',
       header: 'Valor Atual',
       className: 'px-5 py-3.5 text-left',
       cellClassName: 'px-5 py-3.5 text-left font-extrabold text-foreground',
-      render: (val) => formatCurrency(parseFloat(val || 0)),
+      render: (val) => formatarMoeda(parseFloat(val || 0)),
     },
     {
       key: 'rentabilidade_percentual',
@@ -446,10 +439,10 @@ export default function MeusAtivos() {
           </div>
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            {formatCurrency(totalPatrimonio)}
+            {formatarMoeda(totalPatrimonio)}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Total investido originalmente: <span className="font-semibold text-foreground/80">{formatCurrency(totalInvestido)}</span>
+            Total investido originalmente: <span className="font-semibold text-foreground/80">{formatarMoeda(totalInvestido)}</span>
           </p>
         </div>
 

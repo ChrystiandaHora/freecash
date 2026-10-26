@@ -14,14 +14,12 @@ import {
 } from 'lucide-react';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0);
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import CarteiraFormModal from '../components/CarteiraFormModal';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 import {
   deleteCarteira,
   fetchCarteiras,
@@ -63,6 +61,7 @@ function ExcluirCarteiraModal({ carteira, onConfirm, onClose, isPending }) {
 export default function AtivosCarteiras() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
 
   const [formAberto, setFormAberto] = useState(false);
   const [emEdicao, setEmEdicao] = useState(null);
@@ -195,7 +194,7 @@ export default function AtivosCarteiras() {
                 <dl className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
                   <dt className="text-xs text-muted-foreground">Valor investido</dt>
                   <dd className="text-lg font-bold text-foreground tabular-nums">
-                    {formatCurrency(carteira.valor_investido)}
+                    {formatarMoeda(carteira.valor_investido)}
                   </dd>
                 </dl>
 

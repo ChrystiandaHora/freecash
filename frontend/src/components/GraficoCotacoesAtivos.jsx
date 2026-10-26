@@ -62,6 +62,7 @@ import Chart from 'react-apexcharts';
 import { AlertCircle, LineChart, RefreshCw, RotateCcw, X } from 'lucide-react';
 
 import { useTheme } from '../context/ThemeProvider';
+import { useMoeda } from '../hooks/useMoeda';
 import { alinharEmEixoComum, converterSeries } from '../lib/cotacoesSerie';
 import {
   MAX_SERIES,
@@ -118,11 +119,6 @@ const RECUSAS = {
   cheio: `O gráfico comporta ${MAX_SERIES} ativos. Remova um para adicionar outro.`,
 };
 
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-
 const formatPercentage = (value) => {
   const num = parseFloat(value ?? 0);
   return `${num >= 0 ? '+' : ''}${num.toFixed(2).replace('.', ',')}%`;
@@ -147,6 +143,7 @@ export default function GraficoCotacoesAtivos({
   isError = false,
 }) {
   const { resolvedTheme } = useTheme();
+  const { formatarMoeda, valoresOcultos } = useMoeda();
   const [tabelaAberta, setTabelaAberta] = useState(false);
   const [busca, setBusca] = useState('');
   const [recusa, setRecusa] = useState('');
@@ -320,7 +317,7 @@ export default function GraficoCotacoesAtivos({
     },
     yaxis: {
       labels: {
-        formatter: (val) => (emReais ? formatCurrency(val) : formatPercentage(val)),
+        formatter: (val) => (emReais ? formatarMoeda(val) : formatPercentage(val)),
         style: { colors: '#888888', fontSize: '12px', fontWeight: 500 },
       },
     },
@@ -342,7 +339,7 @@ export default function GraficoCotacoesAtivos({
           val === null || val === undefined
             ? '—'
             : emReais
-              ? formatCurrency(val)
+              ? formatarMoeda(val)
               : formatPercentage(val),
       },
     },
@@ -605,7 +602,7 @@ export default function GraficoCotacoesAtivos({
       ) : (
         <>
           <div aria-hidden="true">
-            <Chart options={opcoes} series={seriesApex} type="line" height={320} />
+            <Chart key={`cotacoes-${valoresOcultos}`} options={opcoes} series={seriesApex} type="line" height={320} />
           </div>
 
           <p className="text-xs text-muted-foreground">
@@ -653,7 +650,7 @@ export default function GraficoCotacoesAtivos({
                             {s.valores[i] === null
                               ? '—'
                               : emReais
-                                ? formatCurrency(s.valores[i])
+                                ? formatarMoeda(s.valores[i])
                                 : formatPercentage(s.valores[i])}
                           </td>
                         ))}

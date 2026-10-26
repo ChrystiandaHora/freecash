@@ -10,11 +10,7 @@ import { Select } from '../../components/ui/Select';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
 import { useCarteira } from '../../context/CarteiraProvider';
-
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
+import { formatarMoeda } from '../../lib/moeda';
 
 export default function OrdemForm() {
   const { id } = useParams();
@@ -348,7 +344,7 @@ export default function OrdemForm() {
                   <div className="p-4 rounded-xl bg-muted/30 flex justify-between items-center border border-border/40">
                     <span className="text-xs font-semibold text-muted-foreground">Valor total estimado:</span>
                     <span className="text-sm font-extrabold text-foreground">
-                      {formatCurrency(
+                      {formatarMoeda(
                         parseFloat(form.quantidade) * parseFloat(form.preco_unitario) +
                         (form.tipo === 'C' ? 1 : -1) * parseFloat(form.taxas || 0)
                       )}

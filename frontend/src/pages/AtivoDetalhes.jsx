@@ -25,18 +25,11 @@ import Chart from 'react-apexcharts';
 import { fetchAtivo, atualizarAtivo, fetchPosicoes } from '../services/investimentos';
 import { useCarteira } from '../context/CarteiraProvider';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 import { Button } from '../components/ui/Button';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 
 // Helpers de formatação
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
-
 const formatPercentage = (value) => {
   if (value === undefined || value === null) return '0,00%';
   const num = parseFloat(value);
@@ -85,6 +78,7 @@ export default function AtivoDetalhes() {
 
   /* ── Queries ── */
   const { carteiraSelecionada } = useCarteira();
+  const { formatarMoeda, valoresOcultos } = useMoeda();
 
   const { data: ativo, isLoading: loadingAtivo, isError: errorAtivo } = useQuery({
     queryKey: ['ativoDetalhe', id],
@@ -248,7 +242,7 @@ export default function AtivoDetalhes() {
           </div>
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Patrimônio Alocado</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            {formatCurrency(valorTotalAtual)}
+            {formatarMoeda(valorTotalAtual)}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
             Posição atualizada a mercado
@@ -261,10 +255,10 @@ export default function AtivoDetalhes() {
           </div>
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Original (Principal)</p>
           <h3 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            {formatCurrency(totalCustoInvestido)}
+            {formatarMoeda(totalCustoInvestido)}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Cotas: <span className="font-semibold text-foreground/80">{parseFloat(ativo.quantidade || 0).toString().replace('.', ',')}</span> | P. Médio: <span className="font-semibold text-foreground/80">{formatCurrency(ativo.preco_medio)}</span>
+            Cotas: <span className="font-semibold text-foreground/80">{parseFloat(ativo.quantidade || 0).toString().replace('.', ',')}</span> | P. Médio: <span className="font-semibold text-foreground/80">{formatarMoeda(ativo.preco_medio)}</span>
           </p>
         </div>
 
@@ -274,7 +268,7 @@ export default function AtivoDetalhes() {
           </div>
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Resultado Acumulado</p>
           <h3 className={`text-2xl font-bold tracking-tight mt-2 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-            {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
+            {formatarMoeda(parseFloat(ativo.rentabilidade || 0))}
           </h3>
           <p className={`text-xs font-bold mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
             {formatPercentage(rentabilidadePerc)}
@@ -404,14 +398,14 @@ export default function AtivoDetalhes() {
                 </h3>
                 <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
                   <span className="text-muted-foreground">Preço Médio:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(ativo.preco_medio)}</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(ativo.preco_medio)}</span>
 
                   <span className="text-muted-foreground">Cotação Atual:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(ativo.cotacao_atual)}</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(ativo.cotacao_atual)}</span>
 
                   <span className="text-muted-foreground">Diferença/Preço:</span>
                   <span className={`font-bold ${parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                    {formatCurrency(parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0))}
+                    {formatarMoeda(parseFloat(ativo.cotacao_atual || 0) - parseFloat(ativo.preco_medio || 0))}
                   </span>
                 </div>
               </div>
@@ -422,14 +416,14 @@ export default function AtivoDetalhes() {
                 </h3>
                 <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
                   <span className="text-muted-foreground">Total Pago:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(totalCustoInvestido)}</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(totalCustoInvestido)}</span>
 
                   <span className="text-muted-foreground">Valor de Mercado:</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(valorTotalAtual)}</span>
+                  <span className="font-semibold text-foreground">{formatarMoeda(valorTotalAtual)}</span>
 
                   <span className="font-bold text-foreground border-t border-border/20 pt-2 mt-1">Lucro/Prejuízo:</span>
                   <span className={`font-bold border-t border-border/20 pt-2 mt-1 ${parseFloat(ativo.rentabilidade || 0) >= 0 ? 'text-primary' : 'text-rose-500'}`}>
-                    {formatCurrency(parseFloat(ativo.rentabilidade || 0))}
+                    {formatarMoeda(parseFloat(ativo.rentabilidade || 0))}
                   </span>
                 </div>
               </div>
@@ -443,6 +437,7 @@ export default function AtivoDetalhes() {
               {ativo.historico_cotacoes && ativo.historico_cotacoes.length > 0 ? (
                 <div className="flex-1 min-h-[220px]">
                   <Chart
+                    key={`cotacoes-${valoresOcultos}`}
                     options={{
                       chart: {
                         type: 'area',
@@ -487,7 +482,7 @@ export default function AtivoDetalhes() {
                       },
                       yaxis: {
                         labels: {
-                          formatter: (val) => formatCurrency(val),
+                          formatter: (val) => formatarMoeda(val),
                           style: { colors: '#888888', fontSize: '12px', fontWeight: 500 }
                         }
                       },
@@ -507,7 +502,7 @@ export default function AtivoDetalhes() {
                         shared: true,
                         intersect: false,
                         y: {
-                          formatter: (val) => formatCurrency(val),
+                          formatter: (val) => formatarMoeda(val),
                           title: { formatter: () => 'Preço: ' }
                         }
                       },
@@ -587,13 +582,13 @@ export default function AtivoDetalhes() {
                             {isProvento ? '—' : parseFloat(t.quantidade).toString().replace('.', ',')}
                           </td>
                           <td className="py-3.5 px-5 text-right text-muted-foreground">
-                            {isProvento ? '—' : formatCurrency(t.preco_unitario)}
+                            {isProvento ? '—' : formatarMoeda(t.preco_unitario)}
                           </td>
                           <td className="py-3.5 px-5 text-right text-muted-foreground">
-                            {parseFloat(t.taxas || 0) > 0 ? formatCurrency(t.taxas) : '—'}
+                            {parseFloat(t.taxas || 0) > 0 ? formatarMoeda(t.taxas) : '—'}
                           </td>
                           <td className={`py-3.5 px-5 text-right font-extrabold ${isCompra ? 'text-emerald-500' : isVenda ? 'text-rose-500' : 'text-amber-500'}`}>
-                            {formatCurrency(t.valor_total)}
+                            {formatarMoeda(t.valor_total)}
                           </td>
                         </tr>
                       );
