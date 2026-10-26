@@ -164,6 +164,13 @@ FKS_LEGADAS_COM_PADRAO = {
     "PosicaoCarteira": ("carteira",),
 }
 
+# Campos que descrevem a conta, não os dados: o backup os carrega, mas a restauração
+# mantém os atuais. Sem isto, um `.fcbk` anterior à confirmação do e-mail a desfaz e a
+# importação seguinte cai no portão de verificação (ver docs/backup.md).
+CAMPOS_DE_ESTADO_DA_CONTA = {
+    "ConfigUsuario": ("email_verificado", "email_verificado_em", "email_pendente"),
+}
+
 
 def _carteira_padrao(user):
     """Devolve (criando se preciso) a carteira que recebe dados de backups antigos.
@@ -394,6 +401,8 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 
                     # Filtrar campos que não existem mais no modelo
                     row = filter_valid_fields(model, row)
+                    preservados = CAMPOS_DE_ESTADO_DA_CONTA.get(model_name, ())
+                    row = {k: v for k, v in row.items() if k not in preservados}
 
                     # Upsert/Create
                     obj = None
