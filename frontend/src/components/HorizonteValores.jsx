@@ -6,7 +6,7 @@
  */
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
-import { formatarMoeda } from '../lib/moeda';
+import { useMoeda } from '../hooks/useMoeda';
 
 export const COR_ENTRADA = 'text-emerald-800 dark:text-emerald-300';
 export const COR_SAIDA = 'text-red-700 dark:text-red-300';
@@ -18,6 +18,8 @@ export const COR_SAIDA = 'text-red-700 dark:text-red-300';
  * @param {'+'|'−'} props.sinal - Sinal a exibir.
  */
 export function ValorComSinal({ valor, sinal }) {
+  const { formatarMoeda } = useMoeda();
+
   return (
     <span className={`tabular-nums ${sinal === '+' ? COR_ENTRADA : COR_SAIDA}`}>
       {sinal} {formatarMoeda(valor)}
@@ -31,6 +33,8 @@ export function ValorComSinal({ valor, sinal }) {
  * @param {number} props.valor - Diferença entre o fim e o início do período.
  */
 export function Variacao({ valor }) {
+  const { formatarMoeda } = useMoeda();
+
   if (Math.abs(valor) < 0.005) {
     return <span className="tabular-nums text-muted-foreground">sem variação</span>;
   }

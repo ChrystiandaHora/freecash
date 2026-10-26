@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import ProjecaoMensalTable from './ProjecaoMensalTable';
 import MapaDeCalorDiario from './MapaDeCalorDiario';
-import { formatCurrency } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
 
 /**
  * Disclosure fechado por padrão: reúne a tabela mês a mês e o mapa de calor
@@ -18,6 +18,7 @@ export default function AnaliseDetalhada({
   projecaoFutura,
   pontoDeVirada,
 }) {
+  const { formatarMoeda } = useMoeda();
   const [expandido, setExpandido] = useState(false);
   const [selectedMonthDetails, setSelectedMonthDetails] = useState(null);
   const [heatmapMetric, setHeatmapMetric] = useState('acumulado'); // 'acumulado' | 'fluxo'
@@ -97,7 +98,7 @@ export default function AnaliseDetalhada({
                   </div>
                   <div className="text-right">
                     <span className={`text-sm font-bold block ${item.tipo === 'R' ? 'text-emerald-500' : 'text-red-500'}`}>
-                      {item.tipo === 'R' ? '+' : '-'}{formatCurrency(item.currentMonthVal)}
+                      {item.tipo === 'R' ? '+' : '-'}{formatarMoeda(item.currentMonthVal)}
                     </span>
                   </div>
                 </div>

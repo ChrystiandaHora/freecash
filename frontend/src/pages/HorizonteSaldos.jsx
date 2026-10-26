@@ -54,7 +54,7 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { useDebounce } from '../hooks/useDebounce';
-import { formatarMoeda, formatarMoedaCompacta } from '../lib/moeda';
+import { useMoeda } from '../hooks/useMoeda';
 import { buscarCalendario, buscarHorizonteSaldos } from '../services/planejamento';
 
 const DIAS_DO_MES = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -124,6 +124,7 @@ export default function HorizonteSaldos() {
   const [limiteAtencao, setLimiteAtencao] = useState('1000');
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [aba, setAba] = useState('grade');
+  const { formatarMoeda, formatarMoedaCompacta } = useMoeda();
 
   const tabelaRef = useRef(null);
 

@@ -2,9 +2,11 @@ import { AlertCircle, Calendar, Layers, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { formatCurrency } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
 
 export default function SimulacoesAtivasList({ simuladas, onRemove, onLimparTudo }) {
+  const { formatarMoeda } = useMoeda();
+
   return (
     <Card className="border-border bg-card/65 backdrop-blur-md">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -47,8 +49,8 @@ export default function SimulacoesAtivasList({ simuladas, onRemove, onLimparTudo
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground/80">
-                    {formatCurrency(item.valor)}
-                    {item.frequencia === 'parcelada' && ` (${item.parcelas}x de ${formatCurrency(item.valor / item.parcelas)})`}
+                    {formatarMoeda(item.valor)}
+                    {item.frequencia === 'parcelada' && ` (${item.parcelas}x de ${formatarMoeda(item.valor / item.parcelas)})`}
                   </span>
                   <span>•</span>
                   <span>{item.categoria}</span>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { formatCurrency } from './formatters';
+import { formatarMoeda } from '../../lib/moeda';
 
 export default function LancamentoForm({
   onSubmit,
@@ -159,7 +159,7 @@ export default function LancamentoForm({
                 {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
                   const numericValor = parseFloat(valor);
                   const labelSuffix = (!isNaN(numericValor) && numericValor > 0)
-                    ? ` (${n}x de ${formatCurrency(numericValor / n)})`
+                    ? ` (${n}x de ${formatarMoeda(numericValor / n)})`
                     : '';
                   return (
                     <option key={n} value={String(n)}>

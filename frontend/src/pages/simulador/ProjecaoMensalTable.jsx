@@ -1,9 +1,11 @@
 import { Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { formatCurrency } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
 
 export default function ProjecaoMensalTable({ isLoading, monthlyData, onVerDetalhes }) {
+  const { formatarMoeda } = useMoeda();
+
   return (
     <Card className="border-border bg-card/65 backdrop-blur-md">
       <CardHeader>
@@ -44,41 +46,41 @@ export default function ProjecaoMensalTable({ isLoading, monthlyData, onVerDetal
                       </td>
                       <td className="py-3.5 px-3 text-right text-xs">
                         <span className="text-muted-foreground font-medium block">
-                          R: {formatCurrency(data.realRevenues)}
+                          R: {formatarMoeda(data.realRevenues)}
                         </span>
                         {data.simRevenues > 0 && (
                           <span className="text-emerald-500 font-bold block text-xs">
-                            S: +{formatCurrency(data.simRevenues)}
+                            S: +{formatarMoeda(data.simRevenues)}
                           </span>
                         )}
                       </td>
                       <td className="py-3.5 px-3 text-right text-xs">
                         <span className="text-muted-foreground font-medium block">
-                          R: {formatCurrency(data.realExpenses)}
+                          R: {formatarMoeda(data.realExpenses)}
                         </span>
                         {data.simExpenses > 0 && (
                           <span className="text-red-500 font-bold block text-xs">
-                            S: +{formatCurrency(data.simExpenses)}
+                            S: +{formatarMoeda(data.simExpenses)}
                           </span>
                         )}
                       </td>
                       <td className="py-3.5 px-3 text-right">
                         <div className="text-xs">
                           <span className={`font-semibold block ${data.realNet >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                            R: {formatCurrency(data.realNet)}
+                            R: {formatarMoeda(data.realNet)}
                           </span>
                           <span className={`font-bold block ${data.simNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            Proj: {formatCurrency(data.simNet)}
+                            Proj: {formatarMoeda(data.simNet)}
                           </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-3 text-right">
                         <div className="text-xs">
                           <span className="text-muted-foreground block">
-                            R: {formatCurrency(data.accumulatedReal)}
+                            R: {formatarMoeda(data.accumulatedReal)}
                           </span>
                           <span className={`font-bold block text-sm ${data.accumulatedSim >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                            Proj: {formatCurrency(data.accumulatedSim)}
+                            Proj: {formatarMoeda(data.accumulatedSim)}
                           </span>
                         </div>
                       </td>

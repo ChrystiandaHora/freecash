@@ -3,7 +3,8 @@ import { AlertCircle, ShieldCheck, ChevronDown, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { formatCurrency, formatDateLong } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
+import { formatDateLong } from './formatters';
 
 /**
  * "Ponto de virada": um resumo de uma frase, sempre visível, com um botão
@@ -12,6 +13,7 @@ import { formatCurrency, formatDateLong } from './formatters';
  * detalhes ficam a um clique para quem quiser o cálculo por extenso.
  */
 export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando }) {
+  const { formatarMoeda } = useMoeda();
   const [expandido, setExpandido] = useState(false);
   const detalhesId = useId();
 
@@ -103,7 +105,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
                     </strong>{' '}
                     sem recorrer a reserva, você precisa de{' '}
                     <strong className="font-semibold">
-                      {formatCurrency(pontoDeVirada.margemNecessaria)}
+                      {formatarMoeda(pontoDeVirada.margemNecessaria)}
                     </strong>{' '}
                     até{' '}
                     <strong className="font-semibold">
@@ -120,7 +122,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
                     </strong>{' '}
                     exige{' '}
                     <strong className="font-semibold">
-                      {formatCurrency(pontoDeVirada.margemNecessaria)}
+                      {formatarMoeda(pontoDeVirada.margemNecessaria)}
                     </strong>{' '}
                     agora.
                   </p>
@@ -129,7 +131,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
                 <p className="text-muted-foreground">
                   O pior momento é{' '}
                   <strong className="font-semibold text-red-600 dark:text-red-400">
-                    {formatCurrency(pontoDeVirada.pior.acumulado)}
+                    {formatarMoeda(pontoDeVirada.pior.acumulado)}
                   </strong>{' '}
                   em {formatDateLong(pontoDeVirada.pior.date)}.
                 </p>
@@ -157,7 +159,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
                             )}
                           </span>
                           <span className="shrink-0 font-semibold text-red-600 dark:text-red-400">
-                            {formatCurrency(despesa.total)}
+                            {formatarMoeda(despesa.total)}
                           </span>
                         </li>
                       ))}
@@ -170,7 +172,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
                 <p className="text-muted-foreground">
                   No dia mais apertado o acumulado ainda é de{' '}
                   <strong className="font-semibold text-foreground">
-                    {formatCurrency(pontoDeVirada.folgaMinima.acumulado)}
+                    {formatarMoeda(pontoDeVirada.folgaMinima.acumulado)}
                   </strong>{' '}
                   ({formatDateLong(pontoDeVirada.folgaMinima.date)}).
                 </p>

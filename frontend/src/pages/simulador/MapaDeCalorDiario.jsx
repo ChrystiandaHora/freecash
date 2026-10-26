@@ -3,9 +3,10 @@ import { CalendarDays, LayoutGrid, Sparkles, Table2, TrendingDown } from 'lucide
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import CalendarHeatmap from '../../components/CalendarHeatmap';
-import { formatCurrency, formatDateLong } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
+import { formatDateLong } from './formatters';
 
-function renderHeatmapTooltip(day) {
+function renderHeatmapTooltip(day, formatarMoeda) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-foreground">{day.dateLabel}</p>
@@ -15,7 +16,7 @@ function renderHeatmapTooltip(day) {
           {day.metricNome}
         </span>
         <span className={day.value >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-          {formatCurrency(day.value)}
+          {formatarMoeda(day.value)}
         </span>
       </p>
 
@@ -36,7 +37,7 @@ function renderHeatmapTooltip(day) {
                   item.tipo === 'R' ? 'text-emerald-500' : 'text-red-500'
                 }`}
               >
-                {item.tipo === 'R' ? '+' : '-'}{formatCurrency(item.valor)}
+                {item.tipo === 'R' ? '+' : '-'}{formatarMoeda(item.valor)}
               </span>
             </li>
           ))}
@@ -59,6 +60,7 @@ export default function MapaDeCalorDiario({
   setHeatmapMetric,
 }) {
   const [showHeatmapTable, setShowHeatmapTable] = useState(false);
+  const { formatarMoeda } = useMoeda();
 
   const EPS = 0.005;
 
@@ -103,20 +105,20 @@ export default function MapaDeCalorDiario({
       dateLabel,
       metricNome,
       srLabel:
-        `${dateLabel}: ${metricNome.toLowerCase()} de ${formatCurrency(value)} (${sinal}). ` +
-        `Entradas ${formatCurrency(d.receitas)}, saídas ${formatCurrency(d.despesas)}.`,
+        `${dateLabel}: ${metricNome.toLowerCase()} de ${formatarMoeda(value)} (${sinal}). ` +
+        `Entradas ${formatarMoeda(d.receitas)}, saídas ${formatarMoeda(d.despesas)}.`,
     });
   });
 
   // Legenda: uma faixa por classe, com o intervalo em reais no rótulo.
   const legend = [
-    { level: -3, label: `Abaixo de -${formatCurrency(negCuts[1])}` },
-    { level: -2, label: `-${formatCurrency(negCuts[1])} a -${formatCurrency(negCuts[0])}` },
-    { level: -1, label: `-${formatCurrency(negCuts[0])} a zero` },
+    { level: -3, label: `Abaixo de -${formatarMoeda(negCuts[1])}` },
+    { level: -2, label: `-${formatarMoeda(negCuts[1])} a -${formatarMoeda(negCuts[0])}` },
+    { level: -1, label: `-${formatarMoeda(negCuts[0])} a zero` },
     { level: 0, label: 'Sem movimento (zero)' },
-    { level: 1, label: `Zero a ${formatCurrency(posCuts[0])}` },
-    { level: 2, label: `${formatCurrency(posCuts[0])} a ${formatCurrency(posCuts[1])}` },
-    { level: 3, label: `Acima de ${formatCurrency(posCuts[1])}` },
+    { level: 1, label: `Zero a ${formatarMoeda(posCuts[0])}` },
+    { level: 2, label: `${formatarMoeda(posCuts[0])} a ${formatarMoeda(posCuts[1])}` },
+    { level: 3, label: `Acima de ${formatarMoeda(posCuts[1])}` },
   ];
 
   const firstDate = projecaoFutura[0]?.date || null;
@@ -207,7 +209,7 @@ export default function MapaDeCalorDiario({
             <span className="text-muted-foreground">
               Pior acumulado{' '}
               <strong className="font-semibold text-red-600 dark:text-red-400">
-                {formatCurrency(pontoDeVirada.pior.acumulado)}
+                {formatarMoeda(pontoDeVirada.pior.acumulado)}
               </strong>{' '}
               em{' '}
               <strong className="font-semibold text-foreground">
@@ -256,16 +258,16 @@ export default function MapaDeCalorDiario({
                           {d.date.toLocaleDateString('pt-BR')}
                         </th>
                         <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                          {formatCurrency(d.receitas)}
+                          {formatarMoeda(d.receitas)}
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                          {formatCurrency(d.despesas)}
+                          {formatarMoeda(d.despesas)}
                         </td>
                         <td className={`py-2.5 px-3 text-right font-medium tabular-nums ${d.fluxo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {formatCurrency(d.fluxo)}
+                          {formatarMoeda(d.fluxo)}
                         </td>
                         <td className={`py-2.5 px-3 text-right font-bold tabular-nums ${d.acumulado >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {formatCurrency(d.acumulado)}
+                          {formatarMoeda(d.acumulado)}
                         </td>
                       </tr>
                     ))
@@ -278,7 +280,7 @@ export default function MapaDeCalorDiario({
               daysByKey={daysByKey}
               firstDate={firstDate}
               lastDate={lastDate}
-              renderTooltip={renderHeatmapTooltip}
+              renderTooltip={(day) => renderHeatmapTooltip(day, formatarMoeda)}
             />
           ) : null}
         </div>

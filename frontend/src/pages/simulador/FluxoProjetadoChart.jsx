@@ -1,9 +1,11 @@
 import Chart from 'react-apexcharts';
 import { Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { formatCurrency } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
 
 export default function FluxoProjetadoChart({ isLoading, chartData, isDark }) {
+  const { formatarMoeda, valoresOcultos } = useMoeda();
+
   const chartOptions = {
     chart: {
       type: 'bar',
@@ -30,7 +32,7 @@ export default function FluxoProjetadoChart({ isLoading, chartData, isDark }) {
     },
     yaxis: {
       labels: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
         style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize: '12px' }
       }
     },
@@ -44,7 +46,7 @@ export default function FluxoProjetadoChart({ isLoading, chartData, isDark }) {
     tooltip: {
       theme: isDark ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
       }
     },
     legend: {
@@ -79,6 +81,8 @@ export default function FluxoProjetadoChart({ isLoading, chartData, isDark }) {
           </div>
         ) : (
           <Chart
+            // ApexCharts não relê os formatadores; a key força remontar ao alternar o olho
+            key={`fluxo-${valoresOcultos}`}
             options={chartOptions}
             series={chartSeries}
             type="bar"

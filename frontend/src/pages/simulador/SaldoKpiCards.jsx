@@ -1,8 +1,10 @@
 import { Activity, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { formatCurrency } from './formatters';
+import { useMoeda } from '../../hooks/useMoeda';
 
 export default function SaldoKpiCards({ isLoading, kpis }) {
+  const { formatarMoeda } = useMoeda();
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card className="relative overflow-hidden border-border bg-card/65 backdrop-blur-md transition-all hover:scale-[1.01]">
@@ -12,7 +14,7 @@ export default function SaldoKpiCards({ isLoading, kpis }) {
         <CardHeader className="pb-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Mês Atual (Real)</span>
           <CardTitle className="text-2xl font-bold text-foreground">
-            {isLoading ? '...' : formatCurrency(kpis.currentReal)}
+            {isLoading ? '...' : formatarMoeda(kpis.currentReal)}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -27,7 +29,7 @@ export default function SaldoKpiCards({ isLoading, kpis }) {
         <CardHeader className="pb-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Mês Atual (Simulado)</span>
           <CardTitle className="text-2xl font-bold text-foreground">
-            {isLoading ? '...' : formatCurrency(kpis.currentSim)}
+            {isLoading ? '...' : formatarMoeda(kpis.currentSim)}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">

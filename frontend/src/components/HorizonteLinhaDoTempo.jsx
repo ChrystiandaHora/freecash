@@ -16,7 +16,7 @@ import Chart from 'react-apexcharts';
 
 import { useTheme } from '../context/ThemeProvider';
 import { montarLinhaDoTempo } from '../lib/linhaDoTempoSaldo';
-import { formatarMoeda, formatarMoedaCompacta } from '../lib/moeda';
+import { useMoeda } from '../hooks/useMoeda';
 import { ValorComSinal, Variacao } from './HorizonteValores';
 
 // Slot 1 da paleta categórica validada, um passo por tema
@@ -41,6 +41,7 @@ export default function HorizonteLinhaDoTempo({
   onSelecionarMes,
 }) {
   const { resolvedTheme } = useTheme();
+  const { formatarMoeda, formatarMoedaCompacta, valoresOcultos } = useMoeda();
   const escuro = resolvedTheme === 'dark';
   const quadroRef = useRef(null);
   const hojeRef = useRef(null);
@@ -151,7 +152,7 @@ export default function HorizonteLinhaDoTempo({
         </div>
       </div>
       <div aria-hidden="true" className="-mx-2">
-        <Chart key={resolvedTheme} options={options} series={series} type="line" height={280} />
+        <Chart key={`${resolvedTheme}-${valoresOcultos}`} options={options} series={series} type="line" height={280} />
       </div>
 
       <div

@@ -19,7 +19,7 @@ import { Sparkles } from 'lucide-react';
 import HorizonteLinhaDoTempo from './HorizonteLinhaDoTempo';
 import { ValorComSinal } from './HorizonteValores';
 import { Card, CardContent } from './ui/Card';
-import { formatarMoeda } from '../lib/moeda';
+import { useMoeda } from '../hooks/useMoeda';
 
 /**
  * Formata uma data ISO como dia/mês.
@@ -69,6 +69,7 @@ function linhaDeData(item) {
  * @param {string} props.total - Total do tipo no mês.
  */
 function ListaDoTipo({ titulo, tipo, grupo, total }) {
+  const { formatarMoeda } = useMoeda();
   const sinal = tipo === 'R' ? '+' : '−';
   const idTitulo = `composicao-${tipo}`;
 
@@ -127,6 +128,7 @@ function ListaDoTipo({ titulo, tipo, grupo, total }) {
  */
 export default function HorizonteComposicao({ data, considerarMetas }) {
   const [mesSelecionado, setMesSelecionado] = useState(0);
+  const { formatarMoeda } = useMoeda();
 
   const sufixo = considerarMetas ? '_com_metas' : '';
   const investidoFora = Number(data.valor_investido) > 0 && !data.investimentos_considerados;
