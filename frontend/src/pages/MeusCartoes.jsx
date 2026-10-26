@@ -20,11 +20,9 @@ import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { Accordion, AccordionItem } from '../components/ui/Accordion';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 /**
  * Fundos dos cartões. O primeiro tom era `#007acc`, no qual texto branco com
@@ -69,6 +67,7 @@ const CardSkeleton = () => (
 // ─── Componente de Cartão Visual ──────────────────────────────────────────────
 
 const CreditCardVisual = ({ cartao, bgClass }) => {
+  const { formatarMoeda } = useMoeda()
   const limite = Number(cartao.limite ?? 0)
   const usado = Number(cartao.fatura_atual ?? 0)
   const disponivel = Math.max(limite - usado, 0)
@@ -151,11 +150,11 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
         <div className="flex items-center justify-between gap-4">
           <div className="flex-grow">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Fatura Atual</p>
-            <p className="text-xl font-extrabold text-foreground">{formatCurrency(usado)}</p>
+            <p className="text-xl font-extrabold text-foreground">{formatarMoeda(usado)}</p>
             
             <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-              <p>Limite: <span className="font-bold text-foreground/80">{formatCurrency(limite)}</span></p>
-              <p>Disponível: <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(disponivel)}</span></p>
+              <p>Limite: <span className="font-bold text-foreground/80">{formatarMoeda(limite)}</span></p>
+              <p>Disponível: <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatarMoeda(disponivel)}</span></p>
             </div>
           </div>
 
@@ -190,7 +189,7 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
                           <p className="text-muted-foreground">{compra.data}</p>
                         </div>
                       </div>
-                      <span className="font-semibold text-foreground">{formatCurrency(compra.valor)}</span>
+                      <span className="font-semibold text-foreground">{formatarMoeda(compra.valor)}</span>
                     </div>
                   )
                 })}
@@ -207,6 +206,7 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
 export default function MeusCartoes() {
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
   const { data: cartoes = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['cartoes'],
     queryFn: () => fetchCartoes(),
@@ -250,7 +250,7 @@ export default function MeusCartoes() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalLimite)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatarMoeda(totalLimite)}</p>
             <p className="text-xs text-muted-foreground mt-1">{cartoes.length} cartão(ões)</p>
           </CardContent>
         </Card>
@@ -262,7 +262,7 @@ export default function MeusCartoes() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalUsado)}</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatarMoeda(totalUsado)}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {totalLimite > 0 ? ((totalUsado / totalLimite) * 100).toFixed(1) : 0}% do limite total
             </p>
@@ -276,7 +276,7 @@ export default function MeusCartoes() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalLimite - totalUsado)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatarMoeda(totalLimite - totalUsado)}</p>
             <p className="text-xs text-muted-foreground mt-1">Crédito restante</p>
           </CardContent>
         </Card>

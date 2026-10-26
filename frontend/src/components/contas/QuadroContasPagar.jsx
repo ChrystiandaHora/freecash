@@ -24,11 +24,9 @@ import { useToast } from '../../context/ToastContext';
 import { Badge } from '../ui/Badge';
 import ContaPagarEditModal from '../ContaPagarEditModal';
 import { COLUMNS, agruparPorColuna } from '../../lib/contasKanban';
+import { useMoeda } from '../../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDueDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return 'Sem data'
@@ -43,6 +41,7 @@ const formatDueDate = (dateStr) => {
 // ─── Card de Conta (Kanban item) ──────────────────────────────────────────────
 
 const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
+  const { formatarMoeda } = useMoeda()
   const isAtrasada = colId === 'atrasadas'
   const isPaga = colId === 'pagas'
 
@@ -103,7 +102,7 @@ const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
             {formatDueDate(conta.data_vencimento)}
           </span>
           <span className={`text-sm font-bold ${isAtrasada ? 'text-red-500' : 'text-foreground'}`}>
-            {formatCurrency(conta.valor)}
+            {formatarMoeda(conta.valor)}
           </span>
         </div>
       </button>
@@ -114,6 +113,7 @@ const ContaCard = ({ conta, provided, snapshot, colId, onEdit }) => {
 // ─── Coluna Kanban ────────────────────────────────────────────────────────────
 
 const KanbanColumn = ({ col, contas, provided, snapshot, onEdit }) => {
+  const { formatarMoeda } = useMoeda()
   const Icon = col.icon
   const total = contas.reduce((a, c) => a + Number(c.valor ?? 0), 0)
 
@@ -130,7 +130,7 @@ const KanbanColumn = ({ col, contas, provided, snapshot, onEdit }) => {
         </div>
         {contas.length > 0 && (
           <span className="text-xs font-medium text-muted-foreground">
-            {formatCurrency(total)}
+            {formatarMoeda(total)}
           </span>
         )}
       </div>

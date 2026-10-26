@@ -36,7 +36,7 @@ import { Select } from '../components/ui/Select';
 import { Alert } from '../components/ui/Alert';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { useToast } from '../context/ToastContext';
-import { formatarMoeda } from '../lib/moeda';
+import { useMoeda } from '../hooks/useMoeda';
 import { formatarData } from '../lib/datas';
 
 const BANCOS = [
@@ -95,6 +95,7 @@ function CheckboxTodas({ id, checked, indeterminate, onChange, children }) {
 export default function FerramentasConciliacao() {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
 
   const [banco, setBanco] = useState('generico');
   const [cartao, setCartao] = useState('');

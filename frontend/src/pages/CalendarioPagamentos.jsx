@@ -32,8 +32,8 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 import { extrairErros } from '../lib/apiErros';
-import { formatarMoeda } from '../lib/moeda';
 import {
   buscarCalendario,
   desfazerLiquidacao,
@@ -84,6 +84,7 @@ export default function CalendarioPagamentos() {
   const [diaAberto, setDiaAberto] = useState(null);
 
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({

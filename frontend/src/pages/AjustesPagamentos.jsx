@@ -31,6 +31,7 @@ import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── API helpers ───────────────────────────────────────────
 const fetchContas = () =>
@@ -46,6 +47,7 @@ const IconMap = { CreditCard, Wallet, Building2, Landmark, Coins };
 
 // ─── CartaoCard Component ─────────────────────────────────
 function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
+  const { formatarMoeda } = useMoeda();
   const IconComponent = IconMap[conta.icone] || CreditCard;
   const cor = conta.cor || '#6366f1';
 
@@ -85,7 +87,7 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
             <div className="bg-muted rounded-lg px-3 py-2">
               <p className="text-muted-foreground">Limite</p>
               <p className="font-semibold text-foreground">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(conta.limite)}
+                {formatarMoeda(conta.limite)}
               </p>
             </div>
           )}

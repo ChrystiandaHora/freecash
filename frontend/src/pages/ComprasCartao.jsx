@@ -33,6 +33,7 @@ import { Alert } from '../components/ui/Alert';
 import { DataTable } from '../components/ui/DataTable';
 import { getCurrentMonthDateRange } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 const fetchComprasCartao = async (params = {}) => {
   const query = new URLSearchParams();
@@ -55,17 +56,11 @@ function formatDate(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(parseFloat(value) || 0);
-}
-
 export default function ComprasCartao() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
 
   // Upload states
   const [selectedCard, setSelectedCard] = useState('');
@@ -241,7 +236,7 @@ export default function ComprasCartao() {
       key: 'valor',
       header: 'Valor',
       render: (val) => (
-        <span className="font-semibold text-red-500 dark:text-red-400">{formatCurrency(val)}</span>
+        <span className="font-semibold text-red-500 dark:text-red-400">{formatarMoeda(val)}</span>
       ),
     },
     {

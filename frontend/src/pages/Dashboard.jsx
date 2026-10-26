@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { useMoeda } from '../hooks/useMoeda';
 
 // Helpers for Month Names in Portuguese
 const getMonthNameShort = (monthNumber) => {
@@ -34,15 +35,6 @@ const getMonthNameShort = (monthNumber) => {
     'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
   ];
   return months[monthNumber - 1] || '';
-};
-
-// Utility to format Brazilian Real values
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
 };
 
 // Formata porcentagens com sinal
@@ -64,6 +56,7 @@ const formatPercentage = (value) => {
  */
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { formatarMoeda, valoresOcultos } = useMoeda();
   const [periodo, setPeriodo] = useState(0); // 0: Atual, 1: Anterior, 2: Próximo, -1: Customizado
   const [customDate, setCustomDate] = useState(() => {
     const d = new Date();
@@ -178,7 +171,7 @@ export default function Dashboard() {
     },
     yaxis: {
       labels: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
         style: { colors: '#888888', fontSize: '12px' },
       },
     },
@@ -193,7 +186,7 @@ export default function Dashboard() {
     tooltip: {
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
       },
     },
   };
@@ -230,7 +223,7 @@ export default function Dashboard() {
     },
     yaxis: {
       labels: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
         style: { colors: '#888888', fontSize: '12px' },
       },
     },
@@ -244,7 +237,7 @@ export default function Dashboard() {
     tooltip: {
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val),
+        formatter: (val) => formatarMoeda(val),
       },
     },
   };
@@ -275,7 +268,7 @@ export default function Dashboard() {
           labels: {
             show: true,
             value: {
-              formatter: (val) => formatCurrency(val),
+              formatter: (val) => formatarMoeda(val),
               color: '#888888',
               fontSize: '13px',
               fontWeight: 700
@@ -286,7 +279,7 @@ export default function Dashboard() {
               color: '#888888',
               fontSize: '12px',
               fontWeight: 600,
-              formatter: () => formatCurrency(total_despesas)
+              formatter: () => formatarMoeda(total_despesas)
             }
           }
         }
@@ -298,7 +291,7 @@ export default function Dashboard() {
     tooltip: {
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       y: {
-        formatter: (val) => formatCurrency(val)
+        formatter: (val) => formatarMoeda(val)
       }
     }
   };
@@ -483,7 +476,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(total_receitas)}
+              {formatarMoeda(total_receitas)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
               <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
@@ -513,7 +506,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(total_despesas)}
+              {formatarMoeda(total_despesas)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
               <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
@@ -543,7 +536,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(saldo_mes)}
+              {formatarMoeda(saldo_mes)}
             </h3>
             <div className="flex items-center gap-1.5 mt-2">
               <span className={`inline-flex items-center text-xs font-semibold rounded px-1.5 py-0.5
@@ -570,10 +563,10 @@ export default function Dashboard() {
             <div>
               <p className="text-sm font-semibold">
                 Gastos extraordinários fora do orçamento mensal:{' '}
-                <span className="font-bold">{formatCurrency(data.gastos_fora_orcamento.total)}</span>
+                <span className="font-bold">{formatarMoeda(data.gastos_fora_orcamento.total)}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {data.gastos_fora_orcamento.eventos?.map((e) => `${e.evento_nome} (${formatCurrency(e.total)})`).join(', ')} — Esses valores reduziram seu saldo de caixa, mas foram isolados dos KPIs acima para não distorcer suas médias.
+                {data.gastos_fora_orcamento.eventos?.map((e) => `${e.evento_nome} (${formatarMoeda(e.total)})`).join(', ')} — Esses valores reduziram seu saldo de caixa, mas foram isolados dos KPIs acima para não distorcer suas médias.
               </p>
             </div>
           </div>
@@ -610,7 +603,7 @@ export default function Dashboard() {
           <CardContent>
             {grafico_diario?.labels?.length > 0 ? (
               <Chart
-                key={`daily-${periodo}-${customDate.mes}-${customDate.ano}`}
+                key={`daily-${periodo}-${customDate.mes}-${customDate.ano}-${valoresOcultos}`}
                 options={dailyChartOptions}
                 series={dailyChartSeries}
                 type="area"
@@ -640,6 +633,7 @@ export default function Dashboard() {
                 {/* Coluna 1: Gráfico de Rosca */}
                 <div className="flex justify-center py-2">
                   <Chart
+                    key={`donut-${valoresOcultos}`}
                     options={donutExpensesOptions}
                     series={(breakdown_despesas || []).map(item => parseFloat(item.valor) || 0)}
                     type="donut"
@@ -655,7 +649,7 @@ export default function Dashboard() {
                           {item.nome}
                         </span>
                         <span className="text-foreground font-bold text-xs">
-                          {formatCurrency(item.valor)} ({(parseFloat(item.pct) || 0).toFixed(0)}%)
+                          {formatarMoeda(item.valor)} ({(parseFloat(item.pct) || 0).toFixed(0)}%)
                         </span>
                       </div>
                       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/40">
@@ -680,7 +674,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground font-medium">Gasto médio diário</span>
                 <span className="font-bold text-foreground">
-                  {formatCurrency(media_gasto_dia)}
+                  {formatarMoeda(media_gasto_dia)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
@@ -707,7 +701,7 @@ export default function Dashboard() {
         <CardContent>
           {grafico_projetado?.labels?.length > 0 ? (
             <Chart
-              key={`proj-${periodo}-${customDate.mes}-${customDate.ano}`}
+              key={`proj-${periodo}-${customDate.mes}-${customDate.ano}-${valoresOcultos}`}
               options={projectedChartOptions}
               series={projectedChartSeries}
               type="bar"

@@ -32,18 +32,15 @@ import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Alert } from '../components/ui/Alert';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
-const formatCurrency = (value) => {
-  if (value === undefined || value === null) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-
 const currentYear = new Date().getFullYear();
 const YEARS = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
 
 /* ─────────────────────────── DRE Row ─────────────────────────── */
 function DreRow({ label, value, isTotal = false, isDeducao = false, isSubtotal = false, indent = 0 }) {
+  const { formatarMoeda } = useMoeda();
   const numVal = parseFloat(value) || 0;
   const isNeg = numVal < 0;
 
@@ -60,7 +57,7 @@ function DreRow({ label, value, isTotal = false, isDeducao = false, isSubtotal =
       <td className={`py-3 px-6 text-sm text-right tabular-nums font-${isTotal ? 'extrabold' : isSubtotal ? 'bold' : 'semibold'}
         ${isTotal ? (numVal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400') : isNeg || isDeducao ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}
       `}>
-        {formatCurrency(numVal)}
+        {formatarMoeda(numVal)}
       </td>
       <td className={`py-3 px-6 text-sm text-right tabular-nums ${isNeg ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'}`}>
         {/* Margin % placeholder – calculated from receita bruta if available */}
@@ -211,6 +208,7 @@ export default function Relatorios() {
   const [ano, setAno] = useState(currentYear);
   const [expandedSection, setExpandedSection] = useState('dre');
   const { addToast } = useToast();
+  const { formatarMoeda, valoresOcultos } = useMoeda();
 
   const { data: dreData, isError, isFetching, refetch } = useQuery({
     queryKey: ['relatoriosDRE', ano],
@@ -330,7 +328,7 @@ export default function Relatorios() {
     tooltip: {
       theme: 'dark',
       y: {
-        formatter: (val) => formatCurrency(val)
+        formatter: (val) => formatarMoeda(val)
       }
     }
   };
@@ -440,7 +438,7 @@ export default function Relatorios() {
                     kpi.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
                     'text-primary'
                   }`}>
-                    {formatCurrency(val)}
+                    {formatarMoeda(val)}
                   </p>
                 </CardContent>
               </Card>
@@ -522,7 +520,7 @@ export default function Relatorios() {
                                 {row.label}
                               </td>
                               <td className={`py-3 px-6 text-sm text-right font-${row.sub ? 'bold' : 'semibold'} tabular-nums ${parseFloat(row.value) < 0 ? 'text-rose-500' : 'text-foreground'}`}>
-                                {formatCurrency(row.value)}
+                                {formatarMoeda(row.value)}
                               </td>
                             </tr>
                           ))}
@@ -537,6 +535,7 @@ export default function Relatorios() {
                         <>
                           <div className="h-[320px] w-full">
                             <Chart
+                              key={`heatmap-${valoresOcultos}`}
                               options={heatmapOptions}
                               series={compositeData.sazonalidade.series}
                               type="heatmap"
@@ -570,8 +569,8 @@ export default function Relatorios() {
                                     return (
                                       <tr key={serie.name}>
                                         <th scope="row" className="py-2.5 px-4 font-semibold text-foreground">{serie.name}</th>
-                                        <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{formatCurrency(total)}</td>
-                                        <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">{formatCurrency(total / semanas)}</td>
+                                        <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{formatarMoeda(total)}</td>
+                                        <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">{formatarMoeda(total / semanas)}</td>
                                       </tr>
                                     );
                                   })}

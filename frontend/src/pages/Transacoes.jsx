@@ -34,11 +34,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { DataTable } from '../components/ui/DataTable';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
@@ -62,6 +60,8 @@ const ehFaturaConsolidada = (tx) => Boolean(tx?.eh_fatura_cartao)
 // ─── Confirmação de exclusão ──────────────────────────────────────────────────
 
 function DeleteConfirmModal({ transacao, onConfirm, onClose, isPending }) {
+  const { formatarMoeda } = useMoeda()
+
   return (
     <Modal isOpen title="Confirmar exclusão" onClose={onClose} size="sm">
       <div className="flex flex-col items-center gap-4 text-center">
@@ -73,7 +73,7 @@ function DeleteConfirmModal({ transacao, onConfirm, onClose, isPending }) {
           <span className="font-semibold text-foreground">
             "{transacao.descricao || 'este lançamento'}"
           </span>{' '}
-          de {formatCurrency(Math.abs(Number(transacao.valor ?? 0)))}? Esta ação não pode
+          de {formatarMoeda(Math.abs(Number(transacao.valor ?? 0)))}? Esta ação não pode
           ser desfeita.
         </p>
         <div className="flex w-full gap-3">
@@ -102,6 +102,7 @@ export default function Transacoes() {
   const [filteredTransacoes, setFilteredTransacoes] = useState(null)
   const [paraExcluir, setParaExcluir] = useState(null)
   const { addToast } = useToast()
+  const { formatarMoeda } = useMoeda()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -273,7 +274,7 @@ export default function Transacoes() {
         const valor = Math.abs(Number(val ?? 0))
         return (
           <span className={`font-semibold ${isEntrada ? 'text-emerald-500' : 'text-rose-500'}`}>
-            {isEntrada ? '+' : '-'} {formatCurrency(valor)}
+            {isEntrada ? '+' : '-'} {formatarMoeda(valor)}
           </span>
         )
       },
@@ -415,7 +416,7 @@ export default function Transacoes() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalEntradas)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatarMoeda(totalEntradas)}</p>
           </CardContent>
         </Card>
 
@@ -427,7 +428,7 @@ export default function Transacoes() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalSaidas)}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatarMoeda(totalSaidas)}</p>
           </CardContent>
         </Card>
 
@@ -439,7 +440,7 @@ export default function Transacoes() {
           </CardHeader>
           <CardContent>
             <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {saldo >= 0 ? '+' : ''}{formatCurrency(saldo)}
+              {saldo >= 0 ? '+' : ''}{formatarMoeda(saldo)}
             </p>
           </CardContent>
         </Card>

@@ -17,14 +17,13 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import QuadroContasPagar from '../components/contas/QuadroContasPagar';
 import { COLUMNS, agruparPorColuna } from '../lib/contasKanban';
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function PipelineKanban() {
   const { addToast } = useToast()
+  const { formatarMoeda } = useMoeda()
 
   const hoje = new Date()
 
@@ -104,7 +103,7 @@ export default function PipelineKanban() {
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Pendente</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totalPendente)}</p>
+            <p className="text-xl font-bold text-foreground">{formatarMoeda(totalPendente)}</p>
           </CardContent>
         </Card>
 
@@ -113,7 +112,7 @@ export default function PipelineKanban() {
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atrasadas</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold text-red-500">{formatCurrency(totalAtrasado)}</p>
+            <p className="text-xl font-bold text-red-500">{formatarMoeda(totalAtrasado)}</p>
           </CardContent>
         </Card>
 

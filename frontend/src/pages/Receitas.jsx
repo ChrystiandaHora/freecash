@@ -25,11 +25,9 @@ import { Modal } from '../components/ui/Modal';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { getCurrentMonthDateRange } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return '—'
@@ -45,6 +43,7 @@ export default function Receitas() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const { formatarMoeda } = useMoeda()
   const [deleteId, setDeleteId] = useState(null)
   const [fadingIds, setFadingIds] = useState(new Set())
   const [filteredReceitas, setFilteredReceitas] = useState(null)
@@ -148,7 +147,7 @@ export default function Receitas() {
       header: 'Valor',
       render: (val) => (
         <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          + {formatCurrency(val)}
+          + {formatarMoeda(val)}
         </span>
       ),
     },
@@ -235,7 +234,7 @@ export default function Receitas() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPrevisto)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatarMoeda(totalPrevisto)}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {previstas.length} receita(s) a receber
             </p>
@@ -249,7 +248,7 @@ export default function Receitas() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalRealizado)}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatarMoeda(totalRealizado)}</p>
             <p className="text-xs text-muted-foreground mt-1">{realizadas.length} recebida(s)</p>
           </CardContent>
         </Card>
@@ -262,7 +261,7 @@ export default function Receitas() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {formatCurrency(previstas.reduce((a, r) => a + Number(r.valor ?? 0), 0))}
+              {formatarMoeda(previstas.reduce((a, r) => a + Number(r.valor ?? 0), 0))}
             </p>
             <p className="text-xs text-muted-foreground mt-1">{previstas.length} a receber</p>
           </CardContent>

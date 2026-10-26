@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { getCurrentMonthDateRange } from '../lib/utils';
 import { useToast } from '../context/ToastContext';
 import QuadroContasPagar from '../components/contas/QuadroContasPagar';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Visões ───────────────────────────────────────────────────────────────────
 
@@ -49,9 +50,6 @@ const lerVistaSalva = () => {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
@@ -102,6 +100,7 @@ export default function ContasPagar() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { addToast } = useToast()
+  const { formatarMoeda } = useMoeda()
   const [confirmId, setConfirmId] = useState(null) // ID da conta a quitar
   const [deleteId, setDeleteId] = useState(null) // ID da conta a excluir
   const [deletingConta, setDeletingConta] = useState(null) // Conta em exclusão (para o aviso de cascata)
@@ -312,7 +311,7 @@ export default function ContasPagar() {
       header: 'Valor',
       render: (val) => (
         <span className="font-semibold text-foreground">
-          {formatCurrency(val)}
+          {formatarMoeda(val)}
         </span>
       ),
     },
@@ -509,7 +508,7 @@ export default function ContasPagar() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPendente)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatarMoeda(totalPendente)}</p>
             <p className="text-xs text-muted-foreground mt-1">{pendentes.length} conta(s) em aberto</p>
           </CardContent>
         </Card>
@@ -523,7 +522,7 @@ export default function ContasPagar() {
           <CardContent>
             <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{atrasadas.length}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatCurrency(atrasadas.reduce((a, c) => a + Number(c.valor ?? 0), 0))}
+              {formatarMoeda(atrasadas.reduce((a, c) => a + Number(c.valor ?? 0), 0))}
             </p>
           </CardContent>
         </Card>
@@ -535,7 +534,7 @@ export default function ContasPagar() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalPago)}</p>
+            <p className="text-2xl font-bold text-foreground">{formatarMoeda(totalPago)}</p>
             <p className="text-xs text-muted-foreground mt-1">
               {pagas.length} conta(s) liquidada(s)
             </p>
