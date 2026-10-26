@@ -13,6 +13,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+import { PrivacidadeProvider } from './context/PrivacidadeProvider';
 import { CarteiraProvider } from './context/CarteiraProvider';
 import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
@@ -141,6 +142,7 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <ThemeProvider>
+          <PrivacidadeProvider>
             <CarteiraProvider>
             {/* Fora do Router e acima das rotas: a queda da API vale para o app
                 inteiro, inclusive enquanto a sessão ainda está sendo restaurada. */}
@@ -267,6 +269,7 @@ function App() {
             </Routes>
             </Router>
             </CarteiraProvider>
+          </PrivacidadeProvider>
           </ThemeProvider>
         </AuthProvider>
       </ToastProvider>
