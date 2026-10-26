@@ -118,6 +118,16 @@ Modelos com `usuario` OneToOne (só `ConfigUsuario` hoje) também escapam do `DE
 atualizados com `update_or_create`, porque apagar o perfil do usuário logado no meio de
 uma restauração deixaria a sessão sem configuração.
 
+Nem todo campo de `ConfigUsuario` volta do arquivo. `CAMPOS_DE_ESTADO_DA_CONTA` lista os
+que descrevem a conta, e não os dados — `email_verificado`, `email_verificado_em` e
+`email_pendente` —, e a restauração mantém os valores atuais deles. O caso que motivou:
+um backup gerado antes da confirmação do e-mail trazia `email_verificado: False`, a
+restauração gravava isso por cima, e a importação seguinte era recusada com 403 pelo
+`EmailVerificadoOuCarencia` assim que a carência tivesse passado. O inverso também
+vale: um backup de conta confirmada não confirma a conta atual. As preferências
+(`moeda_padrao`) continuam vindo do arquivo. `core/tests/test_backup_estado_conta.py`
+cobre os dois sentidos.
+
 ---
 
 ## Tudo numa transação
