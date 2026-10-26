@@ -36,11 +36,9 @@ import MetaFormModal from '../components/MetaFormModal'
 import AporteMetaModal from '../components/AporteMetaModal'
 import MetaCard from '../components/MetaCard'
 import { useToast } from '../context/ToastContext'
+import { useMoeda } from '../hooks/useMoeda'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
 
 const formatDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return '—'
@@ -93,8 +91,10 @@ const PERIODICIDADE_POR_TIPO = {
  * Metas de acúmulo comemoram ao chegar no alvo; metas de teto alertam ao
  * ultrapassá-lo. Sem essa distinção, um gasto essencial estourado apareceria
  * verde, como se fosse um progresso.
+ *
+ * `formatarMoeda` vem do `useMoeda` de quem chama, para o status respeitar o olho.
  */
-const avaliarMeta = (meta, gastoEssencialMes) => {
+const avaliarMeta = (meta, gastoEssencialMes, formatarMoeda) => {
   const alvo = Number(meta.valor_alvo ?? 0)
   const eTeto = meta.natureza === 'teto'
   // Numa meta de teto o que progride é o gasto do mês, não um acumulado.
@@ -124,8 +124,8 @@ const avaliarMeta = (meta, gastoEssencialMes) => {
       variant: estourou ? 'danger' : percentual >= 85 ? 'warning' : 'success',
       rotuloAtual: 'Gasto do mês',
       statusTexto: estourou
-        ? `Acima do limite em ${formatCurrency(atual - alvo)}`
-        : `Folga de ${formatCurrency(alvo - atual)}`,
+        ? `Acima do limite em ${formatarMoeda(atual - alvo)}`
+        : `Folga de ${formatarMoeda(alvo - atual)}`,
       statusOk: !estourou,
     }
   }
@@ -151,8 +151,8 @@ const avaliarMeta = (meta, gastoEssencialMes) => {
         ? 'Meta do mês atingida'
         : 'Meta atingida'
       : eMensal
-        ? `Faltam ${formatCurrency(alvo - atual)} neste mês`
-        : `Faltam ${formatCurrency(alvo - atual)}`,
+        ? `Faltam ${formatarMoeda(alvo - atual)} neste mês`
+        : `Faltam ${formatarMoeda(alvo - atual)}`,
     statusOk: concluida,
   }
 }
@@ -162,6 +162,7 @@ const avaliarMeta = (meta, gastoEssencialMes) => {
 export default function Metas() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const { formatarMoeda } = useMoeda()
 
   const [rendaInput, setRendaInput] = useState('')
   const [custoInput, setCustoInput] = useState('')
@@ -381,7 +382,7 @@ export default function Metas() {
       className: 'text-right',
       render: (val) => (
         <span className="font-semibold tabular-nums text-foreground">
-          {formatCurrency(Number(val))}
+          {formatarMoeda(Number(val))}
         </span>
       ),
     },
@@ -393,7 +394,7 @@ export default function Metas() {
       render: (val, row) => (
         <div className="flex flex-col items-end gap-0.5">
           <span className="tabular-nums text-emerald-700 dark:text-emerald-400">
-            {formatCurrency(Number(val))}
+            {formatarMoeda(Number(val))}
           </span>
           {BADGE_POR_ORIGEM[row.origem_acumulado] && (
             <Badge variant="default" className="gap-1">
@@ -409,7 +410,7 @@ export default function Metas() {
       header: 'Progresso',
       sortable: true,
       render: (_val, row) => {
-        const avaliacao = avaliarMeta(row, gastoEssencialMes)
+        const avaliacao = avaliarMeta(row, gastoEssencialMes, formatarMoeda)
         return (
           <div className="min-w-[10rem]">
             <Progress
@@ -534,7 +535,7 @@ export default function Metas() {
                 <p id="plano-renda-hint" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>
                     Média dos últimos {sugestoes?.meses ?? 3} meses:{' '}
-                    {formatCurrency(sugestoes?.renda_mensal)}
+                    {formatarMoeda(sugestoes?.renda_mensal)}
                   </span>
                   <button
                     type="button"
@@ -562,7 +563,7 @@ export default function Metas() {
                 <p id="plano-custo-hint" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>
                     Média dos últimos {sugestoes?.meses ?? 3} meses:{' '}
-                    {formatCurrency(sugestoes?.custo_vida_mensal)}
+                    {formatarMoeda(sugestoes?.custo_vida_mensal)}
                   </span>
                   <button
                     type="button"
@@ -623,7 +624,7 @@ export default function Metas() {
             <MetaCard
               key={meta.id}
               meta={meta}
-              avaliacao={avaliarMeta(meta, gastoEssencialMes)}
+              avaliacao={avaliarMeta(meta, gastoEssencialMes, formatarMoeda)}
               icone={ICONE_POR_TIPO[meta.tipo] ?? Target}
               badgeOrigem={BADGE_POR_ORIGEM[meta.origem_acumulado]}
               // Aporte manual só faz sentido onde o progresso é manual: nas
@@ -661,7 +662,7 @@ export default function Metas() {
                 <MetaCard
                   key={meta.id}
                   meta={meta}
-                  avaliacao={avaliarMeta(meta, gastoEssencialMes)}
+                  avaliacao={avaliarMeta(meta, gastoEssencialMes, formatarMoeda)}
                   icone={ICONE_POR_TIPO[meta.tipo] ?? Target}
                   badgeOrigem={BADGE_POR_ORIGEM[meta.origem_acumulado]}
                   onAportar={meta.origem_acumulado === 'manual' ? setMetaParaAporte : undefined}
@@ -726,7 +727,7 @@ export default function Metas() {
                             id={`${inputId}-previa`}
                             className="text-sm font-semibold tabular-nums text-foreground"
                           >
-                            = {previa != null ? formatCurrency(previa) : '—'}
+                            = {previa != null ? formatarMoeda(previa) : '—'}
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground">

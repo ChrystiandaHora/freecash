@@ -35,11 +35,9 @@ import { Input } from '../components/ui/Input';
 import { useToast } from '../context/ToastContext';
 import EventoFormModal from '../components/EventoFormModal';
 import { filtrarLancamentos, nomeCategoria } from '../lib/lancamentosEvento';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0);
 
 const formatDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return '—';
@@ -67,6 +65,7 @@ export default function EventoDetalhe() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
 
   const [buscaDespesa, setBuscaDespesa] = useState('');
   const [modalFormOpen, setModalFormOpen] = useState(false);
@@ -273,7 +272,7 @@ export default function EventoDetalhe() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {orcamento != null ? formatCurrency(orcamento) : 'Sem teto fixo'}
+              {orcamento != null ? formatarMoeda(orcamento) : 'Sem teto fixo'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Limite planejado para o evento
@@ -290,7 +289,7 @@ export default function EventoDetalhe() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(totalRealizado)}
+              {formatarMoeda(totalRealizado)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Despesas já liquidadas no caixa
@@ -307,11 +306,11 @@ export default function EventoDetalhe() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(totalPrevisto)}
+              {formatarMoeda(totalPrevisto)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {totalPrevisto > totalRealizado
-                ? `${formatCurrency(totalPrevisto - totalRealizado)} a pagar ainda`
+                ? `${formatarMoeda(totalPrevisto - totalRealizado)} a pagar ainda`
                 : '100% das despesas já pagas'}
             </p>
           </CardContent>
@@ -334,7 +333,7 @@ export default function EventoDetalhe() {
                       : 'text-red-600 dark:text-red-400'
                   }`}
                 >
-                  {formatCurrency(saldoRestante)}
+                  {formatarMoeda(saldoRestante)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {saldoRestante >= 0 ? 'Disponível dentro do teto' : 'Orçamento estourado'}
@@ -361,13 +360,13 @@ export default function EventoDetalhe() {
             <Progress
               value={pct}
               max={100}
-              label={`Consumo do Orçamento (${formatCurrency(totalPrevisto)} de ${formatCurrency(orcamento)})`}
+              label={`Consumo do Orçamento (${formatarMoeda(totalPrevisto)} de ${formatarMoeda(orcamento)})`}
               valueLabel={`${pct.toFixed(1)}%`}
               variant={pct > 100 ? 'danger' : pct >= 80 ? 'warning' : 'success'}
             />
             {pct > 100 && (
               <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                Atenção: Os gastos totais excederam o teto planejado em {formatCurrency(totalPrevisto - orcamento)}.
+                Atenção: Os gastos totais excederam o teto planejado em {formatarMoeda(totalPrevisto - orcamento)}.
               </p>
             )}
           </div>
@@ -401,7 +400,7 @@ export default function EventoDetalhe() {
                           {cat.categoria}
                         </span>
                         <span className="tabular-nums font-semibold text-foreground">
-                          {formatCurrency(cat.total)} ({catPct.toFixed(0)}%)
+                          {formatarMoeda(cat.total)} ({catPct.toFixed(0)}%)
                         </span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -495,7 +494,7 @@ export default function EventoDetalhe() {
                               {formatDate(item.data_prevista || item.data_vencimento)}
                             </td>
                             <td className="py-2.5 px-4 text-right font-semibold tabular-nums text-foreground whitespace-nowrap">
-                              {formatCurrency(item.valor)}
+                              {formatarMoeda(item.valor)}
                             </td>
                             <td className="py-2.5 px-4 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1">
@@ -627,7 +626,7 @@ export default function EventoDetalhe() {
           <p className="text-sm text-foreground">
             Tem certeza que deseja excluir o lançamento{' '}
             <strong className="text-foreground">{despesaParaExcluir?.descricao}</strong> no valor de{' '}
-            <strong className="text-foreground">{formatCurrency(despesaParaExcluir?.valor)}</strong>?
+            <strong className="text-foreground">{formatarMoeda(despesaParaExcluir?.valor)}</strong>?
           </p>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-border/40">

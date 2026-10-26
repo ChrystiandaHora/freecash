@@ -22,9 +22,7 @@ import { createAporteMeta, deleteAporteMeta } from '../services/metas'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Modal } from './ui/Modal'
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+import { useMoeda } from '../hooks/useMoeda'
 
 const formatDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return '—'
@@ -44,6 +42,7 @@ const schema = z.object({
 
 export default function AporteMetaModal({ meta, onClose, onSaved, onError, onAporteRemovido }) {
   const queryClient = useQueryClient()
+  const { formatarMoeda } = useMoeda()
   const isOpen = !!meta
 
   const {
@@ -148,7 +147,7 @@ export default function AporteMetaModal({ meta, onClose, onSaved, onError, onApo
               </h3>
               <span className="text-xs text-muted-foreground">
                 {aportes.length} lançamento{aportes.length > 1 ? 's' : ''} ·{' '}
-                <strong className="text-foreground">{formatCurrency(totalAportado)}</strong>
+                <strong className="text-foreground">{formatarMoeda(totalAportado)}</strong>
               </span>
             </div>
             {/* Lista rolável: uma meta de longo prazo acumula dezenas de aportes
@@ -163,7 +162,7 @@ export default function AporteMetaModal({ meta, onClose, onSaved, onError, onApo
                     {aporte.observacao || '—'}
                   </span>
                   <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
-                    {formatCurrency(Number(aporte.valor))}
+                    {formatarMoeda(Number(aporte.valor))}
                   </span>
                   <Button
                     type="button"
@@ -172,8 +171,8 @@ export default function AporteMetaModal({ meta, onClose, onSaved, onError, onApo
                     className="h-7 w-7 shrink-0"
                     onClick={() => removerMutation.mutate(aporte.id)}
                     disabled={removerMutation.isPending}
-                    title={`Excluir aporte de ${formatCurrency(Number(aporte.valor))} em ${formatDate(aporte.data)}`}
-                    aria-label={`Excluir aporte de ${formatCurrency(Number(aporte.valor))} em ${formatDate(aporte.data)}`}
+                    title={`Excluir aporte de ${formatarMoeda(Number(aporte.valor))} em ${formatDate(aporte.data)}`}
+                    aria-label={`Excluir aporte de ${formatarMoeda(Number(aporte.valor))} em ${formatDate(aporte.data)}`}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" aria-hidden="true" />
                   </Button>

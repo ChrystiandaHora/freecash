@@ -18,11 +18,11 @@ import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { Progress } from './ui/Progress'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+import { useMoeda } from '../hooks/useMoeda'
 
 export default function MetaCard({ meta, avaliacao, icone: Icone, badgeOrigem, onAportar }) {
+  const { formatarMoeda } = useMoeda()
+
   return (
     <Card className="flex flex-col border border-border/40 bg-card text-card-foreground shadow-sm">
       <CardHeader className="pb-2">
@@ -34,7 +34,7 @@ export default function MetaCard({ meta, avaliacao, icone: Icone, badgeOrigem, o
 
       <CardContent className="flex flex-1 flex-col gap-3">
         <div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(avaliacao.alvo)}</p>
+          <p className="text-2xl font-bold text-foreground">{formatarMoeda(avaliacao.alvo)}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{avaliacao.legendaAlvo}</p>
         </div>
 
@@ -42,7 +42,7 @@ export default function MetaCard({ meta, avaliacao, icone: Icone, badgeOrigem, o
           value={avaliacao.percentual}
           label={`${avaliacao.rotuloAtual} de ${meta.nome}`}
           variant={avaliacao.variant}
-          valueLabel={`${formatCurrency(avaliacao.atual)} · ${avaliacao.percentual.toFixed(1)}%`}
+          valueLabel={`${formatarMoeda(avaliacao.atual)} · ${avaliacao.percentual.toFixed(1)}%`}
         />
 
         <div className="flex flex-wrap items-center gap-2">

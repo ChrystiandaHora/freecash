@@ -27,9 +27,7 @@ import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Select } from './ui/Select'
 import { Modal } from './ui/Modal'
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+import { useMoeda } from '../hooks/useMoeda'
 
 const schema = z
   .object({
@@ -73,6 +71,8 @@ export default function MetaFormModal({
   onError,
 }) {
   const queryClient = useQueryClient()
+  // A prévia do alvo também obedece ao olho: alvo ÷ multiplicador revelaria a renda salva
+  const { formatarMoeda } = useMoeda()
   const isEdicao = !!meta?.id
 
   const {
@@ -198,7 +198,7 @@ export default function MetaFormModal({
               </label>
               <Input
                 id="meta-alvo-calculado"
-                value={alvoCalculado != null ? formatCurrency(alvoCalculado) : '—'}
+                value={alvoCalculado != null ? formatarMoeda(alvoCalculado) : '—'}
                 readOnly
                 className="bg-muted cursor-not-allowed"
                 aria-describedby="meta-alvo-calculado-hint"
@@ -338,7 +338,7 @@ export default function MetaFormModal({
                   </p>
                 ) : (
                   <p id="meta-multiplicador-hint" className="text-xs text-muted-foreground">
-                    Base atual: {baseValor != null ? formatCurrency(baseValor) : 'não informada'}
+                    Base atual: {baseValor != null ? formatarMoeda(baseValor) : 'não informada'}
                   </p>
                 )}
               </div>

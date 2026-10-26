@@ -25,11 +25,9 @@ import { Progress } from '../components/ui/Progress';
 import { Alert } from '../components/ui/Alert';
 import { useToast } from '../context/ToastContext';
 import EventoFormModal from '../components/EventoFormModal';
+import { useMoeda } from '../hooks/useMoeda';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0);
 
 const formatDate = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return '—';
@@ -56,6 +54,7 @@ export default function Eventos() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const { formatarMoeda } = useMoeda();
 
   const [busca, setBusca] = useState('');
   const [modalFormOpen, setModalFormOpen] = useState(false);
@@ -200,7 +199,7 @@ export default function Eventos() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(totalOrcado)}
+              {formatarMoeda(totalOrcado)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Soma dos tetos planejados
@@ -217,11 +216,11 @@ export default function Eventos() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold tracking-tight text-foreground">
-              {formatCurrency(totalGasto)}
+              {formatarMoeda(totalGasto)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {totalPrevisto > totalGasto
-                ? `${formatCurrency(totalPrevisto)} incluindo pendentes`
+                ? `${formatarMoeda(totalPrevisto)} incluindo pendentes`
                 : 'Todas as despesas já liquidadas'}
             </p>
           </CardContent>
@@ -242,7 +241,7 @@ export default function Eventos() {
                     totalOrcado - totalPrevisto >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                   }`}
                 >
-                  {formatCurrency(totalOrcado - totalPrevisto)}
+                  {formatarMoeda(totalOrcado - totalPrevisto)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Disponível nos tetos estipulados
@@ -374,7 +373,7 @@ export default function Eventos() {
                           Orçamento
                         </span>
                         <span className="text-sm font-semibold text-foreground">
-                          {orcamento != null ? formatCurrency(orcamento) : 'Sem teto'}
+                          {orcamento != null ? formatarMoeda(orcamento) : 'Sem teto'}
                         </span>
                       </div>
                       <div className="rounded-lg bg-muted/40 p-2.5">
@@ -382,7 +381,7 @@ export default function Eventos() {
                           Realizado (Pago)
                         </span>
                         <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                          {formatCurrency(totalGasto)}
+                          {formatarMoeda(totalGasto)}
                         </span>
                       </div>
                     </div>
@@ -406,7 +405,7 @@ export default function Eventos() {
                                 : 'text-red-600 dark:text-red-400'
                             }`}
                           >
-                            {formatCurrency(saldoRestante)}
+                            {formatarMoeda(saldoRestante)}
                           </span>
                         </div>
                       </div>
@@ -416,7 +415,7 @@ export default function Eventos() {
                       <span>{evento.qtd_lancamentos || 0} lançamentos vinculados</span>
                       {totalPrevisto > totalGasto && (
                         <span className="text-amber-600 dark:text-amber-400 font-medium">
-                          +{formatCurrency(totalPrevisto - totalGasto)} pendente
+                          +{formatarMoeda(totalPrevisto - totalGasto)} pendente
                         </span>
                       )}
                     </div>
