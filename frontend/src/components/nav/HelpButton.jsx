@@ -43,6 +43,8 @@ const fallbackHelp = {
     'Tema Claro/Escuro':
       'Clique no ícone de sol/lua no cabeçalho superior para mudar as cores do painel.',
     'Ajuda Contextual': 'Clique no botão (?) em qualquer tela para abrir este guia novamente.',
+    'Ocultar Valores':
+      'Clique no ícone de olho, ao lado da ajuda, para esconder os valores em reais de todas as telas. Percentuais e gráficos continuam visíveis.',
   },
 };
 

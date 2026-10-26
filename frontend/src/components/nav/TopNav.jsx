@@ -35,6 +35,7 @@ import { MegaPanel } from './MegaPanel';
 import { MobileNavPanel } from './MobileNavPanel';
 import { UserMenu } from './UserMenu';
 import { HelpButton } from './HelpButton';
+import { PrivacidadeToggle } from './PrivacidadeToggle';
 
 /**
  * @param {Object} props
@@ -265,20 +266,25 @@ export default function TopNav({ mainRef }) {
               </nav>
             </div>
 
-            {/* Ordem fixa em TODOS os breakpoints: ajuda → tema → (divisor) → sair.
+            {/* Ordem fixa em TODOS os breakpoints: ajuda → olho → (divisor) → conta.
                 SC 3.2.6 Consistent Help permite reflow, não reordenação — a ajuda
                 nunca muda de posição relativa, e é por isso que ela vem primeiro.
 
-                Só a ajuda fica solta na barra, porque a SC 3.2.6 Consistent Help
-                exige que o ponto de entrada de ajuda viva no layout compartilhado e
-                não mude de ordem relativa entre breakpoints.
+                A ajuda fica solta na barra porque a SC 3.2.6 Consistent Help exige
+                que o ponto de entrada de ajuda viva no layout compartilhado e não
+                mude de ordem relativa entre breakpoints.
 
                 Tudo que é "meu" — identidade, tema e sair — está atrás do avatar.
                 Relógio e nome escrito saíram de vez: num header cuja função é
                 navegar, os dois eram ruído. O divisor separa a ajuda da área de
-                conta. */}
+                conta.
+
+                O olho de ocultar valores fica solto, depois da ajuda, porque é de uso
+                rápido e em qualquer tela — inclusive no mobile, onde a conta vai para
+                o painel. */}
             <div className="flex shrink-0 items-center gap-2">
               <HelpButton />
+              <PrivacidadeToggle />
               <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
               <div className="hidden lg:block">
                 <UserMenu
