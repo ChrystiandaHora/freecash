@@ -181,6 +181,7 @@ Para aprofundamento nas decisões de design e regras contábeis implementadas, c
 | [docs/contas.md](docs/contas.md) | Regras de lançamentos contábeis, conciliação e recorrências |
 | [docs/carteiras.md](docs/carteiras.md) | Segregação de custódia e isolamento de rentabilidade por corretora |
 | [docs/cotacoes-e-preco-medio.md](docs/cotacoes-e-preco-medio.md) | Metodologia fiscal de Preço Médio e rotinas de cotação |
+| [docs/proposta-sinais-realizacao.md](docs/proposta-sinais-realizacao.md) | Regra 5/25 de rebalanceamento, queda relevante e isenção de IR nos sinais de venda |
 | [docs/fatura-cartao.md](docs/fatura-cartao.md) | Ciclo de vida e consolidação de faturas de cartão de crédito |
 | [docs/importacao-extrato.md](docs/importacao-extrato.md) | Algoritmos de parsing para extratos bancários e faturas em PDF |
 | [docs/autenticacao.md](docs/autenticacao.md) | Gestão de identidade, controle de sessões e segurança de acesso |
