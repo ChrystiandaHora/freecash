@@ -30,7 +30,11 @@ import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
 import { useMoeda } from '../hooks/useMoeda';
 import { resolverCarteiraEmFoco } from '../lib/balanceamento';
+import { suspendeAporte } from '../lib/sinais';
+import { useSinais } from '../hooks/useSinais';
 import SeletorCarteira from '../components/SeletorCarteira';
+import { PainelSinais } from '../components/investimentos/PainelSinais';
+import { SinalBadge } from '../components/investimentos/SinalBadge';
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 const formatPct = (value) => {
@@ -134,6 +138,21 @@ export default function AtivosBalanceamento() {
     });
   }, []);
 
+  // Queda relevante suspende o aporte até o usuário marcar o ativo (ver docs/proposta-sinais-realizacao.md)
+  const [quedasConfirmadas, setQuedasConfirmadas] = useState(new Set());
+
+  const alternarInclusao = useCallback((at) => {
+    if (!at.aporteSuspenso) {
+      toggleAssetExcluded(at.id);
+      return;
+    }
+    setQuedasConfirmadas((prev) => new Set(prev).add(at.id));
+    setExcludedAssetIds((prev) => {
+      const next = new Set(prev);
+      next.delete(at.id);
+      return next;
+    });
+  }, [toggleAssetExcluded]);
 
   /* ── Query ── */
   const {
@@ -152,6 +171,9 @@ export default function AtivosBalanceamento() {
     },
     placeholderData: keepPreviousData,
   });
+
+  // Sinais de todas as carteiras: o painel do topo aponta também as que não estão em foco
+  const { data: sinaisData } = useSinais();
 
   const handleAtualizar = async () => {
     try {
@@ -175,6 +197,7 @@ export default function AtivosBalanceamento() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
       queryClient.invalidateQueries({ queryKey: ['carteiras'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       setEditandoCarteiras(false);
       setMetasCarteiras({});
       setErroCarteiras('');
@@ -218,6 +241,7 @@ export default function AtivosBalanceamento() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['investimentosBalanceamento']);
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       setIsEditing(false);
       setEditingMetas({});
       setMetaError('');
@@ -259,7 +283,8 @@ export default function AtivosBalanceamento() {
   // Initialize simulated state for greedy allocation
   const allocationState = allAtivos.map((at) => {
     const meta = (isEditing ? editingMetas[at.id] : at.meta_porcentagem) ?? 0;
-    const isExcluded = excludedAssetIds.has(at.id);
+    const aporteSuspenso = suspendeAporte(at.sinal) && !quedasConfirmadas.has(at.id);
+    const isExcluded = excludedAssetIds.has(at.id) || aporteSuspenso;
     const cotacao = at.preco_atual ?? 0;
     return {
       ...at,
@@ -267,6 +292,7 @@ export default function AtivosBalanceamento() {
       qtdComprar: 0,
       aporte: 0,
       isExcluded,
+      aporteSuspenso,
       cotacao,
     };
   });
@@ -450,6 +476,12 @@ export default function AtivosBalanceamento() {
           </Button>
         </div>
       </div>
+
+      <PainelSinais
+        sinais={sinaisData?.sinais ?? []}
+        carteiraEmFoco={balanceData?.carteira?.id ?? null}
+        onAbrirCarteira={isEditing ? undefined : setCarteiraId}
+      />
 
       {/* ── Empty States: Consolidado ou Carteira sem Ativos ── */}
       {!balanceData?.carteira ? (
@@ -702,14 +734,15 @@ export default function AtivosBalanceamento() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {magicAllocation.map((at) => (
-                    <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.isExcluded ? 'opacity-50' : ''}`}>
+                    // Suspensa não fica opaca: o aviso precisa manter o contraste para ser lido
+                    <tr key={at.id} className={`hover:bg-muted/40 transition-colors ${at.aporteSuspenso ? 'bg-red-500/5' : at.isExcluded ? 'opacity-50' : ''}`}>
                       <td className="py-3 px-4 text-center">
                         {/* Área de clique estendida para ≥24px sem alterar o tamanho visual da caixa */}
                         <label className="inline-flex min-h-6 min-w-6 items-center justify-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={!at.isExcluded}
-                            onChange={() => toggleAssetExcluded(at.id)}
+                            onChange={() => alternarInclusao(at)}
                             className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
                             aria-label={`Incluir ${at.ticker} no aporte mágico`}
                           />
@@ -718,6 +751,9 @@ export default function AtivosBalanceamento() {
                       <td className="py-3 px-4">
                         <p className="font-bold text-foreground">{at.ticker}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[120px]">{at.nome}</p>
+                        {at.aporteSuspenso && (
+                          <p className="text-xs font-semibold text-red-700 dark:text-red-400">Aporte suspenso: queda relevante</p>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatarMoeda(at.cotacao)}</td>
@@ -866,13 +902,18 @@ export default function AtivosBalanceamento() {
                           <TrendingUp className="h-4 w-4 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{at.ticker}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-bold text-foreground truncate">{at.ticker}</p>
+                            <SinalBadge sinal={at.sinal} />
+                          </div>
                           <p className="text-xs text-muted-foreground truncate max-w-[200px]">{at.nome}</p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs font-bold text-foreground">{formatarMoeda(at.valor_atual)}</p>
                         <p className="text-xs text-muted-foreground">investido • {formatPct(at.perc_atual)} carteira</p>
+                        {/* O sinal usa o peso a mercado: é a valorização que tira o ativo da meta */}
+                        <p className="text-xs text-muted-foreground">a mercado • {formatPct(at.perc_mercado)} carteira</p>
                       </div>
                     </div>
 
@@ -911,7 +952,11 @@ export default function AtivosBalanceamento() {
                     )}
                     {magicoItem && magicoItem.isExcluded && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5 w-fit">
-                        <span className="font-semibold">Excluído do Aporte Mágico</span>
+                        <span className="font-semibold">
+                          {magicoItem.aporteSuspenso
+                            ? 'Aporte suspenso pela queda relevante — marque o ativo na calculadora para incluí-lo mesmo assim'
+                            : 'Excluído do Aporte Mágico'}
+                        </span>
                       </div>
                     )}
                   </div>

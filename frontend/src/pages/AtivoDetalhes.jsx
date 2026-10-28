@@ -26,6 +26,8 @@ import { fetchAtivo, atualizarAtivo, fetchPosicoes } from '../services/investime
 import { useCarteira } from '../context/CarteiraProvider';
 import { useToast } from '../context/ToastContext';
 import { useMoeda } from '../hooks/useMoeda';
+import { useSinais } from '../hooks/useSinais';
+import { PainelSinais } from '../components/investimentos/PainelSinais';
 import { Button } from '../components/ui/Button';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 
@@ -85,6 +87,9 @@ export default function AtivoDetalhes() {
     queryFn: () => fetchAtivo(id),
     enabled: !!id
   });
+
+  // Sinais de todas as carteiras, como o resto da tela, que é consolidado
+  const { data: sinaisData } = useSinais();
 
   // Onde este papel está custodiado. A meta de alocação deixou de ser do ativo:
   // ela é declarada por carteira, e vive na tela de Balanceamento.
@@ -167,6 +172,7 @@ export default function AtivoDetalhes() {
   const valorTotalAtual = parseFloat(ativo.valor_total_atual || 0);
   const rentabilidadePerc = parseFloat(ativo.rentabilidade_percentual || 0);
   const totalCustoInvestido = parseFloat(ativo.quantidade || 0) * parseFloat(ativo.preco_medio || 0);
+  const sinaisDoAtivo = (sinaisData?.sinais ?? []).filter((s) => s.ativo_id === ativo.id);
 
   return (
     <div className="space-y-6 animate-fade-in text-foreground">
@@ -276,6 +282,8 @@ export default function AtivoDetalhes() {
         </div>
 
       </div>
+
+      <PainelSinais sinais={sinaisDoAtivo} titulo={`Sinais de ${ativo.ticker}`} />
 
       {/* Box Principal de Conteúdo */}
       <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
