@@ -122,12 +122,23 @@ ETF, BDR, fundo, renda fixa, outro — que é o que o sinal consulta.
 
 ## Fases
 
-1. **Cálculo** — `investimento/sinais.py`, função pura sem I/O, com testes.
-2. **Configuração e API** — campo de tipo fiscal no `Ativo`, peso a mercado no
-   balanceamento, sinais no payload e um endpoint leve que conta e lista.
-3. **Frontend** — badge com texto (não só cor) em Meus Ativos, Balanceamento e Detalhe
-   do Ativo, contador na barra do topo, valores atrás do olho de privacidade.
+1. **Cálculo** (feito) — `investimento/sinais.py`, função pura sem I/O, com testes.
+2. **Configuração e API** (feito) — `Ativo.tipo_fiscal`, deduzido no `save` quando vazio
+   e na migração para os ativos existentes; `perc_mercado`, `valor_mercado` e `sinal`
+   em cada ativo do balanceamento; `GET /api/investimentos/sinais/?carteira=`, que lista
+   só as posições com sinal. As consultas ficam em `services/sinais_service.py`.
+3. **Frontend** (feito) — badge com texto (não só cor) em Meus Ativos, Balanceamento e
+   Detalhe do Ativo, painel de sinais no topo do Balanceamento, indicador na barra do
+   topo, campo de tipo fiscal no cadastro do ativo; dinheiro atrás do olho de
+   privacidade. Os textos ficam em `frontend/src/lib/sinais.js`, com teste.
 4. **Central de alertas** (opcional) — dispensar/adiar, só se o contador incomodar.
+
+### Limitações conhecidas
+
+- **A isenção é avaliada por sinal.** Duas vendas de ações sugeridas no mesmo mês podem,
+  somadas, passar dos R$ 20 mil, mesmo que cada uma, sozinha, caiba.
+- **A confirmação da queda não é guardada.** No Balanceamento, marcar um ativo com queda
+  relevante o devolve ao aporte só até sair da tela; persistir isso é a fase 4.
 
 ---
 
