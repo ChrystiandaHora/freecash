@@ -6,6 +6,8 @@ seja testável sem fixture. A origem de cada número — banda 5/25, queda de 20
 de R$ 20 mil — está em docs/proposta-sinais-realizacao.md.
 """
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
 
@@ -34,6 +36,21 @@ class TipoFiscal(models.TextChoices):
     FUNDO = "FUNDO", "Fundo de investimento"
     RENDA_FIXA = "RF", "Renda fixa"
     OUTRO = "OUTRO", "Outro"
+
+
+# Trechos dos nomes de categoria/subcategoria, em ordem: BDR vem antes de "ações" porque
+# a subcategoria padrão "BDRs (Internacional)" mora dentro da categoria "Ações"
+TRECHOS_DE_NOME = (
+    ("etf", TipoFiscal.ETF),
+    ("imobiliario", TipoFiscal.FII),
+    ("fii", TipoFiscal.FII),
+    ("fiagro", TipoFiscal.FII),
+    ("bdr", TipoFiscal.BDR),
+    ("acoes", TipoFiscal.ACAO),
+)
+
+TICKER_ACAO = re.compile(r"^[A-Z]{4}[3-8]F?$")
+TICKER_BDR = re.compile(r"^[A-Z]{4}(3[2-5]|39)F?$")
 
 
 class TipoSinal(models.TextChoices):
@@ -98,6 +115,48 @@ class Sinal:
     resultado_venda: Decimal = Decimal(0)
     isencao: str = SituacaoIsencao.NAO_SE_APLICA
     cotas_dentro_isencao: Decimal | None = None
+
+
+def inferir_tipo_fiscal(
+    ticker: str,
+    *,
+    cnpj: str | None = "",
+    classe: str = "",
+    categoria: str = "",
+    subcategoria: str = "",
+) -> str:
+    """Deduz o tipo fiscal de um ativo que o usuário não classificou.
+
+    A classificação do usuário vem antes do ticker porque o ticker não resolve o
+    final 11: FII, ETF e unit o dividem. O que não dá para deduzir fica em `OUTRO`,
+    que o sinal trata como tributável — o lado seguro de errar.
+
+    Returns:
+        str: Um `TipoFiscal`.
+    """
+    if "renda fixa" in _normalizar(classe):
+        return TipoFiscal.RENDA_FIXA
+    nomes = _normalizar(f"{categoria} {subcategoria}")
+    for trecho, tipo in TRECHOS_DE_NOME:
+        if trecho in nomes:
+            return tipo
+    if cnpj:
+        return TipoFiscal.FUNDO
+
+    simbolo = ticker.strip().upper()
+    if ":" in simbolo:
+        return TipoFiscal.OUTRO
+    simbolo = simbolo.removesuffix(".SA")
+    if TICKER_BDR.match(simbolo):
+        return TipoFiscal.BDR
+    if TICKER_ACAO.match(simbolo):
+        return TipoFiscal.ACAO
+    return TipoFiscal.OUTRO
+
+
+def _normalizar(texto: str) -> str:
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return sem_acento.lower()
 
 
 def calcular_banda(meta_porcentagem: Decimal) -> Decimal:
