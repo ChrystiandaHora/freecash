@@ -69,6 +69,7 @@ function FormularioTransferencia({ onClose, onSaved, ativoInicial = '', origemIn
       queryClient.invalidateQueries({ queryKey: ['ativos'] })
       queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] })
       queryClient.invalidateQueries({ queryKey: ['carteiras'] })
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] })
       onSaved?.()
       onClose()
     },

@@ -86,6 +86,7 @@ export default function OrdemForm() {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transacoesInvestimento'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       navigate('/investimentos/historico');
     },
     onError: (err) => {
