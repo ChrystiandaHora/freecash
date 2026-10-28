@@ -481,6 +481,9 @@ class Transacao(AuditoriaModel):
             models.Index(
                 fields=["usuario", "carteira"], name="idx_transacao_usuario_carteira"
             ),
+            models.Index(
+                fields=["usuario", "ativo", "data"], name="idx_transacao_usr_atv_dt"
+            ),
         ]
 
     def __str__(self):

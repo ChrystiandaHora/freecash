@@ -162,7 +162,11 @@ class PosicaoCarteiraViewSet(
         """
         queryset = PosicaoCarteira.objects.filter(
             usuario=self.request.user
-        ).select_related("carteira", "ativo")
+        ).select_related(
+            "carteira",
+            "ativo__subcategoria__categoria__classe",
+            "ativo__detalhe_renda_fixa",
+        )
         carteira_id = carteira_do_request(self.request)
         if carteira_id:
             queryset = queryset.filter(carteira_id=carteira_id)
@@ -254,7 +258,9 @@ class AtivoViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Ativos do usuário.
         """
-        queryset = Ativo.objects.filter(usuario=self.request.user)
+        queryset = Ativo.objects.filter(usuario=self.request.user).select_related(
+            "subcategoria__categoria__classe", "detalhe_renda_fixa"
+        )
 
         carteira_id = carteira_do_request(self.request)
         if carteira_id:
@@ -468,7 +474,11 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Transações de investimentos do usuário.
         """
-        queryset = Transacao.objects.filter(usuario=self.request.user)
+        queryset = Transacao.objects.filter(usuario=self.request.user).select_related(
+            "carteira",
+            "ativo__subcategoria__categoria__classe",
+            "ativo__detalhe_renda_fixa",
+        )
         ativo_id = self.request.query_params.get("ativo")
         if ativo_id:
             queryset = queryset.filter(ativo_id=ativo_id)
