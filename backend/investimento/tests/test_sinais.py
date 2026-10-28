@@ -17,6 +17,7 @@ from investimento.sinais import (
     TipoFiscal,
     TipoSinal,
     avaliar_posicao,
+    inferir_tipo_fiscal,
 )
 
 TOTAL_CARTEIRA = Decimal("100000")
@@ -202,3 +203,52 @@ class IsencaoTests(SimpleTestCase):
         sinal = _avaliar(tipo_fiscal=TipoFiscal.ETF)
 
         self.assertEqual(sinal.isencao, SituacaoIsencao.TRIBUTAVEL)
+
+
+class InferirTipoFiscalTests(SimpleTestCase):
+    def test_acao_pelo_ticker_inclusive_fracionario_e_sufixo_yahoo(self):
+        for ticker in ("PETR4", "PETR4F", "petr4.sa", "VALE3"):
+            with self.subTest(ticker=ticker):
+                self.assertEqual(inferir_tipo_fiscal(ticker), TipoFiscal.ACAO)
+
+    def test_bdr_pelo_ticker(self):
+        self.assertEqual(inferir_tipo_fiscal("AAPL34"), TipoFiscal.BDR)
+
+    def test_final_11_sem_classificacao_fica_em_outro(self):
+        # FII, ETF e unit dividem o final 11: sem a categoria, não há como saber
+        self.assertEqual(inferir_tipo_fiscal("HGLG11"), TipoFiscal.OUTRO)
+
+    def test_fii_pela_categoria(self):
+        tipo = inferir_tipo_fiscal("HGLG11", categoria="Fundos Imobiliários (FIIs)")
+
+        self.assertEqual(tipo, TipoFiscal.FII)
+
+    def test_etf_pela_categoria_mesmo_sendo_de_renda_fixa(self):
+        tipo = inferir_tipo_fiscal(
+            "IMAB11", classe="Renda Variável", categoria="ETFs", subcategoria="ETF Renda Fixa"
+        )
+
+        self.assertEqual(tipo, TipoFiscal.ETF)
+
+    def test_bdr_pela_subcategoria_dentro_de_acoes(self):
+        tipo = inferir_tipo_fiscal(
+            "ROXO34", categoria="Ações", subcategoria="BDRs (Internacional)"
+        )
+
+        self.assertEqual(tipo, TipoFiscal.BDR)
+
+    def test_unit_cadastrada_em_acoes_e_acao(self):
+        self.assertEqual(inferir_tipo_fiscal("TAEE11", categoria="Ações"), TipoFiscal.ACAO)
+
+    def test_renda_fixa_pela_classe(self):
+        tipo = inferir_tipo_fiscal("TESOURO-IPCA-2035", classe="Renda Fixa")
+
+        self.assertEqual(tipo, TipoFiscal.RENDA_FIXA)
+
+    def test_cnpj_sem_classificacao_e_fundo(self):
+        tipo = inferir_tipo_fiscal("FUNDO-XYZ", cnpj="12345678000199")
+
+        self.assertEqual(tipo, TipoFiscal.FUNDO)
+
+    def test_ticker_de_bolsa_estrangeira_fica_em_outro(self):
+        self.assertEqual(inferir_tipo_fiscal("NASDAQ:AAPL"), TipoFiscal.OUTRO)
