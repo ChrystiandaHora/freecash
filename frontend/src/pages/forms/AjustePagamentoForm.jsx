@@ -181,7 +181,7 @@ export default function AjustePagamentoForm() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Nome */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-tour="pagamento-form-nome">
               <label htmlFor="input-nome-conta" className="text-sm font-medium text-foreground">
                 Nome <span className="text-red-500">*</span>
               </label>
@@ -233,7 +233,7 @@ export default function AjustePagamentoForm() {
             </div>
 
             {/* Limite + Fechamento + Vencimento */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3" data-tour="pagamento-form-fatura">
               <div className="space-y-1.5">
                 <label htmlFor="input-limite" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Limite (R$)
@@ -308,7 +308,7 @@ export default function AjustePagamentoForm() {
             </div>
 
             {/* Cor */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-tour="pagamento-form-cor">
               <span className="text-sm font-medium text-foreground" id="cor-group-label">
                 Cor de Identificação
               </span>

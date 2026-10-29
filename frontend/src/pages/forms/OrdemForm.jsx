@@ -180,7 +180,7 @@ export default function OrdemForm() {
         {/* Tab Selector */}
         {!isEditing && (
           <div className="p-6 pb-2 shrink-0">
-            <div role="radiogroup" aria-label="Tipo de lançamento" className="flex bg-muted p-1 rounded-xl">
+            <div role="radiogroup" aria-label="Tipo de lançamento" className="flex bg-muted p-1 rounded-xl" data-tour="ordem-form-tipo-lancamento">
               {[{ id: 'cv', label: 'Compra / Venda' }, { id: 'proventos', label: 'Proventos / JCP' }].map((t) => (
                 <button
                   key={t.id}
@@ -202,7 +202,7 @@ export default function OrdemForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Ativo */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-tour="ordem-form-ativo">
               <label htmlFor="ordem-ativo" className="text-sm font-semibold text-foreground">Ativo *</label>
               {isLoadingAtivos ? (
                 <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -225,7 +225,7 @@ export default function OrdemForm() {
 
             {/* Carteira */}
             {carteirasAtivas.length > 1 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="ordem-form-carteira">
                 <label htmlFor="ordem-carteira" className="text-sm font-semibold text-foreground">
                   Carteira de custódia <span className="text-red-500" aria-hidden="true">*</span>
                 </label>
@@ -327,7 +327,7 @@ export default function OrdemForm() {
                 </div>
 
                 {/* Taxas */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-tour="ordem-form-taxas">
                   <label htmlFor="ordem-taxas" className="text-sm font-semibold text-foreground">Taxas / Corretagem (R$)</label>
                   <Input
                     id="ordem-taxas"

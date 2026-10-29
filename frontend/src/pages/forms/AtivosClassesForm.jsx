@@ -94,7 +94,7 @@ export default function AtivosClassesForm() {
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </button>
-        <div>
+        <div data-tour="classe-form-titulo">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             {title}
           </h2>
@@ -114,7 +114,7 @@ export default function AtivosClassesForm() {
         </CardHeader>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-tour="classe-form-nome">
               <label htmlFor="nome-classificacao" className="text-sm font-medium text-foreground">
                 Nome da {getTypeNameLabel()} *
               </label>
@@ -143,6 +143,7 @@ export default function AtivosClassesForm() {
               </Button>
               <Button
                 type="submit"
+                data-tour="classe-form-salvar"
                 disabled={mutation.isPending}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 rounded-xl"
               >

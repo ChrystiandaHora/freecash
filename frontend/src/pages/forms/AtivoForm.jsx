@@ -248,7 +248,7 @@ export default function AtivoForm() {
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="ativo-form-tipo-fiscal">
                 <label htmlFor="ativo-tipo-fiscal" className="text-sm font-medium text-foreground">Tipo fiscal</label>
                 <Select
                   id="ativo-tipo-fiscal"
@@ -266,7 +266,7 @@ export default function AtivoForm() {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="ativo-form-subclasse">
                 <label htmlFor="ativo-subcategoria" className="text-sm font-medium text-foreground">Subclasse de Ativo *</label>
                 {subcategorias.length > 0 ? (
                   <Select
@@ -294,7 +294,7 @@ export default function AtivoForm() {
 
               {/* Input de Seleção de Carteira vinculada (só no cadastro novo) */}
               {!isEdit && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-tour="ativo-form-carteira">
                   <label htmlFor="ativo-carteira-principal" className="text-sm font-medium text-foreground flex items-center gap-1.5">
                     <Wallet className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                     Carteira de Custódia *
@@ -384,7 +384,7 @@ export default function AtivoForm() {
 
             {/* Posição Inicial (Só aparece se NÃO estiver editando) */}
             {!isEdit && (
-              <div className="border border-border/60 rounded-xl overflow-hidden bg-muted/10">
+              <div className="border border-border/60 rounded-xl overflow-hidden bg-muted/10" data-tour="ativo-form-posicao-inicial">
                 <button
                   type="button"
                   onClick={() => setShowPosicaoInicial(!showPosicaoInicial)}
@@ -449,7 +449,7 @@ export default function AtivoForm() {
 
             {/* Switch de Ativo/Inativo (Só na Edição) */}
             {isEdit && (
-              <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-muted/10">
+              <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-muted/10" data-tour="ativo-form-arquivar">
                 <div>
                   <span id="arquivar-ativo-label" className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Archive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

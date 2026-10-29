@@ -120,7 +120,7 @@ export default function ReceitaForm() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Tipo: Única ou Recorrente */}
-            <div className="space-y-2">
+            <div className="space-y-2" data-tour="receita-form-tipo">
               <span id="tipo-receita-label" className="text-sm font-medium text-foreground">
                 Tipo de Receita
               </span>
@@ -167,7 +167,7 @@ export default function ReceitaForm() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="receita-form-categoria">
                 <label htmlFor="receita-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
@@ -201,7 +201,7 @@ export default function ReceitaForm() {
                 )}
               </div>
 
-              <div className={`space-y-1.5 ${watchTipo === 'recorrente' ? '' : 'sm:col-span-2'}`}>
+              <div className={`space-y-1.5 ${watchTipo === 'recorrente' ? '' : 'sm:col-span-2'}`} data-tour="receita-form-data">
                 <label htmlFor="receita-data-recebimento" className="text-sm font-medium text-foreground">
                   Data de Recebimento <span className="text-red-500">*</span>
                 </label>
@@ -218,7 +218,7 @@ export default function ReceitaForm() {
               </div>
 
               {watchTipo === 'recorrente' && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-tour="receita-form-frequencia">
                   <label htmlFor="receita-frequencia" className="text-sm font-medium text-foreground">
                     Frequência
                   </label>

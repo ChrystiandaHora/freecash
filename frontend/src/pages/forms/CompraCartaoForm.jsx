@@ -199,7 +199,7 @@ export default function CompraCartaoForm() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="compra-cartao-form-data">
                 <label htmlFor="compra-data" className="text-sm font-medium text-foreground">
                   Data da Compra <span className="text-red-500">*</span>
                 </label>
@@ -219,7 +219,7 @@ export default function CompraCartaoForm() {
 
             {/* Cartão de Crédito + Categoria */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="compra-cartao-form-cartao">
                 <label htmlFor="compra-cartao" className="text-sm font-medium text-foreground">
                   Cartão de Crédito <span className="text-red-500">*</span>
                 </label>
@@ -238,7 +238,7 @@ export default function CompraCartaoForm() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="compra-cartao-form-categoria">
                 <label htmlFor="compra-categoria" className="text-sm font-medium text-foreground">
                   Categoria
                 </label>

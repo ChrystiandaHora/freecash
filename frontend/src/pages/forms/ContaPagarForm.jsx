@@ -180,7 +180,7 @@ export default function ContaPagarForm() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5" data-tour="conta-pagar-form-categoria">
                 <label htmlFor="conta-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
@@ -218,7 +218,7 @@ export default function ContaPagarForm() {
                 )}
               </div>
 
-              <div className="sm:col-span-2 space-y-1.5">
+              <div className="sm:col-span-2 space-y-1.5" data-tour="conta-pagar-form-vencimento">
                 <label htmlFor="conta-vencimento" className="text-sm font-medium text-foreground">
                   Data de Vencimento <span className="text-red-500">*</span>
                 </label>
@@ -238,7 +238,7 @@ export default function ContaPagarForm() {
 
               {/* Evento fora do orçamento */}
               {!isFaturaCartao && (
-                <div className="sm:col-span-2 space-y-1.5">
+                <div className="sm:col-span-2 space-y-1.5" data-tour="conta-pagar-form-evento">
                   <label htmlFor="conta-evento" className="text-sm font-medium text-foreground flex items-center justify-between">
                     <span>Evento / Ocasião (opcional)</span>
                     <span className="text-xs text-muted-foreground font-normal">Viagens, reformas, etc.</span>
@@ -257,7 +257,7 @@ export default function ContaPagarForm() {
                     ))}
                   </select>
                   <p id="conta-evento-help" className="text-xs text-muted-foreground">
-                    Gastos de eventos reduzem seu saldo de caixa normalmente, mas não inflam os KPIs e médias do mês.
+                    Gastos de eventos reduzem seu saldo normalmente. Se o evento estiver fora dos relatórios, não entram nos KPIs e médias do mês.
                   </p>
                 </div>
               )}
@@ -269,7 +269,7 @@ export default function ContaPagarForm() {
                   projeção enxergaria só as despesas lançadas mês a mês e a curva
                   subiria de forma irreal. */}
               {!isEdit && !isFaturaCartao && (
-                <div className="sm:col-span-2 space-y-3 rounded-xl border border-border/50 p-4">
+                <div className="sm:col-span-2 space-y-3 rounded-xl border border-border/50 p-4" data-tour="conta-pagar-form-fixa">
                   <div className="flex items-start gap-3">
                     <input
                       id="conta-eh-fixa"
@@ -331,7 +331,7 @@ export default function ContaPagarForm() {
             )}
 
             {conta?.pago && (
-              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 flex items-center justify-between gap-3">
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 flex items-center justify-between gap-3" data-tour="conta-pagar-form-pago">
                 <span className="text-sm text-amber-800 dark:text-amber-300">
                   Esta conta está marcada como <strong>paga</strong>. Deseja reverter o status?
                 </span>
