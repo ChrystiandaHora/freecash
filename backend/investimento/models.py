@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from core.models import AuditoriaModel
+from investimento.sinais import TipoFiscal, inferir_tipo_fiscal
 
 
 class ClasseAtivo(AuditoriaModel):
@@ -236,6 +237,16 @@ class Ativo(AuditoriaModel):
     moeda = models.CharField(max_length=10, default="BRL")
     ativo = models.BooleanField(default=True)
 
+    # Vazio só até o primeiro save, que deduz o tipo (ver docs/proposta-sinais-realizacao.md)
+    tipo_fiscal = models.CharField(
+        max_length=10,
+        choices=TipoFiscal.choices,
+        blank=True,
+        default="",
+        verbose_name="Tipo fiscal",
+        help_text="Natureza do ativo para o IR; decide a isenção nos sinais de venda",
+    )
+
     # Campos calculados / Cache (consolidado de todas as carteiras)
     quantidade = models.DecimalField(max_digits=19, decimal_places=8, default=0)
     preco_medio = models.DecimalField(max_digits=19, decimal_places=4, default=0)
@@ -328,10 +339,27 @@ class Ativo(AuditoriaModel):
         return (self.rentabilidade / self.valor_investido) * 100
 
     def save(self, *args, **kwargs):
-        """Normaliza o CNPJ removendo pontuações antes de salvar."""
+        """Normaliza o CNPJ e deduz o tipo fiscal quando ele não foi informado.
+
+        A dedução fica no `save`, e não no serializer, porque ativos também nascem pela
+        restauração de backup e pela importação — e todo caminho passa por aqui.
+        """
         if self.cnpj:
             self.cnpj = "".join(filter(str.isdigit, self.cnpj))
+        if not self.tipo_fiscal:
+            self.tipo_fiscal = self._deduzir_tipo_fiscal()
         super().save(*args, **kwargs)
+
+    def _deduzir_tipo_fiscal(self) -> str:
+        subcategoria = self.subcategoria
+        categoria = subcategoria.categoria if subcategoria else None
+        return inferir_tipo_fiscal(
+            self.ticker,
+            cnpj=self.cnpj,
+            classe=categoria.classe.nome if categoria else "",
+            categoria=categoria.nome if categoria else "",
+            subcategoria=subcategoria.nome if subcategoria else "",
+        )
 
 
 class DetalheRendaFixa(AuditoriaModel):
@@ -480,6 +508,9 @@ class Transacao(AuditoriaModel):
         indexes = [
             models.Index(
                 fields=["usuario", "carteira"], name="idx_transacao_usuario_carteira"
+            ),
+            models.Index(
+                fields=["usuario", "ativo", "data"], name="idx_transacao_usr_atv_dt"
             ),
         ]
 

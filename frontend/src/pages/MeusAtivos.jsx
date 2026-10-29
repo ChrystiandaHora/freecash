@@ -45,6 +45,9 @@ import SeletorCarteira from '../components/SeletorCarteira';
 import TransferenciaCarteiraModal from '../components/TransferenciaCarteiraModal';
 import { useCarteira } from '../context/CarteiraProvider';
 import { useMoeda } from '../hooks/useMoeda';
+import { useSinais } from '../hooks/useSinais';
+import { sinaisPorAtivo } from '../lib/sinais';
+import { SinaisBadges } from '../components/investimentos/SinalBadge';
 
 // Helper de formatação de porcentagens
 const formatPercentage = (value) => {
@@ -65,6 +68,12 @@ export default function MeusAtivos() {
       header: 'Ticker',
       className: 'px-5 py-3.5',
       cellClassName: 'px-5 py-3.5 font-bold text-foreground',
+      render: (val, row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span>{val}</span>
+          <SinaisBadges sinais={sinaisDoAtivo.get(row.id)} />
+        </div>
+      ),
     },
     {
       key: 'quantidade',
@@ -196,6 +205,10 @@ export default function MeusAtivos() {
     placeholderData: keepPreviousData,
   });
   
+  // Segue o filtro de carteira da tabela; no consolidado, um badge por tipo de sinal
+  const { data: sinaisData } = useSinais(carteiraId);
+  const sinaisDoAtivo = sinaisPorAtivo(sinaisData?.sinais ?? []);
+
   const { data: subcategorias = [], isLoading: loadingSubs } = useQuery({
     queryKey: ['subcategoriasAtivos'],
     queryFn: () => fetchSubcategoriasAtivos()
@@ -230,6 +243,7 @@ export default function MeusAtivos() {
     mutationFn: (id) => deleteAtivo(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['ativos']);
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       setIsDeleteOpen(false);
       setActiveAtivo(null);
       handleShowSuccess('Ativo removido com sucesso!');
@@ -249,6 +263,7 @@ export default function MeusAtivos() {
       queryClient.invalidateQueries(['ativos']);
       queryClient.invalidateQueries(['investimentosDashboard']);
       queryClient.invalidateQueries(['historicoCotacoes']);
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       
       const count = data?.count || 0;
       const errors = data?.errors || [];

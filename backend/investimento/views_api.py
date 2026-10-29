@@ -43,6 +43,12 @@ from .serializers import (
 )
 from .calculators import gravar_serie_cotacoes
 from .services.dashboard_service import DashboardInvestimentoService
+from .services.sinais_service import (
+    avaliar_posicoes,
+    sinal_para_dict,
+    vendas_de_acoes_no_mes,
+)
+from .sinais import LIMITE_ISENCAO_ACOES, Sinal, TipoSinal
 from .services.yahoo_service import YahooIndisponivel, fetch_historico_yahoo
 
 # Janela padrão do gráfico comparativo de cotações em Meus Ativos.
@@ -162,7 +168,11 @@ class PosicaoCarteiraViewSet(
         """
         queryset = PosicaoCarteira.objects.filter(
             usuario=self.request.user
-        ).select_related("carteira", "ativo")
+        ).select_related(
+            "carteira",
+            "ativo__subcategoria__categoria__classe",
+            "ativo__detalhe_renda_fixa",
+        )
         carteira_id = carteira_do_request(self.request)
         if carteira_id:
             queryset = queryset.filter(carteira_id=carteira_id)
@@ -254,7 +264,9 @@ class AtivoViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Ativos do usuário.
         """
-        queryset = Ativo.objects.filter(usuario=self.request.user)
+        queryset = Ativo.objects.filter(usuario=self.request.user).select_related(
+            "subcategoria__categoria__classe", "detalhe_renda_fixa"
+        )
 
         carteira_id = carteira_do_request(self.request)
         if carteira_id:
@@ -468,7 +480,11 @@ class TransacaoInvestimentoViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Transações de investimentos do usuário.
         """
-        queryset = Transacao.objects.filter(usuario=self.request.user)
+        queryset = Transacao.objects.filter(usuario=self.request.user).select_related(
+            "carteira",
+            "ativo__subcategoria__categoria__classe",
+            "ativo__detalhe_renda_fixa",
+        )
         ativo_id = self.request.query_params.get("ativo")
         if ativo_id:
             queryset = queryset.filter(ativo_id=ativo_id)
@@ -699,6 +715,11 @@ class BalanceamentoAPIView(APIView):
 
         total_patrimonio = sum(p.valor_investido for p in posicoes)
 
+        # O peso por custo responde "onde aportar"; o a mercado mostra a valorização que pede realização
+        valores_mercado = {p.id: float(p.valor_total_atual) for p in posicoes}
+        total_mercado = sum(valores_mercado.values())
+        sinais = {p.id: s for p, s in avaliar_posicoes(request.user, carteira.id)}
+
         ativos_por_classe = {}
         soma_metas = 0.0
 
@@ -723,7 +744,7 @@ class BalanceamentoAPIView(APIView):
             valor_ideal = (meta / 100.0) * float(total_patrimonio)
             diferenca = valor_ideal - valor_atual
 
-            valor_mercado = float(posicao.valor_total_atual)
+            valor_mercado = valores_mercado[posicao.id]
             rentabilidade = valor_mercado - valor_atual
 
             ativos_por_classe[classe_nome]["ativos"].append({
@@ -739,6 +760,10 @@ class BalanceamentoAPIView(APIView):
                 "rentabilidade_perc": (rentabilidade / valor_atual * 100) if valor_atual else 0.0,
                 "valor_ideal": valor_ideal,
                 "diferenca": diferenca,
+                "valor_mercado": valor_mercado,
+                "perc_mercado": (valor_mercado / total_mercado * 100) if total_mercado > 0 else 0.0,
+                # Posição zerada não entra na avaliação e fica sem sinal
+                "sinal": sinal_para_dict(sinais.get(posicao.id, Sinal())),
             })
 
         payload = {
@@ -853,4 +878,48 @@ class BalanceamentoAPIView(APIView):
         return plano
 
 
+class SinaisAPIView(APIView):
+    """Lista as posições com sinal de venda para rebalancear ou de queda relevante.
 
+    Atende o contador da barra do topo e os badges das telas de ativos. Só devolve
+    posições com sinal; o balanceamento, que precisa de todas, lê o sinal no próprio
+    payload. Sem `?carteira=`, avalia todas as carteiras do usuário — cada sinal diz de
+    qual custódia a venda sai. Ver docs/proposta-sinais-realizacao.md.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request) -> Response:
+        """Avalia as posições do usuário e devolve as que têm sinal.
+
+        Returns:
+            Response: Total de sinais, valor de ações já vendido no mês, limite da
+                isenção e a lista de sinais com ativo e carteira.
+        """
+        carteira_id = carteira_do_request(request)
+        vendas = vendas_de_acoes_no_mes(request.user)
+        sinais = [
+            {
+                "posicao_id": posicao.id,
+                "ativo_id": posicao.ativo_id,
+                "ticker": posicao.ativo.ticker,
+                "nome": posicao.ativo.nome,
+                "tipo_fiscal": posicao.ativo.tipo_fiscal,
+                "carteira_id": posicao.carteira_id,
+                "carteira_nome": posicao.carteira.nome,
+                "meta_porcentagem": float(posicao.meta_porcentagem),
+                "cotacao": float(posicao.cotacao_mercado or 0),
+                "preco_medio": float(posicao.ativo.preco_medio),
+                **sinal_para_dict(sinal),
+            }
+            for posicao, sinal in avaliar_posicoes(request.user, carteira_id, vendas)
+            if sinal.tipo != TipoSinal.SEM_SINAL
+        ]
+        return Response(
+            {
+                "total": len(sinais),
+                "vendas_acoes_no_mes": float(vendas),
+                "limite_isencao_acoes": float(LIMITE_ISENCAO_ACOES),
+                "sinais": sinais,
+            },
+            status=status.HTTP_200_OK,
+        )

@@ -36,6 +36,7 @@ import { MobileNavPanel } from './MobileNavPanel';
 import { UserMenu } from './UserMenu';
 import { HelpButton } from './HelpButton';
 import { PrivacidadeToggle } from './PrivacidadeToggle';
+import { SinaisIndicador } from './SinaisIndicador';
 
 /**
  * @param {Object} props
@@ -281,10 +282,14 @@ export default function TopNav({ mainRef }) {
 
                 O olho de ocultar valores fica solto, depois da ajuda, porque é de uso
                 rápido e em qualquer tela — inclusive no mobile, onde a conta vai para
-                o painel. */}
+                o painel.
+
+                O indicador de sinais vem depois do olho, para a ajuda continuar primeiro;
+                ele só aparece quando há sinal (ver SinaisIndicador). */}
             <div className="flex shrink-0 items-center gap-2">
               <HelpButton />
               <PrivacidadeToggle />
+              <SinaisIndicador />
               <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
               <div className="hidden lg:block">
                 <UserMenu

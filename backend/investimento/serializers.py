@@ -158,7 +158,7 @@ class AtivoSerializer(serializers.ModelSerializer):
         model = Ativo
         fields = [
             'id', 'uuid', 'ticker', 'nome', 'cnpj', 'subcategoria', 'subcategoria_detalhe',
-            'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo',
+            'data_vencimento', 'emissor', 'indexador', 'taxa', 'moeda', 'ativo', 'tipo_fiscal',
             'quantidade', 'preco_medio', 'valor_total',
             'cotacao_atual', 'valor_total_atual', 'rentabilidade', 'rentabilidade_percentual',
             'historico_cotacoes', 'criada_em', 'atualizada_em'

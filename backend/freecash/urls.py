@@ -50,7 +50,8 @@ from core.views.auth_api import (
 from investimento.views_api import (
     ClasseAtivoViewSet, CategoriaAtivoViewSet, SubcategoriaAtivoViewSet,
     AtivoViewSet, CarteiraViewSet, PosicaoCarteiraViewSet,
-    TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView, BalanceamentoAPIView
+    TransacaoInvestimentoViewSet, DashboardInvestimentoAPIView, BalanceamentoAPIView,
+    SinaisAPIView,
 )
 from core.views.health import HealthCheckAPIView
 from core.views.conta_api import (
@@ -173,6 +174,7 @@ urlpatterns += [
     path('api/dashboard/executivo/', ExecutiveBIDashboardAPIView.as_view(), name='api-dashboard-executivo'),
     path('api/investimentos/dashboard/', DashboardInvestimentoAPIView.as_view(), name='api-investimentos-dashboard'),
     path('api/investimentos/balanceamento/', BalanceamentoAPIView.as_view(), name='api-investimentos-balanceamento'),
+    path('api/investimentos/sinais/', SinaisAPIView.as_view(), name='api-investimentos-sinais'),
     path('api/relatorios/dre/', RelatoriosDREAPIView.as_view(), name='api-relatorios-dre'),
     # Irmão de `financeiro/metas/` no router: um sub-path colidiria com o detail `metas/<pk>/`.
     path('api/financeiro/metas-plano/', PlanoMetasAPIView.as_view(), name='api-financeiro-metas-plano'),

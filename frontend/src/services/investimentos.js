@@ -57,6 +57,19 @@ export const updateMetaPosicao = async ({ id, meta_porcentagem }) => {
   return data;
 };
 
+// ─── Sinais de rebalanceamento ───────────────────────────────────────────────
+
+/**
+ * Posições com sinal de venda para rebalancear ou de queda relevante.
+ *
+ * @param {number|string|null} carteiraId - Sem carteira, avalia todas.
+ * @returns {Promise<{total: number, vendas_acoes_no_mes: number, sinais: Array<Object>}>}
+ */
+export const fetchSinais = async (carteiraId = null) => {
+  const { data } = await api.get('/api/investimentos/sinais/', escopoDaCarteira(carteiraId));
+  return data;
+};
+
 // ─── Ativos ──────────────────────────────────────────────────────────────────
 
 export const fetchAtivos = async (carteiraId = null) => {

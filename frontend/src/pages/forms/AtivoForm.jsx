@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useCarteira } from '../../context/CarteiraProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { TIPOS_FISCAIS } from '../../lib/sinais';
 
 const initialFormState = {
   ticker: '',
@@ -26,6 +27,7 @@ const initialFormState = {
   moeda: 'BRL',
   ativo: true,
   carteira: '',
+  tipo_fiscal: '',
 };
 
 export default function AtivoForm() {
@@ -71,6 +73,7 @@ export default function AtivoForm() {
         moeda: assetData.moeda || 'BRL',
         ativo: assetData.ativo ?? true,
         carteira: '',
+        tipo_fiscal: assetData.tipo_fiscal || '',
       });
     } else if (!isEdit) {
       setFormData((prev) => ({
@@ -93,6 +96,7 @@ export default function AtivoForm() {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       navigate('/investimentos/ativos');
     },
     onError: (err) => {
@@ -107,6 +111,7 @@ export default function AtivoForm() {
       queryClient.invalidateQueries({ queryKey: ['ativos'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosDashboard'] });
       queryClient.invalidateQueries({ queryKey: ['investimentosBalanceamento'] });
+      queryClient.invalidateQueries({ queryKey: ['investimentosSinais'] });
       navigate('/investimentos/ativos');
     },
     onError: (err) => {
@@ -143,6 +148,7 @@ export default function AtivoForm() {
       taxa: formData.taxa ? formData.taxa.trim() : null,
       moeda: formData.moeda,
       ativo: formData.ativo,
+      tipo_fiscal: formData.tipo_fiscal,
     };
 
     if (isEdit) {
@@ -240,6 +246,24 @@ export default function AtivoForm() {
                   onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
                   className="font-semibold"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="ativo-tipo-fiscal" className="text-sm font-medium text-foreground">Tipo fiscal</label>
+                <Select
+                  id="ativo-tipo-fiscal"
+                  aria-describedby="ativo-tipo-fiscal-ajuda"
+                  value={formData.tipo_fiscal}
+                  onChange={(e) => setFormData({ ...formData, tipo_fiscal: e.target.value })}
+                >
+                  <option value="">Deduzir pelo ticker e pela classe</option>
+                  {TIPOS_FISCAIS.map((tipo) => (
+                    <option key={tipo.valor} value={tipo.valor}>{tipo.rotulo}</option>
+                  ))}
+                </Select>
+                <p id="ativo-tipo-fiscal-ajuda" className="text-xs text-muted-foreground">
+                  Define a isenção de IR nos sinais de venda: só ações têm a de R$ 20 mil por mês.
+                </p>
               </div>
 
               <div className="space-y-1.5">
