@@ -231,13 +231,14 @@ export const helpContent = {
 
   "/importar": {
     title: "Restaurar Backup",
-    overview: "Restauração da base a partir de um arquivo de backup criptografado (.fcbk) gerado pela própria conta.",
+    overview: "Restauração da conta a partir do backup .zip gerado em Exportação & Backup.",
     features: [
-      "Leitura de backup proprietário .fcbk protegido por senha.",
-      "Resumo dos registros restaurados por categoria ao final."
+      "Lê o dados.json de dentro do ZIP, com ou sem senha.",
+      "Substitui todos os dados atuais da conta pelos do arquivo.",
+      "Resumo dos registros restaurados ao final."
     ],
     actions: {
-      "Enviar Arquivo": "Selecione o .fcbk, informe a senha e confirme a restauração.",
+      "Enviar Arquivo": "Selecione o .zip, informe a senha definida ao baixar (se houver) e confirme a restauração.",
       "Importar extrato em PDF": "Não é aqui: extrato e fatura em PDF entram por Ferramentas › Conciliação."
     }
   },
@@ -270,15 +271,17 @@ export const helpContent = {
   },
 
   "/backup": {
-    title: "Backup de Dados",
-    overview: "Ferramentas para exportar dados para planilhas ou criar backups criptografados locais.",
+    title: "Exportação & Backup",
+    overview: "Baixe todos os seus dados num ZIP com senha, ou gere relatórios de um período.",
     features: [
-      "Exportação em Excel (.xlsx), CSV ou PDF das transações.",
-      "Geração e leitura de backups criptografados proprietários (.fcbk)."
+      "Backup completo em ZIP cifrado com AES-256: planilhas CSV, dados.json e um LEIA-ME.",
+      "Formatos abertos: as planilhas abrem no Excel, Numbers ou LibreOffice, e o ZIP no 7-Zip, WinRAR ou Keka.",
+      "Relatórios por período em Excel (.xlsx), CSV ou PDF."
     ],
     actions: {
-      "Exportar Backup": "Defina uma senha de criptografia para baixar seu arquivo `.fcbk`.",
-      "Restaurar Backup": "Selecione um arquivo `.fcbk`, digite a senha e recupere seu banco de dados."
+      "Baixar meus dados": "Defina uma senha de pelo menos 12 caracteres e baixe o .zip. Sem a senha, o arquivo não abre.",
+      "Baixar relatório": "Escolha formato, conteúdo e período. Relatórios não voltam para o sistema.",
+      "Restaurar Backup": "Envie o mesmo .zip em Ferramentas › Importar."
     }
   },
 
