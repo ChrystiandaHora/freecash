@@ -49,7 +49,9 @@ Todas as rotas são expostas sob o prefixo `/api/` e requerem autenticação JWT
 | | `GET/POST` | `/api/investimentos/balanceamento/` | Cálculo preditivo de aporte ideal |
 | | `GET/POST` | `/api/investimentos/carteiras/` | Gestão de custódias por corretora |
 | **Ferramentas** | `POST` | `/api/ferramentas/importar-extrato/` | Parsing e conciliação de faturas PDF |
-| | `GET/POST` | `/api/ferramentas/exportar/` | Exportação de dados e backup criptografado `.fcbk` |
+| | `GET` | `/api/ferramentas/exportar/` | Relatórios por período (Excel, CSV, PDF) |
+| | `GET/POST` | `/api/ferramentas/backup/` | Data do último backup (GET) e backup completo em ZIP com senha, AES-256 (POST) |
+| | `POST` | `/api/ferramentas/importar/` | Restauração a partir do backup `.zip` |
 
 ---
 

@@ -40,7 +40,7 @@ O módulo de **Eventos Fora do Orçamento** permite cadastrar, planejar e contro
 - Todas as consultas de períodos analíticos (totais de competência e realizadas, séries temporais, gráficos de categoria, DRE e comparativos) chamam `.do_orcamento()`.
 - O cálculo de saldo em caixa (`saldo_liquidez_ate`) continua usando `Conta.objects` irrestrito, garantindo que a dedução do dinheiro seja 100% real.
 
-### 2.4 Backup e Restauração (.fcbk)
+### 2.4 Backup e Restauração
 - O modelo `Evento` foi registrado no dicionário de prioridades de `get_backupable_models()` com prioridade `3.5` (entre `Categoria` e `Conta`), garantindo restauração ordenada sem falhas de integridade referencial.
 
 ---

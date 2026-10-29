@@ -178,34 +178,29 @@ mexeu na configuração veja exatamente o valor de antes.
 
 ---
 
-## Backup `.fcbk` — leia antes de mexer na restauração
+## Backup — leia antes de mexer na restauração
 
 A regra geral está em [backup.md](backup.md): as chaves do arquivo são nomes de
 classe e de campo, e o modo de falha é o pior possível — a restauração não dá erro,
 apenas devolve a base sem os registros.
 
-Esta feature acrescentou um segundo modo de falha, com a mesma assinatura silenciosa.
-`Transacao.carteira` é NOT NULL, e um `.fcbk` gerado antes das carteiras não traz
+Esta feature mostrou um segundo modo de falha, com a mesma assinatura silenciosa.
+`Transacao.carteira` é NOT NULL, e um backup gerado antes das carteiras não trazia
 `carteira_uuid`. O laço genérico da restauração grava `None` em toda FK cujo
-`<campo>_uuid` esteja ausente; o insert seria rejeitado, o fallback falharia também,
-e **todas as ordens do usuário seriam descartadas sem erro nenhum**.
-
-A correção é `FKS_LEGADAS_COM_PADRAO`, em `import_service.py`, ao lado dos dois mapas
-que já existiam. Ela garante a Carteira Padrão e preenche a FK ausente.
-`RestauracaoDeBackupSemCarteiraTests` cobre isso, e **a próxima FK obrigatória
-introduzida num modelo já exportado precisa da entrada correspondente**.
+`<campo>_uuid` esteja ausente; o insert é rejeitado, o fallback falha também, e
+**todas as ordens do usuário seriam descartadas sem erro nenhum**. Na época do `.fcbk`
+isso foi resolvido com o mapa `FKS_LEGADAS_COM_PADRAO`, que saiu junto com o formato
+antigo; **a próxima FK obrigatória introduzida num modelo já exportado precisa trazê-lo
+de volta** (ver backup.md).
 
 Dois outros pontos:
 
 - `Carteira` entra com prioridade **6,5** e `PosicaoCarteira` com **9,5** no dict
-  `priority`, que existe **duplicado** em `export_service.py` e `import_service.py`.
-  Editar só um deixa a restauração meio quebrada.
-- O recálculo pós-restauração reconstrói `PosicaoCarteira` junto com `Ativo`. Num
-  backup antigo a posição nem existe no arquivo, e no formato novo ela é cache — o
-  recálculo é a única fonte de verdade que sobrevive a qualquer versão.
-
-`Ativo.meta_porcentagem` foi **removido** (a meta virou por carteira). Remover campo
-é seguro para backups antigos: `filter_valid_fields` descarta o que não existe mais.
+  `priority` de `get_backupable_models`, usado tanto na exportação quanto na
+  importação.
+- O recálculo pós-restauração reconstrói `PosicaoCarteira` junto com `Ativo`. A
+  posição é cache, e o recálculo é a única fonte de verdade que sobrevive a qualquer
+  versão do arquivo.
 
 ---
 

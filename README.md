@@ -78,7 +78,7 @@ O **FreeCash** é uma plataforma corporativa de gestão financeira pessoal e gov
 - **Autenticação Segura:** JWT com cookies `HttpOnly`, política de senhas espelhada no cliente e encerramento de sessões ativas.
 - **Proteção de Inatividade:** Monitor de ociosidade com modal preventivo e desconexão automática.
 - **Painel Administrativo:** Gestão de usuários, suspensão auditada de acessos e métricas agregadas da plataforma.
-- **Importação & Exportação:** Processamento de extratos bancários (XLS/CSV), faturas em PDF (`pdfplumber`) e backup criptografado AES-GCM (`.fcbk`).
+- **Importação & Exportação:** Processamento de extratos bancários (XLS/CSV), faturas em PDF (`pdfplumber`) e backup completo em ZIP com senha (AES-256), com planilhas CSV e JSON.
 
 ---
 
@@ -185,7 +185,7 @@ Para aprofundamento nas decisões de design e regras contábeis implementadas, c
 | [docs/fatura-cartao.md](docs/fatura-cartao.md) | Ciclo de vida e consolidação de faturas de cartão de crédito |
 | [docs/importacao-extrato.md](docs/importacao-extrato.md) | Algoritmos de parsing para extratos bancários e faturas em PDF |
 | [docs/autenticacao.md](docs/autenticacao.md) | Gestão de identidade, controle de sessões e segurança de acesso |
-| [docs/backup.md](docs/backup.md) | Especificação do formato `.fcbk` e criptografia AES-GCM |
+| [docs/backup.md](docs/backup.md) | Backup em ZIP (AES-256, JSON + CSV): formato, importação e cobertura dos modelos |
 | [DEPLOY.md](DEPLOY.md) | Manual completo de implantação e infraestrutura para produção |
 | [DEPLOY_GRATUITO.md](DEPLOY_GRATUITO.md) | Guia alternativo para publicação em tiers gratuitos |
 

@@ -58,9 +58,10 @@ Generalizar a regra existente, em vez de criar um `DespesaRecorrente` paralelo, 
 **um único motor de geração** — e um único lugar para corrigir cada defeito de geração de
 ocorrência.
 
-> A renomeação quebrou o formato de backup. Ver os mapas de compatibilidade em
-> [backup.md](backup.md): `ReceitaRecorrente` → `LancamentoRecorrente` e
-> `Conta.receita_recorrente` → `Conta.recorrencia`.
+> A renomeação quebrou o formato de backup da época (`.fcbk`), resolvida com mapas de
+> compatibilidade: `ReceitaRecorrente` → `LancamentoRecorrente` e
+> `Conta.receita_recorrente` → `Conta.recorrencia`. Os mapas saíram com o `.fcbk`; ver
+> [backup.md](backup.md) antes de renomear de novo.
 
 Frequências: mensal, quinzenal, semanal e anual. `data_fim` é opcional — sem ela a regra
 não tem prazo.

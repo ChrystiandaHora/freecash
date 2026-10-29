@@ -1,4 +1,4 @@
-# Backup e restauração `.fcbk`
+# Backup e restauração (ZIP)
 
 Referência obrigatória antes de renomear qualquer modelo ou campo, e antes de tornar
 qualquer FK obrigatória. O modo de falha aqui é o pior que existe: **a restauração não
@@ -8,85 +8,137 @@ dá erro** — devolve a base sem os registros.
 
 ## O formato
 
-`.fcbk` é formato próprio, produzido por
+O backup é um ZIP comum, cifrado com **AES-256** (WinZip AE-2), gerado por
 [`export_service.py`](../backend/core/services/export_service.py):
 
 ```
-JSON → zlib (nível 6) → AES-GCM → SHA256(payload) + payload → base64
+freecash_meus-dados_<usuario>_<AAAA-MM-DD_HHMM>.zip
+├── LEIA-ME.txt     como abrir, o que é cada arquivo e cada coluna
+├── dados.json      {"metadata": {"formato": "freecash-dados", "version": "5.0", ...}, "data": {...}}
+└── planilhas/      um CSV por entidade com registros: lancamentos.csv, ativos.csv, ...
 ```
 
-A chave sai da senha do usuário por PBKDF2-HMAC-SHA256, 100.000 iterações, com salt
-aleatório de 16 bytes. O nonce tem 12. O hash SHA256 vai **à frente** do payload
-cifrado e é conferido antes de tentar decifrar — é o que separa "arquivo violado" de
-"senha errada", duas mensagens diferentes para o usuário.
+Ele substituiu o `.fcbk`, formato próprio (JSON → zlib → AES-GCM → base64) que só o
+freecash lia. O motivo foi a portabilidade: quem sai da plataforma precisa levar os
+dados num formato que abra em outro lugar. O mesmo arquivo serve de backup e de
+exportação — não há dois contratos para manter.
 
-`VERSION = "4.1"` no export; o import aceita `{"4.0", "4.1"}`. A 4.0 é a mesma coisa
-sem compressão, e por isso `decrypt_data_fcbk` trata `zlib.error` como sucesso
-silencioso: um backup antigo simplesmente não estava comprimido.
+**A importação lê só o `dados.json`.** As planilhas e o LEIA-ME são para pessoas, gerados
+a partir do mesmo dicionário por
+[`backup_planilhas.py`](../backend/core/services/backup_planilhas.py): separador `;`,
+vírgula decimal, datas `AAAA-MM-DD` e BOM UTF-8 (sem ele o Excel em português quebra os
+acentos). Ao lado de cada coluna `<campo>_uuid` vai uma coluna `<campo>` com o nome do
+registro referenciado. O nome do arquivo vem do `verbose_name_plural` do modelo, exceto
+onde `NOMES_DAS_PLANILHAS` corrige (`Conta` → `lancamentos`).
+
+### Por que AES-256, e por que senha de 12 caracteres
+
+O ZIP com senha tem dois padrões. O **ZipCrypto** abre com duplo clique no Windows e no
+macOS, mas é quebrável com ferramentas públicas — inaceitável para dados financeiros. O
+**AES-256** é forte, mas o descompactador nativo do Windows e do macOS não o abre: é
+preciso 7-Zip, WinRAR, Keka ou The Unarchiver. A tela e o LEIA-ME dizem isso.
+
+O padrão WinZip AE-2 deriva a chave com só **1.000 iterações** de PBKDF2-SHA1 (o `.fcbk`
+usava 100.000 de SHA-256), e isso não é configurável sem sair do padrão — e do que as
+ferramentas comuns abrem. Quem compensa é a senha: a exportação exige de 12 a 128
+caracteres, os mesmos limites da senha da conta (`TAMANHO_MINIMO` e `TAMANHO_MAXIMO` de
+[`validacao_senha.py`](../backend/core/validacao_senha.py)).
+
+Todas as entradas são cifradas, o LEIA-ME inclusive: ele cita nomes de categorias,
+cartões e carteiras do usuário.
+
+### Exportar: POST, com a senha no corpo
+
+`POST /api/ferramentas/backup/` com `{"senha": "..."}`. Era um `GET` com `?senha=` na URL,
+o que gravava a senha em log de acesso, proxy e histórico do navegador. O
+`GET /api/ferramentas/exportar/` ficou só com os relatórios por período (Excel, CSV e
+PDF), que não cobrem tudo e não voltam para o sistema.
+
+Os dois têm throttle por usuário (`backup`: 10/hora; `relatorios`: 30/hora, em
+`DEFAULT_THROTTLE_RATES`): cada pedido lê a base inteira do usuário. O
+`GET /api/ferramentas/backup/` devolve `{"ultimo_backup_em": ...}` (de
+`ConfigUsuario.ultimo_export_em`) para a tela lembrar quem está há mais de 30 dias sem
+backup; ele fica fora do throttle, que existe para o custo de gerar, não de consultar. Exportar não passa
+pelo portão de e-mail confirmado (ver [autenticacao.md](autenticacao.md)).
+
+### Importar: com ou sem senha
+
+`ler_backup_zip` em [`import_service.py`](../backend/core/services/import_service.py)
+aceita ZIP cifrado e ZIP sem senha. O segundo caso é deliberado: um usuário que extrai o
+backup, corrige algo no `dados.json` e recompacta numa ferramenta qualquer precisa
+conseguir importar de volta.
+
+Antes de restaurar, o arquivo passa por quatro portões, cada um com mensagem própria:
+é ZIP; tem `dados.json`; a senha está presente e certa; e `metadata.formato` é
+`freecash-dados` com versão em `SUPPORTED_VERSIONS`. O `dados.json` descompactado tem
+teto de `TAMANHO_MAXIMO_DADOS_JSON` (100 MB) contra ZIP malicioso que infla ao abrir — e
+a leitura para um byte além do teto, porque o tamanho declarado no cabeçalho pode mentir.
+
+### O `dados.json` pode vir editado à mão
+
+Com o `.fcbk` isso já era possível — quem tem a senha consegue montar um arquivo —, mas
+o formato aberto torna o caminho óbvio. Por isso `filter_valid_fields` descarta **chave
+primária e dono** de toda linha (`id`, `usuario`, `usuario_id`). Sem isso, uma linha com
+`usuario_id` de outra pessoa era criada na conta dela — o `Model.__init__` do Django
+aplica o `usuario_id` solto por cima do `usuario` passado pela restauração. As FKs
+continuam vindo só por `<campo>_uuid`, resolvidas contra os registros do próprio
+arquivo. `test_backup_zip.py` cobre os dois vetores.
 
 ---
 
 ## Quais modelos entram
 
-Nenhuma lista manual. `get_backupable_models()` percorre os apps do projeto e pega todo
-modelo que tenha **`usuario` e `uuid`**:
+`get_backupable_models()` percorre os apps do projeto e pega todo modelo que tenha
+**`usuario` e `uuid`**:
 
 - `usuario` é o isolamento multi-tenant — sem ele não há como filtrar o que é de quem;
 - `uuid` é a chave estável entre bases. Os `id` sequenciais mudam na restauração, então
   as FKs viajam no arquivo como `<campo>_uuid` e são religadas na chegada.
 
-Consequência: **um modelo novo com esses dois campos entra no backup sozinho**. É o
-comportamento certo, e é também por isso que a ordem precisa ser declarada à mão.
+Modelos que pertencem ao usuário por outro caminho ficam fora da descoberta e são
+exportados e restaurados à mão: `AporteMeta` (via meta), `DetalheRendaFixa` e `Cotacao`
+(via ativo) e `LinhaExtrato` (via extrato). A `LinhaExtrato` ficou de fora até 2026-10:
+a restauração apagava os extratos, os recriava vazios e as linhas sumiam em cascata.
+
+**Esquecer a exportação manual não dá erro.** Por isso
+[`test_backup_cobertura.py`](../backend/core/tests/test_backup_cobertura.py) percorre
+todos os modelos de `core` e `investimento` e falha se algum não estiver no backup nem
+em `FORA_DO_BACKUP` — a lista de exclusões, cada uma com o motivo (hoje só
+`LogAcaoAdmin`, que é auditoria da administração).
 
 ---
 
-## O dict `priority` existe duas vezes
+## A ordem de restauração
 
-A ordem de restauração é a ordem das dependências: categoria antes de conta, carteira
-antes de ativo, ativo antes de transação. Ela vive num dict `priority` que está
-**duplicado** em `export_service.py` e `import_service.py`.
+A ordem é a das dependências: categoria antes de conta, carteira antes de ativo, ativo
+antes de transação. Ela vive no dict `priority` de `get_backupable_models`, num lugar
+só — a exportação e a importação usam a mesma função. (Antes havia uma cópia em cada
+serviço, e elas já tinham divergido.)
 
-**Editar só um deixa a restauração meio quebrada.** O export ordena para gravar, o
-import ordena para religar as FKs; se divergirem, um registro chega antes do pai e a FK
-resolve para `None` — de novo, sem erro.
+Um modelo novo sem entrada em `priority` vai para o fim. Se ele for **pai** de outro, a
+FK do filho resolve para `None` — de novo, sem erro. Modelo novo com FK precisa de
+entrada.
 
 A exclusão prévia usa `reversed(backup_models)`, a mesma lista de trás para frente, para
 que o filho saia antes do pai.
 
 ---
 
-## Os quatro mapas de compatibilidade
+## Renomear modelo ou campo quebra os backups já gerados
 
 O arquivo guarda **nomes de classe** (`data[app][NomeDoModelo]`) e **nomes de campo**.
-Qualquer renomeação no código é, portanto, uma quebra de formato: o backup que o usuário
-gerou ontem continua trazendo os nomes de ontem.
+Renomear no código, tornar uma FK obrigatória ou mover um campo de modelo faz o ZIP de
+ontem perder dados na restauração de hoje — e `filter_valid_fields` descarta o que não
+reconhece sem avisar.
 
-| Mapa | Para quê | Exemplo real |
-|---|---|---|
-| `NOMES_LEGADOS_DE_MODELO` | Modelo renomeado | `ReceitaRecorrente` → `LancamentoRecorrente` |
-| `CAMPOS_RENOMEADOS_POR_MODELO` | Campo renomeado | `Conta.receita_recorrente_uuid` → `recorrencia_uuid` |
-| `FKS_LEGADAS_COM_PADRAO` | FK que virou obrigatória | `Transacao.carteira`, que não existia antes das carteiras |
-| `CAMPOS_MOVIDOS_DE_MODELO` | Campo que trocou de modelo | `Ativo.meta_porcentagem` → `PosicaoCarteira.meta_porcentagem` |
+Na época do `.fcbk` havia quatro mapas de compatibilidade para isso
+(`NOMES_LEGADOS_DE_MODELO`, `CAMPOS_RENOMEADOS_POR_MODELO`, `FKS_LEGADAS_COM_PADRAO` e
+`CAMPOS_MOVIDOS_DE_MODELO`). Saíram junto com o `.fcbk`: nenhum arquivo daquela época
+chega mais, e eles eram código morto. **A próxima mudança desse tipo precisa trazer o
+mapa de volta** — o histórico do git tem a implementação e os testes
+(`test_backup_compatibilidade.py`) — e subir `VERSION`.
 
-O terceiro é o mais traiçoeiro. O laço genérico grava `None` em toda FK cujo
-`<campo>_uuid` não esteja no arquivo; com a coluna `NOT NULL`, o insert é rejeitado, o
-fallback por nome também falha, e o registro entra em `total_ignorados` — **as ordens do
-usuário somem sem erro nenhum**. Ver [carteiras.md](carteiras.md) para o caso concreto.
-
-O quarto é o contra-exemplo do "remover campo é seguro". Quando a meta de alocação
-saiu de `Ativo` para `PosicaoCarteira`, `filter_valid_fields` passou a descartá-la de
-todo backup anterior — sem erro — e o balanceamento reabria com todos os ativos em 0%.
-O valor é lido antes da filtragem e aplicado **depois** do recálculo, que é quem cria a
-posição que vai recebê-lo. Só é aplicado quando o ativo tem exatamente uma posição: a
-meta era global por ativo, e dividi-la entre custódias exigiria um critério que o
-arquivo não tem.
-
-**A próxima renomeação, a próxima FK obrigatória ou o próximo campo que muda de modelo
-precisa da entrada correspondente.** `core/tests/test_backup_compatibilidade.py` cobre
-os quatro casos.
-
-Remover campo é seguro só quando o dado morreu de fato; se ele foi para outro modelo,
-`filter_valid_fields` o descarta em silêncio e é preciso a entrada acima.
+O formato atual é a versão `5.0`.
 
 ---
 
@@ -97,8 +149,7 @@ Dois conjuntos saem do ar dentro da transação, por motivos diferentes:
 **Investimento.** `atualizar_ativo_apos_transacao` recalcularia preço médio a cada
 transação reinserida, produzindo valores parciais enquanto o histórico ainda está
 incompleto. O recálculo é forçado no fim, sobre o conjunto já completo — e é ele que
-reconstrói `PosicaoCarteira`, que num backup anterior às carteiras nem existe no
-arquivo.
+reconstrói `PosicaoCarteira`, que é cache.
 
 **Fatura.** `_consolidar_fatura` criaria uma fatura nova, com UUID gerado na hora, para
 cada compra de cartão restaurada — e ela depois duplicaria a fatura original que o
@@ -106,13 +157,12 @@ próprio backup traz. Por isso `deduplicar_faturas()` roda ao final.
 
 ---
 
-## `AporteMeta` não passa pelo laço genérico
+## Modelos fora do laço genérico
 
-Ele não tem FK para o usuário — pertence à meta, não à pessoa. Fica fora da descoberta
-automática e é exportado e restaurado à mão, religado pelo `meta_uuid`.
-
-No `DELETE`, os aportes antigos já saem em cascata junto com as metas, então não há
-passo de limpeza próprio.
+`AporteMeta`, `LinhaExtrato`, `Cotacao` e `DetalheRendaFixa` não têm FK para o usuário e
+são restaurados à mão depois do laço, religados pelo UUID do pai. No `DELETE`, os
+registros antigos já saem em cascata junto com o pai, então não há passo de limpeza
+próprio.
 
 Modelos com `usuario` OneToOne (só `ConfigUsuario` hoje) também escapam do `DELETE`: são
 atualizados com `update_or_create`, porque apagar o perfil do usuário logado no meio de
@@ -132,7 +182,7 @@ cobre os dois sentidos.
 
 ## Tudo numa transação
 
-`restore_user_data_fcbk` roda `DELETE` e `INSERT` dentro de `transaction.atomic`. Uma
+`restaurar_dados_usuario` roda `DELETE` e `INSERT` dentro de `transaction.atomic`. Uma
 falha no meio desfaz tudo — inclusive o apagamento. Restauração parcial seria pior que
 restauração nenhuma: o usuário ficaria sem os dados antigos e sem os novos.
 
@@ -146,6 +196,13 @@ guarda apenas `ConfigUsuario.ultimo_export_em`, para lembrá-lo.
 **Não há merge.** A restauração é substituição total: apaga o que existe e repõe o do
 arquivo. Mesclar duas bases exigiria decidir o que fazer com cada conflito, e não há
 interface para essa decisão.
+
+**A importação não lê os CSVs.** Eles perdem informação de propósito (vírgula decimal,
+rótulos ao lado dos UUIDs) para serem legíveis; o contrato de máquina é o `dados.json`.
+
+**`.fcbk` não é mais lido.** A decisão foi cortar por completo, sem período de
+transição: quem tinha um `.fcbk` precisava restaurá-lo e exportar de novo antes do
+deploy desta mudança.
 
 **A senha do arquivo não é a senha da conta.** São independentes de propósito — trocar a
 senha da conta não deve invalidar backups já gerados. Em compensação, **senha de backup
