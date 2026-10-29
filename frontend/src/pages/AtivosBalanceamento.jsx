@@ -455,6 +455,7 @@ export default function AtivosBalanceamento() {
             </>
           ) : (
             <Button
+              data-tour="balanceamento-ajustar-metas"
               onClick={handleStartEditing}
               disabled={!balanceData?.carteira || classes.length === 0}
               title={!balanceData?.carteira ? 'Selecione uma carteira para definir metas' : undefined}
@@ -523,7 +524,7 @@ export default function AtivosBalanceamento() {
 
           {/* Visão de Metas por Carteira */}
           {balanceData?.carteiras?.length > 0 && (
-            <Card className="border border-border/40 bg-card shadow-sm">
+            <Card data-tour="balanceamento-entre-carteiras" className="border border-border/40 bg-card shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div>
                   <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
@@ -672,7 +673,7 @@ export default function AtivosBalanceamento() {
       ) : (
         <>
           {/* ── Aporte Mágico Calculator ── */}
-          <Card className="border border-primary/20 bg-card shadow-sm">
+          <Card data-tour="balanceamento-aporte" className="border border-primary/20 bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 <Coins className="h-4 w-4 text-amber-500" />
@@ -878,7 +879,7 @@ export default function AtivosBalanceamento() {
 
       {/* ── Slider Table per class ── */}
       {balanceData?.classes?.map((classe, idx) => (
-        <Card key={idx} className="border border-border/40 bg-card shadow-sm">
+        <Card key={idx} data-tour="balanceamento-metas" className="border border-border/40 bg-card shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
               <Scale className="h-4 w-4 text-primary" />

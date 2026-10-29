@@ -309,6 +309,7 @@ export default function AtivosHistorico() {
           <SeletorCarteira id="historico-filtro-carteira" />
           {carteirasAtivas.length > 1 && (
             <Button
+              data-tour="historico-transferir"
               variant="outline"
               onClick={() => setTransferenciaAberta(true)}
               className="h-9 px-4 rounded-xl text-xs font-semibold flex items-center gap-1.5"
@@ -318,6 +319,7 @@ export default function AtivosHistorico() {
             </Button>
           )}
           <Button
+            data-tour="historico-nova-ordem"
             onClick={() => navigate('/investimentos/historico/novo')}
             className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground border-0 flex items-center gap-1.5"
           >
@@ -343,7 +345,7 @@ export default function AtivosHistorico() {
       )}
 
       {/* ── KPI Summary ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="historico-resumo" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {(['C', 'V', 'D']).map((tipo) => {
           const cfg = TIPO_CONFIG[tipo];
           const Icon = cfg.icon;
@@ -370,7 +372,7 @@ export default function AtivosHistorico() {
       </div>
 
       {/* ── Ledger Table ── */}
-      <Card className="border border-border/40 bg-card shadow-sm">
+      <Card data-tour="historico-lista" className="border border-border/40 bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
             <History className="h-4 w-4 text-primary" />

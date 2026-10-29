@@ -413,6 +413,7 @@ export default function Investimentos() {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <SeletorCarteira id="investimentos-filtro-carteira" />
           <Button
+            data-tour="investimentos-atualizar"
             variant="outline"
             onClick={handleRefreshAll}
             disabled={isRefreshing}
@@ -425,7 +426,7 @@ export default function Investimentos() {
       </div>
 
       {/* KPI Cards (Always Shown) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div data-tour="investimentos-resumo" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Card 1: Patrimônio Total */}
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
@@ -537,7 +538,7 @@ export default function Investimentos() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           
           {/* Evolução do Patrimônio */}
-          <Card className="lg:col-span-3 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+          <Card data-tour="investimentos-evolucao" className="lg:col-span-3 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
                 <CardTitle className="text-base font-bold text-foreground">
@@ -650,7 +651,7 @@ export default function Investimentos() {
           )}
 
           {/* Ativos na Carteira (Donut) */}
-          <Card className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
+          <Card data-tour="investimentos-alocacao" className="lg:col-span-2 bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl flex flex-col justify-between">
             <CardHeader className="p-0 mb-6">
               <CardTitle className="text-base font-bold text-foreground">Ativos na Carteira</CardTitle>
             </CardHeader>
@@ -690,7 +691,7 @@ export default function Investimentos() {
         </div>
 
         {/* Rentabilidade Mensal por Ano */}
-        <Card className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl">
+        <Card data-tour="investimentos-rentabilidade-mensal" className="bg-card border border-border/40 shadow-sm text-card-foreground p-5 rounded-2xl">
           <CardHeader className="p-0 mb-6">
             <CardTitle className="text-base font-bold text-foreground">
               Rentabilidade Mensal

@@ -131,7 +131,7 @@ export default function AtivosCarteiras() {
             onde cada posição está custodiada.
           </p>
         </div>
-        <Button onClick={abrirCriacao} className="rounded-xl">
+        <Button data-tour="carteiras-nova" onClick={abrirCriacao} className="rounded-xl">
           <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
           Nova carteira
         </Button>
@@ -156,6 +156,7 @@ export default function AtivosCarteiras() {
           {carteiras.map((carteira) => (
             <Card
               key={carteira.id}
+              data-tour="carteiras-cartao"
               className={carteira.ativa ? '' : 'opacity-70'}
             >
               <CardHeader className="pb-3">
@@ -203,7 +204,7 @@ export default function AtivosCarteiras() {
                     <dt className="text-muted-foreground">Ativos com posição</dt>
                     <dd className="font-medium text-foreground">{carteira.total_ativos}</dd>
                   </div>
-                  <div>
+                  <div data-tour="carteiras-horizonte">
                     <dt className="text-muted-foreground">No saldo do Horizonte</dt>
                     <dd className="font-medium text-foreground">
                       {carteira.considerar_no_saldo ? 'Sim' : 'Não'}
@@ -222,6 +223,7 @@ export default function AtivosCarteiras() {
                   </Button>
 
                   <Button
+                    data-tour="carteiras-arquivar"
                     variant="outline"
                     onClick={() =>
                       arquivarMutation.mutate({ id: carteira.id, ativa: !carteira.ativa })

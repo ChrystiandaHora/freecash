@@ -45,7 +45,7 @@ export function PainelSinais({
   if (!temSinais) return null;
 
   return (
-    <Card id={ANCORA_SINAIS} className="border border-amber-500/30 bg-card shadow-sm">
+    <Card id={ANCORA_SINAIS} data-tour="investimentos-sinais" className="border border-amber-500/30 bg-card shadow-sm">
       <CardHeader>
         <CardTitle
           ref={tituloRef}

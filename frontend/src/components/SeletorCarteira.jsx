@@ -23,7 +23,7 @@ export default function SeletorCarteira({ id = 'filtro-carteira', className = ''
   if (carteirasAtivas.length <= 1 && !carteiraId) return null;
 
   return (
-    <div className={`w-full sm:w-60 flex items-center gap-2 ${className}`}>
+    <div data-tour="investimentos-carteira" className={`w-full sm:w-60 flex items-center gap-2 ${className}`}>
       {showLabel && (
         <label htmlFor={id} className="text-xs font-semibold text-muted-foreground shrink-0">
           Carteira:

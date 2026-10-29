@@ -412,6 +412,7 @@ export default function MeusAtivos() {
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <SeletorCarteira />
           <Button 
+            data-tour="ativos-atualizar"
             onClick={() => updateQuotesMutation.mutate()}
             disabled={updateQuotesMutation.isPending}
             variant="outline"
@@ -422,6 +423,7 @@ export default function MeusAtivos() {
           </Button>
 
           <Button 
+            data-tour="ativos-cadastrar"
             onClick={openCreateModal}
             className="rounded-xl h-10 px-4 gap-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold border-0 shadow-lg shadow-primary/20 transition-all active:scale-98"
           >
@@ -446,7 +448,7 @@ export default function MeusAtivos() {
       )}
 
       {/* Grid de Métricas SaaS Flat */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div data-tour="ativos-resumo" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         
         <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
@@ -528,10 +530,10 @@ export default function MeusAtivos() {
       />
 
       {/* Caixa de Visualização Principal */}
-      <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
+      <div data-tour="ativos-lista" className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
         
         {/* Barra de Filtros e Abas */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div data-tour="ativos-filtros" className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           
           {/* Abas — filtro de lista (seleção única), não troca de região da página */}
           <div role="radiogroup" aria-label="Filtrar por situação do ativo" className="flex border-b border-border/40 self-start">

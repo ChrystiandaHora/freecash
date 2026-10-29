@@ -398,6 +398,7 @@ export default function GraficoCotacoesAtivos({
 
   return (
     <section
+      data-tour="ativos-grafico"
       aria-labelledby="grafico-cotacoes-titulo"
       className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-5"
     >

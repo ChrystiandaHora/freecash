@@ -198,6 +198,7 @@ export default function AtivosClasses() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <Button
+            data-tour="classes-nova"
             onClick={() => openModal({ type: 'create-classe' })}
             className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground border-0 flex items-center gap-1.5"
           >
@@ -225,14 +226,14 @@ export default function AtivosClasses() {
       )}
 
       {/* ── Legend ── */}
-      <div className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
+      <div data-tour="classes-legenda" className="flex items-center gap-6 text-xs text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1.5"><FolderOpen className="h-3.5 w-3.5 text-primary" /> Classe (Nível 1)</div>
         <div className="flex items-center gap-1.5"><Folder className="h-3.5 w-3.5 text-blue-500" /> Categoria (Nível 2)</div>
         <div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-amber-500" /> Subcategoria (Nível 3)</div>
       </div>
 
       {/* ── Tree View ── */}
-      <Card className="border border-border/40 bg-card shadow-sm">
+      <Card data-tour="classes-arvore" className="border border-border/40 bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" />
@@ -281,7 +282,7 @@ export default function AtivosClasses() {
                       {isExpandedC ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />}
                     </button>
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div data-tour="classes-acoes" className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => openModal({ type: 'create-cat', data: { classeId: classe.id, classeNome: classe.nome } })}
                         className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors" title="Nova categoria" aria-label="Nova categoria"

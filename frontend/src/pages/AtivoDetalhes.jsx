@@ -218,6 +218,7 @@ export default function AtivoDetalhes() {
               </span>
               {posicoes.length > 0 && (
                 <Button
+                  data-tour="ativo-detalhe-transferir"
                   onClick={() => setTransferenciaAberta(true)}
                   variant="outline"
                   className="rounded-xl h-10 px-3.5 gap-1.5 font-semibold transition-all border-border/60 hover:bg-accent active:scale-98 text-xs"
@@ -227,6 +228,7 @@ export default function AtivoDetalhes() {
                 </Button>
               )}
               <Button 
+                data-tour="ativo-detalhe-atualizar"
                 onClick={handleRefresh}
                 disabled={updateAssetMutation.isPending}
                 className="rounded-xl h-10 px-4 gap-2 font-semibold transition-all shadow-sm active:scale-98"
@@ -240,7 +242,7 @@ export default function AtivoDetalhes() {
       </div>
 
       {/* Grid Rápido de KPIs a mercado */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div data-tour="ativo-detalhe-resumo" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 relative overflow-hidden transition-all hover:shadow-md">
           <div className="absolute -right-4 -bottom-4 h-16 w-16 opacity-5 text-foreground">
@@ -289,7 +291,7 @@ export default function AtivoDetalhes() {
       <div className="bg-card border border-border/40 shadow-sm text-card-foreground rounded-xl p-6 space-y-6">
         
         {/* Abas — padrão WAI-ARIA de tabs: troca o painel visível, navegável por setas */}
-        <div role="tablist" aria-label="Seções do ativo" className="flex border-b border-border/40 self-start shrink-0 w-full">
+        <div data-tour="ativo-detalhe-abas" role="tablist" aria-label="Seções do ativo" className="flex border-b border-border/40 self-start shrink-0 w-full">
           {TABS.map((tab, index) => (
             <button
               key={tab.id}
