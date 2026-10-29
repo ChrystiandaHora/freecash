@@ -135,7 +135,7 @@ export default function CalendarioPagamentos() {
       </header>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div data-tour="calendario-meses" className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -166,6 +166,7 @@ export default function CalendarioPagamentos() {
         <Button
           type="button"
           variant="outline"
+          data-tour="calendario-hoje"
           onClick={voltarParaHoje}
           className="h-9 rounded-xl px-4 text-xs"
         >
@@ -186,7 +187,7 @@ export default function CalendarioPagamentos() {
         </div>
       ) : (
         data && (
-          <Card className="overflow-hidden rounded-2xl border-border/40">
+          <Card data-tour="calendario-grade" className="overflow-hidden rounded-2xl border-border/40">
             <CardContent className="p-3">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[44rem] border-separate border-spacing-1">

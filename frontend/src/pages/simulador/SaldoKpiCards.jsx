@@ -6,7 +6,7 @@ export default function SaldoKpiCards({ isLoading, kpis }) {
   const { formatarMoeda } = useMoeda();
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div data-tour="simulador-kpis" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card className="relative overflow-hidden border-border bg-card/65 backdrop-blur-md transition-all hover:scale-[1.01]">
         <div className="absolute right-3 top-3 rounded-full bg-blue-500/10 p-2 text-blue-500">
           <Activity className="h-5 w-5" />

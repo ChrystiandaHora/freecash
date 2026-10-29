@@ -8,7 +8,7 @@ export default function SimulacoesAtivasList({ simuladas, onRemove, onLimparTudo
   const { formatarMoeda } = useMoeda();
 
   return (
-    <Card className="border-border bg-card/65 backdrop-blur-md">
+    <Card data-tour="simulador-ativas" className="border-border bg-card/65 backdrop-blur-md">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Layers className="h-5 w-5 text-amber-500" /> Simulações Ativas

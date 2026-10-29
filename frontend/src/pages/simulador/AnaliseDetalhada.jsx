@@ -25,7 +25,7 @@ export default function AnaliseDetalhada({
   const conteudoId = useId();
 
   return (
-    <div>
+    <div data-tour="simulador-analise">
       <Button
         variant="outline"
         aria-expanded={expandido}

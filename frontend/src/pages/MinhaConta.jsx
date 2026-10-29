@@ -160,10 +160,11 @@ function Indicador({ icon: Icon, rotulo, valor, apoio, acao }) {
  * @param {string} props.titulo - Título da seção.
  * @param {string} props.descricao - Linha de apoio.
  * @param {React.ReactNode} props.children - Conteúdo.
+ * Demais props (como `data-tour`) vão para o Card.
  */
-function Secao({ icon, titulo, descricao, children, className = '' }) {
+function Secao({ icon, titulo, descricao, children, className = '', ...props }) {
   return (
-    <Card className={`flex flex-col border-border/40 shadow-sm ${className}`}>
+    <Card className={`flex flex-col border-border/40 shadow-sm ${className}`} {...props}>
       <CardHeader className="pb-4">
         {/* Heading real: a seção é estrutura permanente da página, não cromo
             transitório — ver a decisão de rótulo de seção em A11Y-DECISIONS.md. */}
@@ -240,6 +241,7 @@ function SecaoPerfil({ conta, erros, salvando, onSalvar }) {
 
   return (
     <Secao
+      data-tour="conta-perfil"
       icon={UserIcon}
       titulo="Dados do perfil"
       descricao="Como você é identificado no sistema."
@@ -476,7 +478,7 @@ export default function MinhaConta() {
       {cabecalho}
 
       {/* ── Estado da conta ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div data-tour="conta-indicadores" className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Indicador
           icon={UserIcon}
           rotulo="Conta"
@@ -549,6 +551,7 @@ export default function MinhaConta() {
         />
 
         <Secao
+          data-tour="conta-email"
           icon={Mail}
           titulo="Endereço de e-mail"
           descricao="É por ele que você recupera o acesso caso esqueça a senha."
@@ -651,6 +654,7 @@ export default function MinhaConta() {
       {/* ── Senha e sessões ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Secao
+          data-tour="conta-senha"
           icon={ShieldCheck}
           titulo="Senha"
           descricao="Ao trocar, as outras sessões da sua conta são encerradas."
@@ -770,6 +774,7 @@ export default function MinhaConta() {
         </Secao>
 
         <Secao
+          data-tour="conta-sessoes"
           icon={MonitorSmartphone}
           titulo="Sessões ativas"
           descricao="Onde sua conta está conectada no momento."
@@ -811,7 +816,7 @@ export default function MinhaConta() {
       </div>
 
       {/* ── Exclusão ───────────────────────────────────────────────────────── */}
-      <Card className="border-border/40 shadow-sm">
+      <Card data-tour="conta-excluir" className="border-border/40 shadow-sm">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {/* Sem borda vermelha no card: a regra da casa é vermelho só no botão.

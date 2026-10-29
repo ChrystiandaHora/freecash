@@ -164,7 +164,7 @@ export default function Eventos() {
           >
             <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
           </Button>
-          <Button onClick={handleNovoEvento} className="gap-2">
+          <Button data-tour="eventos-novo" onClick={handleNovoEvento} className="gap-2">
             <Plus className="h-4 w-4" />
             Novo Evento
           </Button>
@@ -172,7 +172,7 @@ export default function Eventos() {
       </div>
 
       {/* ─── Cards de Métricas Consolidadas ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-tour="eventos-resumo" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -263,7 +263,7 @@ export default function Eventos() {
 
       {/* ─── Barra de Busca e Filtros ───────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+        <div data-tour="eventos-busca" className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={busca}
@@ -297,7 +297,7 @@ export default function Eventos() {
           ))}
         </div>
       ) : eventosFiltrados.length === 0 ? (
-        <Card className="border-dashed p-12 text-center">
+        <Card data-tour="eventos-lista" className="border-dashed p-12 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
             <Sparkles className="h-7 w-7 text-primary" />
           </div>
@@ -317,7 +317,7 @@ export default function Eventos() {
           )}
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div data-tour="eventos-lista" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {eventosFiltrados.map((evento) => {
             const statusTemporal = getStatusTemporal(evento.inicio, evento.fim);
             const orcamento = evento.orcamento != null ? Number(evento.orcamento) : null;
@@ -423,7 +423,7 @@ export default function Eventos() {
                 </div>
 
                 {/* Rodapé de Ações */}
-                <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-3">
+                <div data-tour="eventos-acoes-card" className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-3">
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"

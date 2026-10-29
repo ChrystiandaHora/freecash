@@ -201,7 +201,7 @@ export default function EventoDetalhe() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div data-tour="evento-status" className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-primary" />
                 {evento.nome}
@@ -251,6 +251,7 @@ export default function EventoDetalhe() {
               Excluir
             </Button>
             <Button
+              data-tour="evento-adicionar"
               onClick={() => navigate(`/contas-pagar/novo?evento=${evento.id}`)}
               className="gap-2"
             >
@@ -262,7 +263,7 @@ export default function EventoDetalhe() {
       </div>
 
       {/* ─── Cards de KPIs do Evento ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div data-tour="evento-indicadores" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -355,7 +356,7 @@ export default function EventoDetalhe() {
 
       {/* ─── Barra de Progresso Geral ───────────────────────────────────────── */}
       {orcamento != null && orcamento > 0 && (
-        <Card className="p-5">
+        <Card data-tour="evento-progresso" className="p-5">
           <div className="space-y-2">
             <Progress
               value={pct}
@@ -377,7 +378,7 @@ export default function EventoDetalhe() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Coluna 1: Breakdown por Categoria */}
         <div className="lg:col-span-1 space-y-4">
-          <Card>
+          <Card data-tour="evento-categorias">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-primary" />
@@ -419,7 +420,7 @@ export default function EventoDetalhe() {
 
         {/* Coluna 2 e 3: Tabela de Lançamentos */}
         <div className="lg:col-span-2 space-y-4">
-          <Card>
+          <Card data-tour="evento-despesas">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">

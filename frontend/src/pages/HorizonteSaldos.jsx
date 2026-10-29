@@ -209,7 +209,7 @@ export default function HorizonteSaldos() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header data-tour="horizonte-cabecalho">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Horizonte de Saldos
         </h1>
@@ -234,14 +234,14 @@ export default function HorizonteSaldos() {
       {/* O achado mais importante da tela vem antes da grade: quem abre isto
           quer saber se e quando o saldo estoura, não percorrer 370 células. */}
       {primeiroNegativo ? (
-        <Alert variant="warning" icon={AlertTriangle}>
+        <Alert data-tour="horizonte-alerta" variant="warning" icon={AlertTriangle}>
           <span className="font-medium leading-relaxed">
             Seu saldo fica negativo em <strong>{dataPorExtenso(primeiroNegativo)}</strong>
             {considerarMetas && ' considerando os aportes necessários às suas metas'}.
           </span>
         </Alert>
       ) : (
-        <Alert variant="success" icon={CalendarClock}>
+        <Alert data-tour="horizonte-alerta" variant="success" icon={CalendarClock}>
           <span className="font-medium leading-relaxed">
             Nenhum dia negativo nos próximos 12 meses
             {considerarMetas && ', mesmo com os aportes necessários às suas metas'}.
@@ -260,7 +260,7 @@ export default function HorizonteSaldos() {
 
       {/* Filtros numa única linha acima da grade. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1.5">
+        <div data-tour="horizonte-limite" className="space-y-1.5">
           <label
             htmlFor="limite-atencao"
             className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -295,7 +295,7 @@ export default function HorizonteSaldos() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="horizonte-cenarios" className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             variant={considerarMetas ? 'default' : 'outline'}
@@ -335,7 +335,7 @@ export default function HorizonteSaldos() {
       )}
 
       {/* Abas — padrão WAI-ARIA de tabs: troca a região visível, navegável por setas */}
-      <div role="tablist" aria-label="Visão do horizonte de saldos" className="flex border-b border-border/40">
+      <div data-tour="horizonte-abas" role="tablist" aria-label="Visão do horizonte de saldos" className="flex border-b border-border/40">
         {ABAS.map((item, index) => {
           const { Icon } = item;
           const ativa = aba === item.id;
@@ -368,7 +368,7 @@ export default function HorizonteSaldos() {
 
       {aba === 'grade' && (
         <div id="painel-grade" role="tabpanel" aria-labelledby="aba-grade" tabIndex={0}>
-          <Card className="overflow-hidden rounded-2xl border-border/40">
+          <Card data-tour="horizonte-grade" className="overflow-hidden rounded-2xl border-border/40">
             <CardContent className="space-y-3 p-4">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                 <ItemLegenda situacao="confortavel" texto="acima do limite de atenção" />

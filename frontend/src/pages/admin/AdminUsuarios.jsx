@@ -119,7 +119,7 @@ export default function AdminUsuarios() {
 
       {/* Filtros numa única linha acima da lista. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1.5">
+        <div data-tour="admin-usuarios-busca" className="flex-1 space-y-1.5">
           <label
             htmlFor="admin-busca"
             className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -142,7 +142,7 @@ export default function AdminUsuarios() {
           </div>
         </div>
 
-        <div className="space-y-1.5">
+        <div data-tour="admin-usuarios-estado" className="space-y-1.5">
           <span
             id="rotulo-filtro-estado"
             className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -184,7 +184,7 @@ export default function AdminUsuarios() {
           <p className="text-sm text-muted-foreground">Carregando contas...</p>
         </div>
       ) : (
-        <Card className="overflow-hidden rounded-2xl border-border/40">
+        <Card data-tour="admin-usuarios-tabela" className="overflow-hidden rounded-2xl border-border/40">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[52rem] text-left text-sm">
@@ -272,7 +272,7 @@ export default function AdminUsuarios() {
                           {usuario.total_lancamentos} lanç. · {usuario.total_ativos} ativos
                         </td>
 
-                        <td className="px-4 py-3 text-right">
+                        <td data-tour="admin-usuarios-acao" className="px-4 py-3 text-right">
                           <Button
                             type="button"
                             variant="outline"
@@ -300,7 +300,7 @@ export default function AdminUsuarios() {
 
       {/* Paginação */}
       {total > 0 && (
-        <div className="flex items-center justify-between gap-3">
+        <div data-tour="admin-usuarios-paginacao" className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground" role="status">
             {total} {total === 1 ? 'conta' : 'contas'} · página {pagina}
           </p>

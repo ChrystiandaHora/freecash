@@ -21,6 +21,7 @@ export default function PontoDeViradaCard({ pontoDeVirada, projecaoCarregando })
 
   return (
     <Card
+      data-tour="simulador-ponto-virada"
       className={
         emVermelho
           ? 'border-red-600/40 bg-red-500/5 dark:border-red-400/40'

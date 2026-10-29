@@ -65,7 +65,7 @@ export default function FluxoProjetadoChart({ isLoading, chartData, isDark }) {
   ];
 
   return (
-    <Card className="border-border bg-card/65 backdrop-blur-md">
+    <Card data-tour="simulador-grafico" className="border-border bg-card/65 backdrop-blur-md">
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Activity className="h-5 w-5 text-blue-500" /> Fluxo Projetado (6 meses)

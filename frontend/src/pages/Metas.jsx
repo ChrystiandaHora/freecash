@@ -493,7 +493,7 @@ export default function Metas() {
             <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetchingAny ? 'animate-spin' : ''}`} aria-hidden="true" />
             Atualizar
           </Button>
-          <Button size="sm" onClick={abrirNovaMeta}>
+          <Button data-tour="metas-nova" size="sm" onClick={abrirNovaMeta}>
             <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Nova Meta
           </Button>
@@ -509,7 +509,7 @@ export default function Metas() {
       {actionError && <Alert variant="error">{actionError}</Alert>}
 
       {/* ─── Base de cálculo ────────────────────────────────────────────────── */}
-      <Card className="border border-border/40 bg-card text-card-foreground shadow-sm">
+      <Card data-tour="metas-base" className="border border-border/40 bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             <Calculator className="h-4 w-4" aria-hidden="true" />
@@ -613,13 +613,13 @@ export default function Metas() {
           <span className="sr-only">Carregando metas…</span>
         </div>
       ) : metasPadrao.length === 0 ? (
-        <Alert variant="info" title="Nenhuma meta padrão gerada ainda">
+        <Alert data-tour="metas-padrao" variant="info" title="Nenhuma meta padrão gerada ainda">
           Preencha a renda mensal e o custo de vida acima e clique em
           {' '}<strong>Gerar / recalcular metas padrão</strong> para criar as quatro metas de
           referência.
         </Alert>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div data-tour="metas-padrao" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metasPadrao.map((meta) => (
             <MetaCard
               key={meta.id}
@@ -637,7 +637,7 @@ export default function Metas() {
 
       {/* ─── Minhas metas (personalizadas) ──────────────────────────────────── */}
       {!isLoadingMetas && (
-        <section aria-labelledby="titulo-minhas-metas" className="space-y-4">
+        <section data-tour="metas-minhas" aria-labelledby="titulo-minhas-metas" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2
               id="titulo-minhas-metas"
@@ -675,7 +675,7 @@ export default function Metas() {
 
       {/* ─── Multiplicadores das metas padrão (editáveis) ───────────────────── */}
       {metasPadrao.length > 0 && (
-        <Card className="border border-border/40 bg-card text-card-foreground shadow-sm">
+        <Card data-tour="metas-multiplicadores" className="border border-border/40 bg-card text-card-foreground shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
               <Calculator className="h-4 w-4" aria-hidden="true" />
@@ -765,14 +765,16 @@ export default function Metas() {
       )}
 
       {/* ─── Tabela de todas as metas ───────────────────────────────────────── */}
-      <DataTable
-        columns={columns}
-        data={metas}
-        isLoading={isLoadingMetas}
-        pageSize={10}
-        caption="Metas financeiras cadastradas"
-        emptyMessage="Nenhuma meta cadastrada."
-      />
+      <div data-tour="metas-tabela">
+        <DataTable
+          columns={columns}
+          data={metas}
+          isLoading={isLoadingMetas}
+          pageSize={10}
+          caption="Metas financeiras cadastradas"
+          emptyMessage="Nenhuma meta cadastrada."
+        />
+      </div>
 
       {/* ─── Modais ─────────────────────────────────────────────────────────── */}
       <MetaFormModal

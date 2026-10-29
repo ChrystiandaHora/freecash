@@ -101,7 +101,7 @@ function CartaoCard({ conta, onEdit, onDelete, onToggleAtivo }) {
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 pt-1">
+      <div data-tour="pagamentos-acoes" className="flex gap-2 pt-1">
         <button
           id={`btn-toggle-ativo-${conta.id}`}
           onClick={() => onToggleAtivo(conta.id)}
@@ -207,7 +207,7 @@ export default function AjustesPagamentos() {
           >
             <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" />
           </Button>
-          <Button id="btn-novo-cartao" onClick={handleNew} className="gap-2">
+          <Button id="btn-novo-cartao" data-tour="pagamentos-novo" onClick={handleNew} className="gap-2">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Novo Cartão
           </Button>
@@ -231,7 +231,7 @@ export default function AjustesPagamentos() {
 
       {/* Empty State */}
       {!isLoading && !isError && contas.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div data-tour="pagamentos-lista" className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-4">
             <CreditCard className="h-8 w-8 text-slate-400" />
           </div>
@@ -250,7 +250,7 @@ export default function AjustesPagamentos() {
 
       {/* Ativos */}
       {ativas.length > 0 && (
-        <div className="space-y-3">
+        <div data-tour="pagamentos-lista" className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
             Ativos ({ativas.length})
           </h2>
@@ -270,7 +270,7 @@ export default function AjustesPagamentos() {
 
       {/* Inativos */}
       {inativas.length > 0 && (
-        <div className="space-y-3">
+        <div data-tour="pagamentos-desativados" className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
             Desativados ({inativas.length})
           </h2>
