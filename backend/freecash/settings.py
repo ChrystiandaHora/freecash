@@ -301,6 +301,9 @@ REST_FRAMEWORK = {
         "senha_reset_confirm": "10/hour",
         "email_verify": "10/hour",
         "email_verify_resend": "3/hour",
+        # Exportação lê a base inteira do usuário; o backup ainda deriva chave da senha
+        "backup": "10/hour",
+        "relatorios": "30/hour",
     },
     "EXCEPTION_HANDLER": "core.exception_handler.freecash_exception_handler",
 }

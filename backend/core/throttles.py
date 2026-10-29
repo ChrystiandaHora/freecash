@@ -1,8 +1,9 @@
-"""Classes de limitação de taxa (throttling) dos endpoints de autenticação.
+"""Classes de limitação de taxa (throttling) dos endpoints de autenticação e exportação.
 
 Antes destas classes, `POST /api/token/` e `POST /api/register/` aceitavam
 tentativas ilimitadas — força bruta de senha sem qualquer atrito, e criação de
-contas em massa. O throttling é aplicado explicitamente por view (opt-in), e não
+contas em massa. A exportação entrou depois pelo custo: cada pedido lê a base inteira
+do usuário. O throttling é aplicado explicitamente por view (opt-in), e não
 globalmente, para não estrangular o uso normal do aplicativo.
 
 Todas as classes usam o alias de cache "throttle" (DatabaseCache), compartilhado
