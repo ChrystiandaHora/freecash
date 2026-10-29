@@ -294,6 +294,7 @@ export default function ComprasCartao() {
         <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
           <Button
             id="btn-nova-compra"
+            data-tour="compras-nova"
             onClick={handleOpenAddModal}
             className="gap-2 font-semibold"
           >
@@ -302,6 +303,7 @@ export default function ComprasCartao() {
           </Button>
           <Button
             id="btn-atualizar-compras"
+            data-tour="compras-atualizar"
             variant="outline"
             onClick={handleAtualizarCompras}
             disabled={isContasFetching}
@@ -314,7 +316,7 @@ export default function ComprasCartao() {
       </div>
 
       {/* Upload Fatura Card */}
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm" data-tour="compras-importar">
         {/* Botão nativo (era um div com onClick, inacessível por teclado) */}
         <button
           type="button"
@@ -474,15 +476,17 @@ export default function ComprasCartao() {
         </Alert>
       )}
 
-      {/* Tabela */}
-      <DataTable
-        columns={columns}
-        data={contas}
-        isLoading={isContasLoading}
-        pageSize={15}
-        defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
-        emptyMessage="Nenhuma compra encontrada."
-      />
+      {/* Tabela — envolvida porque o DataTable não repassa props */}
+      <div data-tour="compras-lista">
+        <DataTable
+          columns={columns}
+          data={contas}
+          isLoading={isContasLoading}
+          pageSize={15}
+          defaultFilters={{ data_vencimento: getCurrentMonthDateRange() }}
+          emptyMessage="Nenhuma compra encontrada."
+        />
+      </div>
 
       {/* ───────────────── MODAL: CONFIRMAR EXCLUSÃO ───────────────── */}
       <Modal

@@ -85,6 +85,7 @@ export function RelatoriosPorPeriodo({ className = '' }) {
 
   return (
     <section
+      data-tour="backup-relatorios"
       aria-labelledby="relatorios-titulo"
       className={`rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8 ${className}`}
     >

@@ -146,6 +146,7 @@ export default function FerramentasImportar() {
           <div
             {...getRootProps()}
             id="dropzone-area"
+            data-tour="importar-arquivo"
             className={`
               relative flex flex-col items-center justify-center gap-4 rounded-2xl
               border-2 border-dashed transition-all duration-300 cursor-pointer
@@ -215,7 +216,7 @@ export default function FerramentasImportar() {
 
           {/* Fora da área de soltar: um campo dentro dela abriria o seletor de arquivo ao clicar */}
           {uploadedFile && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" data-tour="importar-senha">
               <label htmlFor="importar-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                 <Lock className="h-3 w-3" aria-hidden="true" />
                 Senha do arquivo
@@ -285,6 +286,7 @@ export default function FerramentasImportar() {
           <div className="flex gap-3">
             <Button
               id="btn-importar"
+              data-tour="importar-restaurar"
               onClick={handleImportar}
               disabled={!uploadedFile || isPending}
               className="flex-1 gap-2"
@@ -307,7 +309,7 @@ export default function FerramentasImportar() {
         {/* Info Panel */}
         <div className="lg:col-span-2 space-y-3">
           <SectionLabel as="h2">O que é lido do arquivo</SectionLabel>
-          <div className="p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20">
+          <div className="p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20" data-tour="importar-leitura">
             <div className="flex items-center gap-2 mb-1">
               <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden="true" />
               <span className="text-xs font-bold font-mono text-violet-600 dark:text-violet-400">dados.json</span>
@@ -317,7 +319,7 @@ export default function FerramentasImportar() {
             </p>
           </div>
 
-          <Alert variant="warning" icon={AlertCircle} title="Atenção" className="text-xs">
+          <Alert variant="warning" icon={AlertCircle} title="Atenção" className="text-xs" data-tour="importar-aviso">
             A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup.
           </Alert>
         </div>

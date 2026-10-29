@@ -12,6 +12,7 @@ import { ArrowRight, History } from 'lucide-react';
 export function RestaurarBackup() {
   return (
     <section
+      data-tour="backup-restaurar"
       aria-labelledby="restaurar-titulo"
       className="flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8 lg:self-start"
     >

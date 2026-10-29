@@ -114,7 +114,9 @@ export function LevarMeusDados() {
 
           <form onSubmit={handleSubmit} noValidate className="mt-8">
             <ol className="space-y-8">
-              <li className="relative flex gap-4 before:absolute before:bottom-[-2rem] before:left-[13px] before:top-7 before:w-0.5 before:bg-border before:content-['']">
+              <li
+                data-tour="backup-senha"
+                className="relative flex gap-4 before:absolute before:bottom-[-2rem] before:left-[13px] before:top-7 before:w-0.5 before:bg-border before:content-['']">
                 <MarcadorDoPasso numero={1} concluido={!problema} />
                 <div className="min-w-0 flex-1 space-y-4">
                   <h3 className="pt-0.5 text-sm font-semibold text-foreground">Defina uma senha</h3>
@@ -201,6 +203,7 @@ export function LevarMeusDados() {
                   <Button
                     type="submit"
                     id="btn-baixar-dados"
+                      data-tour="backup-baixar"
                     size="lg"
                     disabled={gerando}
                     aria-describedby={resultado ? 'backup-resultado' : undefined}
@@ -239,6 +242,7 @@ export function LevarMeusDados() {
         </div>
 
         <aside
+          data-tour="backup-conteudo"
           aria-label="Conteúdo do backup"
           className="border-t border-border/60 bg-muted/40 p-6 sm:p-8 lg:border-l lg:border-t-0"
         >

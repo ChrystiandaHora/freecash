@@ -262,7 +262,7 @@ export default function FerramentasConciliacao() {
         </SectionLabel>
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-tour="conciliacao-banco">
             <label
               htmlFor="conciliacao-banco"
               className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
@@ -286,7 +286,7 @@ export default function FerramentasConciliacao() {
             </p>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5" data-tour="conciliacao-cartao">
             <label
               htmlFor="conciliacao-cartao"
               className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
@@ -316,6 +316,7 @@ export default function FerramentasConciliacao() {
 
         <div
           {...getRootProps({ role: undefined, tabIndex: -1 })}
+          data-tour="conciliacao-arquivo"
           className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
             isDragActive ? 'border-primary bg-primary/5' : 'border-border bg-card'
           } ${arquivo ? 'border-primary/60 bg-primary/5' : ''}`}
@@ -377,7 +378,7 @@ export default function FerramentasConciliacao() {
       </section>
 
       {/* ─── Fila de revisão ──────────────────────────────────────────────── */}
-      <section aria-labelledby="titulo-fila" className="space-y-4">
+      <section aria-labelledby="titulo-fila" className="space-y-4" data-tour="conciliacao-fila">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <SectionLabel as="h2" id="titulo-fila" icon={Inbox}>
             Fila de revisão
@@ -571,7 +572,7 @@ export default function FerramentasConciliacao() {
                         </table>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2" data-tour="conciliacao-acoes">
                         <Button
                           className="gap-2"
                           disabled={marcadas.size === 0 || processarMutation.isPending}
