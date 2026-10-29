@@ -6,15 +6,16 @@
 export const helpContent = {
   "/dashboard": {
     title: "Dashboard",
-    overview: "Resumo financeiro do mês atual com saldos, gráficos de fluxo diário e projeção de 6 meses.",
+    overview: "Resumo financeiro de um mês: quanto entrou, quanto saiu, onde mais se gastou e como os meses vizinhos devem fechar.",
     features: [
-      "Indicadores rápidos de Receitas, Despesas, Saldo Mensal e Taxa de Poupança.",
+      "Indicadores de Receitas, Despesas e Saldo do mês, comparados com o mês anterior, e a Taxa de Poupança.",
       "Gráfico diário de fluxo de caixa (receitas x despesas por competência).",
-      "Projeção de fluxo de caixa acumulado para os próximos 6 meses.",
-      "Breakdown de maiores categorias de despesas."
+      "Projeção com os dois meses anteriores, o mês escolhido e os três seguintes, com o saldo de cada mês.",
+      "Maiores categorias de despesa do mês e o gasto médio por dia.",
+      "Despesas de eventos fora do orçamento aparecem à parte, sem entrar nas médias."
     ],
     actions: {
-      "Seletor de Período": "Altere o mês e ano de análise no cabeçalho para ver dados históricos."
+      "Seletor de Período": "Mês Atual, Anterior, Próximo ou Personalizado: qualquer mês e ano, inclusive futuros."
     }
   },
 
@@ -50,16 +51,16 @@ export const helpContent = {
 
   "/contas-pagar": {
     title: "Contas a Pagar",
-    overview: "Cadastro e controle de despesas e obrigações com status inteligente de vencimento.",
+    overview: "Cadastro e controle de despesas e obrigações, com o status calculado pelo vencimento.",
     features: [
-      "Listagem com status: Atrasado, Pendente, Vence Hoje e Pago.",
-      "Totalizadores rápidos de contas pagas e pendentes do período.",
-      "Filtros de vencimento por mês/ano."
+      "Status por conta: atrasada, vence em breve, pendente ou paga.",
+      "Totalizadores de pendente, atrasado e pago que acompanham o filtro aplicado.",
+      "Duas visões das mesmas contas, Kanban e Tabela; a lista abre no mês atual."
     ],
     actions: {
-      "Nova Despesa": "Abre o formulário de cadastro rápido de obrigação financeira.",
-      "Status Checkbox": "Marque ou desmarque uma conta como paga diretamente na linha.",
-      "Lançamento em Lote": "Acesse a interface de edição em tabela para cadastros massivos."
+      "Nova Conta": "Abre o formulário de cadastro de uma conta.",
+      "Pagar": "Na tabela, o botão da linha registra o pagamento e pode ser desfeito; no Kanban, arraste o card para Pagas.",
+      "Lançamento em Lote": "Abre uma planilha para lançar até 20 contas de uma vez."
     }
   },
 
@@ -78,40 +79,43 @@ export const helpContent = {
 
   "/contas-kanban": {
     title: "Pipeline Kanban",
-    overview: "Controle visual ágil de contas a pagar divididas por proximidade de vencimento.",
+    overview: "As contas do mês atual em colunas pelo prazo de vencimento, para ver de relance o que pagar primeiro.",
     features: [
-      "Separação automática em 5 colunas: Atrasadas, Para Hoje, Próximos 7 Dias, Final do Mês e Pagas.",
-      "Ação integrada de pagamento rápido."
+      "Sete colunas: Atrasadas, Vence Hoje, Vence amanhã, Vence 2 dias, Vence 3 dias, Pendentes e Pagas.",
+      "A coluna vem do vencimento e muda sozinha com os dias.",
+      "Resumo do mês: quanto falta pagar, quanto está atrasado e quantas contas já foram quitadas."
     ],
     actions: {
-      "Mover Cartão": "Arraste qualquer conta para a coluna 'Pagas' para registrar o pagamento na API."
+      "Mover Cartão": "Arraste a conta para a coluna 'Pagas' para registrar o pagamento. Mover entre as outras colunas não altera a data.",
+      "Editar": "Clique no card para editar a conta. Outros meses e exclusões ficam em Contas a Pagar."
     }
   },
 
   "/cartoes": {
     title: "Meus Cartões",
-    overview: "Gerenciamento de cartões de crédito cadastrados, utilização de limites e faturas.",
+    overview: "Visão dos cartões de crédito cadastrados: o que está comprometido em compras não pagas e o limite que resta.",
     features: [
-      "Gauge visual de utilização de limite de crédito por cartão.",
-      "Faturas organizadas com melhor dia de compra, fechamento e vencimento.",
-      "Histórico de compras vinculadas ao cartão."
+      "Totais somando todos os cartões: limite, comprometido e disponível.",
+      "Medidor de uso do limite por cartão: verde até 70%, amarelo até 90% e vermelho acima disso.",
+      "Dias de fechamento e vencimento e as 8 compras mais recentes de cada cartão."
     ],
     actions: {
-      "Novo Cartão": "Cadastre cartões com limites e dias de fechamento/vencimento.",
-      "Importar Fatura PDF": "Importe extratos em PDF (Nubank, Santander) para lançar despesas em lote."
+      "Cadastrar Cartão": "Os cartões são cadastrados em Financeiro > Pagamentos e aparecem aqui sozinhos.",
+      "Importar Fatura PDF": "Fica em Compras Cartão (entra direto) ou em Conciliação (com revisão antes)."
     }
   },
 
   "/receitas": {
     title: "Receitas",
-    overview: "Gerenciamento de receitas recorrentes e avulsas previstas e recebidas.",
+    overview: "Gerenciamento de receitas recorrentes e avulsas, separadas entre previstas e recebidas.",
     features: [
-      "Tabela de entradas financeiras organizadas no período.",
-      "Indicadores rápidos de Total Previsto, Recebido e Saldo a Receber."
+      "Tabela de entradas do período, aberta no mês atual, com filtros por coluna.",
+      "Indicadores de Total Previsto, Recebido e Saldo a Receber, que acompanham o filtro.",
+      "Receitas recorrentes marcadas com o ícone de setas."
     ],
     actions: {
-      "Nova Receita": "Registra uma nova previsão de entrada financeira.",
-      "Status Recebido": "Marque se a receita foi depositada/realizada."
+      "Nova Receita": "Registra uma nova entrada, única ou recorrente.",
+      "Marcar como recebida": "Feito no Calendário, quando o dinheiro cair. Na lista você edita ou exclui."
     }
   },
 
@@ -219,13 +223,15 @@ export const helpContent = {
   },
 
   "/investimentos/classes": {
-    title: "Classes e Metas",
-    overview: "Estrutura macro de classes de investimentos e definição de pesos percentuais estratégicos.",
+    title: "Classes de Ativos",
+    overview: "Classificação dos ativos em três níveis, no padrão ANBIMA: classe, categoria e subcategoria.",
     features: [
-      "Configuração de metas ideais de alocação macro (Ações, FIIs, Renda Fixa, Cripto)."
+      "Árvore de classificação: clique numa classe ou categoria para abrir os níveis de baixo.",
+      "A subcategoria é o nível escolhido ao cadastrar um ativo."
     ],
     actions: {
-      "Ajustar Pesos": "Defina o peso estratégico de cada classe para balizar a alocação macro."
+      "Nova Classe": "Cria um nível do topo, como Renda Fixa ou Renda Variável.",
+      "+ / Lápis / Lixeira": "Em cada nível: o + cria um nível abaixo, o lápis renomeia e a lixeira exclui."
     }
   },
 
@@ -260,13 +266,15 @@ export const helpContent = {
   },
 
   "/compras-cartao": {
-    title: "Conciliar Cartão",
-    overview: "Conciliação assistida de despesas individuais de faturas importadas.",
+    title: "Compras Cartão",
+    overview: "As compras individuais dos cartões de crédito, lançadas à mão ou lidas do PDF da fatura.",
     features: [
-      "Lista de compras da fatura com pareamento automático de valores e datas."
+      "Histórico aberto nas faturas que vencem neste mês, com filtros por mês, cartão e status.",
+      "Compra feita depois do dia de fechamento entra na fatura seguinte."
     ],
     actions: {
-      "Confirmar Vínculo": "Selecione a despesa correspondente para conciliar a compra de cartão."
+      "Nova Compra": "Registra à mão uma compra que não veio numa fatura importada.",
+      "Importar Fatura PDF": "Escolha o cartão e o banco e envie o PDF: as compras entram direto no histórico. Para revisar antes, use a Conciliação."
     }
   },
 
@@ -287,12 +295,15 @@ export const helpContent = {
 
   "/pagamentos": {
     title: "Ajustes de Pagamentos",
-    overview: "Cadastro e configuração de meios de pagamento, cartões de crédito e contas bancárias.",
+    overview: "Cadastro dos cartões de crédito usados para registrar compras e lançamentos.",
     features: [
-      "Personalização visual de meios de pagamento com cores e ícones das instituições financeiras."
+      "Bandeira, limite e dias de fechamento e vencimento da fatura de cada cartão.",
+      "Personalização com cor e ícone.",
+      "Cartões desativados ficam separados, prontos para voltar."
     ],
     actions: {
-      "Novo Meio": "Adicione contas correntes, carteiras físicas ou novos cartões de crédito ativos."
+      "Novo Cartão": "Cadastra um cartão de crédito com limite e ciclo da fatura.",
+      "Desativar": "Tira o cartão de uso sem apagar o histórico; dá para reativar. Excluir é definitivo."
     }
   },
 
@@ -435,23 +446,25 @@ export const helpContent = {
 
   "/investimentos/ativos/novo": {
     title: "Cadastrar Novo Ativo",
-    overview: "Adicione um novo ativo para investimentos à custódia da carteira.",
+    overview: "Adicione um novo ativo para acompanhá-lo na carteira.",
     features: [
-      "Defina ticker, nome, subclasse ANBIMA e meta estratégica de alocação.",
-      "Lance detalhes de renda fixa (emissor, indexadores, vencimento) e quantidade/preço de compra inicial."
+      "Defina ticker, nome, subcategoria ANBIMA, tipo fiscal e a carteira (corretora) onde ele está.",
+      "Em renda fixa ou alternativos, informe emissor, indexador, taxa e vencimento.",
+      "Opcional: quantidade e preço da posição que você já tem."
     ],
     actions: {
-      "Salvar": "Cadastra o ativo e lança a ordem de compra inicial (se informada)."
+      "Salvar": "Cadastra o ativo e, se a posição inicial foi informada, lança a ordem de compra no histórico."
     }
   },
   "/investimentos/ativos/editar/:id": {
     title: "Editar Ativo",
-    overview: "Altere as configurações cadastrais e metas de alocação do ativo.",
+    overview: "Altere os dados cadastrais do ativo. Quantidade e preço vêm das ordens do histórico.",
     features: [
-      "Ajuste a meta de alocação %, indexador, taxa contratada ou arquive o ativo."
+      "Ajuste subcategoria, tipo fiscal, indexador, taxa ou vencimento.",
+      "Arquive o ativo vendido por completo: o histórico fica e ele sai do balanceamento."
     ],
     actions: {
-      "Salvar": "Salva as alterações nas configurações do ativo."
+      "Salvar": "Salva as alterações nos dados do ativo."
     }
   },
 
@@ -553,7 +566,7 @@ export const helpContent = {
       "Esta tela não exibe dados financeiros: administrar a plataforma não exige ver as finanças de ninguém."
     ],
     actions: {
-      "Suspender": "Bloqueia o acesso e desconecta a pessoa imediatamente. Pede um motivo, que fica registrado no histórico administrativo.",
+      "Suspender": "Bloqueia o acesso e desconecta a pessoa imediatamente. O motivo é opcional e, se informado, fica no histórico administrativo.",
       "Reativar": "Devolve o acesso a uma conta suspensa."
     }
   },
