@@ -186,6 +186,7 @@ Para aprofundamento nas decisões de design e regras contábeis implementadas, c
 | [docs/importacao-extrato.md](docs/importacao-extrato.md) | Algoritmos de parsing para extratos bancários e faturas em PDF |
 | [docs/autenticacao.md](docs/autenticacao.md) | Gestão de identidade, controle de sessões e segurança de acesso |
 | [docs/backup.md](docs/backup.md) | Backup em ZIP (AES-256, JSON + CSV): formato, importação e cobertura dos modelos |
+| [docs/tour-guiado.md](docs/tour-guiado.md) | Tour guiado por tela: como dar tour a uma tela, alvos, abertura automática |
 | [DEPLOY.md](DEPLOY.md) | Manual completo de implantação e infraestrutura para produção |
 | [DEPLOY_GRATUITO.md](DEPLOY_GRATUITO.md) | Guia alternativo para publicação em tiers gratuitos |
 
