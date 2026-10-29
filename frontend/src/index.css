@@ -156,6 +156,7 @@ html {
      z-10 / z-20  popover e tooltip DENTRO do conteudo da pagina
      z-30         scrim da navbar
      z-40         header + mega painel + painel mobile
+     z-[45]       tour guiado (escurece o header; o aviso de inatividade passa por cima)
      z-50         modais (ui/Modal.jsx)
      z-[60]       skip link
    O scrim comeca em `top-16` para os controles do header seguirem clicaveis. */

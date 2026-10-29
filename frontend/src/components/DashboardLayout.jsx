@@ -19,6 +19,7 @@ import { EmailVerificationBanner } from './auth/EmailVerificationBanner';
 import { ModalInatividade } from './auth/ModalInatividade';
 import { ErrorBoundary } from './ErrorBoundary';
 import TopNav from './nav/TopNav';
+import { TourProvider } from './tour/TourProvider';
 import SiteFooter from './nav/SiteFooter';
 import { navIndex } from '../config/navigation';
 import { getRouteTitle } from '../lib/navigation';
@@ -49,6 +50,8 @@ export default function DashboardLayout() {
   }, [location.pathname]);
 
   return (
+    // O provider envolve a navegação (onde fica o botão de ajuda) e o conteúdo
+    <TourProvider>
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground transition-colors duration-300">
       {/* Skip link: primeiro elemento focável da página, permite pular a
           navegação repetida (WCAG 2.4.1). `min-h-11` atende a SC 2.5.8. */}
@@ -105,5 +108,6 @@ export default function DashboardLayout() {
 
       <SiteFooter />
     </div>
+    </TourProvider>
   );
 }

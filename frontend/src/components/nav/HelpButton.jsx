@@ -13,20 +13,12 @@
  */
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, PlayCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { helpContent } from '../../config/helpContent';
-
-/** Casa a rota atual com o dicionário de ajuda, aceitando parâmetros como `:id`. */
-const getHelpForPath = (path) => {
-  for (const pattern in helpContent) {
-    const escaped = pattern.replace(/([.+*?=^!:${}()[\]|/\\])/g, '\\$1');
-    const regexStr = '^' + escaped.replace(/\\:[a-zA-Z0-9_]+/g, '[^/]+') + '$';
-    if (new RegExp(regexStr).test(path)) return helpContent[pattern];
-  }
-  return null;
-};
+import { casarRota } from '../../lib/tour';
+import { useTour } from '../tour/tourContexto';
 
 const fallbackHelp = {
   title: 'Central de Ajuda FreeCash',
@@ -53,7 +45,14 @@ const fallbackHelp = {
 export function HelpButton() {
   const [helpOpen, setHelpOpen] = useState(false);
   const location = useLocation();
-  const currentHelp = getHelpForPath(location.pathname) || fallbackHelp;
+  const currentHelp = casarRota(helpContent, location.pathname)?.valor || fallbackHelp;
+  const { tourDisponivel, iniciarTour } = useTour();
+
+  const fazerTour = () => {
+    setHelpOpen(false);
+    // Depois que a modal desmonta e devolve o foco ao botão, que é para onde o tour o devolve
+    setTimeout(iniciarTour, 0);
+  };
 
   return (
     <>
@@ -82,6 +81,19 @@ export function HelpButton() {
           }
         >
           <div className="space-y-6">
+            {tourDisponivel && (
+              <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-foreground">
+                  <span className="font-semibold">Primeira vez aqui?</span> Um tour rápido mostra os
+                  pontos principais desta tela.
+                </p>
+                <Button onClick={fazerTour} className="shrink-0 gap-2 rounded-xl">
+                  <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                  Fazer o tour
+                </Button>
+              </div>
+            )}
+
             {/* Body (Scrollable) */}
             <div className="max-h-[60vh] overflow-y-auto space-y-6 custom-scrollbar pr-1">
               {/* Visão Geral */}
