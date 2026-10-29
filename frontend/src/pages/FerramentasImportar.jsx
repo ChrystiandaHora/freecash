@@ -1,8 +1,9 @@
 /**
  * Tela de Importação Segura de Backup (Ferramentas — Importar).
  *
- * Restaura dados a partir de arquivos `.fcbk` criptografados, carregados por
- * drag-and-drop ou seleção manual, com senha de proteção opcional.
+ * Restaura dados a partir do backup `.zip` gerado em Exportação & Backup, carregado por
+ * drag-and-drop ou seleção manual. A senha é opcional: um ZIP extraído e recompactado
+ * numa ferramenta comum pode voltar sem ela (ver docs/backup.md).
  *
  * Fluxo: o arquivo é validado por tipo MIME e exibido com nome e tamanho; ao confirmar,
  * sobe via `multipart/form-data` para `POST /api/ferramentas/importar/` com progresso; em
@@ -30,9 +31,12 @@ import { Button } from '../components/ui/Button';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { SectionLabel } from '../components/ui/SectionLabel';
 import { Alert } from '../components/ui/Alert';
+import { ehBackupZip } from '../lib/exportacao';
 
+// O Windows rotula ZIP como x-zip-compressed; sem ele o arquivo seria recusado ali
 const ACCEPTED_TYPES = {
-  'application/octet-stream': ['.fcbk'],
+  'application/zip': ['.zip'],
+  'application/x-zip-compressed': ['.zip'],
 };
 
 function formatBytes(bytes) {
@@ -80,7 +84,7 @@ export default function FerramentasImportar() {
       if (rejectedFiles.length > 0) {
         setResultado({
           tipo: 'erro',
-          msg: 'Formato inválido. Envie apenas arquivos de backup seguro no formato próprio .fcbk.',
+          msg: 'Formato inválido. Envie o backup .zip gerado em Exportação & Backup.',
         });
         return;
       }
@@ -104,16 +108,12 @@ export default function FerramentasImportar() {
 
   const handleImportar = () => {
     if (!uploadedFile) return;
-    const isFcbk = uploadedFile.name.endsWith('.fcbk');
-    if (isFcbk && !importPassword.trim()) {
-      setResultado({
-        tipo: 'erro',
-        msg: 'A senha é obrigatória para importar arquivos de backup .fcbk.',
-      });
+    if (!ehBackupZip(uploadedFile.name)) {
+      setResultado({ tipo: 'erro', msg: 'Envie o backup .zip gerado em Exportação & Backup.' });
       return;
     }
     setUploadProgress(0);
-    importMutation.mutate({ file: uploadedFile, password: isFcbk ? importPassword : '' });
+    importMutation.mutate({ file: uploadedFile, password: importPassword });
   };
 
   const handleReset = () => {
@@ -134,8 +134,8 @@ export default function FerramentasImportar() {
           Importar Backup
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Restaure seu banco de dados a partir do seu arquivo de backup seguro{' '}
-          <span className="font-semibold text-primary">.fcbk</span>
+          Restaure sua conta a partir do arquivo{' '}
+          <span className="font-semibold text-primary">.zip</span> gerado em Exportação & Backup
         </p>
       </div>
 
@@ -173,26 +173,6 @@ export default function FerramentasImportar() {
                   </p>
                 </div>
 
-                {/* Campo de Senha Dinâmico para arquivo .fcbk */}
-                {uploadedFile.name.endsWith('.fcbk') && (
-                  <div className="w-full max-w-sm mt-3 space-y-1.5 text-left" onClick={(e) => e.stopPropagation()}>
-                    <label htmlFor="importar-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                      <Lock className="h-3 w-3" aria-hidden="true" />
-                      Senha de Descriptografia
-                    </label>
-                    {/* Usa o PasswordInput compartilhado, que já traz aria-label/aria-pressed dinâmicos no toggle */}
-                    <PasswordInput
-                      id="importar-senha"
-                      autoComplete="off"
-                      placeholder="Digite a senha do backup..."
-                      value={importPassword}
-                      onChange={(e) => setImportPassword(e.target.value)}
-                      className="border-primary/30 focus-visible:ring-primary"
-                      disabled={isPending}
-                    />
-                  </div>
-                )}
-
                 <button
                   onClick={(e) => { e.stopPropagation(); handleReset(); }}
                   className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition-colors mt-1"
@@ -226,12 +206,35 @@ export default function FerramentasImportar() {
                     ou <span className="text-primary font-medium">clique para selecionar</span>
                   </p>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    Suporta apenas o formato seguro oficial .fcbk
+                    Aceita o backup .zip do freecash
                   </p>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Fora da área de soltar: um campo dentro dela abriria o seletor de arquivo ao clicar */}
+          {uploadedFile && (
+            <div className="space-y-1.5">
+              <label htmlFor="importar-senha" className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                <Lock className="h-3 w-3" aria-hidden="true" />
+                Senha do arquivo
+              </label>
+              {/* Usa o PasswordInput compartilhado, que já traz aria-label/aria-pressed dinâmicos no toggle */}
+              <PasswordInput
+                id="importar-senha"
+                autoComplete="off"
+                value={importPassword}
+                onChange={(e) => setImportPassword(e.target.value)}
+                className="border-primary/30 focus-visible:ring-primary"
+                disabled={isPending}
+                aria-describedby="importar-senha-dica"
+              />
+              <p id="importar-senha-dica" className="text-xs text-slate-500 dark:text-slate-400">
+                A que você definiu ao baixar. Deixe em branco se o ZIP não tiver senha.
+              </p>
+            </div>
+          )}
 
           {/* Upload Progress */}
           {isPending && (
@@ -303,20 +306,19 @@ export default function FerramentasImportar() {
 
         {/* Info Panel */}
         <div className="lg:col-span-2 space-y-3">
-          <SectionLabel as="h2">Backup Exclusivo FreeCash</SectionLabel>
+          <SectionLabel as="h2">O que é lido do arquivo</SectionLabel>
           <div className="p-4 rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/20">
             <div className="flex items-center gap-2 mb-1">
-              <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              <span className="text-xs font-bold font-mono text-violet-600 dark:text-violet-400">.fcbk</span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Backup Criptografado</span>
+              <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+              <span className="text-xs font-bold font-mono text-violet-600 dark:text-violet-400">dados.json</span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              O formato <span className="font-semibold">.fcbk</span> é o padrão oficial de segurança do FreeCash. Ele contém todos os seus dados estruturados de forma protegida com criptografia simétrica forte AES-GCM.
+              A restauração lê o <span className="font-semibold">dados.json</span> de dentro do ZIP. As planilhas CSV e o LEIA-ME são para você consultar e não interferem na importação.
             </p>
           </div>
 
           <Alert variant="warning" icon={AlertCircle} title="Atenção" className="text-xs">
-            A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup. Certifique-se de que possui a senha de descriptografia correta.
+            A restauração substituirá integralmente todos os dados atuais da sua conta pelos dados contidos no backup.
           </Alert>
         </div>
       </div>
