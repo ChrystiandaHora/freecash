@@ -138,7 +138,7 @@ export default function ContasPagarLote() {
         </div>
 
         {/* Quantidade Selector */}
-        <div className="bg-muted border border-border/40 p-1.5 rounded-xl flex items-center gap-1 self-start md:self-center">
+        <div data-tour="contas-pagar-lote-linhas" className="bg-muted border border-border/40 p-1.5 rounded-xl flex items-center gap-1 self-start md:self-center">
           {[5, 10, 15, 20].map((n) => (
             <button
               key={n}
@@ -164,7 +164,7 @@ export default function ContasPagarLote() {
 
       {/* Main Table Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="border border-border/40 bg-card shadow-sm">
+        <Card data-tour="contas-pagar-lote-tabela" className="border border-border/40 bg-card shadow-sm">
           <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Table className="h-4.5 w-4.5 text-slate-400" />
@@ -264,6 +264,7 @@ export default function ContasPagarLote() {
               {/* Botão de alternância com o texto DENTRO dele: antes o <span> ficava fora,
                   e o estado (marcado/desmarcado) só existia na forma do ícone. */}
               <button
+                data-tour="contas-pagar-lote-pagas"
                 type="button"
                 onClick={() => setTodasPagas(!todasPagas)}
                 aria-pressed={todasPagas}
@@ -291,6 +292,7 @@ export default function ContasPagarLote() {
                 Cancelar
               </Button>
               <Button
+                data-tour="contas-pagar-lote-salvar"
                 type="submit"
                 disabled={bulkMutation.isPending}
                 className="flex-1 sm:flex-none rounded-xl h-10 text-xs font-extrabold bg-primary hover:bg-primary/90 text-primary-foreground border-0 flex items-center justify-center gap-1.5 shadow-lg shadow-primary/25"

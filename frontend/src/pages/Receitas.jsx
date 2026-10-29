@@ -218,7 +218,7 @@ export default function Receitas() {
             <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button size="sm" onClick={() => navigate('/receitas/novo')}>
+          <Button data-tour="receitas-nova" size="sm" onClick={() => navigate('/receitas/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Receita
           </Button>
@@ -226,7 +226,7 @@ export default function Receitas() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div data-tour="receitas-resumo" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -283,18 +283,20 @@ export default function Receitas() {
       )}
 
       {/* Tabela */}
-      <DataTable
-        columns={columns}
-        data={tableData}
-        isLoading={isLoading}
-        pageSize={10}
-        defaultFilters={{ data_recebimento: getCurrentMonthDateRange() }}
-        emptyMessage="Nenhuma receita cadastrada."
-        onFilteredDataChange={setFilteredReceitas}
-        rowClassName={(row) =>
-          row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
-        }
-      />
+      <div data-tour="receitas-tabela">
+        <DataTable
+          columns={columns}
+          data={tableData}
+          isLoading={isLoading}
+          pageSize={10}
+          defaultFilters={{ data_recebimento: getCurrentMonthDateRange() }}
+          emptyMessage="Nenhuma receita cadastrada."
+          onFilteredDataChange={setFilteredReceitas}
+          rowClassName={(row) =>
+            row._fading ? 'opacity-0 scale-95 transition-all duration-500' : ''
+          }
+        />
+      </div>
 
       {/* ─── Modal: Cadastro / Edição ─────────────────────────────────────────── */}
 

@@ -361,7 +361,7 @@ export default function Relatorios() {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {/* Ano selector */}
-            <div className="flex items-center gap-2 bg-muted rounded-xl p-1 border border-border/40">
+            <div data-tour="relatorios-ano" className="flex items-center gap-2 bg-muted rounded-xl p-1 border border-border/40">
               {YEARS.map((y) => (
                 <button
                   key={y}
@@ -375,6 +375,7 @@ export default function Relatorios() {
             </div>
 
             <Button
+              data-tour="relatorios-imprimir"
               onClick={handlePrint}
               className="h-9 px-4 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground border-0 flex items-center gap-1.5"
             >
@@ -396,7 +397,7 @@ export default function Relatorios() {
         </div>
 
         {/* ── KPI Summary Strip ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 no-print">
+        <div data-tour="relatorios-resumo" className="grid grid-cols-2 sm:grid-cols-4 gap-4 no-print">
           {[
             {
               label: 'Receita Bruta',
@@ -447,7 +448,7 @@ export default function Relatorios() {
         </div>
 
         {/* ── Print Area ── */}
-        <div id="relatorios-print-area">
+        <div id="relatorios-print-area" data-tour="relatorios-secoes">
           {/* Print header (only visible on print) */}
           <div className="hidden print:block mb-8">
             <h1 className="text-2xl font-bold">FreeCash — Relatório Financeiro {ano}</h1>

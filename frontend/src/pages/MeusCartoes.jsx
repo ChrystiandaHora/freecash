@@ -147,9 +147,9 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
       {/* Informações do Limite */}
       <div className="p-5 space-y-4">
-        <div className="flex items-center justify-between gap-4">
+        <div data-tour="cartoes-limite" className="flex items-center justify-between gap-4">
           <div className="flex-grow">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Fatura Atual</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Em aberto</p>
             <p className="text-xl font-extrabold text-foreground">{formatarMoeda(usado)}</p>
             
             <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
@@ -171,7 +171,7 @@ const CreditCardVisual = ({ cartao, bgClass }) => {
 
         {/* Fatura / Compras Recentes */}
         <Accordion>
-          <AccordionItem title={`Fatura atual (${compras.length} transações)`}>
+          <AccordionItem data-tour="cartoes-fatura" title={`Compras recentes (${compras.length})`}>
             {compras.length === 0 ? (
               <p className="py-2 text-xs text-muted-foreground">Nenhuma compra no período.</p>
             ) : (
@@ -242,7 +242,7 @@ export default function MeusCartoes() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div data-tour="cartoes-resumo" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -290,7 +290,7 @@ export default function MeusCartoes() {
       )}
 
       {/* Grid de Cartões */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div data-tour="cartoes-lista" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)
           : cartoes.length === 0

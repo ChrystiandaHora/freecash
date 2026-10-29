@@ -312,7 +312,7 @@ export default function Dashboard() {
 
         {/* Period Selector & Refresh */}
         <div className="relative flex flex-col xs:flex-row items-center gap-3 w-full sm:w-auto">
-          <div className="grid grid-cols-2 sm:flex bg-muted p-1.5 rounded-xl border border-border/40 w-full sm:w-auto gap-1">
+          <div data-tour="dashboard-periodo" className="grid grid-cols-2 sm:flex bg-muted p-1.5 rounded-xl border border-border/40 w-full sm:w-auto gap-1">
             <button
               onClick={() => {
                 setPeriodo(0);
@@ -460,7 +460,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div data-tour="dashboard-resumo" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Receitas Card */}
         <Card className="border-border/40 shadow-sm">
@@ -555,7 +555,7 @@ export default function Dashboard() {
 
       {/* Aviso de Gastos Fora do Orçamento (Eventos) */}
       {data?.gastos_fora_orcamento?.total > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+        <div data-tour="dashboard-fora-orcamento" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
               <Sparkles className="h-5 w-5" />
@@ -585,7 +585,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Area Flow Chart */}
-        <Card className="lg:col-span-2 border-border/40 shadow-sm">
+        <Card data-tour="dashboard-fluxo-diario" className="lg:col-span-2 border-border/40 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-base font-bold text-foreground">
@@ -618,7 +618,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Expenses Category Breakdown */}
-        <Card className="border-border/40 shadow-sm">
+        <Card data-tour="dashboard-maiores-gastos" className="border-border/40 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base font-bold text-foreground">
               Maiores Gastos
@@ -689,13 +689,13 @@ export default function Dashboard() {
       </div>
 
       {/* Projected 6 Months Chart */}
-      <Card className="border-border/40 shadow-sm">
+      <Card data-tour="dashboard-projecao" className="border-border/40 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base font-bold text-foreground">
             Fluxo Projetado (6 Meses)
           </CardTitle>
           <CardDescription className="text-xs">
-            Simulação de receitas, despesas e saldos para os próximos períodos
+            Os dois meses anteriores, o mês escolhido e os três seguintes, com o saldo de cada mês
           </CardDescription>
         </CardHeader>
         <CardContent>

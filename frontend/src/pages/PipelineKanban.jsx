@@ -97,7 +97,7 @@ export default function PipelineKanban() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div data-tour="contas-kanban-resumo" className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card className="border-border/40 shadow-sm">
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Pendente</CardTitle>
@@ -143,7 +143,7 @@ export default function PipelineKanban() {
       )}
 
       {/* Instruções */}
-      <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
+      <div data-tour="contas-kanban-dica" className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
         <DollarSign className="h-4 w-4 shrink-0" />
         <p>
           Arraste um card para a coluna <strong>"Pagas"</strong> para registrar o pagamento, ou
@@ -152,7 +152,9 @@ export default function PipelineKanban() {
       </div>
 
       {/* O quadro traz consigo o drag-and-drop e o modal de edição do card */}
-      <QuadroContasPagar contas={contas} />
+      <div data-tour="contas-kanban-quadro">
+        <QuadroContasPagar contas={contas} />
+      </div>
     </div>
   )
 }

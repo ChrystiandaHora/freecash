@@ -364,7 +364,7 @@ export default function Transacoes() {
       </div>
 
       {/* Filtros de competência */}
-      <div className="flex flex-wrap items-end gap-2">
+      <div data-tour="transacoes-periodo" className="flex flex-wrap items-end gap-2">
         <div>
           <label htmlFor="transacoes-mes" className="mb-1.5 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Mês
@@ -407,7 +407,7 @@ export default function Transacoes() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div data-tour="transacoes-resumo" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-emerald-500/30 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -454,14 +454,16 @@ export default function Transacoes() {
       )}
 
       {/* Tabela */}
-      <DataTable
-        columns={columns}
-        data={transacoes}
-        isLoading={isLoading}
-        pageSize={15}
-        emptyMessage={`Nenhuma transação em ${MONTHS[Number(mes) - 1]} de ${ano}.`}
-        onFilteredDataChange={setFilteredTransacoes}
-      />
+      <div data-tour="transacoes-tabela">
+        <DataTable
+          columns={columns}
+          data={transacoes}
+          isLoading={isLoading}
+          pageSize={15}
+          emptyMessage={`Nenhuma transação em ${MONTHS[Number(mes) - 1]} de ${ano}.`}
+          onFilteredDataChange={setFilteredTransacoes}
+        />
+      </div>
 
       {paraExcluir && (
         <DeleteConfirmModal

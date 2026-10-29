@@ -489,10 +489,10 @@ export default function ContasPagar() {
             <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/contas-pagar/lote')}>
+          <Button data-tour="contas-pagar-lote" variant="outline" size="sm" onClick={() => navigate('/contas-pagar/lote')}>
             Cadastro em Lote
           </Button>
-          <Button size="sm" onClick={() => navigate('/contas-pagar/novo')}>
+          <Button data-tour="contas-pagar-nova" size="sm" onClick={() => navigate('/contas-pagar/novo')}>
             <Plus className="mr-1.5 h-4 w-4" />
             Nova Conta
           </Button>
@@ -500,7 +500,7 @@ export default function ContasPagar() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div data-tour="contas-pagar-resumo" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="bg-card border border-border/40 shadow-sm text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -557,7 +557,7 @@ export default function ContasPagar() {
       )}
 
       {/* Abas — padrão WAI-ARIA de tabs: troca a região visível, navegável por setas */}
-      <div role="tablist" aria-label="Visão das contas a pagar" className="flex border-b border-border/40 self-start">
+      <div data-tour="contas-pagar-vistas" role="tablist" aria-label="Visão das contas a pagar" className="flex border-b border-border/40 self-start">
         {TABS.map((tab, index) => {
           const { Icon } = tab
           const ativa = vista === tab.id
@@ -584,7 +584,7 @@ export default function ContasPagar() {
 
       {/* Painel: Kanban */}
       {vista === 'kanban' && (
-        <div id="painel-kanban" role="tabpanel" aria-labelledby="tab-kanban" tabIndex={0} className="space-y-4">
+        <div data-tour="contas-pagar-quadro" id="painel-kanban" role="tabpanel" aria-labelledby="tab-kanban" tabIndex={0} className="space-y-4">
           <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
             <p>
@@ -610,7 +610,7 @@ export default function ContasPagar() {
 
       {/* Painel: Tabela */}
       {vista === 'tabela' && (
-        <div id="painel-tabela" role="tabpanel" aria-labelledby="tab-tabela" tabIndex={0}>
+        <div data-tour="contas-pagar-tabela" id="painel-tabela" role="tabpanel" aria-labelledby="tab-tabela" tabIndex={0}>
           <DataTable
             columns={columns}
             data={tableData}
