@@ -1,205 +1,155 @@
-"""Serviço de Descriptografia e Restauração de Backups (.fcbk Importer).
+"""Importação do backup completo do usuário a partir do ZIP gerado pela exportação.
 
-Este módulo processa arquivos de backup importados no formato '.fcbk', realizando a
-autenticação da senha via derivação de chaves PBKDF2, descriptografia simétrica
-AES-GCM, verificação de integridade digital SHA256 e gravação transacional atômica
-de todas as entidades financeiras na base PostgreSQL (multi-tenant por usuário).
+Lê o `dados.json` de dentro do ZIP — cifrado com AES-256 ou não, já que um backup
+extraído e recompactado numa ferramenta comum também precisa voltar — e substitui,
+numa transação atômica, todas as entidades do usuário pelas do arquivo (ver
+docs/backup.md).
 """
 
 from __future__ import annotations
 
 import json
-import os
-import base64
-import hashlib
 import uuid
-import io
 import logging
-import zlib
+import zipfile
+
+import pyzipper
 from django.db import transaction
 from django.utils import timezone
-from django.apps import apps
 from django.db.models.fields.related import ForeignKey, OneToOneField
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from core.services.export_service import FORMATO, get_backupable_models
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_VERSIONS = {"4.0", "4.1"}
+SUPPORTED_VERSIONS = {"5.0"}
+
+# Teto do `dados.json` descompactado: barra ZIP malicioso que infla ao abrir (zip bomb)
+TAMANHO_MAXIMO_DADOS_JSON = 100 * 1024 * 1024
+
+ARQUIVO_DE_DADOS = "dados.json"
 
 
-# =========================================================
-# LÓGICA SECURE IMPORT (JSON / .FCBK)
-# =========================================================
+def ler_backup_zip(arquivo, senha: str | None) -> dict:
+    """Extrai e valida o `dados.json` de um backup em ZIP.
 
-
-def decrypt_data_fcbk(encrypted_base64: str, password: str) -> dict:
-    """Descriptografa arquivos de backup no formato '.fcbk' utilizando senha e PBKDF2.
-
-    Realiza a validação do hash SHA256 no início do arquivo para detectar violações,
-    extrai os blocos de Salt/Nonce e descriptografa via AES-GCM, convertendo o
-    JSON resultante em dicionário estruturado.
+    Aceita ZIP cifrado (AES-256 ou ZipCrypto) e ZIP sem senha.
 
     Raises:
-        ValueError: Se o arquivo estiver violado, senha incorreta ou arquivo corrompido.
+        ValueError: Arquivo que não é ZIP, sem `dados.json`, senha ausente ou errada,
+            conteúdo grande demais, ou formato/versão que não são deste sistema.
 
     Returns:
-        dict: O dicionário de metadados e registros decodificados.
+        dict: O conteúdo de `dados.json`.
     """
     try:
-        raw_data = base64.b64decode(encrypted_base64)
-        stored_hash = raw_data[:32]
-        payload = raw_data[32:]
+        with pyzipper.AESZipFile(arquivo) as zf:
+            try:
+                info = zf.getinfo(ARQUIVO_DE_DADOS)
+            except KeyError:
+                raise ValueError(
+                    f"O ZIP não contém o arquivo {ARQUIVO_DE_DADOS}; não é um backup do freecash."
+                )
+            if info.file_size > TAMANHO_MAXIMO_DADOS_JSON:
+                raise ValueError("O arquivo de dados do backup é grande demais para importar.")
+            protegido = bool(info.flag_bits & 0x1)
+            if protegido and not senha:
+                raise ValueError("Este arquivo está protegido por senha. Informe a senha do backup.")
+            if senha:
+                zf.setpassword(senha.encode("utf-8"))
+            try:
+                with zf.open(info) as entrada:
+                    # Lê um byte além do teto: o tamanho declarado no cabeçalho pode mentir
+                    conteudo = entrada.read(TAMANHO_MAXIMO_DADOS_JSON + 1)
+            except RuntimeError:
+                raise ValueError("Senha incorreta.")
+    except (zipfile.BadZipFile, pyzipper.BadZipFile):
+        raise ValueError("O arquivo enviado não é um ZIP válido ou está corrompido.")
 
-        if hashlib.sha256(payload).digest() != stored_hash:
-            raise ValueError("O arquivo foi VIOLADO.")
+    if len(conteudo) > TAMANHO_MAXIMO_DADOS_JSON:
+        raise ValueError("O arquivo de dados do backup é grande demais para importar.")
+    try:
+        data_dict = json.loads(conteudo.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise ValueError(f"O {ARQUIVO_DE_DADOS} do backup não é um JSON válido.")
 
-        salt = payload[:16]
-        nonce = payload[16:28]
-        ciphertext = payload[28:]
+    validar_formato(data_dict)
+    return data_dict
 
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000
-        )
-        key = kdf.derive(password.encode("utf-8"))
 
-        aesgcm = AESGCM(key)
-        decrypted_data = aesgcm.decrypt(nonce, ciphertext, None)
-        try:
-            decrypted_data = zlib.decompress(decrypted_data)
-        except zlib.error:
-            pass  # backup gerado antes da versão 4.1, sem compressão
+def validar_formato(data_dict: dict) -> None:
+    """Recusa conteúdo de outro sistema ou de versão que esta importação não conhece.
 
-        data_dict = json.loads(decrypted_data.decode("utf-8"))
-    except Exception as e:
-        if "VIOLADO" in str(e):
-            raise e
-        raise ValueError("Senha incorreta ou arquivo corrompido.")
-
-    version = data_dict.get("metadata", {}).get("version")
+    Raises:
+        ValueError: Formato ou versão não suportados.
+    """
+    metadata = data_dict.get("metadata") if isinstance(data_dict, dict) else None
+    if not isinstance(metadata, dict) or metadata.get("formato") != FORMATO:
+        raise ValueError("Este arquivo não foi gerado pelo freecash.")
+    version = metadata.get("version")
     if version not in SUPPORTED_VERSIONS:
         raise ValueError(
             f"Versão de backup não suportada: {version!r}. "
             f"Versões aceitas: {sorted(SUPPORTED_VERSIONS)}."
         )
-    return data_dict
 
-
-def get_backupable_models():
-    """Descobre e ordena todos os modelos locais elegíveis para restauração.
-
-    Garante que os dados sejam restaurados na ordem correta de dependência de chaves
-    estrangeiras, prevenindo falhas de integridade referencial.
-
-    Returns:
-        list[Model]: Lista de classes de Modelos Django elegíveis para restore.
-    """
-    from django.conf import settings
-
-    project_root = str(settings.BASE_DIR)
-    backup_models = []
-
-    for app_config in apps.get_app_configs():
-        app_path = os.path.abspath(app_config.path)
-        if app_path.startswith(os.path.abspath(project_root)):
-            for model in app_config.get_models():
-                fields = [f.name for f in model._meta.get_fields()]
-                if "usuario" in fields and "uuid" in fields:
-                    backup_models.append(model)
-
-    priority = {
-        "ConfigUsuario": 1,
-        "PlanoMetas": 1.5,
-        "Categoria": 2,
-        "CartaoCredito": 3,
-        "Evento": 3.5,
-        "ClasseAtivo": 4,
-        "CategoriaAtivo": 5,
-        "SubcategoriaAtivo": 6,
-        # A carteira precede o ativo porque transações e posições apontam para ela.
-        "Carteira": 6.5,
-        "Ativo": 7,
-        "LancamentoRecorrente": 7.5,
-        "Conta": 8,
-        "Transacao": 9,
-        "PosicaoCarteira": 9.5,
-        "CarteiraHistorico": 10,
-        # MetaFinanceira não referencia outros modelos; os aportes dependem dela
-        # e são restaurados à parte, por não terem FK direta para o usuário.
-        "MetaFinanceira": 11,
-    }
-
-    def get_priority(m):
-        return priority.get(m.__name__, 100)
-
-    return sorted(backup_models, key=get_priority)
-
-
-# Nomes de classe usados em versões anteriores do sistema, por modelo atual.
-# As chaves do arquivo `.fcbk` são nomes de classe, então renomear um modelo
-# invalidaria os backups já gerados pelos usuários.
-NOMES_LEGADOS_DE_MODELO = {
-    "LancamentoRecorrente": ("ReceitaRecorrente",),
-}
-
-# Renomeações de campo, por modelo atual: {nome_antigo: nome_novo}. Chaves de
-# chave estrangeira aparecem no backup como `<campo>_uuid`.
-CAMPOS_RENOMEADOS_POR_MODELO = {
-    "Conta": {"receita_recorrente_uuid": "recorrencia_uuid"},
-}
-
-# Campos que mudaram de modelo. `filter_valid_fields` descarta o que não existe mais,
-# então sem isto a meta de alocação de um `.fcbk` anterior às carteiras some calada e o
-# balanceamento volta com tudo em 0% (ver docs/backup.md).
-CAMPOS_MOVIDOS_DE_MODELO = {
-    "Ativo": {"meta_porcentagem": "PosicaoCarteira"},
-}
-
-# FKs que viraram obrigatórias depois do backup existir. Sem isto, restaurar um
-# `.fcbk` anterior às carteiras descarta as transações em silêncio (ver docs/carteiras.md).
-FKS_LEGADAS_COM_PADRAO = {
-    "Transacao": ("carteira",),
-    "CarteiraHistorico": ("carteira",),
-    "PosicaoCarteira": ("carteira",),
-}
 
 # Campos que descrevem a conta, não os dados: o backup os carrega, mas a restauração
-# mantém os atuais. Sem isto, um `.fcbk` anterior à confirmação do e-mail a desfaz e a
+# mantém os atuais. Sem isto, um backup anterior à confirmação do e-mail a desfaz e a
 # importação seguinte cai no portão de verificação (ver docs/backup.md).
 CAMPOS_DE_ESTADO_DA_CONTA = {
     "ConfigUsuario": ("email_verificado", "email_verificado_em", "email_pendente"),
 }
 
 
-def _carteira_padrao(user):
-    """Devolve (criando se preciso) a carteira que recebe dados de backups antigos.
+def _restaurar_linhas_extrato(registros: list, uuid_to_id: dict) -> tuple[int, int]:
+    """Recria as linhas de extrato, religando extrato e conta pelos UUIDs do backup.
+
+    Fica fora do laço genérico porque `LinhaExtrato` não tem FK para o usuário: pertence
+    a ele através do `ExtratoImportado`. Linha cujo extrato não veio no backup é
+    descartada, já que a FK é obrigatória; a conta vinculada é opcional e só se perde
+    quando não existe mais.
 
     Returns:
-        Carteira: A primeira carteira do usuário, ou uma Carteira Padrão nova.
+        tuple[int, int]: Linhas restauradas e linhas ignoradas.
     """
-    from investimento.models import Carteira
+    from decimal import Decimal
 
-    return Carteira.padrao_de(user)
+    from django.utils.dateparse import parse_date
+
+    from core.models import LinhaExtrato
+
+    extratos = uuid_to_id.get("core.ExtratoImportado", {})
+    contas = uuid_to_id.get("core.Conta", {})
+    restauradas = ignoradas = 0
+
+    for row in registros:
+        extrato_id = extratos.get(row.get("extrato_uuid"))
+        if not extrato_id:
+            ignoradas += 1
+            continue
+        try:
+            LinhaExtrato.objects.update_or_create(
+                uuid=row.get("uuid") or uuid.uuid4(),
+                defaults={
+                    "extrato_id": extrato_id,
+                    "data": parse_date(row["data"]),
+                    "descricao": row.get("descricao") or "",
+                    "valor": Decimal(str(row.get("valor") or 0)),
+                    "tipo": row.get("tipo") or LinhaExtrato.TIPO_DEBITO,
+                    "status": row.get("status") or "pendente",
+                    "conta_vinculada_id": contas.get(row.get("conta_vinculada_uuid")),
+                },
+            )
+            restauradas += 1
+        except Exception as e:
+            logger.warning("Falha ao restaurar linha de extrato: %s", e)
+            ignoradas += 1
+
+    return restauradas, ignoradas
 
 
-def _normalizar_campos_legados(model_name: str, linha: dict) -> dict:
-    """Reescreve as chaves de um registro de backup para os nomes atuais.
-
-    Returns:
-        dict: O mesmo registro, com as chaves renomeadas quando aplicável.
-    """
-    renomeios = CAMPOS_RENOMEADOS_POR_MODELO.get(model_name)
-    if not renomeios:
-        return linha
-
-    for antigo, novo in renomeios.items():
-        if antigo in linha and novo not in linha:
-            linha[novo] = linha.pop(antigo)
-    return linha
-
-
-def restore_user_data_fcbk(data_dict: dict, user) -> dict:
+def restaurar_dados_usuario(data_dict: dict, user) -> dict:
     """Substitui transacionalmente todas as entidades do usuário com os dados do backup.
 
     Apaga os dados atuais e reinsere os do backup, religando as chaves estrangeiras
@@ -252,25 +202,24 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
     total_ignorados = 0
     faturas_removidas = 0  # faturas de cartão duplicadas descartadas na normalização
     ativos_restaurados = []  # rastreia ativos para recálculo posterior
-    # {ativo_id: meta} lida do `Ativo` de backups anteriores às carteiras
-    metas_legadas_por_ativo: dict[int, str] = {}
 
     def get_model_field_names(model):
         """Retorna os nomes de campos válidos do modelo."""
-        return {
-            f.name
-            for f in model._meta.get_fields()
-            if hasattr(f, "column") or f.name in ["id"]
-        }
+        return {f.name for f in model._meta.get_fields() if hasattr(f, "column")}
 
     def filter_valid_fields(model, row):
-        """Filtra apenas campos que existem no modelo atual."""
+        """Filtra apenas campos que existem no modelo atual.
+
+        Chave primária e dono nunca vêm do arquivo: o `dados.json` pode ser editado à
+        mão, e um `usuario_id` ou `id` forjado gravaria na conta de outro usuário.
+        """
         valid_fields = get_model_field_names(model)
         # Também incluir campos de FK com sufixo _id
         valid_fk_fields = {
             f"{f.name}_id" for f in model._meta.fields if isinstance(f, ForeignKey)
         }
-        all_valid = valid_fields | valid_fk_fields
+        proibidos = {model._meta.pk.name, model._meta.pk.attname, "usuario", "usuario_id"}
+        all_valid = (valid_fields | valid_fk_fields) - proibidos
         return {k: v for k, v in row.items() if k in all_valid}
 
     try:
@@ -296,9 +245,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 # Compatibilidade retroativa: manter também pela chave simples de nome
                 uuid_to_id[model.__name__] = uuid_to_id[f"{model._meta.app_label}.{model.__name__}"]
 
-            # Resolvido uma vez só, e apenas se algum registro legado precisar dele.
-            carteira_padrao_cache: dict[str, int] = {}
-
             # 2. IMPORT NEW
             for model in backup_models:
                 app_label = model._meta.app_label
@@ -314,33 +260,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                 registros_do_app = data_dict.get("data", {}).get(app_label, {})
                 records = registros_do_app.get(model_name, [])
 
-                # Compatibilidade com backups gerados antes de um modelo ser
-                # renomeado. As chaves do `.fcbk` são nomes de classe, então um
-                # rename tornaria os registros invisíveis aqui e a restauração
-                # perderia os dados em silêncio — sem erro algum, que é o pior tipo
-                # de falha num backup.
-                if not records:
-                    for nome_legado in NOMES_LEGADOS_DE_MODELO.get(model_name, ()):
-                        legados = registros_do_app.get(nome_legado)
-                        if legados:
-                            logger.info(
-                                "Backup antigo: lendo %s a partir da chave legada %s.",
-                                model_name, nome_legado,
-                            )
-                            records = legados
-                            break
-
-                # A normalização de campo vale para TODO registro, não só para os de
-                # chave legada: `Conta` nunca foi renomeada, mas o campo que aponta
-                # para a regra de recorrência foi (`receita_recorrente` ->
-                # `recorrencia`), e as FKs aparecem no backup como `<campo>_uuid`.
-                # Sem isto, restaurar um backup antigo devolveria as contas sem o
-                # vínculo com a regra que as gerou.
-                if records and model_name in CAMPOS_RENOMEADOS_POR_MODELO:
-                    records = [
-                        _normalizar_campos_legados(model_name, dict(linha))
-                        for linha in records
-                    ]
                 logger.debug(
                     "Restaurando %d registros de %s.%s", len(records), app_label, model_name
                 )
@@ -350,13 +269,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                     if not uid:
                         total_ignorados += 1
                         continue
-
-                    # Guardado antes da filtragem: o campo não existe mais neste modelo
-                    meta_legada = None
-                    if model_name in CAMPOS_MOVIDOS_DE_MODELO:
-                        for campo in CAMPOS_MOVIDOS_DE_MODELO[model_name]:
-                            if row.get(campo) is not None:
-                                meta_legada = row[campo]
 
                     # Parse date/datetime fields from string to actual python objects
                     from django.db.models import DateField, DateTimeField
@@ -391,13 +303,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                                 row[f"{field.name}_id"] = local_id
                             else:
                                 row[f"{field.name}_id"] = None
-
-                    # Backup antigo não traz `carteira_uuid`; sem o padrão, o NOT NULL descarta a ordem
-                    for campo in FKS_LEGADAS_COM_PADRAO.get(model_name, ()):
-                        if row.get(f"{campo}_id") is None:
-                            if "id" not in carteira_padrao_cache:
-                                carteira_padrao_cache["id"] = _carteira_padrao(user).id
-                            row[f"{campo}_id"] = carteira_padrao_cache["id"]
 
                     # Filtrar campos que não existem mais no modelo
                     row = filter_valid_fields(model, row)
@@ -452,8 +357,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                         # Rastrear ativos restaurados para recálculo posterior
                         if model_name == "Ativo":
                             ativos_restaurados.append(obj)
-                            if meta_legada is not None:
-                                metas_legadas_por_ativo[obj.id] = meta_legada
 
             # 2b. Restaurar o histórico de aportes das metas
             # Não passa pelo laço genérico porque `AporteMeta` não tem FK para o
@@ -494,6 +397,12 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                     except Exception as e:
                         logger.warning("Falha ao restaurar aporte de meta: %s", e)
                         total_ignorados += 1
+
+            # 2c. Linhas de extrato: as antigas já sumiram em cascata com os extratos
+            linhas_records = data_dict.get("data", {}).get("core", {}).get("LinhaExtrato", [])
+            restauradas, ignoradas = _restaurar_linhas_extrato(linhas_records, uuid_to_id)
+            total_restored += restauradas
+            total_ignorados += ignoradas
 
             # 3. Restaurar cotações históricas se fornecidas no backup
             cotacao_records = data_dict.get("data", {}).get("investimento", {}).get("Cotacao", [])
@@ -556,7 +465,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 
             # 4. RECALCULAR TODOS OS ATIVOS após restauração completa das transações
             # Necessário porque os signals foram desconectados durante a importação.
-            # Reconstrói também a posição por carteira: é cache, e o backup antigo nem a tem
+            # Reconstrói também a posição por carteira, que é cache
             if ativos_restaurados:
                 try:
                     from investimento.calculators import (
@@ -574,46 +483,6 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
                             )
                 except ImportError:
                     logger.debug("Módulo de investimentos não disponível para recálculo.")
-
-            # 4b. Reconduzir a meta de alocação que vinha no `Ativo`
-            # Só entra em backup anterior às carteiras: o export atual grava a meta na
-            # `PosicaoCarteira`, e aí o laço acima já a restaurou. Roda depois do
-            # recálculo porque é ele que cria as posições que recebem o valor.
-            if metas_legadas_por_ativo:
-                from decimal import Decimal as DecimalMeta
-
-                from investimento.models import PosicaoCarteira
-
-                recuperadas = 0
-                for ativo_id, meta in metas_legadas_por_ativo.items():
-                    posicoes = list(
-                        PosicaoCarteira.objects.filter(usuario=user, ativo_id=ativo_id)
-                    )
-                    # A meta era global por ativo; dividi-la entre custódias exigiria um
-                    # critério que o arquivo não tem. Com uma posição só não há dúvida.
-                    if len(posicoes) != 1:
-                        if len(posicoes) > 1:
-                            logger.warning(
-                                "Meta legada do ativo %s não aplicada: %d posições, "
-                                "e o backup não diz como dividir entre elas.",
-                                ativo_id, len(posicoes),
-                            )
-                        continue
-                    try:
-                        PosicaoCarteira.objects.filter(pk=posicoes[0].pk).update(
-                            meta_porcentagem=DecimalMeta(str(meta))
-                        )
-                        recuperadas += 1
-                    except (ArithmeticError, TypeError, ValueError) as meta_err:
-                        logger.warning(
-                            "Meta legada inválida no ativo %s (%r): %s",
-                            ativo_id, meta, meta_err,
-                        )
-                if recuperadas:
-                    logger.info(
-                        "Backup anterior às carteiras: %d meta(s) de alocação movida(s) "
-                        "do ativo para a posição na carteira.", recuperadas,
-                    )
 
             # 5. DEDUPLICAR FATURAS DE CARTÃO
             # Rede de segurança na fronteira do import: backups gerados por versões
@@ -668,7 +537,7 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
         )
 
     return {
-        "tipo": "fcbk",
+        "tipo": "zip",
         "msg": msg,
         "criados": total_restored,
         "atualizados": 0,
@@ -684,29 +553,20 @@ def restore_user_data_fcbk(data_dict: dict, user) -> dict:
 
 
 def importar_universal(arquivo, usuario, password=None) -> dict:
-    """Função controladora principal que valida e roteia a importação do arquivo.
+    """Valida o arquivo enviado e restaura o backup que ele contém.
 
-    Aceita apenas arquivos sob extensão '.fcbk' criptografados para restaurar a
-    base de dados de forma segura. Não adiciona uma transaction.atomic() extra —
-    o isolamento transacional é gerenciado internamente por
-    `restore_user_data_fcbk`, que também garante a reconexão dos signals Django
-    de investimentos via bloco `try/finally` ao redor da transaction.
+    Não abre uma transaction.atomic() extra: o isolamento transacional e a reconexão
+    dos signals ficam a cargo de `restaurar_dados_usuario`.
 
     Raises:
-        ValueError: Se o formato for inválido ou a senha estiver faltando.
+        ValueError: Se o arquivo não for um backup ZIP válido.
 
     Returns:
-        dict: Relatório descritivo com o número de registros importados.
+        dict: Relatório com o número de registros importados.
     """
     nome = (getattr(arquivo, "name", "") or "").lower()
+    if not nome.endswith(".zip"):
+        raise ValueError("Formato não suportado. Envie o backup .zip gerado pelo freecash.")
 
-    if nome.endswith(".fcbk"):
-        if not password:
-            raise ValueError("Senha obrigatória para arquivo .fcbk.")
-
-        content = arquivo.read() if hasattr(arquivo, "read") else arquivo
-        data_dict = decrypt_data_fcbk(content, password)
-        return restore_user_data_fcbk(data_dict, usuario)
-
-    # Rejeita qualquer outro formato
-    raise ValueError("Formato não suportado. Utilize apenas arquivos de backup .fcbk")
+    data_dict = ler_backup_zip(arquivo, password or None)
+    return restaurar_dados_usuario(data_dict, usuario)

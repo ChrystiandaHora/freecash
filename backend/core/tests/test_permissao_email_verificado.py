@@ -83,8 +83,10 @@ class EmailVerificadoOuCarenciaTests(APITestCase):
         self._envelhecer_conta(30)
         self._autenticar()
 
-        resposta = self.client.get(self.url_exportar, {"formato": "fcbk"})
-        self.assertNotEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+        resposta = self.client.post(
+            reverse("api-ferramentas-backup"), {"senha": "senha-do-backup-forte"}, format="json"
+        )
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
 
     # ── Importar: bloqueado após a carência ──────────────────────────────────
 

@@ -14,10 +14,9 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from core.models import AporteMeta, MetaFinanceira, PlanoMetas
-from core.services.export_service import export_user_data, get_backupable_models
-from core.services.import_service import decrypt_data_fcbk, restore_user_data_fcbk
-
-SENHA = "senha-de-backup-123"
+from core.services.export_service import get_backupable_models
+from core.services.import_service import restaurar_dados_usuario
+from core.tests.backup_utils import exportar_e_ler
 
 
 class BackupMetasTests(TestCase):
@@ -63,11 +62,11 @@ class BackupMetasTests(TestCase):
         """Exporta e restaura o backup no mesmo usuário.
 
         Returns:
-            dict: Estatísticas devolvidas por `restore_user_data_fcbk`.
+            dict: Estatísticas devolvidas por `restaurar_dados_usuario`.
         """
-        conteudo = export_user_data(self.user, SENHA)
-        dados = decrypt_data_fcbk(conteudo, SENHA)
-        return restore_user_data_fcbk(dados, self.user)
+        conteudo = exportar_e_ler(self.user)
+        dados = conteudo
+        return restaurar_dados_usuario(dados, self.user)
 
     # ── Cobertura da exportação ──────────────────────────────────────────────
 
@@ -81,7 +80,7 @@ class BackupMetasTests(TestCase):
         self.assertNotIn("AporteMeta", nomes)
 
     def test_plano_meta_e_aportes_estao_no_arquivo_exportado(self):
-        dados = decrypt_data_fcbk(export_user_data(self.user, SENHA), SENHA)
+        dados = exportar_e_ler(self.user)
         core = dados["data"]["core"]
 
         self.assertEqual(len(core["PlanoMetas"]), 1)
@@ -95,11 +94,11 @@ class BackupMetasTests(TestCase):
     # ── Cobertura da restauração ─────────────────────────────────────────────
 
     def test_restaura_a_base_de_calculo(self):
-        conteudo = export_user_data(self.user, SENHA)
+        conteudo = exportar_e_ler(self.user)
         # Só depois de exportar é que o plano some, simulando a perda de dados.
         self.plano.delete()
 
-        restore_user_data_fcbk(decrypt_data_fcbk(conteudo, SENHA), self.user)
+        restaurar_dados_usuario(conteudo, self.user)
 
         plano = PlanoMetas.objects.get(usuario=self.user)
         self.assertEqual(plano.renda_mensal, Decimal("8093.68"))
@@ -157,7 +156,7 @@ class BackupMetasTests(TestCase):
         )
 
     def test_restauracao_substitui_metas_que_nao_estao_no_backup(self):
-        conteudo = export_user_data(self.user, SENHA)
+        conteudo = exportar_e_ler(self.user)
 
         # Depois do backup o usuário cria mais uma meta com aportes.
         extra = MetaFinanceira.objects.create(
@@ -165,7 +164,7 @@ class BackupMetasTests(TestCase):
         )
         AporteMeta.objects.create(meta=extra, data="2026-08-05", valor=Decimal("100.00"))
 
-        restore_user_data_fcbk(decrypt_data_fcbk(conteudo, SENHA), self.user)
+        restaurar_dados_usuario(conteudo, self.user)
 
         # A restauração substitui o estado: a meta posterior e o aporte dela somem.
         self.assertFalse(
@@ -196,7 +195,7 @@ class BackupMetasIsolamentoTests(TestCase):
         )
 
     def test_exportacao_nao_inclui_metas_de_outro_usuario(self):
-        dados = decrypt_data_fcbk(export_user_data(self.joao, SENHA), SENHA)
+        dados = exportar_e_ler(self.joao)
         core = dados["data"]["core"]
 
         nomes = {m["nome"] for m in core["MetaFinanceira"]}
@@ -205,8 +204,8 @@ class BackupMetasIsolamentoTests(TestCase):
         self.assertEqual(Decimal(str(core["AporteMeta"][0]["valor"])), Decimal("250.00"))
 
     def test_restauracao_de_um_usuario_nao_apaga_dados_do_outro(self):
-        conteudo = export_user_data(self.joao, SENHA)
-        restore_user_data_fcbk(decrypt_data_fcbk(conteudo, SENHA), self.joao)
+        conteudo = exportar_e_ler(self.joao)
+        restaurar_dados_usuario(conteudo, self.joao)
 
         self.assertTrue(
             MetaFinanceira.objects.filter(usuario=self.maria, nome="Reserva da Maria").exists()

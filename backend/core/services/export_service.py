@@ -1,29 +1,30 @@
-"""Serviço de Exportação Segura e Backup do Usuário.
+"""Exportação do backup completo do usuário.
 
-Este módulo implementa a lógica de coleta de registros do usuário de todos os
-modelos locais do projeto (multi-tenant por usuário) e executa a serialização,
-derivação de chave via PBKDF2 (com Salt aleatório) e criptografia autenticada
-AES-GCM para produzir o arquivo seguro de backup no formato próprio '.fcbk'.
+Coleta os registros de todos os modelos do projeto que pertencem ao usuário e os
+empacota num ZIP cifrado com AES-256: `dados.json` (lido de volta pela importação),
+uma planilha CSV por entidade e um LEIA-ME. São formatos comuns, que abrem fora do
+freecash — o backup também serve para o usuário levar os dados embora (ver
+docs/backup.md).
 """
 
+import io
 import json
 import os
-import base64
-import hashlib
 import uuid
-import zlib
 import logging
 from decimal import Decimal
+
+import pyzipper
 from django.utils import timezone
 from django.apps import apps
 from django.db.models.fields.related import ForeignKey
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from core.services.backup_planilhas import montar_leia_me, montar_planilhas
 
 logger = logging.getLogger(__name__)
 
-VERSION = "4.1"
+FORMATO = "freecash-dados"
+VERSION = "5.0"
 
 
 def _to_serializable(obj: any):
@@ -72,6 +73,7 @@ def get_backupable_models():
         "PlanoMetas": 1.5,
         "Categoria": 2,
         "CartaoCredito": 3,
+        "Evento": 3.5,
         "ClasseAtivo": 4,
         "CategoriaAtivo": 5,
         "SubcategoriaAtivo": 6,
@@ -94,49 +96,42 @@ def get_backupable_models():
     return sorted(backup_models, key=get_priority)
 
 
-def encrypt_data(data_dict: dict, password: str):
-    """Criptografa um dicionário Python usando criptografia autenticada AES-GCM.
+def gerar_backup_zip(user, senha: str) -> bytes:
+    """Gera o backup completo do usuário num ZIP cifrado com AES-256 (WinZip AE-2).
 
-    Aplica derivação de chave robusta PBKDF2-HMAC-SHA256, gerando um Salt aleatório
-    e executando a cifra AES-GCM com um Nonce seguro. Garante também checagem de
-    integridade pública injetando o hash SHA256 do payload criptografado.
+    Todas as entradas são cifradas, o LEIA-ME inclusive: ele cita nomes de entidades do
+    usuário e não deve ficar legível sem a senha.
 
     Returns:
-        str: String codificada em Base64 contendo os dados protegidos (arquivo .fcbk).
+        bytes: O conteúdo do arquivo `.zip`.
     """
-    json_data = json.dumps(data_dict, default=_to_serializable).encode("utf-8")
-    compressed_data = zlib.compress(json_data, level=6)
-    salt = os.urandom(16)
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-    )
-    key = kdf.derive(password.encode("utf-8"))
-    aesgcm = AESGCM(key)
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, compressed_data, None)
+    dados = coletar_dados_usuario(user)
+    planilhas = montar_planilhas(dados)
 
-    # Payload format: SALT(16) + NONCE(12) + CIPHERTEXT
-    payload = salt + nonce + ciphertext
-
-    # Integrity Check: SHA256(Payload) + Payload
-    public_hash = hashlib.sha256(payload).digest()
-    final_file_data = public_hash + payload
-
-    return base64.b64encode(final_file_data).decode("utf-8")
+    buffer = io.BytesIO()
+    with pyzipper.AESZipFile(
+        buffer, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES
+    ) as zf:
+        zf.setpassword(senha.encode("utf-8"))
+        zf.writestr("LEIA-ME.txt", montar_leia_me(dados, planilhas))
+        zf.writestr(
+            "dados.json",
+            json.dumps(dados, default=_to_serializable, ensure_ascii=False, indent=2),
+        )
+        for caminho, conteudo in planilhas.items():
+            zf.writestr(caminho, conteudo)
+    return buffer.getvalue()
 
 
-def export_user_data(user, password: str):
-    """Coleta e exporta todos os registros financeiros do usuário em formato criptografado.
+def coletar_dados_usuario(user) -> dict:
+    """Coleta todos os registros do usuário num dicionário serializável em JSON.
 
-    Varre todos os modelos locais relevantes, mapeia e resolve relacionamentos
-    baseando-se em UUIDs seguros (para preservação ao restaurar em outros bancos),
-    e aplica a criptografia simétrica com a senha fornecida.
+    Varre todos os modelos locais relevantes e troca cada FK pelo UUID do registro
+    referenciado, para que os vínculos sobrevivam à restauração em outro banco, onde os
+    `id` sequenciais são outros.
 
     Returns:
-        str: O conteúdo do backup final criptografado em Base64.
+        dict: `{"metadata": {...}, "data": {app_label: {NomeDoModelo: [linhas]}}}`.
     """
     # Normaliza faturas de cartão duplicadas antes de coletar os dados, para que o
     # backup não perpetue a inconsistência em futuras restaurações. É idempotente:
@@ -156,6 +151,7 @@ def export_user_data(user, password: str):
     models_to_backup = get_backupable_models()
     data = {
         "metadata": {
+            "formato": FORMATO,
             "version": VERSION,
             "generated_at": timezone.now().isoformat(),
             "username": user.username,
@@ -251,6 +247,26 @@ def export_user_data(user, password: str):
         data["data"]["investimento"] = {}
     data["data"]["investimento"]["Cotacao"] = cotacoes_records
 
-    return encrypt_data(data, password)
+    # As linhas pertencem ao extrato, não ao usuário; sem isto sumiriam em cascata no restore
+    from core.models import LinhaExtrato
+
+    linhas_qs = LinhaExtrato.objects.filter(extrato__usuario=user).select_related(
+        "extrato", "conta_vinculada"
+    )
+    data["data"]["core"]["LinhaExtrato"] = [
+        {
+            "uuid": str(obj.uuid),
+            "extrato_uuid": str(obj.extrato.uuid),
+            "data": obj.data.isoformat(),
+            "descricao": obj.descricao,
+            "valor": float(obj.valor),
+            "tipo": obj.tipo,
+            "status": obj.status,
+            "conta_vinculada_uuid": str(obj.conta_vinculada.uuid) if obj.conta_vinculada else None,
+        }
+        for obj in linhas_qs.iterator(chunk_size=1000)
+    ]
+
+    return data
 
 

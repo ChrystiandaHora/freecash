@@ -15,6 +15,9 @@ from rest_framework.views import APIView
 
 from core.models import CartaoCredito, ConfigUsuario, Conta, ExtratoImportado, LinhaExtrato
 from core.permissions import EmailVerificadoOuCarencia
+from core.throttles import AuthScopedRateThrottle
+from core.validacao_senha import TAMANHO_MAXIMO as TAMANHO_MAXIMO_SENHA
+from core.validacao_senha import TAMANHO_MINIMO as TAMANHO_MINIMO_SENHA
 from core.serializers import (
     CartaoCreditoSerializer,
     ExtratoImportadoSerializer,
@@ -28,7 +31,7 @@ def _ja_ocorreu(data_movimento: date) -> bool:
 
 
 class FerramentasImportarAPIView(APIView):
-    """Upload de arquivos de backup (.fcbk)."""
+    """Upload do backup em ZIP, com a senha opcional (ZIP recompactado pode vir sem)."""
 
     permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
     parser_classes = [MultiPartParser, FormParser]
@@ -42,9 +45,9 @@ class FerramentasImportarAPIView(APIView):
             )
 
         nome = (arquivo.name or '').lower()
-        if not nome.endswith('.fcbk'):
+        if not nome.endswith('.zip'):
             return Response(
-                {'erro': 'Formato inválido. Envie apenas arquivos de backup no formato próprio ".fcbk".'},
+                {'erro': 'Formato inválido. Envie o backup .zip gerado pelo freecash.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -459,10 +462,64 @@ class FerramentasConciliacaoProcessarAPIView(APIView):
             )
 
 
-class FerramentasExportarAPIView(APIView):
-    """Exportação de relatórios (xlsx, csv, pdf) e backups (.fcbk)."""
+def _carimbo_do_arquivo(usuario) -> str:
+    """Monta o trecho `<apelido>_<AAAA-MM-DD_HHMM>` usado nos nomes dos arquivos exportados."""
+    apelido = re.sub(r'[^A-Za-z0-9._-]+', '-', usuario.username or 'usuario').strip('-')
+    return f"{apelido}_{timezone.localtime().strftime('%Y-%m-%d_%H%M')}"
+
+
+class FerramentasBackupAPIView(APIView):
+    """Backup completo do usuário em ZIP AES-256, com a senha no corpo da requisição.
+
+    É POST, e não GET, para a senha não ficar gravada em log de acesso, proxy ou
+    histórico do navegador. Exportar não passa pelo portão de e-mail confirmado
+    (ver docs/autenticacao.md).
+    """
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = 'backup'
+
+    def get_throttles(self):
+        # Consultar a data do último backup é leitura barata; o limite vale só para gerar
+        return super().get_throttles() if self.request.method == 'POST' else []
+
+    def get(self, request) -> Response:
+        """Informa quando o usuário gerou o último backup, para a tela lembrá-lo."""
+        config = ConfigUsuario.objects.filter(usuario=request.user).first()
+        ultimo = config.ultimo_export_em if config else None
+        return Response({'ultimo_backup_em': ultimo.isoformat() if ultimo else None})
+
+    def post(self, request) -> HttpResponse:
+        senha = request.data.get('senha') or ''
+        # O ZIP AES deriva a chave com só 1.000 iterações (padrão WinZip): a senha compensa
+        if not TAMANHO_MINIMO_SENHA <= len(senha) <= TAMANHO_MAXIMO_SENHA:
+            return Response(
+                {'erro': (
+                    f'A senha do backup precisa ter entre {TAMANHO_MINIMO_SENHA} '
+                    f'e {TAMANHO_MAXIMO_SENHA} caracteres.'
+                )},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from core.services.export_service import gerar_backup_zip
+        payload = gerar_backup_zip(request.user, senha)
+        filename = f'freecash_meus-dados_{_carimbo_do_arquivo(request.user)}.zip'
+        response = HttpResponse(payload, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        config, _ = ConfigUsuario.objects.get_or_create(usuario=request.user)
+        config.ultimo_export_em = timezone.now()
+        config.save(update_fields=['ultimo_export_em'])
+        return response
+
+
+class FerramentasExportarAPIView(APIView):
+    """Exportação de relatórios por período (xlsx, csv, pdf)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthScopedRateThrottle]
+    throttle_scope = 'relatorios'
 
     def get(self, request) -> HttpResponse:
         formato = request.query_params.get('formato', 'excel')
@@ -470,8 +527,7 @@ class FerramentasExportarAPIView(APIView):
         if escopo not in ('geral', 'investimentos', 'completo'):
             escopo = 'completo'
         usuario = request.user
-        apelido = re.sub(r'[^A-Za-z0-9._-]+', '-', usuario.username or 'usuario').strip('-')
-        emitido = timezone.localtime().strftime('%Y-%m-%d_%H%M')
+        carimbo = _carimbo_do_arquivo(usuario)
 
         data_inicio_str = request.query_params.get('data_inicio')
         data_fim_str = request.query_params.get('data_fim')
@@ -493,28 +549,10 @@ class FerramentasExportarAPIView(APIView):
         else:
             data_fim = timezone.localdate()
 
-        if formato == 'fcbk':
-            senha = request.query_params.get('senha', '')
-            if not senha:
-                return Response(
-                    {'erro': 'O parâmetro "senha" é obrigatório para gerar o backup .fcbk.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            from core.services.export_service import export_user_data
-            payload = export_user_data(usuario, senha)
-            filename = f'backup_freecash_{apelido}_{emitido}.fcbk'
-            response = HttpResponse(payload, content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-
-            config, _ = ConfigUsuario.objects.get_or_create(usuario=usuario)
-            config.ultimo_export_em = timezone.now()
-            config.save(update_fields=['ultimo_export_em'])
-            return response
-
-        elif formato == 'excel':
+        if formato == 'excel':
             from core.services.export_report_service import gerar_excel
             payload = gerar_excel(usuario, data_inicio, data_fim, escopo)
-            filename = f'relatorio_financeiro_{apelido}_{emitido}.xlsx'
+            filename = f'relatorio_financeiro_{carimbo}.xlsx'
             response = HttpResponse(payload, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
@@ -522,7 +560,7 @@ class FerramentasExportarAPIView(APIView):
         elif formato == 'pdf':
             from core.services.export_report_service import gerar_pdf
             payload = gerar_pdf(usuario, data_inicio, data_fim, escopo)
-            filename = f'relatorio_financeiro_{apelido}_{emitido}.pdf'
+            filename = f'relatorio_financeiro_{carimbo}.pdf'
             response = HttpResponse(payload, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
@@ -530,14 +568,17 @@ class FerramentasExportarAPIView(APIView):
         elif formato == 'csv':
             from core.services.export_report_service import gerar_csv
             payload = gerar_csv(usuario, data_inicio, data_fim, escopo)
-            filename = f'relatorio_financeiro_{apelido}_{emitido}.csv'
+            filename = f'relatorio_financeiro_{carimbo}.csv'
             response = HttpResponse(payload, content_type='text/csv; charset=utf-8')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
 
         else:
             return Response(
-                {'erro': f'Formato "{formato}" descontinuado ou inválido. Use "excel", "csv", "pdf" ou "fcbk".'},
+                {'erro': (
+                    f'Formato "{formato}" inválido. Use "excel", "csv" ou "pdf"; '
+                    'o backup completo é gerado em POST /api/ferramentas/backup/.'
+                )},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

@@ -1,4 +1,4 @@
-"""Testes da fronteira entre preferências e estado da conta na restauração `.fcbk`.
+"""Testes da fronteira entre preferências e estado da conta na restauração do backup.
 
 `ConfigUsuario` entra no backup inteiro, mas parte dele descreve a conta, não os dados
 financeiros: a confirmação do e-mail. Restaurar um arquivo gerado antes da confirmação
@@ -11,10 +11,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from core.models import ConfigUsuario
-from core.services.export_service import export_user_data
-from core.services.import_service import decrypt_data_fcbk, restore_user_data_fcbk
-
-SENHA = "senha_do_backup"
+from core.services.import_service import restaurar_dados_usuario
+from core.tests.backup_utils import exportar_e_ler
 
 
 class RestauracaoPreservaEstadoDaContaTests(TestCase):
@@ -27,12 +25,12 @@ class RestauracaoPreservaEstadoDaContaTests(TestCase):
         self.config, _ = ConfigUsuario.objects.get_or_create(usuario=self.user)
 
     def _backup_atual(self) -> dict:
-        """Exporta e descriptografa o backup do usuário no estado presente.
+        """Exporta e lê de volta o backup do usuário no estado presente.
 
         Returns:
-            dict: O conteúdo do `.fcbk`, pronto para `restore_user_data_fcbk`.
+            dict: O conteúdo do `dados.json`, pronto para `restaurar_dados_usuario`.
         """
-        return decrypt_data_fcbk(export_user_data(self.user, SENHA), SENHA)
+        return exportar_e_ler(self.user)
 
     def _confirmar_email(self):
         self.config.email_verificado = True
@@ -45,7 +43,7 @@ class RestauracaoPreservaEstadoDaContaTests(TestCase):
         self._confirmar_email()
         confirmado_em = self.config.email_verificado_em
 
-        restore_user_data_fcbk(backup, self.user)
+        restaurar_dados_usuario(backup, self.user)
 
         self.config.refresh_from_db()
         self.assertTrue(self.config.email_verificado)
@@ -57,7 +55,7 @@ class RestauracaoPreservaEstadoDaContaTests(TestCase):
         backup = self._backup_atual()
         self._confirmar_email()
 
-        restore_user_data_fcbk(backup, self.user)
+        restaurar_dados_usuario(backup, self.user)
 
         self.config.refresh_from_db()
         self.assertEqual(self.config.email_pendente, "")
@@ -69,7 +67,7 @@ class RestauracaoPreservaEstadoDaContaTests(TestCase):
         self.config.email_verificado_em = None
         self.config.save()
 
-        restore_user_data_fcbk(backup, self.user)
+        restaurar_dados_usuario(backup, self.user)
 
         self.config.refresh_from_db()
         self.assertFalse(self.config.email_verificado)
@@ -82,7 +80,7 @@ class RestauracaoPreservaEstadoDaContaTests(TestCase):
         self.config.moeda_padrao = "BRL"
         self.config.save()
 
-        restore_user_data_fcbk(backup, self.user)
+        restaurar_dados_usuario(backup, self.user)
 
         self.config.refresh_from_db()
         self.assertEqual(self.config.moeda_padrao, "USD")

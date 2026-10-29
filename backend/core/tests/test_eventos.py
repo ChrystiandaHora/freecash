@@ -351,8 +351,8 @@ class EventosTestCase(APITestCase):
 
     def test_backup_restore_com_eventos(self):
         """Valida que backup exporta Evento e restore preserva o vínculo em Conta.evento."""
-        from core.services.export_service import export_user_data
-        from core.services.import_service import decrypt_data_fcbk, restore_user_data_fcbk
+        from core.services.import_service import restaurar_dados_usuario
+        from core.tests.backup_utils import exportar_e_ler
 
         evento = Evento.objects.create(
             usuario=self.user,
@@ -369,13 +369,11 @@ class EventosTestCase(APITestCase):
             evento=evento,
         )
 
-        pwd = "SafeBackupPassword123!"
-        encrypted_b64 = export_user_data(self.user, pwd)
-        decrypted = decrypt_data_fcbk(encrypted_b64, pwd)
+        dados = exportar_e_ler(self.user)
 
         # Restaura os dados
-        res = restore_user_data_fcbk(decrypted, self.user)
-        self.assertEqual(res["tipo"], "fcbk")
+        res = restaurar_dados_usuario(dados, self.user)
+        self.assertEqual(res["tipo"], "zip")
 
         # Verifica se o evento foi recriado e o vínculo mantido
         evento_restaurado = Evento.objects.filter(usuario=self.user, nome="Viagem Portugal").first()

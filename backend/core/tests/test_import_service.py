@@ -1,4 +1,4 @@
-"""Testes de integração para o Serviço de Importação de Backup (.fcbk).
+"""Testes de integração para o Serviço de Importação de Backup.
 
 Cobre os fluxos críticos de restauração atômica de dados, incluindo:
 - Desconexão de signals Django durante importação em lote
@@ -7,20 +7,12 @@ Cobre os fluxos críticos de restauração atômica de dados, incluindo:
 - Isolamento multi-tenant (padrão do security_standards.md)
 """
 
-import base64
-import hashlib
-import json
-import os
-
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from core.services.export_service import export_user_data
-from core.services.import_service import restore_user_data_fcbk, decrypt_data_fcbk
+from core.services.import_service import restaurar_dados_usuario
+from core.tests.backup_utils import exportar_e_ler
 from investimento.models import (
     Carteira,
     ClasseAtivo,
@@ -31,22 +23,8 @@ from investimento.models import (
 )
 
 
-def _encrypt_sem_compressao(data_dict, password):
-    """Reproduz o formato de arquivo .fcbk legado (versão 4.0, sem zlib)."""
-    json_data = json.dumps(data_dict).encode("utf-8")
-    salt = os.urandom(16)
-    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000)
-    key = kdf.derive(password.encode("utf-8"))
-    aesgcm = AESGCM(key)
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, json_data, None)
-    payload = salt + nonce + ciphertext
-    final_file_data = hashlib.sha256(payload).digest() + payload
-    return base64.b64encode(final_file_data).decode("utf-8")
-
-
-class RestoreUserDataFcbkTests(TestCase):
-    """Testes de integração para a função restore_user_data_fcbk.
+class RestaurarDadosUsuarioTests(TestCase):
+    """Testes de integração para a função restaurar_dados_usuario.
 
     Verifica que a restauração de backups produz o estado correto
     de quantidade e preço médio dos ativos de investimento, sem interferência
@@ -140,12 +118,8 @@ class RestoreUserDataFcbkTests(TestCase):
         """
         self._create_transacoes()
 
-        # Exporta backup criptografado
-        senha = "senha_de_teste_segura"
-        encrypted = export_user_data(self.user, senha)
-
-        # Decodifica o backup para obter o dict de dados brutos
-        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+        # Exporta o backup e lê de volta o dict de dados brutos
+        data_dict = exportar_e_ler(self.user)
 
         # Garante que o backup contém os dados de investimento
         ativos_no_backup = data_dict.get("data", {}).get("investimento", {}).get("Ativo", [])
@@ -161,7 +135,7 @@ class RestoreUserDataFcbkTests(TestCase):
         CategoriaAtivo.objects.filter(usuario=self.user).delete()
         ClasseAtivo.objects.filter(usuario=self.user).delete()
 
-        resultado = restore_user_data_fcbk(data_dict, self.user)
+        resultado = restaurar_dados_usuario(data_dict, self.user)
 
         # Valida estatísticas do restore
         self.assertGreater(resultado["criados"], 0, "O restore deve criar pelo menos um registro.")
@@ -227,10 +201,8 @@ class RestoreUserDataFcbkTests(TestCase):
         )
 
         # Faz backup e restore do usuário principal
-        senha = "senha_principal"
-        encrypted = export_user_data(self.user, senha)
-        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
-        restore_user_data_fcbk(data_dict, self.user)
+        data_dict = exportar_e_ler(self.user)
+        restaurar_dados_usuario(data_dict, self.user)
 
         # Dados do outro usuário devem permanecer intactos
         self.assertTrue(
@@ -260,9 +232,7 @@ class RestoreUserDataFcbkTests(TestCase):
         )
 
         # Exporta backup
-        senha = "senha_de_teste"
-        encrypted = export_user_data(self.user, senha)
-        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+        data_dict = exportar_e_ler(self.user)
 
         # Garante que as cotações foram exportadas
         cotacoes_no_backup = data_dict.get("data", {}).get("investimento", {}).get("Cotacao", [])
@@ -275,7 +245,7 @@ class RestoreUserDataFcbkTests(TestCase):
         Transacao.objects.filter(usuario=self.user).delete()
         Ativo.objects.filter(usuario=self.user).delete()
 
-        restore_user_data_fcbk(data_dict, self.user)
+        restaurar_dados_usuario(data_dict, self.user)
 
         # Verifica se a cotação foi restaurada e vinculada ao novo ativo correto
         ativo_restaurado = Ativo.objects.get(usuario=self.user, ticker="PETR4")
@@ -286,42 +256,12 @@ class RestoreUserDataFcbkTests(TestCase):
         self.assertEqual(cotacao.data, data_cotacao)
         self.assertEqual(cotacao.valor, valor_cotacao)
 
-    def test_backup_legado_sem_compressao_ainda_funciona(self):
-        """Arquivos .fcbk gerados antes da versão 4.1 (sem zlib) devem continuar
-        sendo restauráveis, garantindo compatibilidade retroativa."""
-        self._create_transacoes()
-        data_dict_original = {
-            "metadata": {"version": "4.0", "username": self.user.username},
-            "data": {},
-        }
-        senha = "senha_legado"
-        encrypted = _encrypt_sem_compressao(data_dict_original, senha)
-
-        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
-
-        self.assertEqual(data_dict["metadata"]["version"], "4.0")
-
-    def test_versao_incompativel_rejeitada(self):
-        """Um backup com versão não suportada deve ser rejeitado antes de
-        qualquer tentativa de restauração parcial registro a registro."""
-        data_dict_original = {
-            "metadata": {"version": "99.0", "username": self.user.username},
-            "data": {},
-        }
-        senha = "senha_futura"
-        encrypted = _encrypt_sem_compressao(data_dict_original, senha)
-
-        with self.assertRaises(ValueError):
-            decrypt_data_fcbk(encrypted.encode(), senha)
-
     def test_ignorados_contabilizado_corretamente(self):
         """Registros sem UUID (corrompidos/incompletos) devem ser contabilizados
         em 'ignorados' em vez de inflar silenciosamente 'criados'."""
         self._create_transacoes()
 
-        senha = "senha_de_teste"
-        encrypted = export_user_data(self.user, senha)
-        data_dict = decrypt_data_fcbk(encrypted.encode(), senha)
+        data_dict = exportar_e_ler(self.user)
 
         transacoes = data_dict["data"]["investimento"]["Transacao"]
         self.assertEqual(len(transacoes), 3)
@@ -333,7 +273,7 @@ class RestoreUserDataFcbkTests(TestCase):
         CategoriaAtivo.objects.filter(usuario=self.user).delete()
         ClasseAtivo.objects.filter(usuario=self.user).delete()
 
-        resultado = restore_user_data_fcbk(data_dict, self.user)
+        resultado = restaurar_dados_usuario(data_dict, self.user)
 
         self.assertEqual(resultado["ignorados"], 1)
         self.assertEqual(
