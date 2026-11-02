@@ -1,0 +1,20 @@
+# Configuração do Ruff (lint do backend). Rodar de dentro de backend/: `ruff check .`
+# O projeto não é empacotado: este arquivo existe só para a ferramenta.
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+extend-exclude = ["staticfiles"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle e pyflakes. B: bugbear. S: bandit (segurança). DJ: Django.
+select = ["E", "F", "B", "S", "DJ"]
+# Linha longa fica para um formatador, se for adotado; hoje são docstrings e mensagens.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Senhas de teste são fixas de propósito: o teste precisa saber qual senha usar
+"*/tests/*" = ["S105", "S106", "S107"]
+# Script avulso: os imports de modelo só funcionam depois de django.setup(),
+# e o usuário de demonstração tem senha conhecida por definição
+"create_dummy_data.py" = ["E402", "S106", "S107"]

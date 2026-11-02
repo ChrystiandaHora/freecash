@@ -8,3 +8,6 @@
 
 # Medição de cobertura dos testes. Ver docs/testes.md.
 coverage==7.16.0
+
+# Lint e análise estática de segurança; regras em pyproject.toml.
+ruff==0.17.3
