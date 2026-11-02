@@ -20,6 +20,8 @@ omit =
     core/create_dummy_data.py
 
 [report]
+# Piso contra regressão, não meta: a suíte estava em 82% quando foi fixado
+fail_under = 80
 show_missing = true
 skip_covered = false
 # Linhas que não fazem sentido cobrir.
