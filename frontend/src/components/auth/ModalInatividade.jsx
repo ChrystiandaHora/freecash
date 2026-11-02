@@ -3,17 +3,20 @@
  *
  * Exibido quando o usuário passa 14 minutos sem interação, com aviso
  * visual e contagem regressiva para proteger a conta contra acessos indevidos.
+ *
+ * "Continuar ativo" renova a sessão. "Fechar" (e também o X, o Esc e o clique fora)
+ * só dispensa o aviso, sem renovar — ver `hooks/useInactivityTimer.js`.
  */
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { ShieldAlert, Clock } from 'lucide-react';
 
-export function ModalInatividade({ isOpen, segundosRestantes, onEstender, onEncerrar }) {
+export function ModalInatividade({ isOpen, segundosRestantes, onEstender, onFechar }) {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onEstender}
-      title="Sessão Expirando por Inatividade"
+      onClose={onFechar}
+      title="Sua sessão vai expirar"
       size="sm"
     >
       <div className="flex flex-col items-center text-center space-y-4 py-2">
@@ -23,7 +26,8 @@ export function ModalInatividade({ isOpen, segundosRestantes, onEstender, onEnce
 
         <div className="space-y-1.5">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Por segurança financeira, sua sessão será encerrada automaticamente caso não haja interação.
+            Por segurança, você será desconectado por inatividade quando o tempo acabar.
+            Para continuar usando o FreeCash, clique em <strong className="text-foreground">Continuar ativo</strong>.
           </p>
         </div>
 
@@ -43,9 +47,9 @@ export function ModalInatividade({ isOpen, segundosRestantes, onEstender, onEnce
             type="button"
             variant="outline"
             className="flex-1 order-2 sm:order-1"
-            onClick={onEncerrar}
+            onClick={onFechar}
           >
-            Sair agora
+            Fechar
           </Button>
           <Button
             type="button"
@@ -53,7 +57,7 @@ export function ModalInatividade({ isOpen, segundosRestantes, onEstender, onEnce
             className="flex-1 order-1 sm:order-2"
             onClick={onEstender}
           >
-            Continuar conectado
+            Continuar ativo
           </Button>
         </div>
       </div>

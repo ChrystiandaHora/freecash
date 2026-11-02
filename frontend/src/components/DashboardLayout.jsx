@@ -31,7 +31,7 @@ export default function DashboardLayout() {
   const isFirstRenderRef = useRef(true);
 
   // Monitor de inatividade de 15 minutos (com aviso prévio aos 14 minutos)
-  const { mostrarAviso, segundosRestantes, estenderSessao, encerrarSessao } = useInactivityTimer();
+  const { mostrarAviso, segundosRestantes, estenderSessao, fecharAviso } = useInactivityTimer();
 
   // Ao navegar (SPA): atualiza o título da aba e devolve o foco ao conteúdo
   // principal, para que usuários de teclado/leitor de tela percebam a mudança de
@@ -98,7 +98,7 @@ export default function DashboardLayout() {
         isOpen={mostrarAviso}
         segundosRestantes={segundosRestantes}
         onEstender={estenderSessao}
-        onEncerrar={encerrarSessao}
+        onFechar={fecharAviso}
       />
 
       <SiteFooter />

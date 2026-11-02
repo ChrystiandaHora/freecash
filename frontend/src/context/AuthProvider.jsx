@@ -1,6 +1,6 @@
 /** Provedor de contexto de autenticação JWT e gerenciamento de sessão do usuário. */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setAccessToken } from '../services/api';
+import api, { renovarAccessToken, setAccessToken } from '../services/api';
 import { buscarPerfil } from '../services/auth';
 import axios from 'axios';
 import {
@@ -48,6 +48,12 @@ export const AuthProvider = ({ children }) => {
       setPerfil(null);
       return null;
     }
+  }, []);
+
+  /** Renova a sessão agora, sem esperar um 401; falha quando o refresh token já não vale. */
+  const renovarSessao = useCallback(async () => {
+    const access = await renovarAccessToken();
+    setUser(decodeToken(access));
   }, []);
 
   useEffect(() => {
@@ -144,6 +150,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         recarregarPerfil,
+        renovarSessao,
         isAuthenticated: !!user,
       }}
     >

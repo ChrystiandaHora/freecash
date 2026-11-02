@@ -5,6 +5,10 @@
  * Se o usuário ficar inativo por 14 minutos, aciona um aviso com contagem regressiva.
  * Aos 15 minutos, encerra a sessão automaticamente por segurança financeira.
  *
+ * No aviso, "Continuar ativo" renova o access token no servidor e zera o prazo. "Fechar"
+ * só dispensa o aviso: o prazo segue correndo, mas a próxima interação com o app volta a
+ * contar como atividade — sem isso, quem fechasse ficaria sem como estender (WCAG 2.2.1).
+ *
  * Para testes locais rápidos:
  * Pode ser ativado no console do navegador via:
  * `window.ativarTesteInatividade(30)` (onde 30 são os segundos totais).
@@ -12,13 +16,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthProvider';
+import { classificarFalha, definirStatusConexao, ehFalhaDeConexao } from '../lib/statusConexao';
 
 // Configurações padrão (em milissegundos)
 const DEFAULT_INATIVIDADE_MS = 15 * 60 * 1000; // 15 minutos
 const DEFAULT_AVISO_PREVIO_MS = 14 * 60 * 1000; // 14 minutos (avisa 1 minuto antes)
 
 export function useInactivityTimer() {
-  const { isAuthenticated, logout, recarregarPerfil } = useAuth();
+  const { isAuthenticated, logout, renovarSessao } = useAuth();
   const navigate = useNavigate();
 
   const [mostrarAviso, setMostrarAviso] = useState(false);
@@ -28,6 +33,8 @@ export function useInactivityTimer() {
   const timerCheckRef = useRef(null);
   const countdownIntervalRef = useRef(null);
   const avisoAtivoRef = useRef(false);
+  // Aviso fechado sem renovar: não reabre até haver atividade, mas o prazo continua valendo
+  const avisoDispensadoRef = useRef(false);
 
   // Permite configurar tempos menores para testes locais
   const configRef = useRef({
@@ -72,11 +79,12 @@ export function useInactivityTimer() {
     };
   }, []);
 
-  const encerrarSessao = useCallback(async () => {
+  const encerrarSessao = useCallback(async (destino = '/login?motivo=inatividade') => {
     clearInterval(countdownIntervalRef.current);
     clearInterval(timerCheckRef.current);
     setMostrarAviso(false);
     avisoAtivoRef.current = false;
+    avisoDispensadoRef.current = false;
 
     try {
       await logout();
@@ -84,27 +92,44 @@ export function useInactivityTimer() {
       // Ignora falhas de rede no logout forçado
     }
 
-    navigate('/login?motivo=inatividade', { replace: true });
+    navigate(destino, { replace: true });
   }, [logout, navigate]);
 
   const estenderSessao = useCallback(async () => {
     ultimaAtividadeRef.current = Date.now();
     setMostrarAviso(false);
     avisoAtivoRef.current = false;
+    avisoDispensadoRef.current = false;
     clearInterval(countdownIntervalRef.current);
 
-    // Faz um ping silencioso para renovar o token e manter o backend ativo
     try {
-      await recarregarPerfil();
-    } catch {
-      // Falha tratada silenciosamente
+      await renovarSessao();
+    } catch (erro) {
+      // API fora do ar não prova que a sessão caiu: a tela de conexão assume
+      if (ehFalhaDeConexao(erro)) {
+        definirStatusConexao(classificarFalha(navigator.onLine));
+        return;
+      }
+      // Refresh recusado: a sessão já tinha sido encerrada no servidor
+      encerrarSessao('/login');
     }
-  }, [recarregarPerfil]);
+  }, [renovarSessao, encerrarSessao]);
+
+  const fecharAviso = useCallback(() => {
+    setMostrarAviso(false);
+    avisoDispensadoRef.current = true;
+    clearInterval(countdownIntervalRef.current);
+    // Destrava só depois que o clique/tecla que fechou o aviso chegar à window, senão ele zeraria o prazo
+    setTimeout(() => {
+      avisoAtivoRef.current = false;
+    }, 0);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setMostrarAviso(false);
       avisoAtivoRef.current = false;
+      avisoDispensadoRef.current = false;
       clearInterval(timerCheckRef.current);
       clearInterval(countdownIntervalRef.current);
       return;
@@ -140,7 +165,7 @@ export function useInactivityTimer() {
 
       // Se entrou na janela de aviso prévio
       if (tempoInativo >= avisoMs) {
-        if (!avisoAtivoRef.current) {
+        if (!avisoAtivoRef.current && !avisoDispensadoRef.current) {
           avisoAtivoRef.current = true;
           setMostrarAviso(true);
 
@@ -160,6 +185,7 @@ export function useInactivityTimer() {
         }
       } else {
         // Se voltou a ter atividade antes do aviso
+        avisoDispensadoRef.current = false;
         if (avisoAtivoRef.current) {
           avisoAtivoRef.current = false;
           setMostrarAviso(false);
@@ -181,6 +207,6 @@ export function useInactivityTimer() {
     mostrarAviso,
     segundosRestantes,
     estenderSessao,
-    encerrarSessao,
+    fecharAviso,
   };
 }
