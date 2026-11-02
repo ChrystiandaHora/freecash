@@ -1,15 +1,17 @@
 """Testes unitários e de integração para a funcionalidade de Eventos fora do orçamento."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.db.models import ProtectedError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core.models import Categoria, Conta, CartaoCredito, Evento, PlanoMetas
 from core.services.dashboard_helper import (
+    month_start,
     totals_for_range_competencia,
     totals_for_range_realizadas,
     saldo_liquidez_ate,
@@ -273,7 +275,13 @@ class EventosTestCase(APITestCase):
         )
 
     def test_relatorio_dre_e_metas_excluem_evento(self):
-        """Valida que a DRE anual e o cálculo de custo de vida das metas excluem despesas de evento."""
+        """Valida que a DRE anual e o cálculo de custo de vida das metas excluem despesas de evento.
+
+        As datas são do mês corrente, e não fixas: `medias_mensais` mede a janela a
+        partir de hoje, e com datas fixas o teste passava a comparar contra um mês vazio
+        assim que o calendário virava — dando 0, sem provar mais a exclusão do evento.
+        """
+        inicio_do_mes = month_start(timezone.localdate())
         evento = Evento.objects.create(
             usuario=self.user,
             nome="Reforma Cozinha",
@@ -284,19 +292,19 @@ class EventosTestCase(APITestCase):
             tipo=Conta.TIPO_DESPESA,
             descricao="Aluguel",
             valor=Decimal("3000.00"),
-            data_prevista=date(2026, 10, 1),
+            data_prevista=inicio_do_mes,
         )
         Conta.objects.create(
             usuario=self.user,
             tipo=Conta.TIPO_DESPESA,
             descricao="Marcenaria Reforma",
             valor=Decimal("8000.00"),
-            data_prevista=date(2026, 10, 15),
+            data_prevista=inicio_do_mes + timedelta(days=14),
             evento=evento,
         )
 
         # DRE
-        res_dre = self.client.get("/api/relatorios/dre/?ano=2026")
+        res_dre = self.client.get(f"/api/relatorios/dre/?ano={inicio_do_mes.year}")
         self.assertEqual(res_dre.status_code, status.HTTP_200_OK)
         self.assertEqual(Decimal(str(res_dre.data["despesas"]["despesas_fixas"])), Decimal("3000.00"))
 
