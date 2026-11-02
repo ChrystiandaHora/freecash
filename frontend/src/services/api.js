@@ -37,6 +37,31 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let renovacaoEmAndamento = null;
+
+/**
+ * Troca o refresh token (cookie HttpOnly) por um access token novo e o guarda em memória.
+ *
+ * Chamadas simultâneas compartilham a mesma requisição. Com `ROTATE_REFRESH_TOKENS` e
+ * `BLACKLIST_AFTER_ROTATION`, um segundo refresh com o mesmo cookie seria recusado e
+ * derrubaria a sessão — o caso do "Continuar ativo" do aviso de inatividade coincidindo
+ * com o refresh do interceptor abaixo.
+ *
+ * @returns {Promise<string>} O access token novo.
+ */
+export const renovarAccessToken = () => {
+  renovacaoEmAndamento ??= axios
+    .post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true })
+    .then(({ data }) => {
+      setAccessToken(data.access);
+      return data.access;
+    })
+    .finally(() => {
+      renovacaoEmAndamento = null;
+    });
+  return renovacaoEmAndamento;
+};
+
 // Interceptor de Resposta: Renovação Silenciosa de JWT (Silent Refresh)
 let isRefreshing = false;
 let failedQueue = [];
@@ -105,10 +130,7 @@ api.interceptors.response.use(
       try {
         // Tenta renovar o token chamando o endpoint de refresh
         // Como o refresh token está em um cookie HttpOnly, ele é enviado automaticamente
-        const response = await axios.post(`${API_URL}/api/token/refresh/`, {}, { withCredentials: true });
-        const { access } = response.data;
-        
-        setAccessToken(access);
+        const access = await renovarAccessToken();
         originalRequest.headers.Authorization = `Bearer ${access}`;
         
         processQueue(null, access);
