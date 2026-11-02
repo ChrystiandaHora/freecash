@@ -9,6 +9,9 @@
  * docs/proposta-sinais-realizacao.md).
  */
 
+/** Âncora do painel de sinais no Balanceamento; o sino de notificações aponta para ela. */
+export const ANCORA_SINAIS = 'sinais';
+
 /** Tipos fiscais aceitos por `Ativo.tipo_fiscal`; vazio deixa o backend deduzir. */
 export const TIPOS_FISCAIS = [
   { valor: 'ACAO', rotulo: 'Ação' },

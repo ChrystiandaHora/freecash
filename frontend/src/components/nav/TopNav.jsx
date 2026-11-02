@@ -36,7 +36,7 @@ import { MobileNavPanel } from './MobileNavPanel';
 import { UserMenu } from './UserMenu';
 import { HelpButton } from './HelpButton';
 import { PrivacidadeToggle } from './PrivacidadeToggle';
-import { SinaisIndicador } from './SinaisIndicador';
+import { NotificacoesSino } from './NotificacoesSino';
 
 /**
  * @param {Object} props
@@ -284,12 +284,13 @@ export default function TopNav({ mainRef }) {
                 rápido e em qualquer tela — inclusive no mobile, onde a conta vai para
                 o painel.
 
-                O indicador de sinais vem depois do olho, para a ajuda continuar primeiro;
-                ele só aparece quando há sinal (ver SinaisIndicador). */}
+                O sino vem depois do olho, para a ajuda continuar primeiro, e fecha o
+                grupo antes do divisor da conta. Os sinais de rebalanceamento entram nele
+                em vez de ter ícone próprio (ver NotificacoesSino). */}
             <div className="flex shrink-0 items-center gap-2">
               <HelpButton />
               <PrivacidadeToggle />
-              <SinaisIndicador />
+              <NotificacoesSino />
               <div className="mx-1 hidden h-5 w-px bg-border lg:block" aria-hidden="true" />
               <div className="hidden lg:block">
                 <UserMenu

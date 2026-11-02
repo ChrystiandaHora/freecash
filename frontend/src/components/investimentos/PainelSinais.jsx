@@ -1,8 +1,8 @@
 /**
  * Painel com os sinais de rebalanceamento de várias posições.
  *
- * Fica no topo do Balanceamento, que é o destino do indicador da barra do topo, e no
- * Detalhe do Ativo. Quando chega por `#sinais`, o foco vai para o título do painel: o
+ * Fica no topo do Balanceamento, que é o destino da notificação de sinais no sino da
+ * barra, e no Detalhe do Ativo. Quando chega por `#sinais`, o foco vai para o título do painel: o
  * React Router não rola até a âncora sozinho.
  */
 import { useEffect, useRef } from 'react';
@@ -11,8 +11,7 @@ import { Scale } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { SinalResumo } from './SinalResumo';
-
-export const ANCORA_SINAIS = 'sinais';
+import { ANCORA_SINAIS } from '../../lib/sinais';
 
 const AVISO =
   'Os sinais aplicam a regra 5/25 às metas que você definiu em cada carteira; não são ' +
