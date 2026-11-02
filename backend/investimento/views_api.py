@@ -7,6 +7,7 @@ e cálculos em tempo real de reequilíbrio e balanceamento inteligente de aporte
 """
 
 import datetime
+import logging
 import uuid as uuid_lib
 from decimal import Decimal
 from rest_framework import viewsets, permissions, status
@@ -51,6 +52,8 @@ from .services.sinais_service import (
 from .sinais import LIMITE_ISENCAO_ACOES, Sinal, TipoSinal
 from .services.yahoo_service import YahooIndisponivel, fetch_historico_yahoo
 
+logger = logging.getLogger("investimento")
+
 # Janela padrão do gráfico comparativo de cotações em Meus Ativos.
 JANELA_COTACOES_DIAS = 60
 JANELA_COTACOES_DIAS_MAX = 365
@@ -83,7 +86,7 @@ def carteira_do_request(request) -> int | None:
     except (TypeError, ValueError):
         raise ValidationError(
             {"carteira": "Informe o id numérico da carteira, ou omita para o consolidado."}
-        )
+        ) from None
 
 
 class CarteiraViewSet(viewsets.ModelViewSet):
@@ -322,7 +325,8 @@ class AtivoViewSet(viewsets.ModelViewSet):
                         valor_total=qtd * preco,
                     )
             except Exception:
-                pass  # Tolera falha na transação inicial silenciosamente
+                # O ativo fica criado mesmo sem a compra inicial; a falha vai para o log
+                logger.warning("Falha ao registrar a compra inicial do ativo %s.", ativo.pk, exc_info=True)
         elif carteira:
             try:
                 PosicaoCarteira.objects.get_or_create(
@@ -332,7 +336,7 @@ class AtivoViewSet(viewsets.ModelViewSet):
                     defaults={"quantidade": Decimal("0"), "custo_total": Decimal("0")},
                 )
             except Exception:
-                pass
+                logger.warning("Falha ao criar a posição vazia do ativo %s.", ativo.pk, exc_info=True)
 
     def _carteira_da_compra_inicial(self) -> Carteira | None:
         """Resolve em qual custódia entra a compra inaugural.
@@ -428,7 +432,7 @@ class AtivoViewSet(viewsets.ModelViewSet):
         try:
             dias = int(valor)
         except (TypeError, ValueError):
-            raise ValidationError({"dias": "Informe um número inteiro de dias."})
+            raise ValidationError({"dias": "Informe um número inteiro de dias."}) from None
         return max(1, min(dias, JANELA_COTACOES_DIAS_MAX))
 
     @action(detail=True, methods=['post'], url_path='atualizar')
