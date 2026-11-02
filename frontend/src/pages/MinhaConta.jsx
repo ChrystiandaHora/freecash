@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 
 import { ChecklistSenha } from '../components/auth/ChecklistSenha';
+import { EmailVerificationBanner } from '../components/auth/EmailVerificationBanner';
 import { Alert } from '../components/ui/Alert';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -476,6 +477,9 @@ export default function MinhaConta() {
   return (
     <div className="space-y-6 animate-fade-in">
       {cabecalho}
+
+      {/* Único lugar do aviso de e-mail; nas demais telas ele vive no sino da barra */}
+      <EmailVerificationBanner />
 
       {/* ── Estado da conta ────────────────────────────────────────────────── */}
       <div data-tour="conta-indicadores" className="grid grid-cols-1 gap-4 md:grid-cols-3">

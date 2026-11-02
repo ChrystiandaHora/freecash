@@ -15,7 +15,6 @@
  */
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { EmailVerificationBanner } from './auth/EmailVerificationBanner';
 import { ModalInatividade } from './auth/ModalInatividade';
 import { ErrorBoundary } from './ErrorBoundary';
 import TopNav from './nav/TopNav';
@@ -81,10 +80,6 @@ export default function DashboardLayout() {
         className="min-w-0 flex-1 p-4 focus:outline-none sm:p-6 lg:p-8"
       >
         <div className="w-full min-w-0 space-y-8">
-          {/* Renderiza null quando não há o que avisar, então não ocupa espaço
-              nem gera lacuna do `space-y-8` nas contas já confirmadas. */}
-          <EmailVerificationBanner />
-
           {/* A fronteira envolve só o conteúdo da rota, e fica DENTRO do layout:
               assim um erro de render numa tela preserva a navegação, o rodapé e a
               saída da conta. Envolvendo o layout inteiro, o erro apagaria também a

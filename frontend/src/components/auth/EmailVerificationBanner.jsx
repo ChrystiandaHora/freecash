@@ -1,5 +1,10 @@
 /**
- * Aviso persistente para contas com e-mail ainda não confirmado.
+ * Aviso, em Minha Conta, para contas com e-mail ainda não confirmado.
+ *
+ * É informativo: nenhuma ação da conta depende da confirmação, que serve só para
+ * recuperar a senha. Por isso usa a variante `info` (`role="status"`), e não `warning`,
+ * que é `role="alert"` e interrompe o leitor de tela. Nas outras telas a mesma
+ * informação aparece no sino da barra (ver nav/NotificacoesSino).
  *
  * Existe porque o produto permite entrar antes de confirmar o e-mail. Bloquear o
  * login de quem não confirmou seria pior: a conta já nasce com o ecossistema
@@ -15,7 +20,7 @@
  * @returns {React.JSX.Element | null} O aviso, ou nada quando não há o que avisar.
  */
 import { useState } from 'react';
-import { AlertCircle, Loader2, MailWarning } from 'lucide-react';
+import { AlertCircle, Loader2, Mail } from 'lucide-react';
 
 import { Alert } from '../ui/Alert';
 import { useAuth } from '../../context/AuthProvider';
@@ -65,8 +70,8 @@ export function EmailVerificationBanner() {
 
   return (
     <Alert
-      variant="warning"
-      icon={erro ? AlertCircle : MailWarning}
+      variant={erro ? 'error' : 'info'}
+      icon={erro ? AlertCircle : Mail}
       className="text-xs"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -74,8 +79,8 @@ export function EmailVerificationBanner() {
           {erro
             ? erro
             : semEmail
-              ? 'Sua conta não tem e-mail cadastrado. Sem ele, não é possível recuperar o acesso caso você esqueça a senha.'
-              : `Confirme seu e-mail (${perfil.email}) para garantir a recuperação da sua senha.`}
+              ? 'Cadastre um e-mail abaixo para poder recuperar a senha se você a esquecer.'
+              : `Seu e-mail (${perfil.email}) ainda não foi confirmado. Ele permite recuperar a senha se você a esquecer.`}
         </span>
 
         {!semEmail && (
