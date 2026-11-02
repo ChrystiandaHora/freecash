@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.utils import timezone
 from rest_framework import status
@@ -129,7 +130,7 @@ class EventosTestCase(APITestCase):
             cartao=cartao,
             evento=evento,
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             conta_cartao.full_clean()
 
     def test_protect_ao_excluir_evento_com_lancamentos(self):
@@ -352,7 +353,7 @@ class EventosTestCase(APITestCase):
         self.assertEqual(len(res.data["lancamentos"]), 2)
         # A tabela do EventoDetalhe lê o nome da categoria deste campo
         self.assertEqual(
-            {l["descricao"]: l["categoria"] for l in res.data["lancamentos"]},
+            {lanc["descricao"]: lanc["categoria"] for lanc in res.data["lancamentos"]},
             {"Pousada Maragogi": self.cat_viagem.nome,
              "Restaurante Frutos do Mar": self.cat_alimentacao.nome},
         )
@@ -368,7 +369,7 @@ class EventosTestCase(APITestCase):
             orcamento=Decimal("12000.00"),
             fora_dos_relatorios=True,
         )
-        conta = Conta.objects.create(
+        Conta.objects.create(
             usuario=self.user,
             tipo=Conta.TIPO_DESPESA,
             descricao="Passaporte e Visto",

@@ -470,6 +470,7 @@ class FiltroDeCarteiraNaAPITests(CarteiraBaseTestCase):
             zip(
                 resposta.data["alocacao_carteiras"]["labels"],
                 resposta.data["alocacao_carteiras"]["valores"],
+                strict=True,
             )
         )
         self.assertEqual(alocacao, {"XP": 3000.0, "Inter": 2000.0})

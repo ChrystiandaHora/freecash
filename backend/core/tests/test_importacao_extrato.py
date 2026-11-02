@@ -36,21 +36,21 @@ class ImportacaoExtratoTestCase(APITestCase):
         self.assertGreater(len(linhas), 0)
         
         # Verifica se algumas transações conhecidas da fatura estão presentes
-        descricoes = [l["descricao"] for l in linhas]
+        descricoes = [linha["descricao"] for linha in linhas]
         
         # Kabum-Kabum e Spotify devem estar lá
         self.assertTrue(any("KABUM-KABUM" in desc for desc in descricoes))
         self.assertTrue(any("SPOTIFY" in desc for desc in descricoes))
         
         # Verifica estrutura dos dados extraídos
-        for l in linhas:
-            self.assertIn("data", l)
-            self.assertIn("descricao", l)
-            self.assertIn("valor", l)
-            self.assertIn("tipo", l)
-            self.assertIsInstance(l["data"], date)
-            self.assertIsInstance(l["valor"], Decimal)
-            self.assertEqual(l["tipo"], "D")  # Todos devem ser despesas/débitos
+        for linha in linhas:
+            self.assertIn("data", linha)
+            self.assertIn("descricao", linha)
+            self.assertIn("valor", linha)
+            self.assertIn("tipo", linha)
+            self.assertIsInstance(linha["data"], date)
+            self.assertIsInstance(linha["valor"], Decimal)
+            self.assertEqual(linha["tipo"], "D")  # Todos devem ser despesas/débitos
 
     @patch('core.services.fatura_service.detectar_vencimento_fatura')
     @patch('core.services.extrato_parser.processar_pdf')
@@ -162,7 +162,7 @@ class ImportacaoExtratoTestCase(APITestCase):
         """Compra vinculada a fatura já paga nasce marcada como paga."""
         # 1. Criar fatura consolidada paga
         data_pagamento = date(2026, 5, 24)
-        fatura = Conta.objects.create(
+        Conta.objects.create(
             usuario=self.user,
             tipo=Conta.TIPO_DESPESA,
             descricao="Fatura Paga",
@@ -192,7 +192,7 @@ class ImportacaoExtratoTestCase(APITestCase):
     def test_sync_compra_com_fatura_paga_na_edicao(self):
         """Mover a compra para um mês de fatura paga a marca como paga."""
         # 1. Fatura paga em Maio
-        fatura_maio = Conta.objects.create(
+        Conta.objects.create(
             usuario=self.user,
             tipo=Conta.TIPO_DESPESA,
             descricao="Fatura Maio Paga",

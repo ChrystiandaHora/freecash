@@ -1,5 +1,11 @@
-from django.test import SimpleTestCase
+from datetime import date
+from decimal import Decimal
 
+from django.contrib.auth.models import User
+from django.test import SimpleTestCase, TestCase
+
+from investimento.models import Carteira, CarteiraHistorico
+from investimento.services.carteira_historico_service import CarteiraHistoricoService
 from investimento.services.tradingview_screener import (
     _build_scan_payload,
     _normalize_to_tradingview_symbol,
@@ -24,13 +30,6 @@ class TradingViewScreenerTests(SimpleTestCase):
         self.assertEqual(payload["columns"], ["close"])
         self.assertEqual(payload["range"], [0, 500])
 
-
-from django.test import TestCase
-from django.contrib.auth.models import User
-from datetime import date
-from decimal import Decimal
-from investimento.models import Carteira, CarteiraHistorico
-from investimento.services.carteira_historico_service import CarteiraHistoricoService
 
 class CarteiraHistoricoServiceTestCase(TestCase):
     def setUp(self):

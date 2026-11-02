@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
-from core.models import Categoria, Conta, CartaoCredito
+from core.models import Categoria, Conta
 from decimal import Decimal
 import datetime
 

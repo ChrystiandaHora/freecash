@@ -11,7 +11,7 @@ dados diferentes, no padrão de `test_security.py`.
 de virar 400, nunca 500: `date(ano, mes, 1)` estoura para fora da faixa válida.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model

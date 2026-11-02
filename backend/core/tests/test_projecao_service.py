@@ -482,7 +482,7 @@ class ValorInvestidoNoHorizonteTests(ProjecaoBaseTestCase):
 
         diferencas = {
             Decimal(a["saldo"]) - Decimal(b["saldo"])
-            for a, b in zip(considerando["meses"][0]["dias"], padrao["meses"][0]["dias"])
+            for a, b in zip(considerando["meses"][0]["dias"], padrao["meses"][0]["dias"], strict=True)
         }
         self.assertEqual(diferencas, {Decimal("2000.00")})
 
