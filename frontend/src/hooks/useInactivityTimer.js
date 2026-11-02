@@ -9,6 +9,10 @@
  * só dispensa o aviso: o prazo segue correndo, mas a próxima interação com o app volta a
  * contar como atividade — sem isso, quem fechasse ficaria sem como estender (WCAG 2.2.1).
  *
+ * Com `pausado`, o prazo fica parado no zero e recomeça inteiro ao despausar. É o que o
+ * telão usa enquanto está em tela cheia, já que ninguém interage com ele (ver
+ * components/telao/TelaoLayout.jsx e A11Y-DECISIONS.md).
+ *
  * Para testes locais rápidos:
  * Pode ser ativado no console do navegador via:
  * `window.ativarTesteInatividade(30)` (onde 30 são os segundos totais).
@@ -22,7 +26,10 @@ import { classificarFalha, definirStatusConexao, ehFalhaDeConexao } from '../lib
 const DEFAULT_INATIVIDADE_MS = 15 * 60 * 1000; // 15 minutos
 const DEFAULT_AVISO_PREVIO_MS = 14 * 60 * 1000; // 14 minutos (avisa 1 minuto antes)
 
-export function useInactivityTimer() {
+/**
+ * @param {{pausado?: boolean}} [opcoes]
+ */
+export function useInactivityTimer({ pausado = false } = {}) {
   const { isAuthenticated, logout, renovarSessao } = useAuth();
   const navigate = useNavigate();
 
@@ -35,6 +42,11 @@ export function useInactivityTimer() {
   const avisoAtivoRef = useRef(false);
   // Aviso fechado sem renovar: não reabre até haver atividade, mas o prazo continua valendo
   const avisoDispensadoRef = useRef(false);
+  const pausadoRef = useRef(pausado);
+
+  useEffect(() => {
+    pausadoRef.current = pausado;
+  }, [pausado]);
 
   // Permite configurar tempos menores para testes locais
   const configRef = useRef({
@@ -154,6 +166,16 @@ export function useInactivityTimer() {
     // Loop de checagem periódica a cada 1 segundo
     timerCheckRef.current = setInterval(() => {
       const agora = Date.now();
+      if (pausadoRef.current) {
+        ultimaAtividadeRef.current = agora;
+        avisoDispensadoRef.current = false;
+        if (avisoAtivoRef.current) {
+          avisoAtivoRef.current = false;
+          setMostrarAviso(false);
+          clearInterval(countdownIntervalRef.current);
+        }
+        return;
+      }
       const tempoInativo = agora - ultimaAtividadeRef.current;
       const { totalMs, avisoMs } = configRef.current;
 
@@ -204,7 +226,8 @@ export function useInactivityTimer() {
   }, [isAuthenticated, encerrarSessao]);
 
   return {
-    mostrarAviso,
+    // Esconde já no render em que pausou, sem esperar o próximo tique
+    mostrarAviso: mostrarAviso && !pausado,
     segundosRestantes,
     estenderSessao,
     fecharAviso,
