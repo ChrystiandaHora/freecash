@@ -28,6 +28,34 @@ class TradingViewQuote:
     as_of: date
 
 
+# Códigos com que o screener sinaliza excesso de requisições vindas do mesmo IP
+CODIGOS_LIMITE = frozenset({403, 429})
+
+
+class TradingViewLimitado(RuntimeError):
+    """O screener recusou a consulta por excesso de requisições.
+
+    É subclasse de `RuntimeError` para que quem já trata a falha genérica continue
+    funcionando; quem sabe recuar (a sincronização do telão) captura esta antes.
+
+    Atributos:
+        retry_after: Segundos sugeridos pelo cabeçalho `Retry-After`, quando vier.
+    """
+
+    def __init__(self, mensagem: str, retry_after: int | None = None):
+        super().__init__(mensagem)
+        self.retry_after = retry_after
+
+
+def _ler_retry_after(erro: HTTPError) -> int | None:
+    """Lê o `Retry-After` em segundos; a forma de data HTTP é ignorada."""
+    valor = erro.headers.get("Retry-After") if erro.headers is not None else None
+    try:
+        return max(0, int(valor)) if valor is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_to_tradingview_symbol(ticker: str) -> str:
     """Converte e padroniza o ticker interno para o formato esperado pelo TradingView Screener.
 
@@ -94,7 +122,8 @@ def fetch_quotes_brazil(
         limit: Limite de paginação. Defaults to 500.
 
     Raises:
-        RuntimeError: Falha de rede (URLError/HTTPError) ou JSON inválido.
+        TradingViewLimitado: O screener respondeu 403/429 (excesso de requisições).
+        RuntimeError: Demais falhas de rede (URLError/HTTPError) ou JSON inválido.
 
     Returns:
         dict[str, TradingViewQuote]: Ticker normalizado (ex.: "BMFBOVESPA:PETR4") para a
@@ -131,7 +160,14 @@ def fetch_quotes_brazil(
         with urlopen(req, timeout=timeout_seconds) as resp:  # noqa: S310
             body = resp.read().decode("utf-8")
             data = json.loads(body)
-    except (URLError, HTTPError, json.JSONDecodeError) as e:
+    except HTTPError as e:
+        if e.code in CODIGOS_LIMITE:
+            raise TradingViewLimitado(
+                f"TradingView limitou as consultas (HTTP {e.code})",
+                retry_after=_ler_retry_after(e),
+            ) from e
+        raise RuntimeError(f"Falha ao consultar TradingView Screener: {e}") from e
+    except (URLError, json.JSONDecodeError) as e:
         raise RuntimeError(f"Falha ao consultar TradingView Screener: {e}") from e
 
     results: dict[str, TradingViewQuote] = {}

@@ -13,10 +13,12 @@ from django.utils import timezone
 
 from investimento.models import Ativo, PosicaoCarteira, Transacao, Cotacao
 from investimento.services.tradingview_screener import (
+    TradingViewLimitado,
     fetch_quotes_brazil,
     _normalize_to_tradingview_symbol,
 )
 from investimento.services.cvm_service import fetch_cvm_quotes
+from investimento.services.limite_fonte import backoff_ativo_ate, registrar_backoff
 from investimento.services.yahoo_service import YahooIndisponivel, fetch_historico_yahoo
 
 # Janela de histórico que a atualização em lote garante para cada ticker. Casa com o
@@ -255,36 +257,50 @@ def completar_historico(base, errors: list[str]) -> tuple[int, int]:
     return count, max(0, len(descobertos) - LIMITE_HISTORICO_POR_RODADA)
 
 
-def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
-    """Sincroniza as cotações a mercado: o fechamento do dia e a série que faltar.
+def _atualizar_b3(
+    base, errors: list[str], *, propagar_limite: bool = False, agora=None
+) -> tuple[int, dict, bool]:
+    """Grava o fechamento do dia das ações e FIIs numa única consulta ao TradingView.
 
-    São duas fontes com papéis distintos. TradingView (ações e FIIs) e CVM (fundos por
-    CNPJ) devolvem o fechamento **de hoje** em requisições em lote, baratas o bastante
-    para rodar a cada clique. O Yahoo devolve a **série**, ao custo de uma requisição
-    por ticker, e por isso só é acionado para quem ainda não cobre a janela de dois
-    meses (ver `completar_historico`).
+    Ativos que o TradingView não devolve mas têm CNPJ ficam para a CVM, sem erro.
+    Durante a pausa global da fonte (ver `services/limite_fonte.py`) não há consulta;
+    um 403/429 abre essa pausa para todos.
+
+    Args:
+        propagar_limite: Relança `TradingViewLimitado` em vez de registrá-lo como erro,
+            para que o chamador possa recuar (ver `services/sincronizacao_mercado.py`).
+        agora: Instante de referência da pausa. Padrão: `timezone.now()`.
 
     Returns:
-        tuple[int, list[str], int]: Pregões gravados, erros ocorridos e quantos ativos
-            ficaram com o histórico pendente para a próxima rodada.
+        tuple[int, dict, bool]: Pregões gravados, as cotações recebidas por símbolo, e
+            se a fonte respondeu (False em falha de rede, limite ou pausa).
     """
     count = 0
-    errors = []
-
-    base = Ativo.objects.filter(ativo=True)
-    if usuario is not None:
-        base = base.filter(usuario=usuario)
-
-    # 1. Atualização de Ações / FIIs via TradingView
     ativos_b3 = base.exclude(ticker="")
+    if not ativos_b3.exists():
+        return 0, {}, True
 
-    quotes_by_symbol = {}
-    if ativos_b3.exists():
-        try:
-            tickers = [a.ticker for a in ativos_b3 if a.ticker]
-            quotes_by_symbol = fetch_quotes_brazil(tickers)
-        except Exception as e:
-            errors.append(f"Erro ao buscar cotações no TradingView: {str(e)}")
+    agora = agora or timezone.now()
+    pausa_ate = backoff_ativo_ate(agora)
+    if pausa_ate:
+        if propagar_limite:
+            raise TradingViewLimitado("TradingView em pausa", retry_after=None)
+        hora = timezone.localtime(pausa_ate).strftime("%H:%M")
+        errors.append(f"TradingView pediu uma pausa nas consultas; tente de novo após {hora}")
+        return 0, {}, False
+
+    try:
+        tickers = [a.ticker for a in ativos_b3 if a.ticker]
+        quotes_by_symbol = fetch_quotes_brazil(tickers)
+    except TradingViewLimitado as e:
+        registrar_backoff(e.retry_after, agora)
+        if propagar_limite:
+            raise
+        errors.append(f"Erro ao buscar cotações no TradingView: {str(e)}")
+        return 0, {}, False
+    except Exception as e:
+        errors.append(f"Erro ao buscar cotações no TradingView: {str(e)}")
+        return 0, {}, False
 
     for ativo in ativos_b3:
         try:
@@ -304,9 +320,18 @@ def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
         except Exception as e:
             errors.append(f"Ativo {ativo.ticker}: Erro ao salvar cotação ({str(e)})")
 
-    # 2. Atualização de Fundos de Investimento via CVM
+    return count, quotes_by_symbol, True
+
+
+def _atualizar_cvm(base, quotes_by_symbol: dict, errors: list[str]) -> int:
+    """Grava a cota dos fundos (por CNPJ) que o TradingView não cotou nesta rodada.
+
+    Returns:
+        int: Cotas gravadas.
+    """
+    count = 0
     ativos_cvm = base.exclude(cnpj__isnull=True).exclude(cnpj="")
-    
+
     # Filtra ativos para buscar apenas se não foram atualizados pelo TradingView nesta rodada
     ativos_cvm_para_buscar = []
     for a in ativos_cvm:
@@ -318,13 +343,13 @@ def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
         try:
             cnpjs = [a.cnpj for a in ativos_cvm_para_buscar]
             cvm_quotes = fetch_cvm_quotes(cnpjs)
-            
+
             for ativo in ativos_cvm_para_buscar:
                 quote_info = cvm_quotes.get(ativo.cnpj)
                 if not quote_info:
                     errors.append(f"Fundo {ativo.ticker or ativo.nome} (CNPJ {ativo.cnpj}): Não encontrado nos dados da CVM")
                     continue
-                
+
                 vl_quota, dt_comptc = quote_info
                 Cotacao.objects.update_or_create(
                     ativo=ativo, data=dt_comptc, defaults={"valor": vl_quota}
@@ -333,7 +358,36 @@ def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
         except Exception as e:
             errors.append(f"Erro ao buscar cotações na CVM: {str(e)}")
 
-    # 3. Completamento do histórico de quem não cobre a janela do gráfico
+    return count
+
+
+def ativos_para_cotar(usuario=None):
+    """Ativos ativos a cotar; com `usuario`, só os dele."""
+    base = Ativo.objects.filter(ativo=True)
+    if usuario is not None:
+        base = base.filter(usuario=usuario)
+    return base
+
+
+def atualizar_cotacoes(usuario=None) -> tuple[int, list[str], int]:
+    """Sincroniza as cotações a mercado: o fechamento do dia e a série que faltar.
+
+    São duas fontes com papéis distintos. TradingView (ações e FIIs) e CVM (fundos por
+    CNPJ) devolvem o fechamento **de hoje** em requisições em lote, baratas o bastante
+    para rodar a cada clique. O Yahoo devolve a **série**, ao custo de uma requisição
+    por ticker, e por isso só é acionado para quem ainda não cobre a janela de dois
+    meses (ver `completar_historico`).
+
+    Returns:
+        tuple[int, list[str], int]: Pregões gravados, erros ocorridos e quantos ativos
+            ficaram com o histórico pendente para a próxima rodada.
+    """
+    errors = []
+    base = ativos_para_cotar(usuario)
+
+    count, quotes_by_symbol, _ = _atualizar_b3(base, errors)
+    count += _atualizar_cvm(base, quotes_by_symbol, errors)
+
     completados, historico_pendente = completar_historico(base, errors)
     count += completados
 

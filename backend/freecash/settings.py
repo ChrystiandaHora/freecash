@@ -213,6 +213,13 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "cache_throttle",
     },
+    # Cooldown, lock e backoff da sincronização do telão (ver docs/cotacoes-e-preco-medio.md).
+    # Reaproveita a tabela do throttle; o prefixo separa as chaves.
+    "mercado": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_throttle",
+        "KEY_PREFIX": "mercado",
+    },
 }
 
 # Configuração do cookie HttpOnly que transporta o refresh token.
@@ -296,6 +303,9 @@ REST_FRAMEWORK = {
         # Exportação lê a base inteira do usuário; o backup ainda deriva chave da senha
         "backup": "10/hour",
         "relatorios": "30/hour",
+        # Teto por usuário para o telão; a guarda real contra a fonte externa fica no
+        # serviço (cooldown de 15 min), isto só barra um cliente em laço
+        "telao_sincronizar": "30/hour",
     },
     "EXCEPTION_HANDLER": "core.exception_handler.freecash_exception_handler",
 }
