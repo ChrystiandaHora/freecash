@@ -164,7 +164,7 @@ class DashboardInvestimentoService:
         return {
             "carteira_labels": carteira_labels,
             "carteira_values": carteira_values,
-            "carteira_data": list(zip(carteira_labels, carteira_values)),
+            "carteira_data": list(zip(carteira_labels, carteira_values, strict=True)),
             "total_patrimonio": total_patrimonio,
             "total_investido": total_investido,
             "total_rentabilidade": float(total_rentabilidade),
@@ -172,7 +172,7 @@ class DashboardInvestimentoService:
             "total_dividendos": float(total_dividendos),
             "category_labels": category_labels,
             "category_values": category_values,
-            "category_data": list(zip(category_labels, category_values)),
+            "category_data": list(zip(category_labels, category_values, strict=True)),
             "performance_monthly": performance_monthly,
             "rentabilidade_mensal": rentabilidade_mensal,
         }

@@ -305,10 +305,10 @@ class CarteiraHistoricoService:
         for key in all_sorted_keys:
             rows = groups[key]
             # OHLC do Patrimônio
-            o = float(rows[0]["patrimonio"] or 0)
-            c = float(rows[-1]["patrimonio"] or 0)
-            h = float(max(r["patrimonio"] or 0 for r in rows))
-            l = float(min(r["patrimonio"] or 0 for r in rows))
+            abertura = float(rows[0]["patrimonio"] or 0)
+            fechamento = float(rows[-1]["patrimonio"] or 0)
+            maxima = float(max(r["patrimonio"] or 0 for r in rows))
+            minima = float(min(r["patrimonio"] or 0 for r in rows))
             
             # Investimento Líquido (Custo) no final do mês
             investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
@@ -325,9 +325,9 @@ class CarteiraHistoricoService:
 
             all_results.append({
                 "data": rows[-1]["data"].isoformat(),
-                "ohlc": [o, h, l, c],
+                "ohlc": [abertura, maxima, minima, fechamento],
                 "investido": investido,
-                "patrimonio": c,
+                "patrimonio": fechamento,
                 "total_dividendos": dividendos_acumulados,
                 "total_dividendos_mes": dividendos_mes,
             })
@@ -363,17 +363,17 @@ class CarteiraHistoricoService:
         results = []
         for key in sorted_keys:
             rows = groups[key]
-            o = float(rows[0]["patrimonio"] or 0)
-            c = float(rows[-1]["patrimonio"] or 0)
-            h = float(max(r["patrimonio"] or 0 for r in rows))
-            l = float(min(r["patrimonio"] or 0 for r in rows))
+            abertura = float(rows[0]["patrimonio"] or 0)
+            fechamento = float(rows[-1]["patrimonio"] or 0)
+            maxima = float(max(r["patrimonio"] or 0 for r in rows))
+            minima = float(min(r["patrimonio"] or 0 for r in rows))
             investido = float((rows[-1]["total_compras"] or 0) - (rows[-1]["total_vendas"] or 0))
 
             results.append({
                 "data": rows[-1]["data"].isoformat(),
-                "ohlc": [o, h, l, c],
+                "ohlc": [abertura, maxima, minima, fechamento],
                 "investido": investido,
-                "patrimonio": c,
+                "patrimonio": fechamento,
             })
         return results
 

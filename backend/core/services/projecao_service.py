@@ -148,27 +148,27 @@ def _composicao_do_mes(lancamentos: list[dict]) -> dict:
     composicao = {}
     for tipo, chave in ((Conta.TIPO_RECEITA, "receitas"), (Conta.TIPO_DESPESA, "despesas")):
         do_tipo = sorted(
-            (l for l in lancamentos if l["tipo"] == tipo),
-            key=lambda l: (-l["valor"], l["data"], l["id"]),
+            (lancamento for lancamento in lancamentos if lancamento["tipo"] == tipo),
+            key=lambda lancamento: (-lancamento["valor"], lancamento["data"], lancamento["id"]),
         )
         maiores = do_tipo[:MAIORES_POR_TIPO]
         restantes = do_tipo[MAIORES_POR_TIPO:]
         composicao[chave] = {
             "maiores": [
                 {
-                    "id": l["id"],
-                    "descricao": l["descricao"],
-                    "valor": str(l["valor"]),
-                    "data": l["data"].isoformat(),
-                    "data_prevista": l["data_prevista"].isoformat(),
-                    "realizado": l["realizado"],
-                    "categoria": l["categoria"],
-                    "evento": l["evento"],
+                    "id": lancamento["id"],
+                    "descricao": lancamento["descricao"],
+                    "valor": str(lancamento["valor"]),
+                    "data": lancamento["data"].isoformat(),
+                    "data_prevista": lancamento["data_prevista"].isoformat(),
+                    "realizado": lancamento["realizado"],
+                    "categoria": lancamento["categoria"],
+                    "evento": lancamento["evento"],
                 }
-                for l in maiores
+                for lancamento in maiores
             ],
             "outros_qtd": len(restantes),
-            "outros_total": str(sum((l["valor"] for l in restantes), Decimal("0.00"))),
+            "outros_total": str(sum((lancamento["valor"] for lancamento in restantes), Decimal("0.00"))),
         }
     return composicao
 
