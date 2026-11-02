@@ -9,7 +9,6 @@ todos vinculados a um UUID seguro e isolados por usuário (Multi-Tenant básico)
 from django.utils import timezone
 from django.db import models
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 
@@ -127,8 +126,6 @@ class Conta(AuditoriaModel):
         transacao_realizada: Indica se o lançamento foi liquidado (pago/recebido).
         eh_fatura_cartao: Identifica se este registro representa o pagamento consolidado de uma fatura de cartão.
     """
-    objects = ContaQuerySet.as_manager()
-
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -199,6 +196,8 @@ class Conta(AuditoriaModel):
         related_name="contas",
     )
 
+    objects = ContaQuerySet.as_manager()
+
     class Meta:
         ordering = ["-data_prevista", "-id"]
         indexes = [
@@ -216,6 +215,35 @@ class Conta(AuditoriaModel):
         return (
             f"{status} {self.get_tipo_display()} - {self.valor} ({self.data_prevista})"
         )
+
+    def save(self, *args, **kwargs):
+        """Salva a transação sincronizando o estado com a fatura consolidada se aplicável.
+
+        Caso seja uma compra individual de cartão e já exista uma fatura consolidada
+        cadastrada para o mesmo período, a compra herda o estado da fatura (paga/pendente).
+        """
+        if self.cartao and not self.eh_fatura_cartao:
+            if self.data_compra:
+                from core.services.fatura_service import calcular_vencimento_fatura
+                calculado = calcular_vencimento_fatura(
+                    self.data_compra,
+                    self.cartao.dia_fechamento,
+                    self.cartao.dia_vencimento
+                )
+                if not self.data_prevista or self.data_prevista < calculado:
+                    self.data_prevista = calculado
+
+            fatura = self.__class__.objects.filter(
+                usuario=self.usuario,
+                cartao=self.cartao,
+                eh_fatura_cartao=True,
+                data_prevista=self.data_prevista
+            ).first()
+            if fatura:
+                self.transacao_realizada = fatura.transacao_realizada
+                self.data_realizacao = fatura.data_realizacao if fatura.transacao_realizada else None
+
+        super().save(*args, **kwargs)
 
     @property
     def esta_atrasada(self):
@@ -291,35 +319,6 @@ class Conta(AuditoriaModel):
                 raise ValidationError(
                     {"evento": "O evento deve pertencer ao mesmo usuário do lançamento."}
                 )
-
-    def save(self, *args, **kwargs):
-        """Salva a transação sincronizando o estado com a fatura consolidada se aplicável.
-
-        Caso seja uma compra individual de cartão e já exista uma fatura consolidada
-        cadastrada para o mesmo período, a compra herda o estado da fatura (paga/pendente).
-        """
-        if self.cartao and not self.eh_fatura_cartao:
-            if self.data_compra:
-                from core.services.fatura_service import calcular_vencimento_fatura
-                calculado = calcular_vencimento_fatura(
-                    self.data_compra,
-                    self.cartao.dia_fechamento,
-                    self.cartao.dia_vencimento
-                )
-                if not self.data_prevista or self.data_prevista < calculado:
-                    self.data_prevista = calculado
-
-            fatura = self.__class__.objects.filter(
-                usuario=self.usuario,
-                cartao=self.cartao,
-                eh_fatura_cartao=True,
-                data_prevista=self.data_prevista
-            ).first()
-            if fatura:
-                self.transacao_realizada = fatura.transacao_realizada
-                self.data_realizacao = fatura.data_realizacao if fatura.transacao_realizada else None
-
-        super().save(*args, **kwargs)
 
 
 class LancamentoRecorrente(AuditoriaModel):
@@ -711,6 +710,14 @@ class MetaFinanceira(AuditoriaModel):
         verbose_name = "Meta Financeira"
         verbose_name_plural = "Metas Financeiras"
 
+    def __str__(self):
+        """Retorna o nome da meta com seu valor-alvo.
+
+        Returns:
+            str: Resumo legível da meta.
+        """
+        return f"{self.nome} (R$ {self.valor_alvo})"
+
     def acumulado_efetivo(self, valores_externos=None):
         """Acúmulo que vale para esta meta, respeitando a origem escolhida.
 
@@ -743,14 +750,6 @@ class MetaFinanceira(AuditoriaModel):
         """
         restante = float(self.valor_alvo or 0) - self.acumulado_efetivo(valores_externos)
         return max(restante, 0.0)
-
-    def __str__(self):
-        """Retorna o nome da meta com seu valor-alvo.
-
-        Returns:
-            str: Resumo legível da meta.
-        """
-        return f"{self.nome} (R$ {self.valor_alvo})"
 
 
 class AporteMeta(AuditoriaModel):
