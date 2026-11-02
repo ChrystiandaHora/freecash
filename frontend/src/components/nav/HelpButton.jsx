@@ -37,6 +37,8 @@ const fallbackHelp = {
     'Ajuda Contextual': 'Clique no botão (?) em qualquer tela para abrir este guia novamente.',
     'Ocultar Valores':
       'Clique no ícone de olho, ao lado da ajuda, para esconder os valores em reais de todas as telas. Percentuais e gráficos continuam visíveis.',
+    Notificações:
+      'O sino no topo reúne os avisos: sinais de rebalanceamento das carteiras e e-mail ainda não confirmado. Clique num aviso para ir até onde ele se resolve.',
   },
 };
 

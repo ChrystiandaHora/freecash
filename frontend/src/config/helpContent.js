@@ -513,6 +513,7 @@ export const helpContent = {
       "Exclusão definitiva da conta."
     ],
     actions: {
+      "Reenviar confirmação": "Aparece no aviso do topo enquanto o e-mail não está confirmado. Manda um novo link; confirmar só serve para recuperar a senha, nada mais na conta depende disso.",
       "Salvar perfil": "Atualiza nome de usuário e moeda. Não pede senha: são dados que não dão acesso a nada.",
       "Enviar confirmação": "Inicia a troca de e-mail. Pede a senha atual, porque é o e-mail que recupera sua conta. O endereço novo só passa a valer quando você abre o link enviado a ele — até lá, o atual continua funcionando.",
       "Cancelar troca": "Descarta uma troca pendente e invalida o link já enviado.",
