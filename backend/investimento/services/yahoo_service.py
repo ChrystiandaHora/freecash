@@ -90,7 +90,8 @@ def fetch_historico_yahoo(
     requisicao = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
 
     try:
-        with urllib.request.urlopen(requisicao, timeout=timeout_seconds) as resposta:
+        # Esquema e host fixos (https://query1.finance.yahoo.com); só o símbolo varia
+        with urllib.request.urlopen(requisicao, timeout=timeout_seconds) as resposta:  # noqa: S310
             corpo = json.loads(resposta.read().decode("utf-8"))
     except Exception as erro:
         raise YahooIndisponivel(f"Erro de comunicação com Yahoo Finance: {erro}") from erro
@@ -112,9 +113,12 @@ def fetch_historico_yahoo(
         raise YahooIndisponivel(
             "Nenhuma cotação encontrada no histórico do Yahoo Finance para o período."
         )
+    # Parear por índice listas de tamanhos diferentes daria cotação na data errada
+    if len(timestamps) != len(fechamentos):
+        raise YahooIndisponivel("O Yahoo Finance devolveu datas e cotações em quantidades diferentes.")
 
     serie: list[tuple[datetime.date, Decimal]] = []
-    for ts, fechamento in zip(timestamps, fechamentos):
+    for ts, fechamento in zip(timestamps, fechamentos, strict=True):
         # Pregão sem negócio volta com `close: null`; gravar zero falsearia o gráfico
         if fechamento is None:
             continue

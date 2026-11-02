@@ -5,13 +5,17 @@ publicados pela CVM (Comissão de Valores Mobiliários), permitindo atualizar as
 de ativos multimercado, cambiais, de ações e de renda fixa de forma automatizada por CNPJ.
 """
 
+import http.client
+import logging
 import urllib.request
 import zipfile
 import io
 import csv
 from datetime import datetime, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Iterable
+
+logger = logging.getLogger("investimento")
 
 
 def format_cnpj(cnpj: str) -> str:
@@ -56,11 +60,14 @@ def fetch_cvm_quotes(cnpjs: Iterable[str], *, timeout_seconds: int = 15) -> dict
         url = f"https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{ano}{mes:02d}.zip"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; freecash/1.0)'})
         try:
-            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            # URL https fixa do portal da CVM; só ano e mês variam
+            with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:  # noqa: S310
                 if resp.status == 200:
                     zip_data = resp.read()
                     break
-        except Exception:
+        except (OSError, http.client.HTTPException, ValueError) as erro:
+            # Rede, HTTP ou leitura corrompida (chunked inválido dá ValueError): tenta o mês anterior
+            logger.info("CVM sem informe diário de %s-%02d: %s", ano, mes, erro)
             continue
 
     if not zip_data:
@@ -93,7 +100,7 @@ def fetch_cvm_quotes(cnpjs: Iterable[str], *, timeout_seconds: int = 15) -> dict
                             # Atualiza apenas se for uma data mais recente para este CNPJ
                             if clean_cnpj not in results or dt_comptc > results[clean_cnpj][1]:
                                 results[clean_cnpj] = (vl_quota, dt_comptc)
-                        except Exception:
+                        except (ValueError, InvalidOperation):
                             # Ignora erros individuais de linha corrompida ou valores inválidos
                             continue
     except Exception as e:

@@ -9,7 +9,7 @@ evitando consultas individuais ou scraping ineficiente.
 import json
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Iterable
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
@@ -127,7 +127,8 @@ def fetch_quotes_brazil(
     )
 
     try:
-        with urlopen(req, timeout=timeout_seconds) as resp:
+        # URL https fixa do screener; o payload vai no corpo, não na URL
+        with urlopen(req, timeout=timeout_seconds) as resp:  # noqa: S310
             body = resp.read().decode("utf-8")
             data = json.loads(body)
     except (URLError, HTTPError, json.JSONDecodeError) as e:
@@ -145,7 +146,7 @@ def fetch_quotes_brazil(
             continue
         try:
             close_dec = Decimal(str(close))
-        except Exception:
+        except InvalidOperation:
             continue
         results[symbol] = TradingViewQuote(symbol=symbol, close=close_dec, as_of=as_of)
 
