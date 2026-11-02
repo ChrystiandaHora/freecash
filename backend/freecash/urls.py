@@ -18,19 +18,8 @@ Barramento de APIs:
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
-
-urlpatterns = []
-
-# O admin do Django fica exposto apenas em desenvolvimento. Nenhum modelo está
-# registrado nele (core/admin.py e investimento/admin.py estão vazios) e a
-# administração da plataforma é feita pelo painel React sobre /api/admin/ — manter
-# a rota em produção seria oferecer um formulário de login a mais para atacar, sem
-# entregar nada em troca.
-if settings.DEBUG:
-    urlpatterns += [path("admin/", admin.site.urls)]
-
-# REST API Routing Configuration
 from rest_framework.routers import DefaultRouter
+
 from core.views.api import (
     CategoriaViewSet, CartaoCreditoViewSet, ContaViewSet, DashboardAPIView,
     CookieTokenObtainPairView, CookieTokenRefreshView, CookieTokenClearView,
@@ -89,6 +78,16 @@ from core.views.ferramentas_api import (
     FerramentasBackupAPIView,
     ContasBancariasViewSet,
 )
+
+urlpatterns = []
+
+# O admin do Django fica exposto apenas em desenvolvimento. Nenhum modelo está
+# registrado nele (core/admin.py e investimento/admin.py estão vazios) e a
+# administração da plataforma é feita pelo painel React sobre /api/admin/ — manter
+# a rota em produção seria oferecer um formulário de login a mais para atacar, sem
+# entregar nada em troca.
+if settings.DEBUG:
+    urlpatterns += [path("admin/", admin.site.urls)]
 
 # API Routers setup
 router = DefaultRouter()

@@ -18,5 +18,5 @@ class InvestimentoConfig(AppConfig):
 
     def ready(self):
         """Registra os receptores de sinais (signals.py) no barramento do Django."""
-        import investimento.signals
+        import investimento.signals  # noqa: F401 — o import registra os @receiver
 

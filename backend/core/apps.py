@@ -6,4 +6,4 @@ class CoreConfig(AppConfig):
     name = "core"
 
     def ready(self):
-        from . import signals
+        from . import signals  # noqa: F401 — o import registra os @receiver

@@ -8,9 +8,7 @@ serviços de apoio para cadastros em lote, liquidação e consolidação de grá
 
 import calendar
 import logging
-from datetime import date
 from decimal import Decimal, InvalidOperation
-from dateutil.relativedelta import relativedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -23,13 +21,12 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.throttles import AuthScopedRateThrottle
 from core.views.cookies import clear_refresh_cookie, set_refresh_cookie
-
-logger = logging.getLogger("core")
-
 from core.models import (
     AporteMeta, Categoria, Conta, CartaoCredito, Evento, MetaFinanceira, PlanoMetas
 )
@@ -43,6 +40,10 @@ from core.serializers import (
     AporteMetaSerializer,
     MetaFinanceiraSerializer,
     PlanoMetasSerializer,
+    ReceitasAPISerializer,
+    TransacaoAPISerializer,
+    CartaoCreditoAPISerializer,
+    ComprasCartaoAPISerializer,
 )
 from core.services import metas_service
 from core.services.categoria_service import resolver_categoria_por_nome
@@ -59,6 +60,9 @@ from core.services.dashboard_helper import (
     saldo_liquidez_ate,
     gastos_eventos_fora_orcamento,
 )
+
+logger = logging.getLogger("core")
+
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet REST para operações de CRUD de Categoria financeira do usuário.
@@ -304,7 +308,7 @@ class DashboardAPIView(APIView):
         _, despesas_6m = serie_fluxo_projetado_competencia(
             usuario, Conta.TIPO_DESPESA, periodo.inicio
         )
-        saldos_6m = [r - d for r, d in zip(receitas_6m, despesas_6m)]
+        saldos_6m = [r - d for r, d in zip(receitas_6m, despesas_6m, strict=True)]
 
         # Breakdown por COMPETÊNCIA
         breakdown_items, top_categoria = breakdown_despesas_competencia(
@@ -362,9 +366,6 @@ class DashboardAPIView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-
 class CookieTokenObtainPairView(TokenObtainPairView):
     """View customizada de autenticação JWT SimpleJWT.
 
@@ -388,7 +389,7 @@ class CookieTokenObtainPairView(TokenObtainPairView):
             # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
             # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
             # em vez de 401 sempre que o token era inválido, expirado ou revogado.
-            raise InvalidToken(str(e))
+            raise InvalidToken(str(e)) from e
 
         data = serializer.validated_data
         response_data = {
@@ -428,7 +429,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             # TokenError é exceção do SimpleJWT, não do DRF: não possui `.detail`.
             # Usar e.detail aqui produzia AttributeError e, com ele, uma resposta 500
             # em vez de 401 sempre que o token era inválido, expirado ou revogado.
-            raise InvalidToken(str(e))
+            raise InvalidToken(str(e)) from e
             
         data = serializer.validated_data
         response_data = {
@@ -476,15 +477,6 @@ class CookieTokenClearView(APIView):
 
 
 # ─── Integrated REST Endpoints for React Frontend ─────────────────────────────
-from decimal import Decimal
-from rest_framework.decorators import action
-from core.serializers import (
-    ContasPagarAPISerializer,
-    ReceitasAPISerializer,
-    TransacaoAPISerializer,
-    CartaoCreditoAPISerializer,
-    ComprasCartaoAPISerializer,
-)
 
 class CartaoCreditoAPIViewSet(viewsets.ModelViewSet):
     """ViewSet especializado de cartões de crédito para consumo direto do React.
@@ -1358,7 +1350,8 @@ class RelatoriosDREAPIView(APIView):
             inv_data = inv_service.obter_dados_dashboard()
             rentabilidade = Decimal(str(inv_data.get("total_rentabilidade", 0.0)))
         except Exception:
-            pass
+            # O relatório segue com investimentos zerados, mas a falha fica registrada
+            logger.exception("Falha ao somar investimentos do relatório anual de %s.", ano)
 
         # Sazonalidade / Mapa de Calor de Gastos dos últimos 6 meses (26 semanas)
         import datetime

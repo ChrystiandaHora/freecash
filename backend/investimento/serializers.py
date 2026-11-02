@@ -18,7 +18,6 @@ from .models import (
     DetalheRendaFixa,
     PosicaoCarteira,
     Transacao,
-    Cotacao,
 )
 
 DETALHE_RENDA_FIXA_FIELDS = ("data_vencimento", "emissor", "indexador", "taxa")

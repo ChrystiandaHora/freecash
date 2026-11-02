@@ -13,6 +13,7 @@ Configurações Principais:
 """
 
 
+from datetime import timedelta
 from pathlib import Path
 from decouple import Csv, config
 from django.core.exceptions import ImproperlyConfigured
@@ -24,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # Valor sentinela: aceito apenas em desenvolvimento. Ver `validar_config_producao()`.
-SECRET_KEY_INSEGURA = "django-insecure-CHANGE-ME-local-dev-only"
+SECRET_KEY_INSEGURA = "django-insecure-CHANGE-ME-local-dev-only"  # noqa: S105 — sentinela, recusada em produção
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("DJANGO_SECRET_KEY", default=SECRET_KEY_INSEGURA)
@@ -299,7 +300,6 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "core.exception_handler.freecash_exception_handler",
 }
 
-from datetime import timedelta
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
