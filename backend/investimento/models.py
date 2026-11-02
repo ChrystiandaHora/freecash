@@ -220,7 +220,6 @@ class Ativo(AuditoriaModel):
     cnpj = models.CharField(
         max_length=14,
         blank=True,
-        null=True,
         verbose_name="CNPJ do Fundo",
         help_text="Somente números (14 dígitos) para atualização via CVM",
     )
@@ -344,8 +343,8 @@ class Ativo(AuditoriaModel):
         A dedução fica no `save`, e não no serializer, porque ativos também nascem pela
         restauração de backup e pela importação — e todo caminho passa por aqui.
         """
-        if self.cnpj:
-            self.cnpj = "".join(filter(str.isdigit, self.cnpj))
+        # Backup antigo e o serializer ainda mandam None; o campo não aceita NULL
+        self.cnpj = "".join(filter(str.isdigit, self.cnpj or ""))
         if not self.tipo_fiscal:
             self.tipo_fiscal = self._deduzir_tipo_fiscal()
         super().save(*args, **kwargs)
