@@ -23,6 +23,7 @@ import { ConexaoIndisponivel } from './components/ConexaoIndisponivel';
 
 // Layouts & Pages
 import DashboardLayout from './components/DashboardLayout';
+import TelaoLayout from './components/telao/TelaoLayout';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import EsqueciSenha from './pages/EsqueciSenha';
@@ -36,6 +37,7 @@ import AdminUsuarios from './pages/admin/AdminUsuarios';
 import AdminMetricas from './pages/admin/AdminMetricas';
 import Dashboard from './pages/Dashboard';
 import Investimentos from './pages/Investimentos';
+import Telao from './pages/Telao';
 import Relatorios from './pages/Relatorios';
 import ContasPagar from './pages/ContasPagar';
 import ContasPagarLote from './pages/ContasPagarLote';
@@ -187,6 +189,19 @@ function App() {
                   abriu o link em outro navegador. */}
               <Route path="/verificar-email/:uid/:token" element={<VerificarEmail />} />
               <Route path="/conta/confirmar-email/:uid/:token" element={<ConfirmarTrocaEmail />} />
+
+              {/* Telão: tela cheia sem a navegação do app, com o próprio monitor de
+                  inatividade (pausado enquanto a tela está cheia) */}
+              <Route
+                path="/investimentos/telao"
+                element={
+                  <ProtectedRoute>
+                    <TelaoLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Telao />} />
+              </Route>
 
               {/* Protected SaaS Workspace Routes */}
               <Route 

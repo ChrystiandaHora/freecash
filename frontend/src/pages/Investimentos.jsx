@@ -12,11 +12,13 @@
  *   de visualização de portfólio e rebalanceamento dinâmico.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Chart from 'react-apexcharts';
 import {
   AlertCircle,
+  MonitorPlay,
   RefreshCw,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -25,13 +27,17 @@ import { useToast } from '../context/ToastContext';
 import { useCarteira } from '../context/CarteiraProvider';
 import SeletorCarteira from '../components/SeletorCarteira';
 import { useMoeda } from '../hooks/useMoeda';
+import { useTelaCheia } from '../hooks/useTelaCheia';
 import { MASCARA_MOEDA } from '../lib/moeda';
+import { CORES_ALOCACAO } from '../lib/coresAlocacao';
 
 
 export default function Investimentos() {
   const { addToast } = useToast();
   const { carteiraId, carteiraSelecionada } = useCarteira();
   const { formatarMoeda, valoresOcultos } = useMoeda();
+  const navigate = useNavigate();
+  const { entrar: entrarTelaCheia } = useTelaCheia();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [patrimonioMonthsFilter, setPatrimonioMonthsFilter] = useState(12);
@@ -53,6 +59,12 @@ export default function Investimentos() {
     },
     placeholderData: keepPreviousData,
   });
+
+  // A tela cheia precisa ser pedida dentro do próprio clique, antes de navegar
+  const abrirTelao = () => {
+    entrarTelaCheia();
+    navigate('/investimentos/telao');
+  };
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
@@ -109,7 +121,7 @@ export default function Investimentos() {
   } = dashboardData;
 
   const isDarkTheme = document.documentElement.classList.contains('dark');
-  const donutColors = ['#0284c7', '#38bdf8', '#2dd4bf', '#fb923c', '#fb7185', '#c084fc', '#facc15', '#a855f7'];
+  const donutColors = CORES_ALOCACAO;
 
   // Sort categories by value descending for consistent chart and legend mapping
   const categoryPairs = (alocacao_categorias.labels || []).map((label, idx) => {
@@ -421,6 +433,13 @@ export default function Investimentos() {
           >
             <RefreshCw className={`h-4 w-4 text-muted-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="text-xs font-semibold text-muted-foreground">Atualizar Dados</span>
+          </Button>
+          <Button
+            onClick={abrirTelao}
+            className="rounded-xl h-9 px-4 shrink-0 flex items-center gap-2"
+          >
+            <MonitorPlay className="h-4 w-4" aria-hidden="true" />
+            <span className="text-xs font-semibold">Telão</span>
           </Button>
         </div>
       </div>

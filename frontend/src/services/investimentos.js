@@ -70,6 +70,24 @@ export const fetchSinais = async (carteiraId = null) => {
   return data;
 };
 
+// ─── Dashboard e telão ───────────────────────────────────────────────────────
+
+export const fetchDashboardInvestimentos = async (carteiraId = null) => {
+  const { data } = await api.get('/api/investimentos/dashboard/', escopoDaCarteira(carteiraId));
+  return data;
+};
+
+export const fetchTelao = async (carteiraId = null) => {
+  const { data } = await api.get('/api/investimentos/telao/', escopoDaCarteira(carteiraId));
+  return data;
+};
+
+/** O servidor decide se consulta a fonte; o corpo diz o que houve e quando pedir de novo. */
+export const sincronizarTelao = async () => {
+  const { data } = await api.post('/api/investimentos/telao/sincronizar/');
+  return data;
+};
+
 // ─── Ativos ──────────────────────────────────────────────────────────────────
 
 export const fetchAtivos = async (carteiraId = null) => {
