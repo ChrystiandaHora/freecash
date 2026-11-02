@@ -271,15 +271,6 @@ EMAIL_VERIFICATION_TIMEOUT = config(
     cast=int,
 )
 
-# Carência, em dias, antes de exigir e-mail verificado nas ações amplificadoras
-# (importação e exportação em massa). O CRUD financeiro nunca é bloqueado: impedir
-# o dono de registrar seus próprios lançamentos não protege ninguém.
-EMAIL_VERIFICATION_GRACE_DAYS = config(
-    "DJANGO_EMAIL_VERIFICATION_GRACE_DAYS",
-    default=7,
-    cast=int,
-)
-
 # REST Framework & JWT Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (

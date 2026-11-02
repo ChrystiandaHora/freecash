@@ -14,7 +14,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import CartaoCredito, ConfigUsuario, Conta, ExtratoImportado, LinhaExtrato
-from core.permissions import EmailVerificadoOuCarencia
 from core.throttles import AuthScopedRateThrottle
 from core.validacao_senha import TAMANHO_MAXIMO as TAMANHO_MAXIMO_SENHA
 from core.validacao_senha import TAMANHO_MINIMO as TAMANHO_MINIMO_SENHA
@@ -33,7 +32,7 @@ def _ja_ocorreu(data_movimento: date) -> bool:
 class FerramentasImportarAPIView(APIView):
     """Upload do backup em ZIP, com a senha opcional (ZIP recompactado pode vir sem)."""
 
-    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
+    permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
@@ -75,7 +74,7 @@ class FerramentasImportarAPIView(APIView):
 class FerramentasImportarExtratoAPIView(APIView):
     """Upload e extração de lançamentos de faturas de cartão de crédito (PDF)."""
 
-    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
+    permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
@@ -200,7 +199,7 @@ class FerramentasConciliacaoUploadAPIView(APIView):
     Ver docs/importacao-extrato.md.
     """
 
-    permission_classes = [permissions.IsAuthenticated, EmailVerificadoOuCarencia]
+    permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request) -> Response:
