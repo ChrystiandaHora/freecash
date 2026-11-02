@@ -49,7 +49,7 @@ def ler_backup_zip(arquivo, senha: str | None) -> dict:
             except KeyError:
                 raise ValueError(
                     f"O ZIP não contém o arquivo {ARQUIVO_DE_DADOS}; não é um backup do freecash."
-                )
+                ) from None
             if info.file_size > TAMANHO_MAXIMO_DADOS_JSON:
                 raise ValueError("O arquivo de dados do backup é grande demais para importar.")
             protegido = bool(info.flag_bits & 0x1)
@@ -62,16 +62,16 @@ def ler_backup_zip(arquivo, senha: str | None) -> dict:
                     # Lê um byte além do teto: o tamanho declarado no cabeçalho pode mentir
                     conteudo = entrada.read(TAMANHO_MAXIMO_DADOS_JSON + 1)
             except RuntimeError:
-                raise ValueError("Senha incorreta.")
+                raise ValueError("Senha incorreta.") from None
     except (zipfile.BadZipFile, pyzipper.BadZipFile):
-        raise ValueError("O arquivo enviado não é um ZIP válido ou está corrompido.")
+        raise ValueError("O arquivo enviado não é um ZIP válido ou está corrompido.") from None
 
     if len(conteudo) > TAMANHO_MAXIMO_DADOS_JSON:
         raise ValueError("O arquivo de dados do backup é grande demais para importar.")
     try:
         data_dict = json.loads(conteudo.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        raise ValueError(f"O {ARQUIVO_DE_DADOS} do backup não é um JSON válido.")
+        raise ValueError(f"O {ARQUIVO_DE_DADOS} do backup não é um JSON válido.") from None
 
     validar_formato(data_dict)
     return data_dict

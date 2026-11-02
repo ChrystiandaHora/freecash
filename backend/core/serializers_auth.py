@@ -51,7 +51,7 @@ class RegistrationSerializer(serializers.Serializer):
         try:
             validate_password(dados["password"], user=usuario_provisorio)
         except DjangoValidationError as erro:
-            raise serializers.ValidationError({"password": list(erro.messages)})
+            raise serializers.ValidationError({"password": list(erro.messages)}) from erro
 
         return dados
 

@@ -102,7 +102,7 @@ class TrocaSenhaSerializer(SenhaAtualMixin):
         except DjangoValidationError as erro:
             raise serializers.ValidationError(
                 {"nova_senha": list(erro.messages)}
-            )
+            ) from erro
 
         return dados
 
