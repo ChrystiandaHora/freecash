@@ -162,6 +162,22 @@ class RestaurarDadosUsuarioTests(TestCase):
             f"Número de transações incorreto após restore: {transacoes_restauradas.count()}"
         )
 
+    def test_restore_de_backup_com_cnpj_nulo(self):
+        """Backup gerado quando `Ativo.cnpj` aceitava NULL ainda restaura o ativo.
+
+        A coluna passou a NOT NULL (migração 0006). Sem a normalização no
+        `Ativo.save`, o `update_or_create` falharia e o ativo sumiria do restore.
+        """
+        data_dict = exportar_e_ler(self.user)
+        for linha in data_dict["data"]["investimento"]["Ativo"]:
+            linha["cnpj"] = None
+        Ativo.objects.filter(usuario=self.user).delete()
+
+        restaurar_dados_usuario(data_dict, self.user)
+
+        ativo_restaurado = Ativo.objects.get(usuario=self.user, ticker="PETR4")
+        self.assertEqual(ativo_restaurado.cnpj, "")
+
     def test_restore_preserva_isolamento_multi_tenant(self):
         """Garante que o restore não afeta dados de outros usuários (multi-tenant).
 
