@@ -29,27 +29,39 @@ class DashboardInvestimentoService:
         self.user = user
         self.carteira_id = carteira_id
 
-    def obter_dados_dashboard(self) -> dict:
-        """Coleta, processa e pagina as estatísticas completas de investimento do usuário.
+    def ativos_a_mercado(self, *, com_cotacao_anterior: bool = False) -> list[Ativo]:
+        """Ativos do usuário com a cotação mais recente anotada, numa consulta só.
+
+        Sob filtro de carteira, `quantidade` e `preco_medio` de cada instância passam a
+        ser os da posição naquela custódia, e só entram ativos com posição aberta nela.
+
+        Args:
+            com_cotacao_anterior: Anota também `cotacao_anterior`, o pregão anterior ao
+                mais recente, para a variação do dia do telão.
 
         Returns:
-            dict: Payload consolidado contendo séries, patrimônio, custos e proventos.
+            list[Ativo]: Instâncias com `cotacao_recente` (e, se pedido, `cotacao_anterior`
+                e `cotacao_data`) anotados.
         """
-        # 1. Obter a última cotação para cada ativo sem causar N+1 queries
+        # A última cotação de cada ativo vem por Subquery, sem N+1
         ultima_cotacao = Cotacao.objects.filter(ativo_id=OuterRef("pk")).order_by(
             "-data", "-criada_em"
         )
 
-        # 2. Consultar os ativos e injetar a última cotação via Subquery
         ativos_qs = (
             Ativo.objects.filter(usuario=self.user, ativo=True)
             .select_related("subcategoria__categoria__classe")
             .annotate(cotacao_recente=Subquery(ultima_cotacao.values("valor")[:1]))
             .order_by("subcategoria__categoria__classe__nome", "ticker")
         )
+        if com_cotacao_anterior:
+            ativos_qs = ativos_qs.annotate(
+                cotacao_anterior=Subquery(ultima_cotacao.values("valor")[1:2]),
+                cotacao_data=Subquery(ultima_cotacao.values("data")[:1]),
+            )
 
-        # 3. Sob filtro, quantidade e preço médio vêm da posição na custódia (Subquery,
-        #    para não quebrar a promessa de uma consulta só)
+        # Sob filtro, quantidade e preço médio vêm da posição na custódia (Subquery,
+        # para não quebrar a promessa de uma consulta só)
         if self.carteira_id:
             posicao = PosicaoCarteira.objects.filter(
                 ativo_id=OuterRef("pk"), carteira_id=self.carteira_id
@@ -70,17 +82,25 @@ class DashboardInvestimentoService:
             )
 
         ativos = list(ativos_qs)
+        if self.carteira_id:
+            for a in ativos:
+                a.quantidade = a.quantidade_carteira
+                a.preco_medio = a.preco_medio_carteira
+        return ativos
+
+    def obter_dados_dashboard(self) -> dict:
+        """Coleta, processa e pagina as estatísticas completas de investimento do usuário.
+
+        Returns:
+            dict: Payload consolidado contendo séries, patrimônio, custos e proventos.
+        """
+        ativos = self.ativos_a_mercado()
 
         total_patrimonio = Decimal(0)
         total_investido = Decimal(0)
         allocation_by_category = {}
 
         for a in ativos:
-            # Sob filtro, a posição da carteira substitui o consolidado do ativo.
-            if self.carteira_id:
-                a.quantidade = a.quantidade_carteira
-                a.preco_medio = a.preco_medio_carteira
-
             # Cálculos refeitos baseados nas cotações em cache para evitar queries nos properties do Model
             val_investido = (
                 (a.quantidade * a.preco_medio)
