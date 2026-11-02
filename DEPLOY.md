@@ -187,8 +187,8 @@ GUNICORN_WORKERS=3
 ```
 
 E-mail: sem `EMAIL_HOST` configurado, o cadastro funciona mas ninguém recebe o
-link de verificação. A carência de alguns dias deixa a conta utilizável até lá —
-mas redefinir senha fica indisponível. Configure um SMTP quando for usar de
+link de verificação. A conta funciona por inteiro sem confirmar — só redefinir
+senha fica indisponível. Configure um SMTP quando for usar de
 verdade.
 
 > **Por que o `.env` decide tanta coisa:** o `settings.py` roda

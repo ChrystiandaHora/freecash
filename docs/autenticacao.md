@@ -160,25 +160,34 @@ nasce com o ecossistema financeiro provisionado, e a pessoa não conseguiria ent
 nem para pedir novo link — o reenvio precisaria ser aberto, virando um endpoint
 para descobrir quem tem conta e disparar mensagens contra terceiros.
 
-A exigência aparece **apenas na importação**, e só depois de
-`EMAIL_VERIFICATION_GRACE_DAYS`, via `core/permissions.py::EmailVerificadoOuCarencia`.
+**Nenhuma ação depende do e-mail confirmado.** A confirmação serve para recuperar a
+senha, e só isso. Não confirmar tem uma única consequência visível: um aviso.
 
-O critério é amplificação, não importância:
+Já houve um portão (`EmailVerificadoOuCarencia`) que recusava a importação depois de
+alguns dias de carência, com o argumento de que importar processa arquivo enviado com
+leitores de PDF e planilha e seria o que valeria explorar a partir de uma conta
+descartável. Ele foi removido porque, na prática, impedia o dono de trazer os próprios
+dados para o sistema. As rotas de importação seguem sem limite de taxa próprio — se o
+abuso por conta descartável virar problema, é ali que a proteção deve entrar, e não no
+e-mail. O CRUD financeiro e a exportação nunca foram bloqueados. `core/tests/test_email_nao_confirmado_nao_bloqueia.py` garante as três
+coisas.
 
-- **CRUD financeiro** nunca é bloqueado. Impedir o dono de registrar os próprios
-  lançamentos pune quem tem os dados sem proteger ninguém.
-- **Exportar** também não é bloqueado. `export_user_data` percorre só os registros do
-  próprio usuário, então uma conta descartável — que não tem dados — exporta nada.
-  O portão esteve aplicado ali por engano, e bloqueava justamente o backup que a tela
-  de exclusão de conta manda fazer antes de apagar tudo.
-- **Importar** é bloqueado. Recebe arquivo enviado pelo usuário e o processa com
-  leitores de PDF e de planilha, gastando CPU e memória por requisição.
+O aviso aparece em dois lugares, e só neles:
+
+- **No sino de notificações da barra** (`nav/NotificacoesSino`), em todas as telas.
+  É discreto de propósito: um banner no topo de toda tela soava como erro e ocupava o
+  conteúdo. O item leva a Minha Conta. Clicado, ele fica em cinza e sai do contador
+  até o assunto mudar (outro endereço, por exemplo): o "lido" fica no `localStorage`,
+  por navegador, pela assinatura da notificação (`lib/notificacoes.js`).
+- **Em Minha Conta** (`auth/EmailVerificationBanner`), com o botão de reenvio. Usa a
+  variante `info` do `Alert` (`role="status"`), não `warning` (`role="alert"`), porque
+  não há nada urgente a anunciar.
 
 **Caso de borda das contas legadas:** contas criadas antes de o e-mail virar
 obrigatório não têm endereço nenhum. Para elas, "confirme seu e-mail" é um beco sem
-saída — não há e-mail a confirmar, e o endpoint de reenvio recusa a operação. A
-mensagem de recusa passa a apontar para Minha Conta, onde a pessoa cadastra um
-endereço e recupera, junto, a capacidade de redefinir a senha.
+saída — não há e-mail a confirmar, e o endpoint de reenvio recusa a operação. O sino
+e o aviso pedem para cadastrar um endereço, não para confirmá-lo
+(`lib/notificacoes.js`).
 
 ---
 

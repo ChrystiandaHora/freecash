@@ -128,8 +128,9 @@ ETF, BDR, fundo, renda fixa, outro — que é o que o sinal consulta.
    em cada ativo do balanceamento; `GET /api/investimentos/sinais/?carteira=`, que lista
    só as posições com sinal. As consultas ficam em `services/sinais_service.py`.
 3. **Frontend** (feito) — badge com texto (não só cor) em Meus Ativos, Balanceamento e
-   Detalhe do Ativo, painel de sinais no topo do Balanceamento, indicador na barra do
-   topo, campo de tipo fiscal no cadastro do ativo; dinheiro atrás do olho de
+   Detalhe do Ativo, painel de sinais no topo do Balanceamento, aviso no sino de
+   notificações da barra (antes era um ícone próprio; ver `nav/NotificacoesSino`),
+   campo de tipo fiscal no cadastro do ativo; dinheiro atrás do olho de
    privacidade. Os textos ficam em `frontend/src/lib/sinais.js`, com teste.
 4. **Central de alertas** (opcional) — dispensar/adiar, só se o contador incomodar.
 
