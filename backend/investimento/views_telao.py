@@ -57,6 +57,7 @@ def linhas_telao(ativos) -> list[dict]:
             "ticker": a.ticker,
             "nome": a.nome,
             "categoria": _categoria(a),
+            "preco_medio": float(a.preco_medio or 0),
             "cotacao": float(cotacao) if cotacao is not None else None,
             "cotacao_anterior": float(a.cotacao_anterior) if a.cotacao_anterior is not None else None,
             "cotacao_data": a.cotacao_data.isoformat() if a.cotacao_data else None,
