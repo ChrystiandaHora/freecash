@@ -16,8 +16,6 @@ import { useQuantosCabem } from '../../hooks/useQuantosCabem';
 import { formatarMoeda as formatarCotacao } from '../../lib/moeda';
 import { apresentarVariacao } from '../../lib/telao';
 
-const PESO = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
-
 const ESTILO_VARIACAO = {
   alta: { Icone: ArrowUpRight, classe: 'text-emerald-700 dark:text-emerald-400', rotulo: 'alta' },
   baixa: { Icone: ArrowDownRight, classe: 'text-rose-700 dark:text-rose-400', rotulo: 'baixa' },
@@ -65,10 +63,10 @@ export function TabelaAtivosTelao({ ativos, className = '' }) {
             <thead>
               <tr className="border-b border-border/60 text-[0.7em] uppercase tracking-wider text-muted-foreground">
                 <th scope="col" className="py-[0.5em] pr-[0.6em] sm:pr-[1em] font-semibold">Ativo</th>
+                <th scope="col" className="hidden py-[0.5em] pr-[0.6em] sm:pr-[1em] text-right font-semibold sm:table-cell">Preço médio</th>
                 <th scope="col" className="hidden py-[0.5em] pr-[0.6em] sm:pr-[1em] text-right font-semibold sm:table-cell">Cotação</th>
                 <th scope="col" className="py-[0.5em] pr-[0.6em] sm:pr-[1em] text-right font-semibold">Dia</th>
-                <th scope="col" className="py-[0.5em] pr-[0.6em] sm:pr-[1em] text-right font-semibold">Posição</th>
-                <th scope="col" className="hidden py-[0.5em] text-right font-semibold sm:table-cell">Peso</th>
+                <th scope="col" className="py-[0.5em] text-right font-semibold">Posição</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -83,14 +81,16 @@ export function TabelaAtivosTelao({ ativos, className = '' }) {
                         {ativo.nome || ' '}
                       </span>
                     </th>
+                    <td className="hidden py-[0.4em] pr-[0.6em] sm:pr-[1em] text-right text-muted-foreground sm:table-cell">
+                      {formatarCotacao(ativo.preco_medio)}
+                    </td>
                     <td className="hidden py-[0.4em] pr-[0.6em] sm:pr-[1em] text-right text-foreground sm:table-cell">
                       {ativo.cotacao === null ? '—' : formatarCotacao(ativo.cotacao)}
                     </td>
                     <td className="py-[0.4em] pr-[0.6em] sm:pr-[1em] text-right">
                       <Variacao pct={ativo.variacao_dia_pct} />
                     </td>
-                    <td className="py-[0.4em] pr-[0.6em] sm:pr-[1em] text-right font-semibold text-foreground">{formatarMoeda(ativo.valor)}</td>
-                    <td className="hidden py-[0.4em] text-right text-muted-foreground sm:table-cell">{PESO.format(ativo.peso_pct)}%</td>
+                    <td className="py-[0.4em] text-right font-semibold text-foreground">{formatarMoeda(ativo.valor)}</td>
                   </tr>
                 );
               })}
