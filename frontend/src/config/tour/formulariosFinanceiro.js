@@ -10,7 +10,7 @@ const passosReceita = [
   {
     alvo: 'receita-form-categoria',
     titulo: 'Categoria',
-    texto: 'Agrupa a receita nos relatórios. Escreva o nome: se a categoria ainda não existe, ela é criada ao salvar.',
+    texto: 'Agrupa a receita nos relatórios. Escolha na lista; se faltar alguma, "+ Nova categoria…", no fim dela, abre um campo para o nome, e a categoria é criada ao salvar.',
   },
   {
     alvo: 'receita-form-data',
@@ -29,7 +29,7 @@ const passosContaPagar = [
   {
     alvo: 'conta-pagar-form-categoria',
     titulo: 'Categoria',
-    texto: 'Agrupa a despesa nos relatórios. Escreva o nome: se a categoria ainda não existe, ela é criada ao salvar.',
+    texto: 'Agrupa a despesa nos relatórios. Escolha na lista; se faltar alguma, "+ Nova categoria…", no fim dela, abre um campo para o nome, e a categoria é criada ao salvar.',
   },
   {
     alvo: 'conta-pagar-form-vencimento',
