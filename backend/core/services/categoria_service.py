@@ -5,8 +5,8 @@ from core.models import Categoria
 # "Cartão de Crédito" fica de fora: diz como foi pago, não com o quê
 CATEGORIAS_SUGERIDAS = {
     Categoria.TIPO_DESPESA: (
+        # Inclui as contas da casa (luz, água, internet): separadas, dividiam o mesmo gasto
         "Moradia",
-        "Contas da casa",
         "Mercado",
         "Alimentação fora",
         "Transporte",

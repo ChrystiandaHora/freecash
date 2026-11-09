@@ -52,6 +52,12 @@ class CategoriasSugeridasTests(TestCase):
 
         self.assertNotIn("Cartão de Crédito", nomes)
 
+    def test_contas_da_casa_ficam_em_moradia(self):
+        despesas = CATEGORIAS_SUGERIDAS[Categoria.TIPO_DESPESA]
+
+        self.assertIn("Moradia", despesas)
+        self.assertNotIn("Contas da casa", despesas)
+
     def test_rodar_de_novo_nao_duplica(self):
         usuario = self._novo_usuario()
         total = Categoria.objects.filter(usuario=usuario).count()
@@ -81,17 +87,14 @@ class MigrationCategoriasSugeridasTests(TestCase):
         migration = importlib.import_module("core.migrations.0004_categorias_sugeridas")
         migration.criar_para_usuarios_existentes(django_apps, None)
 
-    def test_lista_congelada_coincide_com_a_atual(self):
-        migration = importlib.import_module("core.migrations.0004_categorias_sugeridas")
-
-        self.assertEqual(migration.CATEGORIAS, CATEGORIAS_SUGERIDAS)
-
     def test_cria_o_que_falta_sem_tocar_no_que_o_usuario_ja_tem(self):
         usuario = User.objects.create_user(username="davi", password="senha-bem-comprida-123")
         mercado = Categoria.objects.create(
             usuario=usuario, nome="Mercado", tipo=Categoria.TIPO_RECEITA,
         )
-        esperado = sum(len(nomes) for nomes in CATEGORIAS_SUGERIDAS.values())
+        # A lista da migration é congelada e pode divergir da atual (ex.: "Contas da casa")
+        migration = importlib.import_module("core.migrations.0004_categorias_sugeridas")
+        esperado = sum(len(nomes) for nomes in migration.CATEGORIAS.values())
 
         self._rodar_migration()
         self._rodar_migration()
