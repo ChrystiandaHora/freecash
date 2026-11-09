@@ -726,6 +726,7 @@ export default function AtivosBalanceamento() {
                     <th scope="col" className="py-3 px-4 w-12 text-center">Aplicar</th>
                     <th scope="col" className="py-3 px-4">Ativo</th>
                     <th scope="col" className="py-3 px-4 text-right">Meta</th>
+                    <th scope="col" className="py-3 px-4 text-right">Média Investido</th>
                     <th scope="col" className="py-3 px-4 text-right">Cotação</th>
                     <th scope="col" className="py-3 px-4 text-right">Valor Investido</th>
                     <th scope="col" className="py-3 px-4 text-right">Saldo Ideal</th>
@@ -757,6 +758,7 @@ export default function AtivosBalanceamento() {
                         )}
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-foreground">{formatPct(at.meta)}</td>
+                      <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatarMoeda(at.preco_medio ?? 0)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground font-mono">{formatarMoeda(at.cotacao)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground">{formatarMoeda(at.valor_atual)}</td>
                       <td className="py-3 px-4 text-right text-muted-foreground">{formatarMoeda(at.valorIdeal)}</td>

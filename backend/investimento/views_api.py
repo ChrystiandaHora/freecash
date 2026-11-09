@@ -759,6 +759,8 @@ class BalanceamentoAPIView(APIView):
                 "meta_porcentagem": meta,
                 "valor_atual": valor_atual,
                 "perc_atual": perc_atual,
+                # Custo médio na custódia em foco, não o preço médio fiscal consolidado
+                "preco_medio": float(posicao.preco_medio),
                 "preco_atual": float(ativo.cotacao_atual or 0),
                 "rentabilidade": rentabilidade,
                 "rentabilidade_perc": (rentabilidade / valor_atual * 100) if valor_atual else 0.0,
