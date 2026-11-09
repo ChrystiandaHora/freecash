@@ -18,6 +18,7 @@ import {
 import { createContasPagarLote } from '../services/financeiro';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { CampoCategoria } from '../components/CampoCategoria';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Alert } from '../components/ui/Alert';
 
@@ -43,6 +44,7 @@ export default function ContasPagarLote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contasPagar'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
       navigate('/contas-pagar');
     },
     onError: (err) => {
@@ -230,12 +232,14 @@ export default function ContasPagarLote() {
                         />
                       </td>
                       <td className="px-3 py-2">
-                        <Input
-                          placeholder="Ex: Contas Fixas"
+                        <CampoCategoria
+                          id={`lote-categoria-${idx}`}
+                          tipo="D"
+                          obrigatorio={false}
                           value={row.categoria}
-                          onChange={(e) => handleRowValueChange(idx, 'categoria', e.target.value)}
+                          onChange={(nome) => handleRowValueChange(idx, 'categoria', nome)}
                           className="h-9 text-xs rounded-lg"
-                          aria-label={`Categoria, linha ${idx + 1}`}
+                          ariaLabel={`Categoria, linha ${idx + 1}`}
                         />
                       </td>
                       <td className="px-5 py-3.5 text-center">

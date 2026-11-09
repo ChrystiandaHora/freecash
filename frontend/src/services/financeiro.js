@@ -4,6 +4,13 @@
  */
 import api from './api'
 
+// ─── Categorias ──────────────────────────────────────────────────────────────
+
+export const fetchCategorias = async () => {
+  const { data } = await api.get('/api/categorias/')
+  return data
+}
+
 // ─── Contas a Pagar ──────────────────────────────────────────────────────────
 
 export const fetchContasPagar = async (params = {}) => {

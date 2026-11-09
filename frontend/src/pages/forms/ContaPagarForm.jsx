@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { fetchContaPagar, createContaPagar, updateContaPagar, desfazerPagamentoC
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { CampoCategoria } from '../../components/CampoCategoria';
 
 const schema = z.object({
   descricao: z.string().min(3, 'Descrição obrigatória (mín. 3 caracteres)'),
@@ -37,9 +38,10 @@ export default function ContaPagarForm() {
   const queryClient = useQueryClient();
   const isEdit = !!id;
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
+      categoria: '',
       evento: eventoParam || '',
     },
   });
@@ -77,6 +79,7 @@ export default function ContaPagarForm() {
     mutationFn: createContaPagar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
       navigate('/contas-pagar');
     },
   });
@@ -85,6 +88,7 @@ export default function ContaPagarForm() {
     mutationFn: updateContaPagar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contas-pagar'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
       navigate('/contas-pagar');
     },
   });
@@ -184,15 +188,31 @@ export default function ContaPagarForm() {
                 <label htmlFor="conta-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  id="conta-categoria"
-                  {...register('categoria')}
-                  placeholder="Ex: Moradia"
-                  readOnly={isFaturaCartao}
-                  className={isFaturaCartao ? "bg-muted cursor-not-allowed" : ""}
-                  aria-invalid={!!errors.categoria}
-                  aria-describedby={errors.categoria ? "conta-categoria-error" : undefined}
+                <Controller
+                  name="categoria"
+                  control={control}
+                  render={({ field }) => (
+                    <CampoCategoria
+                      id="conta-categoria"
+                      tipo="D"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      readOnly={isFaturaCartao}
+                      invalid={!!errors.categoria}
+                      describedBy={[
+                        !isFaturaCartao && 'conta-categoria-dica',
+                        errors.categoria && 'conta-categoria-error',
+                      ].filter(Boolean).join(' ') || undefined}
+                    />
+                  )}
                 />
+                {!isFaturaCartao && (
+                  <p id="conta-categoria-dica" className="text-xs text-muted-foreground">
+                    Não achou? Escolha “+ Nova categoria…” no fim da lista.
+                  </p>
+                )}
                 {errors.categoria && (
                   <p id="conta-categoria-error" role="alert" className="text-xs text-red-500">{errors.categoria.message}</p>
                 )}

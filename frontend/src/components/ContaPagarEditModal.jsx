@@ -15,7 +15,7 @@
  * @param {Function} [props.onPayError] - Disparado quando o pagamento falha.
  */
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -25,6 +25,7 @@ import { updateContaPagar, pagarConta } from '../services/financeiro'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Modal } from './ui/Modal'
+import { CampoCategoria } from './CampoCategoria'
 
 const schema = z.object({
   descricao: z.string().min(3, 'Descrição obrigatória (mín. 3 caracteres)'),
@@ -41,6 +42,7 @@ export default function ContaPagarEditModal({ conta, onClose, onSaved, onError, 
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -64,6 +66,7 @@ export default function ContaPagarEditModal({ conta, onClose, onSaved, onError, 
     queryClient.invalidateQueries({ queryKey: ['contasPagar'] })
     queryClient.invalidateQueries({ queryKey: ['contas-pagar'] })
     queryClient.invalidateQueries({ queryKey: ['conta-pagar', String(conta.id)] })
+    queryClient.invalidateQueries({ queryKey: ['categorias'] })
   }
 
   const updateMutation = useMutation({
@@ -136,15 +139,31 @@ export default function ContaPagarEditModal({ conta, onClose, onSaved, onError, 
             <label htmlFor="edit-conta-categoria" className="text-sm font-medium text-foreground">
               Categoria <span className="text-red-500">*</span>
             </label>
-            <Input
-              id="edit-conta-categoria"
-              {...register('categoria')}
-              placeholder="Ex: Moradia"
-              readOnly={isFaturaCartao}
-              className={readOnlyClass}
-              aria-invalid={!!errors.categoria}
-              aria-describedby={errors.categoria ? 'edit-conta-categoria-error' : undefined}
+            <Controller
+              name="categoria"
+              control={control}
+              render={({ field }) => (
+                <CampoCategoria
+                  id="edit-conta-categoria"
+                  tipo="D"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  readOnly={isFaturaCartao}
+                  invalid={!!errors.categoria}
+                  describedBy={[
+                    !isFaturaCartao && 'edit-conta-categoria-dica',
+                    errors.categoria && 'edit-conta-categoria-error',
+                  ].filter(Boolean).join(' ') || undefined}
+                />
+              )}
             />
+            {!isFaturaCartao && (
+              <p id="edit-conta-categoria-dica" className="text-xs text-muted-foreground">
+                Não achou? Escolha “+ Nova categoria…” no fim da lista.
+              </p>
+            )}
             {errors.categoria && (
               <p id="edit-conta-categoria-error" role="alert" className="text-xs text-red-500">
                 {errors.categoria.message}

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { CampoCategoria } from '../../components/CampoCategoria';
 
 const schema = z.object({
   descricao: z.string().min(3, 'Descrição obrigatória (mín. 3 caracteres)'),
@@ -28,9 +29,9 @@ export default function ReceitaForm() {
   const queryClient = useQueryClient();
   const isEdit = !!id;
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { tipo: 'unica' },
+    defaultValues: { tipo: 'unica', categoria: '' },
   });
 
   const watchTipo = watch('tipo');
@@ -60,6 +61,7 @@ export default function ReceitaForm() {
     mutationFn: createReceita,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['receitas'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
       navigate('/receitas');
     },
   });
@@ -68,6 +70,7 @@ export default function ReceitaForm() {
     mutationFn: updateReceita,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['receitas'] });
+      queryClient.invalidateQueries({ queryKey: ['categorias'] });
       navigate('/receitas');
     },
   });
@@ -171,13 +174,25 @@ export default function ReceitaForm() {
                 <label htmlFor="receita-categoria" className="text-sm font-medium text-foreground">
                   Categoria <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  id="receita-categoria"
-                  {...register('categoria')}
-                  placeholder="Ex: Salário, Dividendos"
-                  aria-invalid={!!errors.categoria}
-                  aria-describedby={errors.categoria ? "receita-categoria-error" : undefined}
+                <Controller
+                  name="categoria"
+                  control={control}
+                  render={({ field }) => (
+                    <CampoCategoria
+                      id="receita-categoria"
+                      tipo="R"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      invalid={!!errors.categoria}
+                      describedBy={errors.categoria ? "receita-categoria-dica receita-categoria-error" : "receita-categoria-dica"}
+                    />
+                  )}
                 />
+                <p id="receita-categoria-dica" className="text-xs text-muted-foreground">
+                  Não achou? Escolha “+ Nova categoria…” no fim da lista.
+                </p>
                 {errors.categoria && (
                   <p id="receita-categoria-error" role="alert" className="text-xs text-red-500">{errors.categoria.message}</p>
                 )}
