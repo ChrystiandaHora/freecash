@@ -767,6 +767,19 @@ class ContratoDaAPITests(CarteiraBaseTestCase):
         for campo in ["meta_porcentagem", "valor_atual", "perc_atual", "valor_ideal", "diferenca"]:
             self.assertIn(campo, linha)
 
+    def test_plano_por_ativo_traz_o_preco_medio_da_carteira_em_foco(self):
+        """A coluna "Média Investido" mostra o custo médio da custódia, não o consolidado."""
+        self.comprar(self.xp, 100, "30.00")
+        self.comprar(self.xp, 100, "40.00")
+        self.comprar(self.inter, 100, "100.00")
+
+        payload = self.client.get(
+            "/api/investimentos/balanceamento/", {"carteira": self.xp.id}
+        ).data
+
+        linha = payload["classes"][0]["ativos"][0]
+        self.assertAlmostEqual(linha["preco_medio"], 35.0)
+
     def test_meta_por_carteira_e_gravavel_pela_api(self):
         """O write-path existia inteiro no backend e nenhuma tela o usava."""
         resposta = self.client.post(
