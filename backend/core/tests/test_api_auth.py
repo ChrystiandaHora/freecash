@@ -16,6 +16,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core.models import ConfigUsuario, Categoria
+from core.services.categoria_service import CATEGORIAS_SUGERIDAS
 
 User = get_user_model()
 
@@ -63,7 +64,9 @@ class UserRegistrationAPITestCase(APITestCase):
         self.assertIsNone(config.email_verificado_em)
 
         categories = Categoria.objects.filter(usuario=user)
-        self.assertEqual(categories.count(), 3)
+        sugeridas = sum(len(nomes) for nomes in CATEGORIAS_SUGERIDAS.values())
+        self.assertEqual(categories.filter(is_default=True).count(), 3)
+        self.assertEqual(categories.count(), 3 + sugeridas)
         self.assertTrue(categories.filter(nome="Receita", tipo=Categoria.TIPO_RECEITA).exists())
         self.assertTrue(categories.filter(nome="Gastos", tipo=Categoria.TIPO_DESPESA).exists())
         self.assertTrue(categories.filter(nome="Investimento", tipo=Categoria.TIPO_INVESTIMENTO).exists())

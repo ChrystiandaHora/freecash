@@ -8,6 +8,7 @@ de receitas, gastos e investimentos.
 
 from django.contrib.auth import get_user_model
 from core.models import ConfigUsuario, Categoria
+from core.services.categoria_service import criar_categorias_sugeridas
 from core.services.email_service import normalizar_email
 
 User = get_user_model()
@@ -51,6 +52,7 @@ def criar_usuario_com_ecosistema(username: str, senha: str, email: str = ""):
         nome="Investimento",
         defaults={"tipo": Categoria.TIPO_INVESTIMENTO, "is_default": True},
     )
+    criar_categorias_sugeridas(usuario)
 
     return usuario
 
