@@ -257,7 +257,8 @@ export default function Dashboard() {
       animations: { enabled: false },
     },
     labels: (breakdown_despesas || []).map(item => item.nome),
-    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'],
+    // Uma cor por fatia: até 6 categorias + "Outros" (CATEGORIAS_NO_RANKING no backend)
+    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#0d9488', '#64748b'],
     dataLabels: { enabled: false },
     stroke: { width: 1, colors: ['rgba(255, 255, 255, 0.05)'] },
     legend: { show: false },

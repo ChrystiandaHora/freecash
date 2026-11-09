@@ -63,6 +63,9 @@ from core.services.dashboard_helper import (
 
 logger = logging.getLogger("core")
 
+# Categorias listadas em "Maiores Gastos" antes de agrupar o resto em "Outros"
+CATEGORIAS_NO_RANKING = 6
+
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     """ViewSet REST para operações de CRUD de Categoria financeira do usuário.
@@ -312,7 +315,8 @@ class DashboardAPIView(APIView):
 
         # Breakdown por COMPETÊNCIA
         breakdown_items, top_categoria = breakdown_despesas_competencia(
-            usuario, periodo.inicio, periodo.fim, total_despesas, top_n=4
+            usuario, periodo.inicio, periodo.fim, total_despesas,
+            top_n=CATEGORIAS_NO_RANKING,
         )
 
         media_gasto_dia = (
