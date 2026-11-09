@@ -2,7 +2,7 @@
 
 from core.models import Categoria
 
-# "Cartão de Crédito" fica de fora: diz como foi pago, não com o quê (ver docs/contas.md)
+# "Cartão de Crédito" fica de fora: diz como foi pago, não com o quê
 CATEGORIAS_SUGERIDAS = {
     Categoria.TIPO_DESPESA: (
         "Moradia",

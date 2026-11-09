@@ -3,7 +3,7 @@
  *
  * O campo é um select com as categorias do usuário e uma última opção para criar
  * outra; o nome digitado ali vira categoria nova ao salvar
- * (`resolver_categoria_por_nome` no backend). Ver docs/contas.md.
+ * (`resolver_categoria_por_nome` no backend).
  */
 
 const ordenarPtBr = new Intl.Collator('pt-BR', { sensitivity: 'base' }).compare;
